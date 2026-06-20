@@ -1,5 +1,6 @@
 package com.lop.budget.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -19,13 +20,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 
 /**
- * Barre de navigation flottante en pilule, façon One UI récent / PromptBox.
+ * Barre de navigation flottante en pilule, façon One UI récent / iOS.
  * Le FAB central "+" est intégré, légèrement mis en avant.
  */
 @Composable
@@ -36,48 +39,64 @@ fun FloatingBottomBar(
     modifier: Modifier = Modifier,
 ) {
     val haptic = LocalHapticFeedback.current
-    Surface(
+    val shape = CircleShape
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 28.dp),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
-        tonalElevation = 6.dp,
-        shadowElevation = 10.dp,
+            .padding(horizontal = 28.dp)
+            .clip(shape),
     ) {
-        Row(
+        // Couche "frosted glass" (blur + teinte légère) — style iOS.
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .matchParentSize()
+                .blur(22.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)),
+        )
+
+        // Couche principale (surface + shadow)
+        Surface(
+            modifier = Modifier.matchParentSize(),
+            shape = shape,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
+            tonalElevation = 6.dp,
+            shadowElevation = 10.dp,
         ) {
-            BarItem(Icons.Filled.Home, "home", current) { onSelect("home") }
-            BarItem(Icons.Filled.Assessment, "analytics", current) { onSelect("analytics") }
-
-            // FAB central
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(54.dp),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = "Ajouter",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickableNoRipple {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onAdd()
-                            },
-                    )
-                }
-            }
+                BarItem(Icons.Filled.Home, "home", current) { onSelect("home") }
+                BarItem(Icons.Filled.Assessment, "analytics", current) { onSelect("analytics") }
 
-            BarItem(Icons.Filled.Flag, "goals", current) { onSelect("goals") }
-            BarItem(Icons.Outlined.AccountBalanceWallet, "accounts", current) { onSelect("accounts") }
+                // FAB central
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(54.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = "Ajouter",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clickableNoRipple {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onAdd()
+                                },
+                        )
+                    }
+                }
+
+                BarItem(Icons.Filled.Flag, "goals", current) { onSelect("goals") }
+                BarItem(Icons.Outlined.AccountBalanceWallet, "accounts", current) { onSelect("accounts") }
+            }
         }
     }
 }
