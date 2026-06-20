@@ -27,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.lop.budget.ui.components.FloatingBottomBar
 import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.motion.MotionSpec
 import com.lop.budget.ui.screens.accounts.AccountsScreen
 import com.lop.budget.ui.screens.ai.AiScreen
 import com.lop.budget.ui.screens.analytics.AnalyticsScreen
@@ -74,10 +75,31 @@ fun LopNavHost() {
             }
 
             // Bottom bar en overlay (vraiment flottante, avec de l'air en dessous).
+            // Animation: un slide léger + fade, avec une easing cohérente.
             AnimatedVisibility(
                 visible = showBar,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut(),
+                enter = slideInVertically(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = MotionSpec.SLOW_MS,
+                        easing = MotionSpec.easeOut,
+                    ),
+                ) { fullHeight -> fullHeight / 2 } + fadeIn(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = MotionSpec.MEDIUM_MS,
+                        easing = MotionSpec.easeOut,
+                    ),
+                ),
+                exit = slideOutVertically(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = MotionSpec.MEDIUM_MS,
+                        easing = MotionSpec.easeOut,
+                    ),
+                ) { fullHeight -> fullHeight / 2 } + fadeOut(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = MotionSpec.FAST_MS,
+                        easing = MotionSpec.easeOut,
+                    ),
+                ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()

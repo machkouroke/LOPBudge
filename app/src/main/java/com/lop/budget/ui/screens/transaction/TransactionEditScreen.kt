@@ -29,8 +29,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -41,10 +39,11 @@ import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
-import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
 
 @Composable
@@ -59,7 +58,6 @@ fun TransactionEditScreen(
     val goals by vm.goals.collectAsStateWithLifecycle()
     val debts by vm.debts.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
-    val haptic = LocalHapticFeedback.current
 
     val accent = if (form.type == TransactionType.INCOME) ext.income else ext.expense
     val typeCategories = categories.filter { it.type == form.type }
@@ -130,7 +128,7 @@ fun TransactionEditScreen(
                         val c = Color(cat.colorArgb)
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickableNoRipple { vm.setCategory(cat.id) },
+                            modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) { vm.setCategory(cat.id) },
                         ) {
                             CircleIcon(
                                 icon = IconMapper.get(cat.icon),
@@ -156,7 +154,7 @@ fun TransactionEditScreen(
                         Surface(
                             color = if (selected) c.copy(alpha = 0.30f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             shape = CircleShape,
-                            modifier = Modifier.clickableNoRipple { vm.toggleTag(tag.id) },
+                            modifier = Modifier.pressScaleClickable(intent = HapticIntent.Tap) { vm.toggleTag(tag.id) },
                         ) {
                             Text(
                                 "#${tag.name}",
@@ -179,7 +177,7 @@ fun TransactionEditScreen(
                         PillTag(
                             text = acc.name,
                             color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.clickableNoRipple { vm.setAccount(acc.id) },
+                            modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) { vm.setAccount(acc.id) },
                         )
                     }
                 }
@@ -201,7 +199,9 @@ fun TransactionEditScreen(
                             PillTag(
                                 text = "🎯 ${g.name}",
                                 color = if (selected) ext.income else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.clickableNoRipple { vm.setLinkedGoal(if (selected) null else g.id) },
+                                modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) {
+                                    vm.setLinkedGoal(if (selected) null else g.id)
+                                },
                             )
                         }
                         items(debts, key = { "d${it.id}" }) { d ->
@@ -209,7 +209,9 @@ fun TransactionEditScreen(
                             PillTag(
                                 text = "💳 ${d.name}",
                                 color = if (selected) ext.expense else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.clickableNoRipple { vm.setLinkedDebt(if (selected) null else d.id) },
+                                modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) {
+                                    vm.setLinkedDebt(if (selected) null else d.id)
+                                },
                             )
                         }
                     }
@@ -228,12 +230,9 @@ fun TransactionEditScreen(
 
         // Pavé numérique
         NumericKeypad(
-            onDigit = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); vm.appendDigit(it) },
-            onDelete = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); vm.deleteDigit() },
-            onValidate = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                vm.save(onBack)
-            },
+            onDigit = { vm.appendDigit(it) },
+            onDelete = { vm.deleteDigit() },
+            onValidate = { vm.save(onBack) },
             accent = accent,
         )
         Spacer(Modifier.height(16.dp))
@@ -243,7 +242,7 @@ fun TransactionEditScreen(
 @Composable
 private fun TypeSegment(label: String, selected: Boolean, color: Color, modifier: Modifier, onClick: () -> Unit) {
     Surface(
-        modifier = modifier.clickableNoRipple(onClick),
+        modifier = modifier.pressScaleClickable(intent = HapticIntent.Selection, onClick = onClick),
         shape = CircleShape,
         color = if (selected) color.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
     ) {
@@ -275,7 +274,7 @@ private fun RecurrenceSection(form: TransactionForm, vm: TransactionEditViewMode
                 PillTag(
                     text = label,
                     color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickableNoRipple { vm.setFrequency(f) },
+                    modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) { vm.setFrequency(f) },
                 )
             }
         }
@@ -305,7 +304,7 @@ private fun RecurrenceSection(form: TransactionForm, vm: TransactionEditViewMode
                                 Box(
                                     Modifier
                                         .size(36.dp)
-                                        .clickableNoRipple { vm.toggleDayOfWeek(num) },
+                                        .pressScaleClickable(intent = HapticIntent.Selection) { vm.toggleDayOfWeek(num) },
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Surface(
@@ -344,9 +343,15 @@ private fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit, onVal
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { key ->
                     Surface(
-                        modifier = Modifier.weight(1f).height(54.dp).clickableNoRipple {
-                            when (key) { "⌫" -> onDelete(); else -> onDigit(key) }
-                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(54.dp)
+                            .pressScaleClickable(intent = if (key == "⌫") HapticIntent.Tap else HapticIntent.Tap) {
+                                when (key) {
+                                    "⌫" -> onDelete()
+                                    else -> onDigit(key)
+                                }
+                            },
                         shape = MaterialTheme.shapes.large,
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                     ) {
@@ -359,7 +364,10 @@ private fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit, onVal
             }
         }
         Surface(
-            modifier = Modifier.fillMaxWidth().height(54.dp).clickableNoRipple(onValidate),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp)
+                .pressScaleClickable(intent = HapticIntent.Confirm, onClick = onValidate),
             shape = MaterialTheme.shapes.large,
             color = accent,
         ) {
