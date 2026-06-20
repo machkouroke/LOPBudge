@@ -1,6 +1,8 @@
 package com.lop.budget.ui.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -20,11 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.google.accompanist.navigation.animation.AnimatedNavHost
+import com.google.accompanist.navigation.animation.composable
+import com.google.accompanist.navigation.animation.currentBackStackEntryAsState
+import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.lop.budget.ui.components.FloatingBottomBar
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.motion.MotionSpec
@@ -37,9 +39,10 @@ import com.lop.budget.ui.screens.home.HomeScreen
 import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun LopNavHost() {
-    val navController = rememberNavController()
+    val navController = rememberAnimatedNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBar = currentRoute in Routes.rootRoutes
@@ -52,22 +55,165 @@ fun LopNavHost() {
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            NavHost(navController = navController, startDestination = Routes.HOME) {
-                composable(Routes.HOME) {
+            AnimatedNavHost(
+                navController = navController,
+                startDestination = Routes.HOME,
+                // Transitions par défaut (fallback)
+                enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
+                exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
+                popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
+                popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
+            ) {
+                // ---- ROOT (bottom bar) : crossfade subtil (pas de slide agressif) ----
+                composable(
+                    Routes.HOME,
+                    enterTransition = { rootEnter() },
+                    exitTransition = { rootExit() },
+                    popEnterTransition = { rootPopEnter() },
+                    popExitTransition = { rootPopExit() },
+                ) {
                     HomeScreen(
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
                         onOpenAi = { navController.navigate(Routes.AI) },
                     )
                 }
-                composable(Routes.ANALYTICS) { AnalyticsScreen() }
-                composable(Routes.GOALS) { GoalsScreen() }
-                composable(Routes.ACCOUNTS) { AccountsScreen() }
-                composable(Routes.ADD) { TransactionEditScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.AI) { AiScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.SETTINGS) { SettingsScreen(onBack = { navController.popBackStack() }) }
+
+                composable(
+                    Routes.ANALYTICS,
+                    enterTransition = { rootEnter() },
+                    exitTransition = { rootExit() },
+                    popEnterTransition = { rootPopEnter() },
+                    popExitTransition = { rootPopExit() },
+                ) { AnalyticsScreen() }
+
+                composable(
+                    Routes.GOALS,
+                    enterTransition = { rootEnter() },
+                    exitTransition = { rootExit() },
+                    popEnterTransition = { rootPopEnter() },
+                    popExitTransition = { rootPopExit() },
+                ) { GoalsScreen() }
+
+                composable(
+                    Routes.ACCOUNTS,
+                    enterTransition = { rootEnter() },
+                    exitTransition = { rootExit() },
+                    popEnterTransition = { rootPopEnter() },
+                    popExitTransition = { rootPopExit() },
+                ) { AccountsScreen() }
+
+                // ---- SECONDARY : slide vertical (modal-like) ----
+                composable(
+                    Routes.ADD,
+                    enterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = MotionSpec.fastTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                ) { TransactionEditScreen(onBack = { navController.popBackStack() }) }
+
+                composable(
+                    Routes.AI,
+                    enterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = MotionSpec.fastTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                ) { AiScreen(onBack = { navController.popBackStack() }) }
+
+                composable(
+                    Routes.SETTINGS,
+                    enterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = MotionSpec.fastTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                ) { SettingsScreen(onBack = { navController.popBackStack() }) }
+
                 composable(
                     Routes.DETAIL,
                     arguments = listOf(navArgument("id") { type = NavType.LongType }),
+                    enterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = MotionSpec.fastTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
                 ) { entry ->
                     val id = entry.arguments?.getLong("id") ?: 0L
                     TransactionDetailScreen(transactionId = id, onBack = { navController.popBackStack() })
@@ -75,7 +221,6 @@ fun LopNavHost() {
             }
 
             // Bottom bar en overlay (vraiment flottante, avec de l'air en dessous).
-            // Animation: un slide léger + fade, avec une easing cohérente.
             AnimatedVisibility(
                 visible = showBar,
                 enter = slideInVertically(
@@ -133,3 +278,23 @@ fun LopNavHost() {
         }
     }
 }
+
+@OptIn(ExperimentalAnimationApi::class)
+private fun AnimatedContentTransitionScope<*>.rootEnter() = fadeIn(
+    animationSpec = MotionSpec.mediumTween(),
+)
+
+@OptIn(ExperimentalAnimationApi::class)
+private fun AnimatedContentTransitionScope<*>.rootExit() = fadeOut(
+    animationSpec = MotionSpec.fastTween(),
+)
+
+@OptIn(ExperimentalAnimationApi::class)
+private fun AnimatedContentTransitionScope<*>.rootPopEnter() = fadeIn(
+    animationSpec = MotionSpec.mediumTween(),
+)
+
+@OptIn(ExperimentalAnimationApi::class)
+private fun AnimatedContentTransitionScope<*>.rootPopExit() = fadeOut(
+    animationSpec = MotionSpec.fastTween(),
+)
