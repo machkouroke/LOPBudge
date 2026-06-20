@@ -23,8 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 
 /**
@@ -38,7 +36,6 @@ fun FloatingBottomBar(
     onAdd: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val haptic = LocalHapticFeedback.current
     val shape = CircleShape
 
     Box(
@@ -69,10 +66,10 @@ fun FloatingBottomBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                BarItem(Icons.Filled.Home, "home", current) { onSelect("home") }
-                BarItem(Icons.Filled.Assessment, "analytics", current) { onSelect("analytics") }
+                BarItem(Icons.Filled.Home, "home", current, intent = HapticIntent.Tap) { onSelect("home") }
+                BarItem(Icons.Filled.Assessment, "analytics", current, intent = HapticIntent.Tap) { onSelect("analytics") }
 
-                // FAB central
+                // FAB central (action primaire)
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary,
@@ -85,32 +82,35 @@ fun FloatingBottomBar(
                             tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier
                                 .size(28.dp)
-                                .clickableNoRipple {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onAdd()
-                                },
+                                .pressScaleClickable(intent = HapticIntent.Confirm) { onAdd() },
                         )
                     }
                 }
 
-                BarItem(Icons.Filled.Flag, "goals", current) { onSelect("goals") }
-                BarItem(Icons.Outlined.AccountBalanceWallet, "accounts", current) { onSelect("accounts") }
+                BarItem(Icons.Filled.Flag, "goals", current, intent = HapticIntent.Tap) { onSelect("goals") }
+                BarItem(Icons.Outlined.AccountBalanceWallet, "accounts", current, intent = HapticIntent.Tap) { onSelect("accounts") }
             }
         }
     }
 }
 
 @Composable
-private fun BarItem(icon: ImageVector, route: String, current: String, onClick: () -> Unit) {
+private fun BarItem(
+    icon: ImageVector,
+    route: String,
+    current: String,
+    intent: HapticIntent,
+    onClick: () -> Unit,
+) {
     val selected = current == route
-    val tint = if (selected) MaterialTheme.colorScheme.primary
-    else MaterialTheme.colorScheme.onSurfaceVariant
+    val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+
     Icon(
         icon,
         contentDescription = route,
         tint = tint,
         modifier = Modifier
             .size(26.dp)
-            .clickableNoRipple(onClick),
+            .pressScaleClickable(intent = intent, pressedScale = 0.96f, onClick = onClick),
     )
 }
