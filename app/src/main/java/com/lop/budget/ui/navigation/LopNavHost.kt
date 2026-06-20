@@ -45,28 +45,14 @@ fun LopNavHost() {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            AnimatedVisibility(
-                visible = showBar,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut(),
-            ) {
-                FloatingBottomBar(
-                    current = currentRoute ?: Routes.HOME,
-                    onSelect = { route ->
-                        navController.navigate(route) {
-                            popUpTo(Routes.HOME) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onAdd = { navController.navigate(Routes.ADD) },
-                    modifier = Modifier.navigationBarsPadding().padding(bottom = 12.dp),
-                )
-            }
-        },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                // Réserve de l'espace pour éviter que le contenu soit masqué par la bottom bar flottante.
+                .padding(bottom = if (showBar) 96.dp else 0.dp),
+        ) {
             NavHost(navController = navController, startDestination = Routes.HOME) {
                 composable(Routes.HOME) {
                     HomeScreen(
@@ -87,6 +73,29 @@ fun LopNavHost() {
                     val id = entry.arguments?.getLong("id") ?: 0L
                     TransactionDetailScreen(transactionId = id, onBack = { navController.popBackStack() })
                 }
+            }
+
+            // Bottom bar en overlay (vraiment flottante, avec de l'air en dessous).
+            AnimatedVisibility(
+                visible = showBar,
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 20.dp),
+            ) {
+                FloatingBottomBar(
+                    current = currentRoute ?: Routes.HOME,
+                    onSelect = { route ->
+                        navController.navigate(route) {
+                            popUpTo(Routes.HOME) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onAdd = { navController.navigate(Routes.ADD) },
+                )
             }
 
             // Accès rapide aux réglages depuis les écrans racines (coin haut droit).
