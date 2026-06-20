@@ -61,6 +61,9 @@ dependencies {
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.8.0")
 
+    // Animations de navigation (transitions entre pages)
+    implementation("com.google.accompanist:accompanist-navigation-animation:0.36.0")
+
     // Hilt
     implementation("com.google.dagger:hilt-android:2.52")
     ksp("com.google.dagger:hilt-compiler:2.52")
