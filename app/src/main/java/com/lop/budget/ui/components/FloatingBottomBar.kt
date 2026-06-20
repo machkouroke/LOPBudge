@@ -48,6 +48,7 @@ fun FloatingBottomBar(
             .clip(shape),
     ) {
         // Couche "frosted glass" (blur + teinte légère) — style iOS.
+        // NB: la taille du Box est déterminée par la Surface (contenu). On peut donc matcher sa taille ici.
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -55,9 +56,7 @@ fun FloatingBottomBar(
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)),
         )
 
-        // Couche principale (surface + shadow)
         Surface(
-            modifier = Modifier.matchParentSize(),
             shape = shape,
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
             tonalElevation = 6.dp,
