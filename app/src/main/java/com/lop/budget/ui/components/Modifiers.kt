@@ -80,11 +80,18 @@ fun Modifier.pressScaleClickable(
 ): Modifier = composed {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed = interactionSource.collectIsPressedAsState()
+
+    // IMPORTANT: on capture LocalHapticFeedback.current ici (contexte @Composable)
+    // et on ne le lit PAS à l'intérieur du lambda onClick.
+    val haptic = LocalHapticFeedback.current
+    val map = rememberHapticMapper()
+
     val scale = animateFloatAsState(
         targetValue = if (isPressed.value) pressedScale else 1f,
         animationSpec = MotionSpec.floatSpring(),
         label = "pressScale",
     )
+
     this
         .scale(scale.value)
         .clickable(
@@ -93,14 +100,7 @@ fun Modifier.pressScaleClickable(
             onClick = {
                 // Haptique au moment du click (pas au press) pour éviter le spam.
                 if (intent != null) {
-                    LocalHapticFeedback.current.performHapticFeedback(
-                        when (intent) {
-                            HapticIntent.Tap -> HapticFeedbackType.TextHandleMove
-                            HapticIntent.Selection -> HapticFeedbackType.TextHandleMove
-                            HapticIntent.Confirm -> HapticFeedbackType.LongPress
-                            HapticIntent.Destructive -> HapticFeedbackType.LongPress
-                        },
-                    )
+                    haptic.performHapticFeedback(map(intent))
                 }
                 onClick()
             },
