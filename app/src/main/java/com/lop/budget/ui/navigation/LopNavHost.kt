@@ -49,9 +49,7 @@ fun LopNavHost() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                // Réserve de l'espace pour éviter que le contenu soit masqué par la bottom bar flottante.
-                .padding(bottom = if (showBar) 96.dp else 0.dp),
+                .padding(padding),
         ) {
             NavHost(navController = navController, startDestination = Routes.HOME) {
                 composable(Routes.HOME) {
