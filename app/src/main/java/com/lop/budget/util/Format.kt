@@ -1,5 +1,6 @@
 package com.lop.budget.util
 
+import android.util.Log
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -9,11 +10,14 @@ import java.util.Locale
 
 object Format {
     fun money(amount: Double, currencyCode: String = "EUR", locale: Locale = Locale.FRANCE): String {
-        return runCatching {
+        return try {
             val nf = NumberFormat.getCurrencyInstance(locale)
             nf.currency = Currency.getInstance(currencyCode)
             nf.format(amount)
-        }.getOrElse { String.format(locale, "%.2f %s", amount, currencyCode) }
+        } catch (e: IllegalArgumentException) {
+            Log.w("Format", "Invalid currency code: $currencyCode", e)
+            String.format(locale, "%.2f %s", amount, currencyCode)
+        }
     }
 
     private val dayMonth = DateTimeFormatter.ofPattern("d MMM", Locale.FRANCE)

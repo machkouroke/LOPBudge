@@ -22,10 +22,15 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,6 +49,7 @@ import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
+import com.lop.budget.ui.util.UiEvent
 import com.lop.budget.util.IconMapper
 
 @Composable
@@ -59,9 +65,20 @@ fun TransactionEditScreen(
     val debts by vm.debts.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) {
+        vm.uiEvents.events.collect { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                is UiEvent.NavigateBack -> onBack()
+            }
+        }
+    }
+
     val accent = if (form.type == TransactionType.INCOME) ext.income else ext.expense
     val typeCategories = categories.filter { it.type == form.type }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         // En-tête
         Row(
@@ -379,5 +396,7 @@ private fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit, onVal
                 }
             }
         }
+    }
+    SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }

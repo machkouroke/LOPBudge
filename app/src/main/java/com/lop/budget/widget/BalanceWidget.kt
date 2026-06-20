@@ -1,6 +1,7 @@
 package com.lop.budget.widget
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -46,25 +47,32 @@ class BalanceWidget : GlanceAppWidget() {
     }
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val ep = EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
-        val repo = ep.budgetRepository()
-        val settings = ep.settingsRepository()
+        try {
+            val ep = EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
+            val repo = ep.budgetRepository()
+            val settings = ep.settingsRepository()
 
-        val txs = repo.observeTransactions().first()
-        val currency = settings.currency.first()
-        val income = txs.filter { it.transaction.type == TransactionType.INCOME && it.transaction.status == TransactionStatus.PAID }
-            .sumOf { it.transaction.amount }
-        val expense = txs.filter { it.transaction.type == TransactionType.EXPENSE && it.transaction.status == TransactionStatus.PAID }
-            .sumOf { it.transaction.amount }
-        val upcoming = txs.count { it.transaction.status == TransactionStatus.PLANNED && it.transaction.date >= System.currentTimeMillis() }
+            val txs = repo.observeTransactions().first()
+            val currency = settings.currency.first()
+            val income = txs.filter { it.transaction.type == TransactionType.INCOME && it.transaction.status == TransactionStatus.PAID }
+                .sumOf { it.transaction.amount }
+            val expense = txs.filter { it.transaction.type == TransactionType.EXPENSE && it.transaction.status == TransactionStatus.PAID }
+                .sumOf { it.transaction.amount }
+            val upcoming = txs.count { it.transaction.status == TransactionStatus.PLANNED && it.transaction.date >= System.currentTimeMillis() }
 
-        provideContent {
-            WidgetContent(balance = income - expense, currency = currency, upcoming = upcoming)
+            provideContent {
+                WidgetContent(balance = income - expense, currency = currency, upcoming = upcoming)
+            }
+        } catch (e: Exception) {
+            Log.e("BalanceWidget", "Failed to load widget data", e)
+            provideContent {
+                WidgetContent(balance = 0.0, currency = "EUR", upcoming = 0, error = true)
+            }
         }
     }
 
     @Composable
-    private fun WidgetContent(balance: Double, currency: String, upcoming: Int) {
+    private fun WidgetContent(balance: Double, currency: String, upcoming: Int, error: Boolean = false) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -73,15 +81,23 @@ class BalanceWidget : GlanceAppWidget() {
                 .padding(16.dp),
             verticalAlignment = Alignment.Vertical.CenterVertically,
         ) {
-            Text("Solde LOPBudge", style = TextStyle(color = ColorProvider(Color(0xFFCAC4D0)), fontSize = androidx.compose.ui.unit.TextUnit.Unspecified))
-            Text(
-                Format.money(balance, currency),
-                style = TextStyle(color = ColorProvider(Color(0xFFB69DF8)), fontWeight = FontWeight.Bold),
-            )
-            Text(
-                "$upcoming à venir",
-                style = TextStyle(color = ColorProvider(Color(0xFF4ADE80))),
-            )
+            if (error) {
+                Text("LOPBudge", style = TextStyle(color = ColorProvider(Color(0xFFCAC4D0))))
+                Text(
+                    "Données indisponibles",
+                    style = TextStyle(color = ColorProvider(Color(0xFFFF6B6B)), fontWeight = FontWeight.Bold),
+                )
+            } else {
+                Text("Solde LOPBudge", style = TextStyle(color = ColorProvider(Color(0xFFCAC4D0)), fontSize = androidx.compose.ui.unit.TextUnit.Unspecified))
+                Text(
+                    Format.money(balance, currency),
+                    style = TextStyle(color = ColorProvider(Color(0xFFB69DF8)), fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    "$upcoming à venir",
+                    style = TextStyle(color = ColorProvider(Color(0xFF4ADE80))),
+                )
+            }
         }
     }
 }

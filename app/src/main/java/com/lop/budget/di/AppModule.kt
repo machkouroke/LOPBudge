@@ -1,6 +1,7 @@
 package com.lop.budget.di
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Room
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.lop.budget.data.local.LopDatabase
@@ -16,6 +17,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,9 +31,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): LopDatabase {
-        // Référence différée vers la base pour pouvoir l'alimenter dans le callback.
         lateinit var dbRef: LopDatabase
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+            Log.e("AppModule", "Database seeding failed", throwable)
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
         dbRef = Room.databaseBuilder(context, LopDatabase::class.java, LopDatabase.NAME)
             .addCallback(object : androidx.room.RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {

@@ -12,6 +12,8 @@ import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import android.util.Log
+import com.lop.budget.ui.util.UiEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -51,6 +53,8 @@ class TransactionEditViewModel @Inject constructor(
 
     private val _form = MutableStateFlow(TransactionForm())
     val form: StateFlow<TransactionForm> = _form.asStateFlow()
+
+    val uiEvents = UiEvent.Emitter()
 
     val categories: StateFlow<List<CategoryEntity>> =
         repo.observeCategories().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -103,26 +107,31 @@ class TransactionEditViewModel @Inject constructor(
         val f = _form.value
         if (f.amount <= 0.0 || f.categoryId == null || f.accountId == null) return
         viewModelScope.launch {
-            val tx = TransactionEntity(
-                title = f.title.ifBlank { "Transaction" },
-                amount = f.amount,
-                type = f.type,
-                status = TransactionStatus.PLANNED,
-                date = f.date,
-                accountId = f.accountId,
-                categoryId = f.categoryId,
-                note = f.note.ifBlank { null },
-                recurrenceFrequency = f.frequency,
-                recurrenceInterval = f.interval,
-                recurrenceDaysOfWeek = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(","),
-                recurrenceEndDate = f.endDate,
-                recurrenceMaxOccurrences = f.maxOccurrences,
-                seriesId = if (f.frequency != RecurrenceFrequency.NONE) UUID.randomUUID().toString() else null,
-                linkedGoalId = f.linkedGoalId,
-                linkedDebtId = f.linkedDebtId,
-            )
-            repo.saveTransaction(tx, f.tagIds.toList())
-            onDone()
+            try {
+                val tx = TransactionEntity(
+                    title = f.title.ifBlank { "Transaction" },
+                    amount = f.amount,
+                    type = f.type,
+                    status = TransactionStatus.PLANNED,
+                    date = f.date,
+                    accountId = f.accountId,
+                    categoryId = f.categoryId,
+                    note = f.note.ifBlank { null },
+                    recurrenceFrequency = f.frequency,
+                    recurrenceInterval = f.interval,
+                    recurrenceDaysOfWeek = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(","),
+                    recurrenceEndDate = f.endDate,
+                    recurrenceMaxOccurrences = f.maxOccurrences,
+                    seriesId = if (f.frequency != RecurrenceFrequency.NONE) UUID.randomUUID().toString() else null,
+                    linkedGoalId = f.linkedGoalId,
+                    linkedDebtId = f.linkedDebtId,
+                )
+                repo.saveTransaction(tx, f.tagIds.toList())
+                onDone()
+            } catch (e: Exception) {
+                Log.e("TransactionEdit", "Failed to save transaction", e)
+                uiEvents.send(UiEvent.ShowSnackbar("Erreur lors de l'enregistrement : ${e.localizedMessage}"))
+            }
         }
     }
 }

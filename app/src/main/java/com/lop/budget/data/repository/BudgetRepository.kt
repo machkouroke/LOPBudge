@@ -1,5 +1,6 @@
 package com.lop.budget.data.repository
 
+import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.dao.AccountDao
 import com.lop.budget.data.local.dao.CategoryDao
 import com.lop.budget.data.local.dao.DebtDao
@@ -15,6 +16,7 @@ import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.TransactionType
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,6 +27,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class BudgetRepository @Inject constructor(
+    private val database: LopDatabase,
     private val transactionDao: TransactionDao,
     private val accountDao: AccountDao,
     private val categoryDao: CategoryDao,
@@ -41,11 +44,13 @@ class BudgetRepository @Inject constructor(
         transactionDao.observePaidSum(type.name, start, end)
 
     suspend fun saveTransaction(tx: TransactionEntity, tagIds: List<Long> = emptyList()): Long {
-        val id = transactionDao.upsert(tx)
-        val txId = if (tx.id == 0L) id else tx.id
-        transactionDao.clearTags(txId)
-        tagIds.forEach { transactionDao.addTagCrossRef(TransactionTagCrossRef(txId, it)) }
-        return txId
+        return database.withTransaction {
+            val id = transactionDao.upsert(tx)
+            val txId = if (tx.id == 0L) id else tx.id
+            transactionDao.clearTags(txId)
+            tagIds.forEach { transactionDao.addTagCrossRef(TransactionTagCrossRef(txId, it)) }
+            txId
+        }
     }
 
     /** Modifie la catégorie même si la transaction est déjà payée. */

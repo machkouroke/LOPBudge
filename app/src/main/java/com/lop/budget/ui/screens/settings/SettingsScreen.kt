@@ -1,6 +1,7 @@
 package com.lop.budget.ui.screens.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,9 +19,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +39,7 @@ import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.ThemeMode
+import com.lop.budget.ui.util.UiEvent
 
 @Composable
 fun SettingsScreen(
@@ -45,6 +50,17 @@ fun SettingsScreen(
     var keyInput by remember(state.geminiKey) { mutableStateOf(state.geminiKey) }
     var currencyInput by remember(state.currency) { mutableStateOf(state.currency) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) {
+        vm.uiEvents.events.collect { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                is UiEvent.NavigateBack -> onBack()
+            }
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 20.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp, bottom = 60.dp),
@@ -128,5 +144,7 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+    SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }

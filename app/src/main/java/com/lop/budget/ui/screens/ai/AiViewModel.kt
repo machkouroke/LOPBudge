@@ -55,23 +55,30 @@ class AiViewModel @Inject constructor(
             loading = true,
         )
         viewModelScope.launch {
-            val key = settings.geminiKey.first()
-            val context = buildBudgetContext()
-            val history = _state.value.messages
-                .dropLast(1)
-                .map { (if (it.fromUser) "user" else "model") to it.text }
-            val result = gemini.ask(
-                apiKey = key,
-                systemPrompt = "$systemPrompt\n\n--- Contexte financier (lecture seule) ---\n$context",
-                history = history,
-                userMessage = message,
-            )
-            val reply = result.getOrElse { "⚠️ ${it.message}" }
-            _state.value = _state.value.copy(
-                messages = _state.value.messages + ChatMessage(false, reply),
-                loading = false,
-                hasKey = key.isNotBlank(),
-            )
+            try {
+                val key = settings.geminiKey.first()
+                val context = buildBudgetContext()
+                val history = _state.value.messages
+                    .dropLast(1)
+                    .map { (if (it.fromUser) "user" else "model") to it.text }
+                val result = gemini.ask(
+                    apiKey = key,
+                    systemPrompt = "$systemPrompt\n\n--- Contexte financier (lecture seule) ---\n$context",
+                    history = history,
+                    userMessage = message,
+                )
+                val reply = result.getOrElse { "⚠️ ${it.message}" }
+                _state.value = _state.value.copy(
+                    messages = _state.value.messages + ChatMessage(false, reply),
+                    loading = false,
+                    hasKey = key.isNotBlank(),
+                )
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    messages = _state.value.messages + ChatMessage(false, "⚠️ Erreur inattendue : ${e.localizedMessage}"),
+                    loading = false,
+                )
+            }
         }
     }
 
