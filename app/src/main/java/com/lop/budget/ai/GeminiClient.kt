@@ -61,6 +61,7 @@ class GeminiClient @Inject constructor() {
         if (apiKey.isBlank()) {
             return@withContext Result.failure(IllegalStateException("Clé API Gemini manquante. Ajoute-la dans Réglages."))
         }
+        val safeModel = model.replace(Regex("[^a-zA-Z0-9._-]"), "")
         runCatching {
             val contents = buildList {
                 history.forEach { (role, text) -> add(Content(listOf(Part(text)), role)) }
@@ -72,8 +73,12 @@ class GeminiClient @Inject constructor() {
             )
             val body = json.encodeToString(GenerateRequest.serializer(), payload)
                 .toRequestBody("application/json".toMediaType())
-            val url = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey"
-            val request = Request.Builder().url(url).post(body).build()
+            val url = "https://generativelanguage.googleapis.com/v1beta/models/$safeModel:generateContent"
+            val request = Request.Builder()
+                .url(url)
+                .post(body)
+                .header("x-goog-api-key", apiKey)
+                .build()
             client.newCall(request).execute().use { resp ->
                 val raw = resp.body?.string().orEmpty()
                 if (!resp.isSuccessful) error("Erreur API (${resp.code}). Vérifie ta clé Gemini.")

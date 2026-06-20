@@ -23,7 +23,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -73,6 +74,9 @@ dependencies {
 
     // DataStore (settings : devise, clé Gemini, thème)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // Encrypted storage for sensitive values (API keys)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Glance (widgets)
     implementation("androidx.glance:glance-appwidget:1.1.0")
