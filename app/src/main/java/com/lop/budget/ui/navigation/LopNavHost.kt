@@ -2,7 +2,6 @@ package com.lop.budget.ui.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -22,11 +21,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.google.accompanist.navigation.animation.AnimatedNavHost
-import com.google.accompanist.navigation.animation.composable
-import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.lop.budget.ui.components.FloatingBottomBar
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.motion.MotionSpec
@@ -39,10 +38,9 @@ import com.lop.budget.ui.screens.home.HomeScreen
 import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun LopNavHost() {
-    val navController = rememberAnimatedNavController()
+    val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBar = currentRoute in Routes.rootRoutes
@@ -55,7 +53,7 @@ fun LopNavHost() {
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            AnimatedNavHost(
+            NavHost(
                 navController = navController,
                 startDestination = Routes.HOME,
                 // Fallback transitions (si une destination n'en définit pas)

@@ -25,8 +25,8 @@ object MotionSpec {
     /** Easing plus neutre. */
     val standard: Easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
 
-    fun fastTween(durationMs: Int = FAST_MS) = tween<Float>(durationMillis = durationMs, easing = easeOut)
-    fun mediumTween(durationMs: Int = MEDIUM_MS) = tween<Float>(durationMillis = durationMs, easing = easeOut)
+    fun <T> fastTween(durationMs: Int = FAST_MS) = tween<T>(durationMillis = durationMs, easing = easeOut)
+    fun <T> mediumTween(durationMs: Int = MEDIUM_MS) = tween<T>(durationMillis = durationMs, easing = easeOut)
 
     /** Spring doux pour éléments flottants. */
     fun floatSpring() = spring<Float>(
