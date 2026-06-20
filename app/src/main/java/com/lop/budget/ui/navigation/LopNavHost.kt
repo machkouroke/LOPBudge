@@ -1,0 +1,106 @@
+package com.lop.budget.ui.navigation
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.lop.budget.ui.components.FloatingBottomBar
+import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.screens.accounts.AccountsScreen
+import com.lop.budget.ui.screens.ai.AiScreen
+import com.lop.budget.ui.screens.analytics.AnalyticsScreen
+import com.lop.budget.ui.screens.detail.TransactionDetailScreen
+import com.lop.budget.ui.screens.goals.GoalsScreen
+import com.lop.budget.ui.screens.home.HomeScreen
+import com.lop.budget.ui.screens.settings.SettingsScreen
+import com.lop.budget.ui.screens.transaction.TransactionEditScreen
+
+@Composable
+fun LopNavHost() {
+    val navController = rememberNavController()
+    val backStack by navController.currentBackStackEntryAsState()
+    val currentRoute = backStack?.destination?.route
+    val showBar = currentRoute in Routes.rootRoutes
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            AnimatedVisibility(
+                visible = showBar,
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut(),
+            ) {
+                FloatingBottomBar(
+                    current = currentRoute ?: Routes.HOME,
+                    onSelect = { route ->
+                        navController.navigate(route) {
+                            popUpTo(Routes.HOME) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onAdd = { navController.navigate(Routes.ADD) },
+                    modifier = Modifier.navigationBarsPadding().padding(bottom = 12.dp),
+                )
+            }
+        },
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            NavHost(navController = navController, startDestination = Routes.HOME) {
+                composable(Routes.HOME) {
+                    HomeScreen(
+                        onOpenTransaction = { navController.navigate(Routes.detail(it)) },
+                        onOpenAi = { navController.navigate(Routes.AI) },
+                    )
+                }
+                composable(Routes.ANALYTICS) { AnalyticsScreen() }
+                composable(Routes.GOALS) { GoalsScreen() }
+                composable(Routes.ACCOUNTS) { AccountsScreen() }
+                composable(Routes.ADD) { TransactionEditScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.AI) { AiScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.SETTINGS) { SettingsScreen(onBack = { navController.popBackStack() }) }
+                composable(
+                    Routes.DETAIL,
+                    arguments = listOf(navArgument("id") { type = NavType.LongType }),
+                ) { entry ->
+                    val id = entry.arguments?.getLong("id") ?: 0L
+                    TransactionDetailScreen(transactionId = id, onBack = { navController.popBackStack() })
+                }
+            }
+
+            // Accès rapide aux réglages depuis les écrans racines (coin haut droit).
+            if (showBar) {
+                Icon(
+                    Icons.Filled.Settings,
+                    contentDescription = "Réglages",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 26.dp, end = 20.dp)
+                        .clickableNoRipple { navController.navigate(Routes.SETTINGS) },
+                )
+            }
+        }
+    }
+}

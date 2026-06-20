@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">LOPBudge</string>
+    <string name="balance_widget_description">Solde et prochaines dépenses</string>
+</resources>
