@@ -22,10 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavType
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.google.accompanist.navigation.animation.AnimatedNavHost
 import com.google.accompanist.navigation.animation.composable
-import com.google.accompanist.navigation.animation.currentBackStackEntryAsState
 import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.lop.budget.ui.components.FloatingBottomBar
 import com.lop.budget.ui.components.clickableNoRipple
@@ -58,19 +58,19 @@ fun LopNavHost() {
             AnimatedNavHost(
                 navController = navController,
                 startDestination = Routes.HOME,
-                // Transitions par défaut (fallback)
+                // Fallback transitions (si une destination n'en définit pas)
                 enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
                 exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
                 popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
                 popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
             ) {
-                // ---- ROOT (bottom bar) : crossfade subtil (pas de slide agressif) ----
+                // ROOT (tabs) : crossfade subtil
                 composable(
                     Routes.HOME,
-                    enterTransition = { rootEnter() },
-                    exitTransition = { rootExit() },
-                    popEnterTransition = { rootPopEnter() },
-                    popExitTransition = { rootPopExit() },
+                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
+                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
+                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
+                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
                 ) {
                     HomeScreen(
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
@@ -80,29 +80,29 @@ fun LopNavHost() {
 
                 composable(
                     Routes.ANALYTICS,
-                    enterTransition = { rootEnter() },
-                    exitTransition = { rootExit() },
-                    popEnterTransition = { rootPopEnter() },
-                    popExitTransition = { rootPopExit() },
+                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
+                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
+                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
+                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
                 ) { AnalyticsScreen() }
 
                 composable(
                     Routes.GOALS,
-                    enterTransition = { rootEnter() },
-                    exitTransition = { rootExit() },
-                    popEnterTransition = { rootPopEnter() },
-                    popExitTransition = { rootPopExit() },
+                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
+                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
+                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
+                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
                 ) { GoalsScreen() }
 
                 composable(
                     Routes.ACCOUNTS,
-                    enterTransition = { rootEnter() },
-                    exitTransition = { rootExit() },
-                    popEnterTransition = { rootPopEnter() },
-                    popExitTransition = { rootPopExit() },
+                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
+                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
+                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
+                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
                 ) { AccountsScreen() }
 
-                // ---- SECONDARY : slide vertical (modal-like) ----
+                // SECONDARY
                 composable(
                     Routes.ADD,
                     enterTransition = {
@@ -220,7 +220,7 @@ fun LopNavHost() {
                 }
             }
 
-            // Bottom bar en overlay (vraiment flottante, avec de l'air en dessous).
+            // Bottom bar en overlay (vraiment flottante)
             AnimatedVisibility(
                 visible = showBar,
                 enter = slideInVertically(
@@ -263,7 +263,6 @@ fun LopNavHost() {
                 )
             }
 
-            // Accès rapide aux réglages depuis les écrans racines (coin haut droit).
             if (showBar) {
                 Icon(
                     Icons.Filled.Settings,
@@ -278,23 +277,3 @@ fun LopNavHost() {
         }
     }
 }
-
-@OptIn(ExperimentalAnimationApi::class)
-private fun AnimatedContentTransitionScope<*>.rootEnter() = fadeIn(
-    animationSpec = MotionSpec.mediumTween(),
-)
-
-@OptIn(ExperimentalAnimationApi::class)
-private fun AnimatedContentTransitionScope<*>.rootExit() = fadeOut(
-    animationSpec = MotionSpec.fastTween(),
-)
-
-@OptIn(ExperimentalAnimationApi::class)
-private fun AnimatedContentTransitionScope<*>.rootPopEnter() = fadeIn(
-    animationSpec = MotionSpec.mediumTween(),
-)
-
-@OptIn(ExperimentalAnimationApi::class)
-private fun AnimatedContentTransitionScope<*>.rootPopExit() = fadeOut(
-    animationSpec = MotionSpec.fastTween(),
-)
