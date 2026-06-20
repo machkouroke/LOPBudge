@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import com.lop.budget.util.toEpochMilliRange
 import javax.inject.Inject
 
 data class HomeUiState(
@@ -42,15 +43,8 @@ class HomeViewModel @Inject constructor(
     fun nextMonth() { month.value = month.value.plusMonths(1) }
     fun prevMonth() { month.value = month.value.minusMonths(1) }
 
-    private fun YearMonth.range(): Pair<Long, Long> {
-        val zone = ZoneId.systemDefault()
-        val start = atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val end = atEndOfMonth().atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
-        return start to end
-    }
-
     private val monthData = month.flatMapLatest { ym ->
-        val (start, end) = ym.range()
+        val (start, end) = ym.toEpochMilliRange()
         combine(
             repo.observeTransactionsBetween(start, end),
             repo.observePaidSum(TransactionType.INCOME, start, end),

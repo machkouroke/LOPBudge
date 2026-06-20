@@ -26,10 +26,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lop.budget.data.local.entity.DebtEntity
-import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.ScreenPadding
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
@@ -41,59 +40,66 @@ fun GoalsScreen(vm: GoalsViewModel = hiltViewModel()) {
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 120.dp),
+        contentPadding = ScreenPadding,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { Text("Objectifs", style = MaterialTheme.typography.headlineMedium) }
 
         items(state.goals, key = { "g${it.id}" }) { goal ->
-            GoalCard(goal, state.currency, ext.income)
+            ProgressCard(
+                name = goal.name,
+                icon = goal.icon,
+                colorArgb = goal.colorArgb,
+                subtitle = "",
+                currentAmount = goal.savedAmount,
+                targetAmount = goal.targetAmount,
+                currency = state.currency,
+                accentColor = ext.income,
+            )
         }
 
         item { Text("Dettes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp)) }
 
         items(state.debts, key = { "d${it.id}" }) { debt ->
-            DebtCard(debt, state.currency, ext.expense)
+            ProgressCard(
+                name = debt.name,
+                icon = debt.icon,
+                colorArgb = debt.colorArgb,
+                subtitle = "Remboursé ",
+                currentAmount = debt.repaidAmount,
+                targetAmount = debt.totalAmount,
+                currency = state.currency,
+                accentColor = ext.expense,
+            )
         }
     }
 }
 
 @Composable
-private fun GoalCard(goal: GoalEntity, currency: String, color: Color) {
-    val progress = (goal.savedAmount / goal.targetAmount).coerceIn(0.0, 1.0)
+private fun ProgressCard(
+    name: String,
+    icon: String,
+    colorArgb: Int,
+    subtitle: String,
+    currentAmount: Double,
+    targetAmount: Double,
+    currency: String,
+    accentColor: Color,
+) {
+    val progress = (currentAmount / targetAmount).coerceIn(0.0, 1.0)
     FloatingCard(Modifier.fillMaxWidth()) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                CircleIcon(IconMapper.get(goal.icon), Color(goal.colorArgb), Color(goal.colorArgb).copy(alpha = 0.18f))
+                CircleIcon(IconMapper.get(icon), Color(colorArgb), Color(colorArgb).copy(alpha = 0.18f))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(goal.name, style = MaterialTheme.typography.titleMedium)
-                    Text("${Format.money(goal.savedAmount, currency)} / ${Format.money(goal.targetAmount, currency)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(name, style = MaterialTheme.typography.titleMedium)
+                    Text("$subtitle${Format.money(currentAmount, currency)} / ${Format.money(targetAmount, currency)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("${(progress * 100).toInt()} %", style = MaterialTheme.typography.titleMedium, color = color, fontWeight = FontWeight.Bold)
+                Text("${(progress * 100).toInt()} %", style = MaterialTheme.typography.titleMedium, color = accentColor, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(12.dp))
-            ProgressBar(progress.toFloat(), color)
-        }
-    }
-}
-
-@Composable
-private fun DebtCard(debt: DebtEntity, currency: String, color: Color) {
-    val progress = (debt.repaidAmount / debt.totalAmount).coerceIn(0.0, 1.0)
-    FloatingCard(Modifier.fillMaxWidth()) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircleIcon(IconMapper.get(debt.icon), Color(debt.colorArgb), Color(debt.colorArgb).copy(alpha = 0.18f))
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(debt.name, style = MaterialTheme.typography.titleMedium)
-                    Text("Remboursé ${Format.money(debt.repaidAmount, currency)} / ${Format.money(debt.totalAmount, currency)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Text("${(progress * 100).toInt()} %", style = MaterialTheme.typography.titleMedium, color = color, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.height(12.dp))
-            ProgressBar(progress.toFloat(), color)
+            ProgressBar(progress.toFloat(), accentColor)
         }
     }
 }

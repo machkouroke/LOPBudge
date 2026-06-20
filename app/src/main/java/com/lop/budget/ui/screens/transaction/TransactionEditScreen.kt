@@ -37,14 +37,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.ui.components.CircleIcon
+import com.lop.budget.ui.components.CategoryPicker
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.PillTag
+import com.lop.budget.ui.components.SegmentedButton
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
-import com.lop.budget.util.IconMapper
 
 @Composable
 fun TransactionEditScreen(
@@ -81,10 +81,10 @@ fun TransactionEditScreen(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            TypeSegment("Dépense", form.type == TransactionType.EXPENSE, ext.expense, Modifier.weight(1f)) {
+            SegmentedButton("Dépense", form.type == TransactionType.EXPENSE, ext.expense, Modifier.weight(1f)) {
                 vm.setType(TransactionType.EXPENSE)
             }
-            TypeSegment("Revenu", form.type == TransactionType.INCOME, ext.income, Modifier.weight(1f)) {
+            SegmentedButton("Revenu", form.type == TransactionType.INCOME, ext.income, Modifier.weight(1f)) {
                 vm.setType(TransactionType.INCOME)
             }
         }
@@ -122,25 +122,11 @@ fun TransactionEditScreen(
             item {
                 Text("Catégorie", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(typeCategories, key = { it.id }) { cat ->
-                        val selected = form.categoryId == cat.id
-                        val c = Color(cat.colorArgb)
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) { vm.setCategory(cat.id) },
-                        ) {
-                            CircleIcon(
-                                icon = IconMapper.get(cat.icon),
-                                tint = c,
-                                background = if (selected) c.copy(alpha = 0.32f) else c.copy(alpha = 0.14f),
-                                size = 52.dp,
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(cat.name, style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                }
+                CategoryPicker(
+                    categories = typeCategories,
+                    selectedId = form.categoryId,
+                    onSelect = vm::setCategory,
+                )
             }
 
             // Tags
@@ -236,23 +222,6 @@ fun TransactionEditScreen(
             accent = accent,
         )
         Spacer(Modifier.height(16.dp))
-    }
-}
-
-@Composable
-private fun TypeSegment(label: String, selected: Boolean, color: Color, modifier: Modifier, onClick: () -> Unit) {
-    Surface(
-        modifier = modifier.pressScaleClickable(intent = HapticIntent.Selection, onClick = onClick),
-        shape = CircleShape,
-        color = if (selected) color.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) color else MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(vertical = 12.dp),
-        )
     }
 }
 

@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.components.CategoryPicker
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.PillTag
@@ -104,7 +105,7 @@ fun TransactionDetailScreen(
                         }
                     }
                     Text(
-                        (if (isIncome) "+" else "−") + Format.money(tx.amount),
+                        Format.signedMoney(tx.amount, isIncome),
                         style = MaterialTheme.typography.displaySmall,
                         color = accent,
                         fontWeight = FontWeight.Bold,
@@ -149,23 +150,14 @@ fun TransactionDetailScreen(
                     }
                     if (editingCategory) {
                         Spacer(Modifier.height(10.dp))
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(state.availableCategories, key = { it.id }) { cat ->
-                                val c = Color(cat.colorArgb)
-                                val selected = cat.id == tx.categoryId
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.clickableNoRipple {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        vm.changeCategory(cat.id)
-                                        editingCategory = false
-                                    },
-                                ) {
-                                    CircleIcon(IconMapper.get(cat.icon), c, if (selected) c.copy(alpha = 0.32f) else c.copy(alpha = 0.14f), size = 48.dp)
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(cat.name, style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
+                        CategoryPicker(
+                            categories = state.availableCategories,
+                            selectedId = tx.categoryId,
+                            iconSize = 48.dp,
+                        ) { catId ->
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            vm.changeCategory(catId)
+                            editingCategory = false
                         }
                     } else {
                         Spacer(Modifier.height(6.dp))
@@ -192,7 +184,7 @@ fun TransactionDetailScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text(Format.fullDate(d), style = MaterialTheme.typography.bodyLarge)
-                                Text((if (isIncome) "+" else "−") + Format.money(tx.amount), color = accent, style = MaterialTheme.typography.bodyLarge)
+                                Text(Format.signedMoney(tx.amount, isIncome), color = accent, style = MaterialTheme.typography.bodyLarge)
                             }
                         }
                     }

@@ -36,12 +36,11 @@ import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.ScreenPadding
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
-import java.time.format.TextStyle
-import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -54,9 +53,7 @@ fun HomeScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 20.dp, end = 20.dp, top = 24.dp, bottom = 120.dp,
-        ),
+        contentPadding = ScreenPadding,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
@@ -98,7 +95,7 @@ fun HomeScreen(
                     ) {
                         Icon(Icons.Filled.ChevronLeft, "Mois précédent", modifier = Modifier.size(28.dp).clickableNoRipple(vm::prevMonth))
                         Text(
-                            "${state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }} ${state.month.year}",
+                            Format.monthYear(state.month),
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Icon(Icons.Filled.ChevronRight, "Mois suivant", modifier = Modifier.size(28.dp).clickableNoRipple(vm::nextMonth))
@@ -216,7 +213,7 @@ private fun UpcomingRow(tx: TransactionWithRelations, currency: String, onClick:
                 Text(Format.dayMonth(tx.transaction.date), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(
-                (if (isIncome) "+" else "−") + Format.money(tx.transaction.amount, currency),
+                Format.signedMoney(tx.transaction.amount, isIncome, currency),
                 style = MaterialTheme.typography.titleMedium,
                 color = amountColor,
                 fontWeight = FontWeight.SemiBold,

@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import java.time.YearMonth
-import java.time.ZoneId
+import com.lop.budget.util.toEpochMilliRange
 import javax.inject.Inject
 
 data class CategoryBreakdown(
@@ -47,16 +47,10 @@ class AnalyticsViewModel @Inject constructor(
     fun nextMonth() { month.value = month.value.plusMonths(1) }
     fun prevMonth() { month.value = month.value.minusMonths(1) }
 
-    private fun YearMonth.range(): Pair<Long, Long> {
-        val zone = ZoneId.systemDefault()
-        return atDay(1).atStartOfDay(zone).toInstant().toEpochMilli() to
-            atEndOfMonth().atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
-    }
-
     val uiState: StateFlow<AnalyticsUiState> =
         combine(month, type, settings.currency) { m, t, c -> Triple(m, t, c) }
             .flatMapLatest { (m, t, currency) ->
-                val (start, end) = m.range()
+                val (start, end) = m.toEpochMilliRange()
                 repo.observeTransactionsBetween(start, end).let { flow ->
                     combine(flow, MutableStateFlow(Unit)) { txs, _ ->
                         val filtered = txs.filter {

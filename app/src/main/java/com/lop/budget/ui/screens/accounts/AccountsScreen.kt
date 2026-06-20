@@ -23,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.ScreenPadding
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
@@ -33,7 +34,7 @@ fun AccountsScreen(vm: AccountsViewModel = hiltViewModel()) {
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 120.dp),
+        contentPadding = ScreenPadding,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { Text("Comptes", style = MaterialTheme.typography.headlineMedium) }
