@@ -37,10 +37,16 @@ import com.lop.budget.ui.screens.goals.GoalsScreen
 import com.lop.budget.ui.screens.home.HomeScreen
 import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 
 @Composable
 fun LopNavHost() {
     val navController = rememberNavController()
+
+    // Haze: source + effects must share the same state.
+    val hazeState = rememberHazeState()
+
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBar = currentRoute in Routes.rootRoutes
@@ -48,10 +54,13 @@ fun LopNavHost() {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
+        // Mark the whole screen as the blur source.
+        // This allows the bottom bar to blur what is behind it.
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
+                .hazeSource(state = hazeState),
         ) {
             NavHost(
                 navController = navController,
@@ -258,6 +267,7 @@ fun LopNavHost() {
                         }
                     },
                     onAdd = { navController.navigate(Routes.ADD) },
+                    hazeState = hazeState,
                 )
             }
 

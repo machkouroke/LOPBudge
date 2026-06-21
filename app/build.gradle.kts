@@ -61,9 +61,15 @@ dependencies {
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.8.0")
 
+    // Haze (liquid glass)
+    val hazeVersion = "1.7.2"
+    implementation("dev.chrisbanes.haze:haze:$hazeVersion")
+    implementation("dev.chrisbanes.haze:haze-blur:$hazeVersion")
+    implementation("dev.chrisbanes.haze:haze-materials:$hazeVersion")
+
     // Hilt
     implementation("com.google.dagger:hilt-android:2.52")
-    ksp("com.google.dagger:hilt-compiler:2.52")
+    ksp("com.google.dagger.hilt-compiler:2.52")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
     // Room
