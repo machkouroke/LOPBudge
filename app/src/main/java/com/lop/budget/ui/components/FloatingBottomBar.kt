@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
@@ -90,7 +91,7 @@ fun FloatingBottomBar(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
@@ -103,21 +104,21 @@ fun FloatingBottomBar(
                     )
                     NavItem(
                         icon = Icons.Filled.Assessment,
-                        label = "Analyses",
+                        label = "Analyse",
                         route = "analytics",
                         current = current,
                         onClick = { onSelect("analytics") },
                     )
                     NavItem(
                         icon = Icons.Filled.Flag,
-                        label = "Objectifs",
+                        label = "Objectif",
                         route = "goals",
                         current = current,
                         onClick = { onSelect("goals") },
                     )
                     NavItem(
                         icon = Icons.Outlined.AccountBalanceWallet,
-                        label = "Comptes",
+                        label = "Compte",
                         route = "accounts",
                         current = current,
                         onClick = { onSelect("accounts") },
@@ -143,8 +144,9 @@ private fun NavItem(
 ) {
     val selected = current == route
 
-    val bubbleColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
-    val bubbleBorder = MaterialTheme.colorScheme.primary.copy(alpha = 0.32f)
+    // Bubble selection style (like the screenshot)
+    val bubbleColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.26f)
+    val bubbleBorder = MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
 
     val iconTint = if (selected) MaterialTheme.colorScheme.onSurface
     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.70f)
@@ -157,13 +159,17 @@ private fun NavItem(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Icon(icon, contentDescription = label, tint = iconTint, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.height(6.dp))
+            Icon(icon, contentDescription = label, tint = iconTint, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.height(2.dp))
+            // IMPORTANT: keep the text inside the bubble, like iOS glass apps.
             Text(
                 text = label,
                 color = textColor,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -202,6 +208,7 @@ private fun LiquidGlassFab(
             .size(72.dp)
             .clip(shape),
     ) {
+        // Soft glow behind the FAB
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -209,17 +216,18 @@ private fun LiquidGlassFab(
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.42f),
                             Color.Transparent,
                         ),
                     ),
                 ),
         )
 
+        // Accent colored FAB, like the screenshot
         Surface(
             shape = shape,
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.18f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+            color = MaterialTheme.colorScheme.primary,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.22f)),
             shadowElevation = 18.dp,
             modifier = Modifier
                 .matchParentSize()
@@ -229,7 +237,7 @@ private fun LiquidGlassFab(
                 Icon(
                     Icons.Filled.Add,
                     contentDescription = "Ajouter",
-                    tint = MaterialTheme.colorScheme.onSurface,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(30.dp),
                 )
             }
