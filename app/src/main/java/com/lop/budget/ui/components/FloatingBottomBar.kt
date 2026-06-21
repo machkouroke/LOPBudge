@@ -1,13 +1,19 @@
 package com.lop.budget.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
@@ -17,17 +23,24 @@ import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /**
- * Barre de navigation flottante en pilule, façon One UI récent / iOS.
- * Le FAB central "+" est intégré, légèrement mis en avant.
+ * Bottom bar "liquid glass" inspirée de Budge.
+ *
+ * - Pilule flottante centrée avec blur + bordure
+ * - Onglet sélectionné dans une bulle circulaire
+ * - Bouton "+" séparé à droite
  */
 @Composable
 fun FloatingBottomBar(
@@ -36,81 +49,190 @@ fun FloatingBottomBar(
     onAdd: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = CircleShape
+    val pillShape = RoundedCornerShape(36.dp)
 
-    Box(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 28.dp)
-            .clip(shape),
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
-        // Couche "frosted glass" (blur + teinte légère) — style iOS.
-        // NB: la taille du Box est déterminée par la Surface (contenu). On peut donc matcher sa taille ici.
+        // --- Pilule principale ---
         Box(
             modifier = Modifier
-                .matchParentSize()
-                .blur(22.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)),
-        )
-
-        Surface(
-            shape = shape,
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
-            tonalElevation = 6.dp,
-            shadowElevation = 10.dp,
+                .weight(1f)
+                .height(72.dp)
+                .clip(pillShape),
         ) {
-            Row(
+            // "Liquid glass" layer
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .matchParentSize()
+                    .blur(26.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
+                            ),
+                        ),
+                    ),
+            )
+
+            Surface(
+                shape = pillShape,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.28f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+                shadowElevation = 14.dp,
+                tonalElevation = 0.dp,
             ) {
-                BarItem(Icons.Filled.Home, "home", current, intent = HapticIntent.Tap) { onSelect("home") }
-                BarItem(Icons.Filled.Assessment, "analytics", current, intent = HapticIntent.Tap) { onSelect("analytics") }
-
-                // FAB central (action primaire)
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(54.dp),
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Filled.Add,
-                            contentDescription = "Ajouter",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier
-                                .size(28.dp)
-                                .pressScaleClickable(intent = HapticIntent.Confirm) { onAdd() },
-                        )
-                    }
+                    NavItem(
+                        icon = Icons.Filled.Home,
+                        label = "Accueil",
+                        route = "home",
+                        current = current,
+                        onClick = { onSelect("home") },
+                    )
+                    NavItem(
+                        icon = Icons.Filled.Assessment,
+                        label = "Analyses",
+                        route = "analytics",
+                        current = current,
+                        onClick = { onSelect("analytics") },
+                    )
+                    NavItem(
+                        icon = Icons.Filled.Flag,
+                        label = "Objectifs",
+                        route = "goals",
+                        current = current,
+                        onClick = { onSelect("goals") },
+                    )
+                    NavItem(
+                        icon = Icons.Outlined.AccountBalanceWallet,
+                        label = "Comptes",
+                        route = "accounts",
+                        current = current,
+                        onClick = { onSelect("accounts") },
+                    )
                 }
-
-                BarItem(Icons.Filled.Flag, "goals", current, intent = HapticIntent.Tap) { onSelect("goals") }
-                BarItem(Icons.Outlined.AccountBalanceWallet, "accounts", current, intent = HapticIntent.Tap) { onSelect("accounts") }
             }
+        }
+
+        Spacer(Modifier.width(14.dp))
+
+        // --- Bouton + séparé ---
+        LiquidGlassFab(onClick = onAdd)
+    }
+}
+
+@Composable
+private fun NavItem(
+    icon: ImageVector,
+    label: String,
+    route: String,
+    current: String,
+    onClick: () -> Unit,
+) {
+    val selected = current == route
+
+    val bubbleColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
+    val bubbleBorder = MaterialTheme.colorScheme.primary.copy(alpha = 0.32f)
+
+    val iconTint = if (selected) MaterialTheme.colorScheme.onSurface
+    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.70f)
+
+    val textColor = if (selected) MaterialTheme.colorScheme.onSurface
+    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+
+    val content: @Composable () -> Unit = {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(icon, contentDescription = label, tint = iconTint, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = label,
+                color = textColor,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            )
+        }
+    }
+
+    if (selected) {
+        Surface(
+            shape = CircleShape,
+            color = bubbleColor,
+            border = BorderStroke(1.dp, bubbleBorder),
+            modifier = Modifier
+                .size(64.dp)
+                .pressScaleClickable(intent = HapticIntent.Tap, pressedScale = 0.97f, onClick = onClick),
+        ) {
+            Box(contentAlignment = Alignment.Center) { content() }
+        }
+    } else {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(56.dp)
+                .pressScaleClickable(intent = HapticIntent.Tap, pressedScale = 0.97f, onClick = onClick),
+        ) {
+            content()
         }
     }
 }
 
 @Composable
-private fun BarItem(
-    icon: ImageVector,
-    route: String,
-    current: String,
-    intent: HapticIntent,
+private fun LiquidGlassFab(
     onClick: () -> Unit,
 ) {
-    val selected = current == route
-    val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val shape = CircleShape
 
-    Icon(
-        icon,
-        contentDescription = route,
-        tint = tint,
+    Box(
         modifier = Modifier
-            .size(26.dp)
-            .pressScaleClickable(intent = intent, pressedScale = 0.96f, onClick = onClick),
-    )
+            .size(72.dp)
+            .clip(shape),
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .blur(28.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                            Color.Transparent,
+                        ),
+                    ),
+                ),
+        )
+
+        Surface(
+            shape = shape,
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.18f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+            shadowElevation = 18.dp,
+            modifier = Modifier
+                .matchParentSize()
+                .pressScaleClickable(intent = HapticIntent.Confirm, pressedScale = 0.96f, onClick = onClick),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = "Ajouter",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(30.dp),
+                )
+            }
+        }
+    }
 }
