@@ -62,10 +62,11 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.0")
 
     // Haze (liquid glass)
+    // NOTE: In the 1.x line the Android artifacts are published as *-android modules.
+    // The standalone `haze-blur` module starts in 2.0.0-alpha.
     val hazeVersion = "1.7.2"
-    implementation("dev.chrisbanes.haze:haze:$hazeVersion")
-    implementation("dev.chrisbanes.haze:haze-blur:$hazeVersion")
-    implementation("dev.chrisbanes.haze:haze-materials:$hazeVersion")
+    implementation("dev.chrisbanes.haze:haze-android:$hazeVersion")
+    implementation("dev.chrisbanes.haze:haze-materials-android:$hazeVersion")
 
     // Hilt
     implementation("com.google.dagger:hilt-android:2.52")
