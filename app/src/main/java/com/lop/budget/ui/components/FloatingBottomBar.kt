@@ -25,9 +25,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -35,13 +35,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.materials.HazeMaterials
+import dev.chrisbanes.haze.materials.HazeTint
+import dev.chrisbanes.haze.rememberHazeState
 
 /**
- * Bottom bar "liquid glass" inspirée de Budge.
+ * Bottom bar "liquid glass" inspirée de Budge (blur arrière-plan "vrai").
  *
- * - Pilule flottante centrée avec blur + bordure
- * - Onglet sélectionné dans une bulle circulaire
- * - Bouton "+" séparé à droite
+ * IMPORTANT: Haze nécessite que l'écran parent fournisse un Modifier.hazeSource(state).
+ * (Voir LopNavHost.kt : Box root / contenu scrollable)
  */
 @Composable
 fun FloatingBottomBar(
@@ -49,6 +54,7 @@ fun FloatingBottomBar(
     onSelect: (String) -> Unit,
     onAdd: () -> Unit,
     modifier: Modifier = Modifier,
+    hazeState: HazeState = rememberHazeState(),
 ) {
     val pillShape = RoundedCornerShape(36.dp)
 
@@ -60,77 +66,74 @@ fun FloatingBottomBar(
         horizontalArrangement = Arrangement.Center,
     ) {
         // --- Pilule principale ---
-        Box(
+        Surface(
+            shape = pillShape,
+            color = Color.Transparent,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+            shadowElevation = 14.dp,
+            tonalElevation = 0.dp,
             modifier = Modifier
                 .weight(1f)
                 .height(72.dp)
-                .clip(pillShape),
-        ) {
-            // "Liquid glass" layer
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .blur(26.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
-                            ),
+                .clip(pillShape)
+                .hazeEffect(state = hazeState) {
+                    blurEffect {
+                        style = HazeMaterials.thin()
+                        // Tint très léger pour garder la teinte Material You.
+                        tint = HazeTint(MaterialTheme.colorScheme.surface.copy(alpha = 0.35f))
+                    }
+                }
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.18f),
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
                         ),
                     ),
-            )
-
-            Surface(
-                shape = pillShape,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.28f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
-                shadowElevation = 14.dp,
-                tonalElevation = 0.dp,
+                ),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    NavItem(
-                        icon = Icons.Filled.Home,
-                        label = "Accueil",
-                        route = "home",
-                        current = current,
-                        onClick = { onSelect("home") },
-                    )
-                    NavItem(
-                        icon = Icons.Filled.Assessment,
-                        label = "Analyse",
-                        route = "analytics",
-                        current = current,
-                        onClick = { onSelect("analytics") },
-                    )
-                    NavItem(
-                        icon = Icons.Filled.Flag,
-                        label = "Objectif",
-                        route = "goals",
-                        current = current,
-                        onClick = { onSelect("goals") },
-                    )
-                    NavItem(
-                        icon = Icons.Outlined.AccountBalanceWallet,
-                        label = "Compte",
-                        route = "accounts",
-                        current = current,
-                        onClick = { onSelect("accounts") },
-                    )
-                }
+                NavItem(
+                    icon = Icons.Filled.Home,
+                    label = "Accueil",
+                    route = "home",
+                    current = current,
+                    onClick = { onSelect("home") },
+                )
+                NavItem(
+                    icon = Icons.Filled.Assessment,
+                    label = "Analyse",
+                    route = "analytics",
+                    current = current,
+                    onClick = { onSelect("analytics") },
+                )
+                NavItem(
+                    icon = Icons.Filled.Flag,
+                    label = "Objectif",
+                    route = "goals",
+                    current = current,
+                    onClick = { onSelect("goals") },
+                )
+                NavItem(
+                    icon = Icons.Outlined.AccountBalanceWallet,
+                    label = "Compte",
+                    route = "accounts",
+                    current = current,
+                    onClick = { onSelect("accounts") },
+                )
             }
         }
 
         Spacer(Modifier.width(14.dp))
 
         // --- Bouton + séparé ---
-        LiquidGlassFab(onClick = onAdd)
+        LiquidGlassFab(hazeState = hazeState, onClick = onAdd)
     }
 }
 
@@ -144,7 +147,6 @@ private fun NavItem(
 ) {
     val selected = current == route
 
-    // Bubble selection style (like the screenshot)
     val bubbleColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.26f)
     val bubbleBorder = MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
 
@@ -161,7 +163,6 @@ private fun NavItem(
         ) {
             Icon(icon, contentDescription = label, tint = iconTint, modifier = Modifier.size(20.dp))
             Spacer(Modifier.height(2.dp))
-            // IMPORTANT: keep the text inside the bubble, like iOS glass apps.
             Text(
                 text = label,
                 color = textColor,
@@ -199,48 +200,33 @@ private fun NavItem(
 
 @Composable
 private fun LiquidGlassFab(
+    hazeState: HazeState,
     onClick: () -> Unit,
 ) {
     val shape = CircleShape
 
-    Box(
+    Surface(
+        shape = shape,
+        color = MaterialTheme.colorScheme.primary,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.22f)),
+        shadowElevation = 18.dp,
         modifier = Modifier
             .size(72.dp)
-            .clip(shape),
-    ) {
-        // Soft glow behind the FAB
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .blur(28.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.42f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
-
-        // Accent colored FAB, like the screenshot
-        Surface(
-            shape = shape,
-            color = MaterialTheme.colorScheme.primary,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.22f)),
-            shadowElevation = 18.dp,
-            modifier = Modifier
-                .matchParentSize()
-                .pressScaleClickable(intent = HapticIntent.Confirm, pressedScale = 0.96f, onClick = onClick),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    Icons.Filled.Add,
-                    contentDescription = "Ajouter",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(30.dp),
-                )
+            .clip(shape)
+            .hazeEffect(state = hazeState) {
+                blurEffect {
+                    style = HazeMaterials.thin()
+                }
             }
+            .pressScaleClickable(intent = HapticIntent.Confirm, pressedScale = 0.96f, onClick = onClick),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                Icons.Filled.Add,
+                contentDescription = "Ajouter",
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(30.dp),
+            )
         }
     }
 }
