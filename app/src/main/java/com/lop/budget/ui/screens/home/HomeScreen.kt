@@ -46,6 +46,7 @@ import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
+import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -53,6 +54,7 @@ import java.util.Locale
 fun HomeScreen(
     onOpenTransaction: (Long) -> Unit,
     onOpenAi: () -> Unit,
+    onOpenMonthly: (TransactionType, YearMonth) -> Unit,
     vm: HomeViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -156,7 +158,7 @@ fun HomeScreen(
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 SummaryTile(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).clickableNoRipple { onOpenMonthly(TransactionType.INCOME, state.month) },
                     label = "Revenus",
                     amount = Format.money(state.monthIncome, state.currency),
                     color = ext.income,
@@ -164,7 +166,7 @@ fun HomeScreen(
                     up = true,
                 )
                 SummaryTile(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).clickableNoRipple { onOpenMonthly(TransactionType.EXPENSE, state.month) },
                     label = "Dépenses",
                     amount = Format.money(state.monthExpense, state.currency),
                     color = ext.expense,
