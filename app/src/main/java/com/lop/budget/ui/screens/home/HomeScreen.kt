@@ -16,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Repeat
@@ -56,7 +55,6 @@ fun HomeScreen(
     onOpenTransaction: (Long) -> Unit,
     onOpenAi: () -> Unit,
     onOpenMonthly: (TransactionType, YearMonth) -> Unit,
-    onOpenCalendar: (YearMonth) -> Unit,
     vm: HomeViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -119,20 +117,11 @@ fun HomeScreen(
                         Icon(Icons.Filled.ChevronLeft, "Mois précédent", modifier = Modifier.size(28.dp).clickableNoRipple(vm::prevMonth))
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    "${state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }} ${state.month.year}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.clickableNoRipple { isMonthPickerOpen = true },
-                                )
-                                Spacer(Modifier.width(10.dp))
-                                Icon(
-                                    Icons.Filled.CalendarMonth,
-                                    contentDescription = "Vue calendrier",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp).clickableNoRipple { onOpenCalendar(state.month) },
-                                )
-                            }
+                            Text(
+                                "${state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }} ${state.month.year}",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.clickableNoRipple { isMonthPickerOpen = true },
+                            )
 
                             // Ergonomie: quand on n'est pas sur le mois actuel, afficher un chip "Aujourd'hui".
                             if (!state.isCurrentMonth) {
@@ -187,18 +176,74 @@ fun HomeScreen(
             }
         }
 
-        item {
-            Text("À venir", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 4.dp))
+        // Vue principale: transactions du mois groupées par jour (style Budge)
+        items(state.dayGroups, key = { it.date.toString() }) { day ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "${day.date.dayOfMonth} ${day.date.month.getDisplayName(TextStyle.SHORT, Locale.FRANCE)}",
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = Format.money(day.total, state.currency),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                day.transactions.forEach { tx ->
+                    val isIncome = tx.transaction.type == TransactionType.INCOME
+                    val amountColor = if (isIncome) ext.income else ext.expense
+                    val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
+                    val recurring = tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
+
+                    FloatingCard(
+                        modifier = Modifier.fillMaxWidth().clickableNoRipple { onOpenTransaction(tx.transaction.id) },
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircleIcon(
+                                icon = IconMapper.get(tx.category?.icon ?: "category"),
+                                tint = catColor,
+                                background = catColor.copy(alpha = 0.18f),
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(tx.transaction.title, style = MaterialTheme.typography.titleMedium)
+                                    if (recurring) {
+                                        Spacer(Modifier.width(6.dp))
+                                        Icon(Icons.Filled.Repeat, "Récurrent", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
+                                    }
+                                }
+                                Text(
+                                    tx.account?.name ?: "",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Text(
+                                (if (isIncome) "+" else "−") + Format.money(tx.transaction.amount, state.currency),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = amountColor,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+            }
         }
 
-        items(state.upcoming, key = { it.transaction.id }) { tx ->
-            UpcomingRow(tx = tx, currency = state.currency, onClick = { onOpenTransaction(tx.transaction.id) })
-        }
-
-        if (state.upcoming.isEmpty()) {
+        if (state.dayGroups.isEmpty()) {
             item {
                 Text(
-                    "Aucune transaction planifiée ce mois-ci.",
+                    "Aucune transaction ce mois-ci.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
