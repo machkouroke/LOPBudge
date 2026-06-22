@@ -15,10 +15,17 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
+
+data class DayGroup(
+    val date: LocalDate,
+    val total: Double,
+    val transactions: List<TransactionWithRelations>,
+)
 
 data class HomeUiState(
     val month: YearMonth = YearMonth.now(),
@@ -29,6 +36,8 @@ data class HomeUiState(
     val projectedBalance: Double = 0.0,
     val daysUntilPayday: Int? = null,
     val upcoming: List<TransactionWithRelations> = emptyList(),
+    // Nouvelle section: transactions du mois groupées par jour (style Budge)
+    val dayGroups: List<DayGroup> = emptyList(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -85,6 +94,22 @@ class HomeViewModel @Inject constructor(
 
             val payday = nextPayday(txs)
 
+            val zone = ZoneId.systemDefault()
+            val dayGroups = txs
+                .sortedByDescending { it.transaction.date }
+                .groupBy { Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate() }
+                .toSortedMap(compareByDescending { it })
+                .map { (date, list) ->
+                    DayGroup(
+                        date = date,
+                        total = list.sumOf {
+                            val signed = if (it.transaction.type == TransactionType.INCOME) it.transaction.amount else -it.transaction.amount
+                            signed
+                        },
+                        transactions = list.sortedByDescending { it.transaction.date },
+                    )
+                }
+
             HomeUiState(
                 month = ym,
                 isCurrentMonth = ym == YearMonth.now(),
@@ -94,6 +119,7 @@ class HomeViewModel @Inject constructor(
                 projectedBalance = projected,
                 daysUntilPayday = payday,
                 upcoming = upcoming,
+                dayGroups = dayGroups,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 
