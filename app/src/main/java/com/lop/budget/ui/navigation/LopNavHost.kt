@@ -26,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.FloatingBottomBar
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.motion.MotionSpec
@@ -35,10 +36,12 @@ import com.lop.budget.ui.screens.analytics.AnalyticsScreen
 import com.lop.budget.ui.screens.detail.TransactionDetailScreen
 import com.lop.budget.ui.screens.goals.GoalsScreen
 import com.lop.budget.ui.screens.home.HomeScreen
+import com.lop.budget.ui.screens.monthly.MonthlyTransactionsScreen
 import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import java.time.YearMonth
 
 @Composable
 fun LopNavHost() {
@@ -82,6 +85,7 @@ fun LopNavHost() {
                     HomeScreen(
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
                         onOpenAi = { navController.navigate(Routes.AI) },
+                        onOpenMonthly = { type, ym -> navController.navigate(Routes.monthly(type, ym)) },
                     )
                 }
 
@@ -108,6 +112,44 @@ fun LopNavHost() {
                     popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
                     popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
                 ) { AccountsScreen() }
+
+                // Monthly income/expense detail
+                composable(
+                    Routes.MONTHLY,
+                    arguments = listOf(
+                        navArgument("type") { type = NavType.StringType },
+                        navArgument("ym") { type = NavType.StringType },
+                    ),
+                    enterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = MotionSpec.fastTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                ) {
+                    MonthlyTransactionsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenTransaction = { navController.navigate(Routes.detail(it)) },
+                    )
+                }
 
                 // SECONDARY
                 composable(
