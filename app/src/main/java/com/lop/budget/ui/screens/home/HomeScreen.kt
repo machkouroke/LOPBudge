@@ -19,8 +19,14 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,14 +34,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
@@ -51,6 +55,16 @@ fun HomeScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
+
+    var isMonthPickerOpen by remember { mutableStateOf(false) }
+
+    if (isMonthPickerOpen) {
+        MonthPickerBottomSheet(
+            selected = state.month,
+            onSelect = vm::setMonth,
+            onDismiss = { isMonthPickerOpen = false },
+        )
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -97,10 +111,13 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(Icons.Filled.ChevronLeft, "Mois précédent", modifier = Modifier.size(28.dp).clickableNoRipple(vm::prevMonth))
+
                         Text(
                             "${state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }} ${state.month.year}",
                             style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.clickableNoRipple { isMonthPickerOpen = true },
                         )
+
                         Icon(Icons.Filled.ChevronRight, "Mois suivant", modifier = Modifier.size(28.dp).clickableNoRipple(vm::nextMonth))
                     }
                     Spacer(Modifier.height(12.dp))

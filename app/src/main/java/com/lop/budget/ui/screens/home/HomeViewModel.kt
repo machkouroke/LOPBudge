@@ -39,6 +39,10 @@ class HomeViewModel @Inject constructor(
 
     private val month = MutableStateFlow(YearMonth.now())
 
+    fun setMonth(value: YearMonth) {
+        month.value = value
+    }
+
     fun nextMonth() { month.value = month.value.plusMonths(1) }
     fun prevMonth() { month.value = month.value.minusMonths(1) }
 
