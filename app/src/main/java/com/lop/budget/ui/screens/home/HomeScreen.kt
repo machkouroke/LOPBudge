@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Repeat
@@ -55,6 +56,7 @@ fun HomeScreen(
     onOpenTransaction: (Long) -> Unit,
     onOpenAi: () -> Unit,
     onOpenMonthly: (TransactionType, YearMonth) -> Unit,
+    onOpenCalendar: (YearMonth) -> Unit,
     vm: HomeViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -117,11 +119,20 @@ fun HomeScreen(
                         Icon(Icons.Filled.ChevronLeft, "Mois précédent", modifier = Modifier.size(28.dp).clickableNoRipple(vm::prevMonth))
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                "${state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }} ${state.month.year}",
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.clickableNoRipple { isMonthPickerOpen = true },
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "${state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }} ${state.month.year}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.clickableNoRipple { isMonthPickerOpen = true },
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Icon(
+                                    Icons.Filled.CalendarMonth,
+                                    contentDescription = "Vue calendrier",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp).clickableNoRipple { onOpenCalendar(state.month) },
+                                )
+                            }
 
                             // Ergonomie: quand on n'est pas sur le mois actuel, afficher un chip "Aujourd'hui".
                             if (!state.isCurrentMonth) {
