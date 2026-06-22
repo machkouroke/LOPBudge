@@ -39,7 +39,6 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.HazeMaterials
-import dev.chrisbanes.haze.materials.HazeTint
 import dev.chrisbanes.haze.rememberHazeState
 
 /**
@@ -76,13 +75,7 @@ fun FloatingBottomBar(
                 .weight(1f)
                 .height(72.dp)
                 .clip(pillShape)
-                .hazeEffect(state = hazeState) {
-                    blurEffect {
-                        style = HazeMaterials.thin()
-                        // Tint très léger pour garder la teinte Material You.
-                        tint = HazeTint(MaterialTheme.colorScheme.surface.copy(alpha = 0.35f))
-                    }
-                }
+                .hazeEffect(state = hazeState, style = HazeMaterials.thin())
                 .background(
                     Brush.verticalGradient(
                         listOf(
@@ -213,11 +206,7 @@ private fun LiquidGlassFab(
         modifier = Modifier
             .size(72.dp)
             .clip(shape)
-            .hazeEffect(state = hazeState) {
-                blurEffect {
-                    style = HazeMaterials.thin()
-                }
-            }
+            .hazeEffect(state = hazeState, style = HazeMaterials.thin())
             .pressScaleClickable(intent = HapticIntent.Confirm, pressedScale = 0.96f, onClick = onClick),
     ) {
         Box(contentAlignment = Alignment.Center) {

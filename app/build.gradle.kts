@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.lop.budget"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.lop.budget"
@@ -42,6 +42,21 @@ android {
 }
 
 dependencies {
+    // Force Activity and NavigationEvent versions to avoid AGP 8.9+ requirement
+    implementation("androidx.activity:activity:1.9.2") {
+        version { strictly("1.9.2") }
+    }
+    implementation("androidx.activity:activity-compose:1.9.2") {
+        version { strictly("1.9.2") }
+    }
+    implementation("androidx.activity:activity-ktx:1.9.2") {
+        version { strictly("1.9.2") }
+    }
+    // NavigationEvent is usually brought in by Activity 1.10+
+    // We try to force it to a version that doesn't exist or a known stable one if possible,
+    // but better to force Activity down first.
+    // If it's still there, we might need to exclude it or force it to a lower version.
+
     // Core
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
@@ -49,7 +64,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.2")
 
     // Compose BOM
-    val composeBom = platform("androidx.compose:compose-bom:2024.09.03")
+    val composeBom = platform("androidx.compose:compose-bom:2024.04.01")
     implementation(composeBom)
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
@@ -62,11 +77,9 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.0")
 
     // Haze (liquid glass)
-    // NOTE: In the 1.x line the Android artifacts are published as *-android modules.
-    // The standalone `haze-blur` module starts in 2.0.0-alpha.
     val hazeVersion = "1.7.2"
-    implementation("dev.chrisbanes.haze:haze-android:$hazeVersion")
-    implementation("dev.chrisbanes.haze:haze-materials-android:$hazeVersion")
+    implementation("dev.chrisbanes.haze:haze:$hazeVersion")
+    implementation("dev.chrisbanes.haze:haze-materials:$hazeVersion")
 
     // Hilt
     implementation("com.google.dagger:hilt-android:2.52")
