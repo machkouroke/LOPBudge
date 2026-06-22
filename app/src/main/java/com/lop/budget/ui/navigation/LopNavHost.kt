@@ -33,6 +33,7 @@ import com.lop.budget.ui.motion.MotionSpec
 import com.lop.budget.ui.screens.accounts.AccountsScreen
 import com.lop.budget.ui.screens.ai.AiScreen
 import com.lop.budget.ui.screens.analytics.AnalyticsScreen
+import com.lop.budget.ui.screens.calendar.CalendarScreen
 import com.lop.budget.ui.screens.detail.TransactionDetailScreen
 import com.lop.budget.ui.screens.goals.GoalsScreen
 import com.lop.budget.ui.screens.home.HomeScreen
@@ -41,7 +42,6 @@ import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import java.time.YearMonth
 
 @Composable
 fun LopNavHost() {
@@ -86,6 +86,7 @@ fun LopNavHost() {
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
                         onOpenAi = { navController.navigate(Routes.AI) },
                         onOpenMonthly = { type, ym -> navController.navigate(Routes.monthly(type, ym)) },
+                        onOpenCalendar = { ym -> navController.navigate(Routes.calendar(ym)) },
                     )
                 }
 
@@ -146,6 +147,41 @@ fun LopNavHost() {
                     },
                 ) {
                     MonthlyTransactionsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenTransaction = { navController.navigate(Routes.detail(it)) },
+                    )
+                }
+
+                // Calendar month view
+                composable(
+                    Routes.CALENDAR,
+                    arguments = listOf(navArgument("ym") { type = NavType.StringType }),
+                    enterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = MotionSpec.fastTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                ) {
+                    CalendarScreen(
                         onBack = { navController.popBackStack() },
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
                     )
