@@ -22,6 +22,7 @@ import javax.inject.Inject
 
 data class HomeUiState(
     val month: YearMonth = YearMonth.now(),
+    val isCurrentMonth: Boolean = true,
     val currency: String = "EUR",
     val monthIncome: Double = 0.0,
     val monthExpense: Double = 0.0,
@@ -41,6 +42,10 @@ class HomeViewModel @Inject constructor(
 
     fun setMonth(value: YearMonth) {
         month.value = value
+    }
+
+    fun goToCurrentMonth() {
+        month.value = YearMonth.now()
     }
 
     fun nextMonth() { month.value = month.value.plusMonths(1) }
@@ -82,6 +87,7 @@ class HomeViewModel @Inject constructor(
 
             HomeUiState(
                 month = ym,
+                isCurrentMonth = ym == YearMonth.now(),
                 currency = currency,
                 monthIncome = income,
                 monthExpense = expense,
