@@ -1,6 +1,8 @@
 package com.lop.budget.ui.screens.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -168,89 +171,110 @@ fun HomeScreen(
                     up = false,
                 )
             }
+
+            // Petit "souffle" visuel avant la liste (évite la coupure nette)
+            Spacer(Modifier.height(8.dp))
         }
 
         val listState = rememberLazyListState()
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            state = listState,
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = 20.dp, end = 20.dp, top = 12.dp, bottom = 120.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items(state.dayGroups, key = { it.date.toString() }) { day ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "${day.date.dayOfMonth} ${day.date.month.getDisplayName(TextStyle.SHORT, Locale.FRANCE)}",
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                    Text(
-                        text = Format.money(day.total, state.currency),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    start = 20.dp, end = 20.dp, top = 18.dp, bottom = 120.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(state.dayGroups, key = { it.date.toString() }) { day ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "${day.date.dayOfMonth} ${day.date.month.getDisplayName(TextStyle.SHORT, Locale.FRANCE)}",
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        Text(
+                            text = Format.money(day.total, state.currency),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
 
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    day.transactions.forEach { tx ->
-                        val isIncome = tx.transaction.type == TransactionType.INCOME
-                        val amountColor = if (isIncome) ext.income else ext.expense
-                        val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
-                        val recurring = tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        day.transactions.forEach { tx ->
+                            val isIncome = tx.transaction.type == TransactionType.INCOME
+                            val amountColor = if (isIncome) ext.income else ext.expense
+                            val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
+                            val recurring = tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
 
-                        FloatingCard(
-                            modifier = Modifier.fillMaxWidth().clickableNoRipple { onOpenTransaction(tx.transaction.id) },
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircleIcon(
-                                    icon = IconMapper.get(tx.category?.icon ?: "category"),
-                                    tint = catColor,
-                                    background = catColor.copy(alpha = 0.18f),
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(tx.transaction.title, style = MaterialTheme.typography.titleMedium)
-                                        if (recurring) {
-                                            Spacer(Modifier.width(6.dp))
-                                            Icon(Icons.Filled.Repeat, "Récurrent", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
+                            FloatingCard(
+                                modifier = Modifier.fillMaxWidth().clickableNoRipple { onOpenTransaction(tx.transaction.id) },
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircleIcon(
+                                        icon = IconMapper.get(tx.category?.icon ?: "category"),
+                                        tint = catColor,
+                                        background = catColor.copy(alpha = 0.18f),
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(tx.transaction.title, style = MaterialTheme.typography.titleMedium)
+                                            if (recurring) {
+                                                Spacer(Modifier.width(6.dp))
+                                                Icon(Icons.Filled.Repeat, "Récurrent", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
+                                            }
                                         }
+                                        Text(
+                                            tx.account?.name ?: "",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
                                     Text(
-                                        tx.account?.name ?: "",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        (if (isIncome) "+" else "−") + Format.money(tx.transaction.amount, state.currency),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = amountColor,
+                                        fontWeight = FontWeight.SemiBold,
                                     )
                                 }
-                                Text(
-                                    (if (isIncome) "+" else "−") + Format.money(tx.transaction.amount, state.currency),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = amountColor,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
                             }
                         }
                     }
                 }
-            }
 
-            if (state.dayGroups.isEmpty()) {
-                item {
-                    Text(
-                        "Aucune transaction ce mois-ci.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                if (state.dayGroups.isEmpty()) {
+                    item {
+                        Text(
+                            "Aucune transaction ce mois-ci.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
+
+            // Overlay "fade" en haut de la liste : masque la coupure quand des cards passent derrière.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(22.dp)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.background,
+                                MaterialTheme.colorScheme.background.copy(alpha = 0f),
+                            ),
+                        ),
+                    ),
+            )
         }
     }
 }
