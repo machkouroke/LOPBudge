@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -112,11 +114,26 @@ fun HomeScreen(
                     ) {
                         Icon(Icons.Filled.ChevronLeft, "Mois précédent", modifier = Modifier.size(28.dp).clickableNoRipple(vm::prevMonth))
 
-                        Text(
-                            "${state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }} ${state.month.year}",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.clickableNoRipple { isMonthPickerOpen = true },
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "${state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }} ${state.month.year}",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.clickableNoRipple { isMonthPickerOpen = true },
+                            )
+
+                            // Ergonomie: quand on n'est pas sur le mois actuel, afficher un chip "Aujourd'hui".
+                            if (!state.isCurrentMonth) {
+                                Spacer(Modifier.height(6.dp))
+                                AssistChip(
+                                    onClick = vm::goToCurrentMonth,
+                                    label = { Text("Aujourd’hui") },
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                                        labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    ),
+                                )
+                            }
+                        }
 
                         Icon(Icons.Filled.ChevronRight, "Mois suivant", modifier = Modifier.size(28.dp).clickableNoRipple(vm::nextMonth))
                     }
