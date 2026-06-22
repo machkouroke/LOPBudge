@@ -19,10 +19,6 @@ object Routes {
     const val MONTHLY = "monthly/{type}/{ym}"
     fun monthly(type: TransactionType, ym: YearMonth) = "monthly/${type.name}/${ym}" // ym format: YYYY-MM
 
-    // Monthly calendar
-    const val CALENDAR = "calendar/{ym}"
-    fun calendar(ym: YearMonth) = "calendar/$ym"
-
     /** Routes affichant la bottom bar flottante. */
     val rootRoutes = setOf(HOME, ANALYTICS, GOALS, ACCOUNTS)
 }
