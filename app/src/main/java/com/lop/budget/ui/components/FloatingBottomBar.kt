@@ -37,7 +37,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.HazeMaterials
 import dev.chrisbanes.haze.rememberHazeState
 
@@ -68,19 +67,21 @@ fun FloatingBottomBar(
         Surface(
             shape = pillShape,
             color = Color.Transparent,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)),
             shadowElevation = 14.dp,
             tonalElevation = 0.dp,
             modifier = Modifier
                 .weight(1f)
                 .height(72.dp)
                 .clip(pillShape)
-                .hazeEffect(state = hazeState, style = HazeMaterials.thin())
+                // Blur plus fort pour éviter l'illisibilité quand du contenu passe derrière.
+                .hazeEffect(state = hazeState, style = HazeMaterials.regular())
+                // Un "scrim" + gradient léger pour améliorer le contraste.
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.18f),
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.58f),
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
                         ),
                     ),
                 ),
@@ -206,7 +207,7 @@ private fun LiquidGlassFab(
         modifier = Modifier
             .size(72.dp)
             .clip(shape)
-            .hazeEffect(state = hazeState, style = HazeMaterials.thin())
+            .hazeEffect(state = hazeState, style = HazeMaterials.regular())
             .pressScaleClickable(intent = HapticIntent.Confirm, pressedScale = 0.96f, onClick = onClick),
     ) {
         Box(contentAlignment = Alignment.Center) {
