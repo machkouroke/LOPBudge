@@ -14,6 +14,7 @@ import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -55,7 +56,29 @@ class BudgetRepository @Inject constructor(
     suspend fun setStatus(transactionId: Long, status: String) =
         transactionDao.updateStatus(transactionId, status)
 
+    /**
+     * Bascule l'état réglé/planifié d'une transaction et renvoie le nouvel état.
+     * PLANNED -> PAID, PAID -> PLANNED. Utilisé par les swipe actions.
+     */
+    suspend fun toggleStatus(transactionId: Long): TransactionStatus {
+        val current = transactionDao.statusOf(transactionId)
+            ?.let { runCatching { TransactionStatus.valueOf(it) }.getOrNull() }
+            ?: TransactionStatus.PLANNED
+        val next = if (current == TransactionStatus.PAID) TransactionStatus.PLANNED else TransactionStatus.PAID
+        transactionDao.updateStatus(transactionId, next.name)
+        return next
+    }
+
     suspend fun deleteTransaction(id: Long) = transactionDao.delete(id)
+
+    /**
+     * Restaure une transaction précédemment supprimée (undo), en préservant son id
+     * d'origine ainsi que ses tags. Room conserve l'id car [upsert] n'en génère un
+     * nouveau que lorsque l'id vaut 0.
+     */
+    suspend fun restoreTransaction(snapshot: TransactionWithRelations) {
+        saveTransaction(snapshot.transaction, snapshot.tags.map { it.id })
+    }
 
     // Référentiels
     fun observeAccounts() = accountDao.observeAll()

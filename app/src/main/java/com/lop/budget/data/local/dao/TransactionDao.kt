@@ -47,6 +47,10 @@ interface TransactionDao {
     @Query("UPDATE transactions SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: Long, status: String)
 
+    /** Statut courant d'une transaction (pour basculer payé/planifié). */
+    @Query("SELECT status FROM transactions WHERE id = :id")
+    suspend fun statusOf(id: Long): String?
+
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun delete(id: Long)
 
