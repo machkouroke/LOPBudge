@@ -62,11 +62,6 @@ object LopTheme {
 
 /**
  * Thème racine de LOPBudge.
- *
- * @param dynamicColor quand true (par défaut) et Android >= 12, le schéma de
- * couleurs est dérivé du wallpaper / thème Material You du système. Sinon, on
- * retombe sur la palette lavande de l'app. Les couleurs revenu/dépense restent
- * constantes via [LopExtendedColors].
  */
 @Composable
 fun LopBudgeTheme(
@@ -89,7 +84,7 @@ fun LopBudgeTheme(
         else -> LightColors
     }
 
-    // Les couleurs sémantiques s'adaptent légèrement entre clair et sombre.
+    // Couleurs sémantiques
     val extended = if (darkTheme) {
         LopExtendedColors(
             income = IncomeGreen, onIncome = Color.Black, incomeContainer = IncomeGreenContainer,
@@ -104,6 +99,43 @@ fun LopBudgeTheme(
         )
     }
 
+    // Design system tokens (Budge-like) : fond + alphas.
+    val tokens = if (darkTheme) {
+        LopTokens(
+            cardAlpha = 0.58f,
+            cardBorderAlpha = 0.10f,
+            barAlphaTop = 0.70f,
+            barAlphaBottom = 0.55f,
+            barBorderAlpha = 0.14f,
+            bgVignetteAlpha = 0.55f,
+        )
+    } else {
+        // En light, on réduit la vignette et on augmente l'opacité des surfaces.
+        LopTokens(
+            cardAlpha = 0.92f,
+            cardBorderAlpha = 0.10f,
+            barAlphaTop = 0.92f,
+            barAlphaBottom = 0.86f,
+            barBorderAlpha = 0.12f,
+            bgVignetteAlpha = 0.18f,
+        )
+    }
+
+    val background = if (darkTheme) {
+        LopBackgroundColors(
+            top = Color(0xFF0D0E12),
+            bottom = Color(0xFF07070A),
+            vignette = Color.Black,
+        )
+    } else {
+        // Light "premium" : léger beige chaud plutôt que blanc pur.
+        LopBackgroundColors(
+            top = Color(0xFFF7F2EA),
+            bottom = Color(0xFFF3EDE3),
+            vignette = Color(0xFF000000),
+        )
+    }
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -114,12 +146,18 @@ fun LopBudgeTheme(
         }
     }
 
-    CompositionLocalProvider(LocalLopExtendedColors provides extended) {
+    CompositionLocalProvider(
+        LocalLopExtendedColors provides extended,
+        LocalTokens provides tokens,
+        LocalBackgroundColors provides background,
+        LocalSpacing provides Spacing(),
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = LopTypography,
             shapes = LopShapes,
-            content = content,
-        )
+        ) {
+            content()
+        }
     }
 }
