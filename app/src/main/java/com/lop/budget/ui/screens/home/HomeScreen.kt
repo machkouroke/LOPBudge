@@ -82,8 +82,10 @@ fun HomeScreen(
                 .padding(start = 20.dp, end = 20.dp, top = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Bonjour 👋", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Tableau de bord", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                "Tableau de bord",
+                style = MaterialTheme.typography.headlineMedium,
+            )
 
             // Bandeau IA
             FloatingCard(
@@ -114,11 +116,20 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Filled.ChevronLeft, "Mois précédent", modifier = Modifier.size(28.dp).clickableNoRipple(vm::prevMonth))
+                        Icon(
+                            Icons.Filled.ChevronLeft,
+                            "Mois précédent",
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clickableNoRipple(vm::prevMonth)
+                        )
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                "${state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }} ${state.month.year}",
+                                "${
+                                    state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE)
+                                        .replaceFirstChar { it.uppercase() }
+                                } ${state.month.year}",
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.clickableNoRipple { isMonthPickerOpen = true },
                             )
@@ -129,17 +140,29 @@ fun HomeScreen(
                                     onClick = vm::goToCurrentMonth,
                                     label = { Text("Aujourd’hui") },
                                     colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(
+                                            alpha = 0.85f
+                                        ),
                                         labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
                                     ),
                                 )
                             }
                         }
 
-                        Icon(Icons.Filled.ChevronRight, "Mois suivant", modifier = Modifier.size(28.dp).clickableNoRipple(vm::nextMonth))
+                        Icon(
+                            Icons.Filled.ChevronRight,
+                            "Mois suivant",
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clickableNoRipple(vm::nextMonth)
+                        )
                     }
                     Spacer(Modifier.height(12.dp))
-                    Text("Solde projeté", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "Solde projeté",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Text(
                         Format.money(state.projectedBalance, state.currency),
                         style = MaterialTheme.typography.displaySmall,
@@ -147,7 +170,7 @@ fun HomeScreen(
                     )
                     state.daysUntilPayday?.let {
                         Spacer(Modifier.height(4.dp))
-                        Text("Prochaine rentrée d'argent dans $it jours", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+
                     }
                 }
             }
@@ -155,7 +178,9 @@ fun HomeScreen(
             // Revenus / Dépenses du mois
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 SummaryTile(
-                    modifier = Modifier.weight(1f).clickableNoRipple { onOpenMonthly(TransactionType.INCOME, state.month) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickableNoRipple { onOpenMonthly(TransactionType.INCOME, state.month) },
                     label = "Revenus",
                     amount = Format.money(state.monthIncome, state.currency),
                     color = ext.income,
@@ -163,7 +188,9 @@ fun HomeScreen(
                     up = true,
                 )
                 SummaryTile(
-                    modifier = Modifier.weight(1f).clickableNoRipple { onOpenMonthly(TransactionType.EXPENSE, state.month) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickableNoRipple { onOpenMonthly(TransactionType.EXPENSE, state.month) },
                     label = "Dépenses",
                     amount = Format.money(state.monthExpense, state.currency),
                     color = ext.expense,
@@ -188,12 +215,19 @@ fun HomeScreen(
             ) {
                 items(state.dayGroups, key = { it.date.toString() }) { day ->
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "${day.date.dayOfMonth} ${day.date.month.getDisplayName(TextStyle.SHORT, Locale.FRANCE)}",
+                            text = "${day.date.dayOfMonth} ${
+                                day.date.month.getDisplayName(
+                                    TextStyle.SHORT,
+                                    Locale.FRANCE
+                                )
+                            }",
                             style = MaterialTheme.typography.titleLarge,
                         )
                         Text(
@@ -208,11 +242,15 @@ fun HomeScreen(
                         day.transactions.forEach { tx ->
                             val isIncome = tx.transaction.type == TransactionType.INCOME
                             val amountColor = if (isIncome) ext.income else ext.expense
-                            val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
-                            val recurring = tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
+                            val catColor = tx.category?.colorArgb?.let { Color(it) }
+                                ?: MaterialTheme.colorScheme.primary
+                            val recurring =
+                                tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
 
                             FloatingCard(
-                                modifier = Modifier.fillMaxWidth().clickableNoRipple { onOpenTransaction(tx.transaction.id) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickableNoRipple { onOpenTransaction(tx.transaction.id) },
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                                 contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
                             ) {
@@ -225,10 +263,18 @@ fun HomeScreen(
                                     Spacer(Modifier.width(12.dp))
                                     Column(Modifier.weight(1f)) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(tx.transaction.title, style = MaterialTheme.typography.titleMedium)
+                                            Text(
+                                                tx.transaction.title,
+                                                style = MaterialTheme.typography.titleMedium
+                                            )
                                             if (recurring) {
                                                 Spacer(Modifier.width(6.dp))
-                                                Icon(Icons.Filled.Repeat, "Récurrent", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
+                                                Icon(
+                                                    Icons.Filled.Repeat,
+                                                    "Récurrent",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(15.dp)
+                                                )
                                             }
                                         }
                                         Text(
@@ -238,7 +284,10 @@ fun HomeScreen(
                                         )
                                     }
                                     Text(
-                                        (if (isIncome) "+" else "−") + Format.money(tx.transaction.amount, state.currency),
+                                        (if (isIncome) "+" else "−") + Format.money(
+                                            tx.transaction.amount,
+                                            state.currency
+                                        ),
                                         style = MaterialTheme.typography.titleMedium,
                                         color = amountColor,
                                         fontWeight = FontWeight.SemiBold,
@@ -296,10 +345,19 @@ private fun SummaryTile(
                     null, tint = color, modifier = Modifier.size(20.dp),
                 )
                 Spacer(Modifier.width(6.dp))
-                Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             Spacer(Modifier.height(6.dp))
-            Text(amount, style = MaterialTheme.typography.titleLarge, color = color, fontWeight = FontWeight.Bold)
+            Text(
+                amount,
+                style = MaterialTheme.typography.titleLarge,
+                color = color,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -313,7 +371,9 @@ private fun UpcomingRow(tx: TransactionWithRelations, currency: String, onClick:
     val recurring = tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
 
     FloatingCard(
-        modifier = Modifier.fillMaxWidth().clickableNoRipple(onClick),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickableNoRipple(onClick),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
     ) {
@@ -329,10 +389,19 @@ private fun UpcomingRow(tx: TransactionWithRelations, currency: String, onClick:
                     Text(tx.transaction.title, style = MaterialTheme.typography.titleMedium)
                     if (recurring) {
                         Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Filled.Repeat, "Récurrent", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
+                        Icon(
+                            Icons.Filled.Repeat,
+                            "Récurrent",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(15.dp)
+                        )
                     }
                 }
-                Text(Format.dayMonth(tx.transaction.date), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    Format.dayMonth(tx.transaction.date),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             Text(
                 (if (isIncome) "+" else "−") + Format.money(tx.transaction.amount, currency),
