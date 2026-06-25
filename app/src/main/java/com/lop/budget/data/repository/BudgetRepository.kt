@@ -14,15 +14,12 @@ import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Point d'accès unique aux données. Les ViewModels dépendent de ce repository,
- * jamais directement des DAO. Cela facilite les tests et la reprise du projet.
- */
 @Singleton
 class BudgetRepository @Inject constructor(
     private val transactionDao: TransactionDao,
@@ -32,7 +29,6 @@ class BudgetRepository @Inject constructor(
     private val goalDao: GoalDao,
     private val debtDao: DebtDao,
 ) {
-    // Transactions
     fun observeTransactions(): Flow<List<TransactionWithRelations>> = transactionDao.observeAll()
     fun observeTransactionsBetween(start: Long, end: Long) = transactionDao.observeBetween(start, end)
     fun observeTransaction(id: Long) = transactionDao.observeById(id)
@@ -48,16 +44,24 @@ class BudgetRepository @Inject constructor(
         return txId
     }
 
-    /** Modifie la catégorie même si la transaction est déjà payée. */
     suspend fun changeCategory(transactionId: Long, categoryId: Long) =
         transactionDao.updateCategory(transactionId, categoryId)
 
     suspend fun setStatus(transactionId: Long, status: String) =
         transactionDao.updateStatus(transactionId, status)
 
+    /** PLANNED <-> PAID. */
+    suspend fun toggleStatus(transactionId: Long): TransactionStatus {
+        val current = transactionDao.statusOf(transactionId)
+            ?.let { runCatching { TransactionStatus.valueOf(it) }.getOrNull() }
+            ?: TransactionStatus.PLANNED
+        val next = if (current == TransactionStatus.PAID) TransactionStatus.PLANNED else TransactionStatus.PAID
+        transactionDao.updateStatus(transactionId, next.name)
+        return next
+    }
+
     suspend fun deleteTransaction(id: Long) = transactionDao.delete(id)
 
-    // Référentiels
     fun observeAccounts() = accountDao.observeAll()
     fun observeCategories() = categoryDao.observeAll()
     fun observeCategoriesByType(type: TransactionType) = categoryDao.observeByType(type.name)

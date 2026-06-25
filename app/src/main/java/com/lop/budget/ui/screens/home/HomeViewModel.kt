@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -36,7 +37,6 @@ data class HomeUiState(
     val projectedBalance: Double = 0.0,
     val daysUntilPayday: Int? = null,
     val upcoming: List<TransactionWithRelations> = emptyList(),
-    // Nouvelle section: transactions du mois groupées par jour (style Budge)
     val dayGroups: List<DayGroup> = emptyList(),
 )
 
@@ -49,14 +49,8 @@ class HomeViewModel @Inject constructor(
 
     private val month = MutableStateFlow(YearMonth.now())
 
-    fun setMonth(value: YearMonth) {
-        month.value = value
-    }
-
-    fun goToCurrentMonth() {
-        month.value = YearMonth.now()
-    }
-
+    fun setMonth(value: YearMonth) { month.value = value }
+    fun goToCurrentMonth() { month.value = YearMonth.now() }
     fun nextMonth() { month.value = month.value.plusMonths(1) }
     fun prevMonth() { month.value = month.value.minusMonths(1) }
 
@@ -73,9 +67,7 @@ class HomeViewModel @Inject constructor(
             repo.observeTransactionsBetween(start, end),
             repo.observePaidSum(TransactionType.INCOME, start, end),
             repo.observePaidSum(TransactionType.EXPENSE, start, end),
-        ) { txs, income, expense ->
-            Triple(txs, income, expense)
-        }
+        ) { txs, income, expense -> Triple(txs, income, expense) }
     }
 
     val uiState: StateFlow<HomeUiState> =
@@ -86,7 +78,6 @@ class HomeViewModel @Inject constructor(
                 .sortedBy { it.transaction.date }
                 .take(8)
 
-            // Solde projeté = revenus payés - dépenses payées - dépenses planifiées du mois
             val plannedExpense = txs
                 .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.type == TransactionType.EXPENSE }
                 .sumOf { it.transaction.amount }
@@ -103,8 +94,7 @@ class HomeViewModel @Inject constructor(
                     DayGroup(
                         date = date,
                         total = list.sumOf {
-                            val signed = if (it.transaction.type == TransactionType.INCOME) it.transaction.amount else -it.transaction.amount
-                            signed
+                            if (it.transaction.type == TransactionType.INCOME) it.transaction.amount else -it.transaction.amount
                         },
                         transactions = list.sortedByDescending { it.transaction.date },
                     )
@@ -123,7 +113,23 @@ class HomeViewModel @Inject constructor(
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 
-    /** Estimation simple : prochain revenu planifié à venir = jour de paie. */
+    fun toggleStatus(id: Long) {
+        viewModelScope.launch { repo.toggleStatus(id) }
+    }
+
+    fun delete(item: TransactionWithRelations) {
+        viewModelScope.launch { repo.deleteTransaction(item.transaction.id) }
+    }
+
+    fun restore(item: TransactionWithRelations) {
+        viewModelScope.launch {
+            repo.saveTransaction(
+                tx = item.transaction,
+                tagIds = item.tags.map { it.id },
+            )
+        }
+    }
+
     private fun nextPayday(txs: List<TransactionWithRelations>): Int? {
         val now = LocalDate.now()
         val zone = ZoneId.systemDefault()

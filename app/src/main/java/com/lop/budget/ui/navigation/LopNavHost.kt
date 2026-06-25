@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,7 +28,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.lop.budget.ui.components.FloatingBottomBar
+import com.lop.budget.ui.components.LocalUndoController
+import com.lop.budget.ui.components.UndoBanner
 import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.rememberUndoController
 import com.lop.budget.ui.motion.MotionSpec
 import com.lop.budget.ui.screens.accounts.AccountsScreen
 import com.lop.budget.ui.screens.ai.AiScreen
@@ -45,281 +49,142 @@ import dev.chrisbanes.haze.rememberHazeState
 fun LopNavHost() {
     val navController = rememberNavController()
 
-    // Haze: source + effects must share the same state.
     val hazeState = rememberHazeState()
 
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBar = currentRoute in Routes.rootRoutes
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { padding ->
-        // Mark the whole screen as the blur source.
-        // This allows the bottom bar to blur what is behind it.
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .hazeSource(state = hazeState),
-        ) {
-            NavHost(
-                navController = navController,
-                startDestination = Routes.HOME,
-                // Fallback transitions (si une destination n'en définit pas)
-                enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-            ) {
-                // ROOT (tabs) : crossfade subtil
-                composable(
-                    Routes.HOME,
-                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                ) {
-                    HomeScreen(
-                        onOpenTransaction = { navController.navigate(Routes.detail(it)) },
-                        onOpenAi = { navController.navigate(Routes.AI) },
-                        onOpenMonthly = { type, ym -> navController.navigate(Routes.monthly(type, ym)) },
-                    )
-                }
+    val undoController = rememberUndoController()
 
-                composable(
-                    Routes.ANALYTICS,
-                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                ) { AnalyticsScreen() }
-
-                composable(
-                    Routes.GOALS,
-                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                ) { GoalsScreen() }
-
-                composable(
-                    Routes.ACCOUNTS,
-                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                ) { AccountsScreen() }
-
-                // Monthly income/expense detail
-                composable(
-                    Routes.MONTHLY,
-                    arguments = listOf(
-                        navArgument("type") { type = NavType.StringType },
-                        navArgument("ym") { type = NavType.StringType },
-                    ),
-                    enterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.fastTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                ) {
-                    MonthlyTransactionsScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenTransaction = { navController.navigate(Routes.detail(it)) },
-                    )
-                }
-
-                // SECONDARY
-                composable(
-                    Routes.ADD,
-                    enterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = MotionSpec.fastTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                ) { TransactionEditScreen(onBack = { navController.popBackStack() }) }
-
-                composable(
-                    Routes.AI,
-                    enterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.fastTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                ) { AiScreen(onBack = { navController.popBackStack() }) }
-
-                composable(
-                    Routes.SETTINGS,
-                    enterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.fastTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                ) { SettingsScreen(onBack = { navController.popBackStack() }) }
-
-                composable(
-                    Routes.DETAIL,
-                    arguments = listOf(navArgument("id") { type = NavType.LongType }),
-                    enterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.fastTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                ) { entry ->
-                    val id = entry.arguments?.getLong("id") ?: 0L
-                    TransactionDetailScreen(transactionId = id, onBack = { navController.popBackStack() })
-                }
-            }
-
-            // Bottom bar en overlay (vraiment flottante)
-            AnimatedVisibility(
-                visible = showBar,
-                enter = slideInVertically(
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = MotionSpec.SLOW_MS,
-                        easing = MotionSpec.easeOut,
-                    ),
-                ) { fullHeight -> fullHeight / 2 } + fadeIn(
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = MotionSpec.MEDIUM_MS,
-                        easing = MotionSpec.easeOut,
-                    ),
-                ),
-                exit = slideOutVertically(
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = MotionSpec.MEDIUM_MS,
-                        easing = MotionSpec.easeOut,
-                    ),
-                ) { fullHeight -> fullHeight / 2 } + fadeOut(
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = MotionSpec.FAST_MS,
-                        easing = MotionSpec.easeOut,
-                    ),
-                ),
+    Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+        CompositionLocalProvider(LocalUndoController provides undoController) {
+            Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 20.dp),
+                    .fillMaxSize()
+                    .padding(padding)
+                    .hazeSource(state = hazeState),
             ) {
-                FloatingBottomBar(
-                    current = currentRoute ?: Routes.HOME,
-                    onSelect = { route ->
-                        navController.navigate(route) {
-                            popUpTo(Routes.HOME) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onAdd = { navController.navigate(Routes.ADD) },
-                    hazeState = hazeState,
-                )
-            }
+                NavHost(
+                    navController = navController,
+                    startDestination = Routes.HOME,
+                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
+                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
+                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
+                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
+                ) {
+                    composable(Routes.HOME) {
+                        HomeScreen(
+                            onOpenTransaction = { navController.navigate(Routes.detail(it)) },
+                            onOpenAi = { navController.navigate(Routes.AI) },
+                            onOpenMonthly = { type, ym -> navController.navigate(Routes.monthly(type, ym)) },
+                        )
+                    }
 
-            if (showBar) {
-                Icon(
-                    Icons.Filled.Settings,
-                    contentDescription = "Réglages",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    composable(Routes.ANALYTICS) { AnalyticsScreen() }
+                    composable(Routes.GOALS) { GoalsScreen() }
+                    composable(Routes.ACCOUNTS) { AccountsScreen() }
+
+                    composable(
+                        Routes.MONTHLY,
+                        arguments = listOf(
+                            navArgument("type") { type = NavType.StringType },
+                            navArgument("ym") { type = NavType.StringType },
+                        ),
+                        enterTransition = {
+                            slideIntoContainer(
+                                AnimatedContentTransitionScope.SlideDirection.Left,
+                                animationSpec = MotionSpec.mediumTween(),
+                            ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                        },
+                        exitTransition = {
+                            slideOutOfContainer(
+                                AnimatedContentTransitionScope.SlideDirection.Right,
+                                animationSpec = MotionSpec.fastTween(),
+                            ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                        },
+                    ) {
+                        MonthlyTransactionsScreen(
+                            onBack = { navController.popBackStack() },
+                            onOpenTransaction = { navController.navigate(Routes.detail(it)) },
+                        )
+                    }
+
+                    composable(Routes.ADD) { TransactionEditScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.AI) { AiScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.SETTINGS) { SettingsScreen(onBack = { navController.popBackStack() }) }
+
+                    composable(
+                        Routes.DETAIL,
+                        arguments = listOf(navArgument("id") { type = NavType.LongType }),
+                    ) { entry ->
+                        val id = entry.arguments?.getLong("id") ?: 0L
+                        TransactionDetailScreen(transactionId = id, onBack = { navController.popBackStack() })
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = showBar,
+                    enter = slideInVertically(
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = MotionSpec.SLOW_MS,
+                            easing = MotionSpec.easeOut,
+                        ),
+                    ) { it / 2 } + fadeIn(
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = MotionSpec.MEDIUM_MS,
+                            easing = MotionSpec.easeOut,
+                        ),
+                    ),
+                    exit = slideOutVertically(
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = MotionSpec.MEDIUM_MS,
+                            easing = MotionSpec.easeOut,
+                        ),
+                    ) { it / 2 } + fadeOut(
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = MotionSpec.FAST_MS,
+                            easing = MotionSpec.easeOut,
+                        ),
+                    ),
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 26.dp, end = 20.dp)
-                        .clickableNoRipple { navController.navigate(Routes.SETTINGS) },
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(bottom = 20.dp),
+                ) {
+                    FloatingBottomBar(
+                        current = currentRoute ?: Routes.HOME,
+                        onSelect = { route ->
+                            navController.navigate(route) {
+                                popUpTo(Routes.HOME) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        onAdd = { navController.navigate(Routes.ADD) },
+                        hazeState = hazeState,
+                    )
+                }
+
+                if (showBar) {
+                    Icon(
+                        Icons.Filled.Settings,
+                        contentDescription = "Réglages",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 26.dp, end = 20.dp)
+                            .clickableNoRipple { navController.navigate(Routes.SETTINGS) },
+                    )
+                }
+
+                UndoBanner(
+                    controller = undoController,
+                    hazeState = hazeState,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(bottom = if (showBar) 108.dp else 24.dp),
                 )
             }
         }
