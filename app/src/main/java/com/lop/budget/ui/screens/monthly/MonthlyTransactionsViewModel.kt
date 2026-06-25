@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
@@ -108,4 +109,16 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 transactions = filtered,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthlyTransactionsUiState())
+
+    fun toggleStatus(id: Long) {
+        viewModelScope.launch { repo.toggleStatus(id) }
+    }
+
+    fun delete(item: TransactionWithRelations) {
+        viewModelScope.launch { repo.deleteTransaction(item.transaction.id) }
+    }
+
+    fun restore(item: TransactionWithRelations) {
+        viewModelScope.launch { repo.saveTransaction(item.transaction, item.tags.map { it.id }) }
+    }
 }

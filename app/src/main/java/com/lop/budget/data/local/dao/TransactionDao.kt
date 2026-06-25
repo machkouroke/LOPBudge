@@ -35,6 +35,9 @@ interface TransactionDao {
     @Query("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE type = :type AND status = 'PAID' AND date BETWEEN :start AND :end")
     fun observePaidSum(type: String, start: Long, end: Long): Flow<Double>
 
+    @Query("SELECT status FROM transactions WHERE id = :id")
+    suspend fun statusOf(id: Long): String?
+
     @Upsert
     suspend fun upsert(transaction: TransactionEntity): Long
 

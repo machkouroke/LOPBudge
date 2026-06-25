@@ -32,15 +32,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.DonutChart
 import com.lop.budget.ui.components.DonutSlice
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.LocalUndoController
+import com.lop.budget.ui.components.SwipeableTransactionRow
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
-import com.lop.budget.util.IconMapper
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -52,6 +53,7 @@ fun MonthlyTransactionsScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
+    val undo = LocalUndoController.current
 
     val title = if (state.type == TransactionType.EXPENSE) "Dépenses" else "Revenus"
     val accent = if (state.type == TransactionType.EXPENSE) ext.expense else ext.income
@@ -88,7 +90,6 @@ fun MonthlyTransactionsScreen(
             )
         }
 
-        // Filtre payé
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FilterChip("Tous", state.filter == PaidFilter.ALL, Modifier.weight(1f), accent) { vm.setFilter(PaidFilter.ALL) }
@@ -97,7 +98,6 @@ fun MonthlyTransactionsScreen(
             }
         }
 
-        // Insights
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -120,7 +120,6 @@ fun MonthlyTransactionsScreen(
             }
         }
 
-        // Breakdown
         items(state.breakdown, key = { it.name }) { b ->
             FloatingCard(
                 Modifier.fillMaxWidth(),
@@ -143,31 +142,23 @@ fun MonthlyTransactionsScreen(
         }
 
         items(state.transactions, key = { it.transaction.id }) { tx ->
-            val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
-            FloatingCard(
-                modifier = Modifier.fillMaxWidth().clickableNoRipple { onOpenTransaction(tx.transaction.id) },
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircleIcon(
-                        icon = IconMapper.get(tx.category?.icon ?: "category"),
-                        tint = catColor,
-                        background = catColor.copy(alpha = 0.18f),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(tx.transaction.title, style = MaterialTheme.typography.titleMedium)
-                        Text(Format.dayMonth(tx.transaction.date), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Text(
-                        (if (state.type == TransactionType.INCOME) "+" else "−") + Format.money(tx.transaction.amount, state.currency),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = accent,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
+            SwipeableTransactionRow(
+                item = tx,
+                currency = state.currency,
+                showAccount = false,
+                onClick = { onOpenTransaction(tx.transaction.id) },
+                onToggleStatus = {
+                    val nowPaid = tx.transaction.status != TransactionStatus.PAID
+                    vm.toggleStatus(tx.transaction.id)
+                    undo.show(
+                        message = if (nowPaid) "« ${tx.transaction.title} » marqué comme réglé" else "« ${tx.transaction.title} » remis à régler",
+                    ) { vm.toggleStatus(tx.transaction.id) }
+                },
+                onDelete = {
+                    vm.delete(tx)
+                    undo.show(message = "« ${tx.transaction.title} » supprimé") { vm.restore(tx) }
+                },
+            )
         }
 
         if (state.transactions.isEmpty()) {
