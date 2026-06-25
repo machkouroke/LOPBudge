@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 import dev.chrisbanes.haze.rememberHazeState
 
@@ -46,6 +47,7 @@ import dev.chrisbanes.haze.rememberHazeState
  * IMPORTANT: Haze nécessite que l'écran parent fournisse un Modifier.hazeSource(state).
  * (Voir LopNavHost.kt : Box root / contenu scrollable)
  */
+@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun FloatingBottomBar(
     current: String,
@@ -66,7 +68,6 @@ fun FloatingBottomBar(
         // --- Pilule principale ---
         Surface(
             shape = pillShape,
-            color = Color.Transparent,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)),
             shadowElevation = 14.dp,
             tonalElevation = 0.dp,
@@ -75,16 +76,9 @@ fun FloatingBottomBar(
                 .height(72.dp)
                 .clip(pillShape)
                 // Blur plus fort pour éviter l'illisibilité quand du contenu passe derrière.
-                .hazeEffect(state = hazeState, style = HazeMaterials.regular())
+//                .hazeEffect(state = hazeState, style = HazeMaterials.regular())
                 // Un "scrim" + gradient léger pour améliorer le contraste.
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.58f),
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
-                        ),
-                    ),
-                ),
+
         ) {
             Row(
                 modifier = Modifier

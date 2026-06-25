@@ -40,6 +40,50 @@ import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import androidx.compose.animation.*
+
+import androidx.compose.material3.*
+
+import androidx.navigation.NavBackStackEntry
+
+
+private val screenOrder =
+    listOf(Routes.HOME, Routes.ANALYTICS, Routes.GOALS, Routes.ACCOUNTS)
+
+@OptIn(ExperimentalAnimationApi::class)
+private fun createEnterTransition(
+    initialState: NavBackStackEntry,
+    targetState: NavBackStackEntry
+): EnterTransition {
+    val initialIndex = screenOrder.indexOf(initialState.destination.route)
+    val targetIndex = screenOrder.indexOf(targetState.destination.route)
+
+    return if (initialIndex == -1 || targetIndex == -1) {
+        fadeIn() // Animation par défaut si une route n'est pas dans la liste
+    } else if (initialIndex > targetIndex) {
+        slideInHorizontally(initialOffsetX = { -it }) // Glisse depuis la gauche
+    } else {
+        slideInHorizontally(initialOffsetX = { it }) // Glisse depuis la droite
+    }
+}
+
+@OptIn(ExperimentalAnimationApi::class)
+private fun createExitTransition(
+    initialState: NavBackStackEntry,
+    targetState: NavBackStackEntry
+): ExitTransition {
+    val initialIndex = screenOrder.indexOf(initialState.destination.route)
+    val targetIndex = screenOrder.indexOf(targetState.destination.route)
+
+    return if (initialIndex == -1 || targetIndex == -1) {
+        fadeOut() // Animation par défaut
+    } else if (initialIndex > targetIndex) {
+        slideOutHorizontally(targetOffsetX = { it }) // Glisse vers la droite
+    } else {
+        slideOutHorizontally(targetOffsetX = { -it }) // Glisse vers la gauche
+    }
+}
+
 
 @Composable
 fun LopNavHost() {
@@ -67,48 +111,42 @@ fun LopNavHost() {
                 navController = navController,
                 startDestination = Routes.HOME,
                 // Fallback transitions (si une destination n'en définit pas)
-                enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
+                enterTransition = { createEnterTransition(initialState, targetState) },
+                exitTransition = { createExitTransition(initialState, targetState) },
+                popEnterTransition = { createEnterTransition(initialState, targetState) },
+                popExitTransition = { createExitTransition(initialState, targetState) }
             ) {
                 // ROOT (tabs) : crossfade subtil
                 composable(
                     Routes.HOME,
-                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
                 ) {
                     HomeScreen(
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
                         onOpenAi = { navController.navigate(Routes.AI) },
-                        onOpenMonthly = { type, ym -> navController.navigate(Routes.monthly(type, ym)) },
+                        onOpenMonthly = { type, ym ->
+                            navController.navigate(
+                                Routes.monthly(
+                                    type,
+                                    ym
+                                )
+                            )
+                        },
                     )
                 }
 
                 composable(
                     Routes.ANALYTICS,
-                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
+
                 ) { AnalyticsScreen() }
 
                 composable(
                     Routes.GOALS,
-                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
+
                 ) { GoalsScreen() }
 
                 composable(
                     Routes.ACCOUNTS,
-                    enterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    exitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
-                    popEnterTransition = { fadeIn(animationSpec = MotionSpec.mediumTween()) },
-                    popExitTransition = { fadeOut(animationSpec = MotionSpec.fastTween()) },
+
                 ) { AccountsScreen() }
 
                 // Monthly income/expense detail
@@ -263,7 +301,9 @@ fun LopNavHost() {
                     },
                 ) { entry ->
                     val id = entry.arguments?.getLong("id") ?: 0L
-                    TransactionDetailScreen(transactionId = id, onBack = { navController.popBackStack() })
+                    TransactionDetailScreen(
+                        transactionId = id,
+                        onBack = { navController.popBackStack() })
                 }
             }
 
