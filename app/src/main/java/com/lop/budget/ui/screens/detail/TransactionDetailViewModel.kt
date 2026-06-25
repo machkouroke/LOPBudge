@@ -59,6 +59,12 @@ class TransactionDetailViewModel @Inject constructor(
         viewModelScope.launch { repo.setStatus(id, TransactionStatus.PAID.name) }
     }
 
+    /** Bascule l'état réglé/planifié (cohérent avec les swipe actions). */
+    fun toggleStatus() {
+        val id = txId.value ?: return
+        viewModelScope.launch { repo.toggleStatus(id) }
+    }
+
     fun delete(onDone: () -> Unit) {
         val id = txId.value ?: return
         viewModelScope.launch { repo.deleteTransaction(id); onDone() }

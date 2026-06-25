@@ -200,21 +200,24 @@ fun TransactionDetailScreen(
             }
         }
 
-        // Action : marquer payé
-        if (tx.status == TransactionStatus.PLANNED) {
-            item {
-                FloatingCard(
-                    modifier = Modifier.fillMaxWidth().clickableNoRipple {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        vm.markPaid()
-                    },
-                    color = ext.incomeContainer.copy(alpha = 0.4f),
-                ) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Check, null, tint = ext.income)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Marquer comme payé", color = ext.income, fontWeight = FontWeight.SemiBold)
-                    }
+        // Action : basculer réglé / à régler (cohérent avec le swipe droite).
+        item {
+            val isPaid = tx.status == TransactionStatus.PAID
+            FloatingCard(
+                modifier = Modifier.fillMaxWidth().clickableNoRipple {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    vm.toggleStatus()
+                },
+                color = ext.incomeContainer.copy(alpha = 0.4f),
+            ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Check, null, tint = ext.income)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (isPaid) "Remettre à régler" else "Marquer comme réglé",
+                        color = ext.income,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }

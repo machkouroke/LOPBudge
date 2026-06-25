@@ -73,6 +73,9 @@ fun SwipeableTransactionRow(
     val isIncome = tx.type == TransactionType.INCOME
     val isPaid = tx.status == TransactionStatus.PAID
 
+    // NB: `confirmValueChange` est signalé deprecated par Material3 mais reste l'API
+    // stable et recommandée pour des swipe actions à anchors fixes (toggle vs delete).
+    @Suppress("DEPRECATION")
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             when (value) {

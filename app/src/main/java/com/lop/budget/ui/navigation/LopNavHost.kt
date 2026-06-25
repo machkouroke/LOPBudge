@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,7 +28,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.lop.budget.ui.components.FloatingBottomBar
+import com.lop.budget.ui.components.LocalUndoController
+import com.lop.budget.ui.components.UndoBanner
 import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.rememberUndoController
 import com.lop.budget.ui.motion.MotionSpec
 import com.lop.budget.ui.screens.accounts.AccountsScreen
 import com.lop.budget.ui.screens.ai.AiScreen
@@ -52,9 +56,13 @@ fun LopNavHost() {
     val currentRoute = backStack?.destination?.route
     val showBar = currentRoute in Routes.rootRoutes
 
+    // Contrôleur d'annulation partagé (swipe → réglé / suppression) hissé une seule fois.
+    val undoController = rememberUndoController()
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
+      CompositionLocalProvider(LocalUndoController provides undoController) {
         // Mark the whole screen as the blur source.
         // This allows the bottom bar to blur what is behind it.
         Box(
@@ -322,6 +330,17 @@ fun LopNavHost() {
                         .clickableNoRipple { navController.navigate(Routes.SETTINGS) },
                 )
             }
+
+            // Bandeau "Annuler" global, positionné au-dessus de la bottom bar flottante.
+            UndoBanner(
+                controller = undoController,
+                hazeState = hazeState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = if (showBar) 108.dp else 24.dp),
+            )
         }
+      }
     }
 }

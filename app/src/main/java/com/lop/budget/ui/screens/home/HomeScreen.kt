@@ -42,10 +42,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.LocalUndoController
 import com.lop.budget.ui.components.MonthPickerBottomSheet
+import com.lop.budget.ui.components.SwipeableTransactionRow
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
@@ -63,6 +66,7 @@ fun HomeScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
+    val undo = LocalUndoController.current
 
     var isMonthPickerOpen by remember { mutableStateOf(false) }
 
@@ -206,45 +210,22 @@ fun HomeScreen(
 
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         day.transactions.forEach { tx ->
-                            val isIncome = tx.transaction.type == TransactionType.INCOME
-                            val amountColor = if (isIncome) ext.income else ext.expense
-                            val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
-                            val recurring = tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
-
-                            FloatingCard(
-                                modifier = Modifier.fillMaxWidth().clickableNoRipple { onOpenTransaction(tx.transaction.id) },
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CircleIcon(
-                                        icon = IconMapper.get(tx.category?.icon ?: "category"),
-                                        tint = catColor,
-                                        background = catColor.copy(alpha = 0.18f),
-                                    )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(tx.transaction.title, style = MaterialTheme.typography.titleMedium)
-                                            if (recurring) {
-                                                Spacer(Modifier.width(6.dp))
-                                                Icon(Icons.Filled.Repeat, "Récurrent", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
-                                            }
-                                        }
-                                        Text(
-                                            tx.account?.name ?: "",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    Text(
-                                        (if (isIncome) "+" else "−") + Format.money(tx.transaction.amount, state.currency),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = amountColor,
-                                        fontWeight = FontWeight.SemiBold,
-                                    )
-                                }
-                            }
+                            SwipeableTransactionRow(
+                                item = tx,
+                                currency = state.currency,
+                                onClick = { onOpenTransaction(tx.transaction.id) },
+                                onToggleStatus = {
+                                    val nowPaid = tx.transaction.status != TransactionStatus.PAID
+                                    vm.toggleStatus(tx.transaction.id)
+                                    undo.show(
+                                        message = if (nowPaid) "« ${tx.transaction.title} » marqué comme réglé" else "« ${tx.transaction.title} » remis à régler",
+                                    ) { vm.toggleStatus(tx.transaction.id) }
+                                },
+                                onDelete = {
+                                    vm.delete(tx)
+                                    undo.show(message = "« ${tx.transaction.title} » supprimé") { vm.restore(tx) }
+                                },
+                            )
                         }
                     }
                 }

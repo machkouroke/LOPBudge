@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -59,6 +60,21 @@ class HomeViewModel @Inject constructor(
 
     fun nextMonth() { month.value = month.value.plusMonths(1) }
     fun prevMonth() { month.value = month.value.minusMonths(1) }
+
+    /** Bascule l'état réglé/planifié d'une transaction (swipe droite). */
+    fun toggleStatus(id: Long) {
+        viewModelScope.launch { repo.toggleStatus(id) }
+    }
+
+    /** Supprime une transaction (swipe gauche). Le snapshot permet l'annulation. */
+    fun delete(snapshot: TransactionWithRelations) {
+        viewModelScope.launch { repo.deleteTransaction(snapshot.transaction.id) }
+    }
+
+    /** Restaure une transaction précédemment supprimée (undo). */
+    fun restore(snapshot: TransactionWithRelations) {
+        viewModelScope.launch { repo.restoreTransaction(snapshot) }
+    }
 
     private fun YearMonth.range(): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()
