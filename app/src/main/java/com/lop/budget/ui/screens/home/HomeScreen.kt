@@ -113,7 +113,8 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             // Section Total dépensé + Budget Donut
-            item {
+            // PERF FIX #4 : clé stable pour éviter la recréation du Canvas à chaque recomposition
+            item(key = "budget_summary") {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -448,9 +449,12 @@ fun HomeScreen(
                 )
             }
 
-            // Liste des transactions récentes
-            items(state.dayGroups, key = { it.date.toString() }) { day ->
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // PERF FIX #2 : forEach remplacé par items plats avec clés stables.
+            // Chaque en-tête de jour et chaque transaction sont des items LazyColumn indépendants,
+            // ce qui permet au framework de recycler chaque ligne individuellement.
+            state.dayGroups.forEach { day ->
+                // En-tête du groupe de jour
+                item(key = "day_header_${day.date}") {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -472,61 +476,65 @@ fun HomeScreen(
                             fontWeight = FontWeight.SemiBold,
                         )
                     }
+                }
 
-                    day.transactions.forEach { tx ->
-                        val isIncome = tx.transaction.type == TransactionType.INCOME
-                        val amountColor = if (isIncome) ext.income else ext.expense
-                        val catColor = tx.category?.colorArgb?.let { Color(it) }
-                            ?: MaterialTheme.colorScheme.primary
-                        val recurring =
-                            tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
+                // Items de transaction individuels — recyclables par LazyColumn
+                items(
+                    items = day.transactions,
+                    key = { tx -> "tx_${tx.transaction.id}" },
+                ) { tx ->
+                    val isIncome = tx.transaction.type == TransactionType.INCOME
+                    val amountColor = if (isIncome) ext.income else ext.expense
+                    val catColor = tx.category?.colorArgb?.let { Color(it) }
+                        ?: MaterialTheme.colorScheme.primary
+                    val recurring =
+                        tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
 
-                        FloatingCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickableNoRipple { onOpenTransaction(tx.transaction.id) },
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircleIcon(
-                                    icon = IconMapper.get(tx.category?.icon ?: "category"),
-                                    tint = catColor,
-                                    background = catColor.copy(alpha = 0.18f),
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            tx.transaction.title,
-                                            style = MaterialTheme.typography.titleMedium
-                                        )
-                                        if (recurring) {
-                                            Spacer(Modifier.width(6.dp))
-                                            Icon(
-                                                Icons.Filled.Repeat,
-                                                "Récurrent",
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(15.dp)
-                                            )
-                                        }
-                                    }
+                    FloatingCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickableNoRipple { onOpenTransaction(tx.transaction.id) },
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircleIcon(
+                                icon = IconMapper.get(tx.category?.icon ?: "category"),
+                                tint = catColor,
+                                background = catColor.copy(alpha = 0.18f),
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        tx.account?.name ?: "",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tx.transaction.title,
+                                        style = MaterialTheme.typography.titleMedium
                                     )
+                                    if (recurring) {
+                                        Spacer(Modifier.width(6.dp))
+                                        Icon(
+                                            Icons.Filled.Repeat,
+                                            "Récurrent",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
                                 }
                                 Text(
-                                    (if (isIncome) "+" else "−") + Format.money(
-                                        tx.transaction.amount,
-                                        state.currency
-                                    ),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = amountColor,
-                                    fontWeight = FontWeight.SemiBold,
+                                    tx.account?.name ?: "",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
+                            Text(
+                                (if (isIncome) "+" else "−") + Format.money(
+                                    tx.transaction.amount,
+                                    state.currency
+                                ),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = amountColor,
+                                fontWeight = FontWeight.SemiBold,
+                            )
                         }
                     }
                 }
