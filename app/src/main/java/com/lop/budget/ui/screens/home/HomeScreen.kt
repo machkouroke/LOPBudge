@@ -16,12 +16,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowDownward
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Wallet
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Icon
@@ -74,179 +78,337 @@ fun HomeScreen(
         )
     }
 
-    // UX: zone haute fixe, seul le contenu des transactions défile
-    Column(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+    val listState = rememberLazyListState()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 1. Contenu principal entièrement scrollable
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = 20.dp, end = 20.dp, top = 100.dp, bottom = 120.dp, // top padding pour laisser la place au header
+            ),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            // En-tête : Avatar + My space + Boutons actions
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Avatar ring (simulé)
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(com.lop.budget.ui.theme.AccentYellow.copy(alpha = 0.8f), androidx.compose.foundation.shape.CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(modifier = Modifier.size(16.dp).background(MaterialTheme.colorScheme.background, androidx.compose.foundation.shape.CircleShape))
-                    }
-                    Spacer(Modifier.width(12.dp))
+            // Section Total dépensé + Budget Donut
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(
-                        "My space",
-                        style = MaterialTheme.typography.titleMedium,
+                        "Total dépensé en juin",
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-                
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        Format.money(208.0, state.currency),
+                        style = MaterialTheme.typography.displayLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.AutoAwesome, null, tint = Color(0xFF2196F3), modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowDownward,
+                            null,
+                            tint = com.lop.budget.ui.theme.ExpenseCoral,
+                            modifier = Modifier.size(16.dp)
+                        )
                         Spacer(Modifier.width(4.dp))
-                        Text("1,16", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "${Format.money(1625.52, state.currency)} vs dernière période",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = com.lop.budget.ui.theme.ExpenseCoral
+                        )
                     }
-                    Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) // Placeholder wallet
-                    Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) // Placeholder menu
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // Carte Budget global (Donut 2%)
+                    FloatingCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Mini Donut Chart
+                            Box(modifier = Modifier.size(60.dp), contentAlignment = Alignment.Center) {
+                                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                                    drawArc(
+                                        color = Color.DarkGray,
+                                        startAngle = 0f,
+                                        sweepAngle = 360f,
+                                        useCenter = false,
+                                        style = androidx.compose.ui.graphics.drawscope.Stroke(12f)
+                                    )
+                                    drawArc(
+                                        color = com.lop.budget.ui.theme.CategoryOrange,
+                                        startAngle = -90f,
+                                        sweepAngle = 360f * 0.02f, // 2%
+                                        useCenter = false,
+                                        style = androidx.compose.ui.graphics.drawscope.Stroke(12f)
+                                    )
+                                }
+                                Text("2%", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    "${Format.money(7792.0, state.currency)} restants dans le budget",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "Juste au début. Votre budget\nest à peine touché.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
-            // Section Cartes Catégories (Restaurants, Groceries...)
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Carte Restaurants
-                FloatingCard(
-                    modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
-                ) {
-                    Column {
-                        CircleIcon(
-                            icon = Icons.Filled.ChevronRight, // Placeholder restaurant
-                            tint = com.lop.budget.ui.theme.CategoryOrange,
-                            background = com.lop.budget.ui.theme.CategoryOrange.copy(alpha = 0.2f),
-                            size = 36.dp
-                        )
-                        Spacer(Modifier.height(16.dp))
-                        Text("Restaurants", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(8.dp))
-                        Text(Format.money(128.0, state.currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text("/ ${Format.money(1372.0, state.currency)} left", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                
-                // Carte Groceries
-                FloatingCard(
-                    modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
-                ) {
-                    Column {
-                        CircleIcon(
-                            icon = Icons.Filled.ChevronRight, // Placeholder groceries
-                            tint = com.lop.budget.ui.theme.CategoryGreen,
-                            background = com.lop.budget.ui.theme.CategoryGreen.copy(alpha = 0.2f),
-                            size = 36.dp
-                        )
-                        Spacer(Modifier.height(16.dp))
-                        Text("Groceries", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(8.dp))
-                        Text(Format.money(55.0, state.currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text("/ ${Format.money(2445.0, state.currency)} left", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Section Cartes Catégories
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        "Dépenses par catégorie",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        // Carte Restaurants
+                        FloatingCard(
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+                        ) {
+                            Column {
+                                CircleIcon(
+                                    icon = Icons.Filled.ChevronRight, // Placeholder restaurant
+                                    tint = Color.Black,
+                                    background = com.lop.budget.ui.theme.CategoryOrange,
+                                    size = 48.dp
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    "Restaurants",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    Format.money(128.0, state.currency),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "/ ${Format.money(1372.0, state.currency)} restants",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // Carte Épicerie
+                        FloatingCard(
+                            modifier = Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+                        ) {
+                            Column {
+                                CircleIcon(
+                                    icon = Icons.Filled.ChevronRight, // Placeholder groceries
+                                    tint = Color.White,
+                                    background = com.lop.budget.ui.theme.CategoryGreen,
+                                    size = 48.dp
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    "Épicerie",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    Format.money(55.0, state.currency),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "/ ${Format.money(2445.0, state.currency)} restants",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }
-            
+
             // Section Upcoming this month
-            Text("Upcoming this month", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            
-            FloatingCard(
-                modifier = Modifier.fillMaxWidth().clickableNoRipple { /* Open Upcoming Modal */ },
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Stacked icons placeholder
-                        Box(modifier = Modifier.width(48.dp)) {
-                            CircleIcon(Icons.Filled.ChevronRight, Color.White, com.lop.budget.ui.theme.CategoryRed, 28.dp, Modifier.align(Alignment.CenterStart))
-                            CircleIcon(Icons.Filled.ChevronRight, Color.White, com.lop.budget.ui.theme.CategoryBlue, 28.dp, Modifier.align(Alignment.CenterEnd))
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text("Expenses", style = MaterialTheme.typography.titleMedium)
-                            Text("3 transactions", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    Text(Format.money(29.97, state.currency), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            
-            // Section Accounts
-            Text("Accounts", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            
-            FloatingCard(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
-            ) {
-                Column {
-                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Column {
-                            Text("Total", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(Format.money(672.36, state.currency), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        }
-                        // Placeholder pour le mini graphique
-                        Box(modifier = Modifier.size(80.dp, 30.dp).background(com.lop.budget.ui.theme.IncomeGreen.copy(alpha = 0.2f)))
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("R", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.background(Color.DarkGray, androidx.compose.foundation.shape.RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Text("Revolut", style = MaterialTheme.typography.bodyLarge)
-                        }
-                        Text(Format.money(622.36, state.currency), style = MaterialTheme.typography.bodyLarge)
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("M", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.background(Color.DarkGray, androidx.compose.foundation.shape.RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Text("Monobank", style = MaterialTheme.typography.bodyLarge)
-                        }
-                        Text(Format.money(50.0, state.currency), style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
-            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        "À venir ce mois-ci",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
 
-            // Titre Recent transactions
-            Text("Recent transactions", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            
-            // Petit "souffle" visuel avant la liste (évite la coupure nette)
-            Spacer(Modifier.height(8.dp))
-        }
-
-        val listState = rememberLazyListState()
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                state = listState,
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    start = 20.dp, end = 20.dp, top = 18.dp, bottom = 120.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(state.dayGroups, key = { it.date.toString() }) { day ->
-                    Row(
+                    FloatingCard(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 10.dp),
+                            .clickableNoRipple { /* Open Upcoming Modal */ },
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // Stacked icons placeholder
+                                Box(modifier = Modifier.width(48.dp)) {
+                                    CircleIcon(
+                                        Icons.Filled.ChevronRight,
+                                        Color.White,
+                                        com.lop.budget.ui.theme.CategoryRed,
+                                        28.dp,
+                                        Modifier.align(Alignment.CenterStart)
+                                    )
+                                    CircleIcon(
+                                        Icons.Filled.ChevronRight,
+                                        Color.White,
+                                        com.lop.budget.ui.theme.CategoryBlue,
+                                        28.dp,
+                                        Modifier.align(Alignment.CenterEnd)
+                                    )
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column {
+                                    Text("Expenses", style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        "3 transactions",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Text(
+                                Format.money(29.97, state.currency),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Section Accounts
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        "Accounts",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    FloatingCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+                    ) {
+                        Column {
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column {
+                                    Text(
+                                        "Total",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        Format.money(672.36, state.currency),
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                // Placeholder pour le mini graphique
+                                Box(
+                                    modifier = Modifier
+                                        .size(80.dp, 30.dp)
+                                        .background(com.lop.budget.ui.theme.IncomeGreen.copy(alpha = 0.2f))
+                                )
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        "R",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier
+                                            .background(
+                                                Color.DarkGray,
+                                                androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                                            )
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Text("Revolut", style = MaterialTheme.typography.bodyLarge)
+                                }
+                                Text(Format.money(622.36, state.currency), style = MaterialTheme.typography.bodyLarge)
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        "M",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier
+                                            .background(
+                                                Color.DarkGray,
+                                                androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                                            )
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Text("Monobank", style = MaterialTheme.typography.bodyLarge)
+                                }
+                                Text(Format.money(50.0, state.currency), style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Section Recent transactions
+            item {
+                Text(
+                    "Recent transactions",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            // Liste des transactions récentes
+            items(state.dayGroups, key = { it.date.toString() }) { day ->
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -267,177 +429,163 @@ fun HomeScreen(
                         )
                     }
 
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        day.transactions.forEach { tx ->
-                            val isIncome = tx.transaction.type == TransactionType.INCOME
-                            val amountColor = if (isIncome) ext.income else ext.expense
-                            val catColor = tx.category?.colorArgb?.let { Color(it) }
-                                ?: MaterialTheme.colorScheme.primary
-                            val recurring =
-                                tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
+                    day.transactions.forEach { tx ->
+                        val isIncome = tx.transaction.type == TransactionType.INCOME
+                        val amountColor = if (isIncome) ext.income else ext.expense
+                        val catColor = tx.category?.colorArgb?.let { Color(it) }
+                            ?: MaterialTheme.colorScheme.primary
+                        val recurring =
+                            tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
 
-                            FloatingCard(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickableNoRipple { onOpenTransaction(tx.transaction.id) },
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CircleIcon(
-                                        icon = IconMapper.get(tx.category?.icon ?: "category"),
-                                        tint = catColor,
-                                        background = catColor.copy(alpha = 0.18f),
-                                    )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                tx.transaction.title,
-                                                style = MaterialTheme.typography.titleMedium
-                                            )
-                                            if (recurring) {
-                                                Spacer(Modifier.width(6.dp))
-                                                Icon(
-                                                    Icons.Filled.Repeat,
-                                                    "Récurrent",
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(15.dp)
-                                                )
-                                            }
-                                        }
+                        FloatingCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickableNoRipple { onOpenTransaction(tx.transaction.id) },
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircleIcon(
+                                    icon = IconMapper.get(tx.category?.icon ?: "category"),
+                                    tint = catColor,
+                                    background = catColor.copy(alpha = 0.18f),
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
-                                            tx.account?.name ?: "",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            tx.transaction.title,
+                                            style = MaterialTheme.typography.titleMedium
                                         )
+                                        if (recurring) {
+                                            Spacer(Modifier.width(6.dp))
+                                            Icon(
+                                                Icons.Filled.Repeat,
+                                                "Récurrent",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                        }
                                     }
                                     Text(
-                                        (if (isIncome) "+" else "−") + Format.money(
-                                            tx.transaction.amount,
-                                            state.currency
-                                        ),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = amountColor,
-                                        fontWeight = FontWeight.SemiBold,
+                                        tx.account?.name ?: "",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
+                                Text(
+                                    (if (isIncome) "+" else "−") + Format.money(
+                                        tx.transaction.amount,
+                                        state.currency
+                                    ),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = amountColor,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
                             }
                         }
                     }
                 }
-
-                if (state.dayGroups.isEmpty()) {
-                    item {
-                        Text(
-                            "Aucune transaction ce mois-ci.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
             }
 
-            // Overlay "fade" en haut de la liste : masque la coupure quand des cards passent derrière.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(22.dp)
-                    .align(Alignment.TopCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.background,
-                                MaterialTheme.colorScheme.background.copy(alpha = 0f),
-                            ),
+            if (state.dayGroups.isEmpty()) {
+                item {
+                    Text(
+                        "Aucune transaction ce mois-ci.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        // 2. Header fixe en overlay avec effet gradient transparent
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0f),
                         ),
-                    ),
-            )
-        }
-    }
-}
-
-@Composable
-private fun SummaryTile(
-    modifier: Modifier,
-    label: String,
-    amount: String,
-    color: Color,
-    container: Color,
-    up: Boolean,
-) {
-    FloatingCard(modifier = modifier, color = container.copy(alpha = 0.45f)) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    if (up) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
-                    null, tint = color, modifier = Modifier.size(20.dp),
+                        startY = 0f,
+                        endY = 300f // Ajuster la hauteur du dégradé selon le besoin
+                    )
                 )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                amount,
-                style = MaterialTheme.typography.titleLarge,
-                color = color,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-@Composable
-private fun UpcomingRow(tx: TransactionWithRelations, currency: String, onClick: () -> Unit) {
-    val ext = LopTheme.extended
-    val isIncome = tx.transaction.type == TransactionType.INCOME
-    val amountColor = if (isIncome) ext.income else ext.expense
-    val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
-    val recurring = tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
-
-    FloatingCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickableNoRipple(onClick),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            CircleIcon(
-                icon = IconMapper.get(tx.category?.icon ?: "category"),
-                tint = catColor,
-                background = catColor.copy(alpha = 0.18f),
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(tx.transaction.title, style = MaterialTheme.typography.titleMedium)
-                    if (recurring) {
-                        Spacer(Modifier.width(6.dp))
-                        Icon(
-                            Icons.Filled.Repeat,
-                            "Récurrent",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(15.dp)
+                .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 16.dp)
+                .align(Alignment.TopCenter)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Avatar + My space
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .background(
+                                com.lop.budget.ui.theme.AccentYellow.copy(alpha = 0.8f),
+                                androidx.compose.foundation.shape.CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.background,
+                                    androidx.compose.foundation.shape.CircleShape
+                                )
                         )
                     }
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Mon espace",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
-                Text(
-                    Format.dayMonth(tx.transaction.date),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+
+                // Boutons actions
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                            .padding(horizontal = 12.dp, vertical = 10.dp)
+                    ) {
+                        Text("€ 1,16", style = MaterialTheme.typography.titleSmall)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.Wallet, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.BarChart, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
+                    }
+                }
             }
-            Text(
-                (if (isIncome) "+" else "−") + Format.money(tx.transaction.amount, currency),
-                style = MaterialTheme.typography.titleMedium,
-                color = amountColor,
-                fontWeight = FontWeight.SemiBold,
-            )
         }
     }
 }
