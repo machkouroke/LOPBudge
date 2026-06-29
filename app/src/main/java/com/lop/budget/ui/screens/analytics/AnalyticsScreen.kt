@@ -57,50 +57,207 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item { Text("Analyses", style = MaterialTheme.typography.headlineMedium) }
-
-        // Sélecteur Dépenses / Revenus
+        // En-tête : Back + Title + Actions (Category Detail Style)
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Seg("Dépenses", state.type == TransactionType.EXPENSE, ext.expense, Modifier.weight(1f)) { vm.setType(TransactionType.EXPENSE) }
-                Seg("Revenus", state.type == TransactionType.INCOME, ext.income, Modifier.weight(1f)) { vm.setType(TransactionType.INCOME) }
-            }
-        }
-
-        item {
-            Text(
-                "${state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }} ${state.month.year}",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        item {
-            FloatingCard(Modifier.fillMaxWidth()) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    if (slices.isEmpty()) {
-                        Text("Aucune donnée ce mois-ci", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(40.dp))
-                    } else {
-                        DonutChart(slices = slices) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Total", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(Format.money(state.total, state.currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, "Retour", modifier = Modifier.size(26.dp).clickableNoRipple { /* Back */ })
+                Text("Restaurants", style = MaterialTheme.typography.titleLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.CalendarMonth, "Calendrier", modifier = Modifier.size(24.dp))
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.MoreHoriz, "Plus", modifier = Modifier.size(24.dp))
                 }
             }
         }
 
-        items(state.breakdown, key = { it.name }) { b ->
-            FloatingCard(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
+        // Section Spent in budget period
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column {
+                    Text("Spent in budget period", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(4.dp))
+                    Text(Format.money(128.0, state.currency), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.ArrowUpward, null, tint = com.lop.budget.ui.theme.ExpenseCoral, modifier = Modifier.size(14.dp))
+                        Text(Format.money(109.89, state.currency) + " vs last period", style = MaterialTheme.typography.bodyMedium, color = com.lop.budget.ui.theme.ExpenseCoral)
+                    }
+                }
+                com.lop.budget.ui.components.CircleIcon(
+                    icon = androidx.compose.material.icons.Icons.Filled.Restaurant, // Placeholder
+                    tint = Color.Black,
+                    background = com.lop.budget.ui.theme.CategoryOrange,
+                    size = 64.dp
+                )
+            }
+        }
+
+        // Graphique simulé (Ligne)
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .padding(vertical = 24.dp)
+            ) {
+                // Ligne de limite budget
+                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawLine(
+                        color = Color.DarkGray,
+                        start = androidx.compose.ui.geometry.Offset(0f, size.height * 0.2f),
+                        end = androidx.compose.ui.geometry.Offset(size.width, size.height * 0.2f),
+                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                    )
+                }
+                Text("$1 500", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.TopEnd))
+                
+                // Ligne Actual
+                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawLine(
+                        color = com.lop.budget.ui.theme.CategoryOrange,
+                        start = androidx.compose.ui.geometry.Offset(0f, size.height * 0.8f),
+                        end = androidx.compose.ui.geometry.Offset(size.width * 0.4f, size.height * 0.8f),
+                        strokeWidth = 6f
+                    )
+                    drawCircle(color = com.lop.budget.ui.theme.CategoryOrange, radius = 12f, center = androidx.compose.ui.geometry.Offset(0f, size.height * 0.8f))
+                }
+                
+                // Ligne Forecast
+                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawLine(
+                        color = Color.Gray,
+                        start = androidx.compose.ui.geometry.Offset(0f, size.height * 0.8f),
+                        end = androidx.compose.ui.geometry.Offset(size.width, size.height * 0.3f),
+                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f),
+                        strokeWidth = 4f
+                    )
+                }
+                
+                // Légende X-axis
+                Row(
+                    modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("1", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("6", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("11", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("16", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("20", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("25", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("30", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        
+        // Légende Graphique
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(14.dp).clip(CircleShape).background(Color(b.colorArgb)))
+                    Box(Modifier.size(10.dp).clip(CircleShape).background(com.lop.budget.ui.theme.CategoryOrange))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Actual", style = MaterialTheme.typography.bodyMedium)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(10.dp).clip(CircleShape).background(Color.Gray))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Forecast", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+
+        // Cartes Budget & Forecast
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 16.dp)) {
+                // Carte Budget
+                FloatingCard(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.AccountBalanceWallet, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Budget", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Mini Donut Chart
+                            Box(modifier = Modifier.size(60.dp), contentAlignment = Alignment.Center) {
+                                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                                    drawArc(color = Color.DarkGray, startAngle = 0f, sweepAngle = 360f, useCenter = false, style = androidx.compose.ui.graphics.drawscope.Stroke(12f))
+                                    drawArc(color = com.lop.budget.ui.theme.CategoryOrange, startAngle = -90f, sweepAngle = 32f, useCenter = false, style = androidx.compose.ui.graphics.drawscope.Stroke(12f))
+                                }
+                                Text("9%", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(Modifier.width(16.dp))
+                            Column {
+                                Text(Format.money(1372.0, state.currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                Text("Left", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+                
+                // Carte Forecast
+                FloatingCard(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.AutoGraph, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Forecast", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Spacer(Modifier.height(20.dp))
+                        Text(Format.money(430.0, state.currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Spend ${Format.money(45.73, state.currency)} / day\nto stay within the limit", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+        
+        // Today Transactions
+        item {
+            Row(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Today", style = MaterialTheme.typography.titleMedium)
+                Text(Format.money(128.0, state.currency), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        
+        item {
+            FloatingCard(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    com.lop.budget.ui.components.CircleIcon(
+                        icon = androidx.compose.material.icons.Icons.Filled.Restaurant, // Placeholder
+                        tint = Color.Black,
+                        background = com.lop.budget.ui.theme.CategoryOrange,
+                        size = 48.dp
+                    )
                     Spacer(Modifier.width(12.dp))
-                    Text(b.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    Text("${(b.share * 100).toInt()} %", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(12.dp))
-                    Text(Format.money(b.total, state.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Column(Modifier.weight(1f)) {
+                        Text("Restaurants", style = MaterialTheme.typography.titleMedium)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("R", style = MaterialTheme.typography.labelSmall, modifier = Modifier.background(Color.DarkGray, androidx.compose.foundation.shape.RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 1.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Revolut", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Text(Format.money(128.0, state.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

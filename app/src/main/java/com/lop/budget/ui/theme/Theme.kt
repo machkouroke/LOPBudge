@@ -70,8 +70,8 @@ object LopTheme {
  */
 @Composable
 fun LopBudgeTheme(
-    themeMode: ThemeMode = ThemeMode.SYSTEM,
-    dynamicColor: Boolean = true,
+    themeMode: ThemeMode = ThemeMode.DARK, // Forcer le Dark Mode par défaut pour le nouveau design
+    dynamicColor: Boolean = false, // Désactiver les couleurs dynamiques par défaut pour garder notre palette
     content: @Composable () -> Unit,
 ) {
     val systemDark = isSystemInDarkTheme()

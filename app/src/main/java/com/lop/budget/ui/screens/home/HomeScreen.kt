@@ -82,123 +82,152 @@ fun HomeScreen(
                 .padding(start = 20.dp, end = 20.dp, top = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(
-                "Tableau de bord",
-                style = MaterialTheme.typography.headlineMedium,
-            )
-
-            // Bandeau IA
-            FloatingCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickableNoRipple(onOpenAi),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+            // En-tête : Avatar + My space + Boutons actions
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text("Assistant LOP", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "Au rythme actuel, tu peux épargner ~180 € ce mois-ci. Touche pour en discuter.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-
-            // Sélecteur de mois + solde projeté
-            FloatingCard(modifier = Modifier.fillMaxWidth()) {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                    // Avatar ring (simulé)
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(com.lop.budget.ui.theme.AccentYellow.copy(alpha = 0.8f), androidx.compose.foundation.shape.CircleShape),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Filled.ChevronLeft,
-                            "Mois précédent",
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clickableNoRipple(vm::prevMonth)
-                        )
-
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                "${
-                                    state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE)
-                                        .replaceFirstChar { it.uppercase() }
-                                } ${state.month.year}",
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.clickableNoRipple { isMonthPickerOpen = true },
-                            )
-
-                            if (!state.isCurrentMonth) {
-                                Spacer(Modifier.height(6.dp))
-                                AssistChip(
-                                    onClick = vm::goToCurrentMonth,
-                                    label = { Text("Aujourd’hui") },
-                                    colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(
-                                            alpha = 0.85f
-                                        ),
-                                        labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    ),
-                                )
-                            }
-                        }
-
-                        Icon(
-                            Icons.Filled.ChevronRight,
-                            "Mois suivant",
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clickableNoRipple(vm::nextMonth)
-                        )
+                        Box(modifier = Modifier.size(16.dp).background(MaterialTheme.colorScheme.background, androidx.compose.foundation.shape.CircleShape))
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.width(12.dp))
                     Text(
-                        "Solde projeté",
-                        style = MaterialTheme.typography.bodyMedium,
+                        "My space",
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(
-                        Format.money(state.projectedBalance, state.currency),
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    state.daysUntilPayday?.let {
-                        Spacer(Modifier.height(4.dp))
+                }
+                
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.AutoAwesome, null, tint = Color(0xFF2196F3), modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("1,16", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) // Placeholder wallet
+                    Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) // Placeholder menu
+                }
+            }
 
+            // Section Cartes Catégories (Restaurants, Groceries...)
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Carte Restaurants
+                FloatingCard(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+                ) {
+                    Column {
+                        CircleIcon(
+                            icon = Icons.Filled.ChevronRight, // Placeholder restaurant
+                            tint = com.lop.budget.ui.theme.CategoryOrange,
+                            background = com.lop.budget.ui.theme.CategoryOrange.copy(alpha = 0.2f),
+                            size = 36.dp
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text("Restaurants", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(8.dp))
+                        Text(Format.money(128.0, state.currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text("/ ${Format.money(1372.0, state.currency)} left", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                
+                // Carte Groceries
+                FloatingCard(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+                ) {
+                    Column {
+                        CircleIcon(
+                            icon = Icons.Filled.ChevronRight, // Placeholder groceries
+                            tint = com.lop.budget.ui.theme.CategoryGreen,
+                            background = com.lop.budget.ui.theme.CategoryGreen.copy(alpha = 0.2f),
+                            size = 36.dp
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text("Groceries", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(8.dp))
+                        Text(Format.money(55.0, state.currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text("/ ${Format.money(2445.0, state.currency)} left", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            
+            // Section Upcoming this month
+            Text("Upcoming this month", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            
+            FloatingCard(
+                modifier = Modifier.fillMaxWidth().clickableNoRipple { /* Open Upcoming Modal */ },
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Stacked icons placeholder
+                        Box(modifier = Modifier.width(48.dp)) {
+                            CircleIcon(Icons.Filled.ChevronRight, Color.White, com.lop.budget.ui.theme.CategoryRed, 28.dp, Modifier.align(Alignment.CenterStart))
+                            CircleIcon(Icons.Filled.ChevronRight, Color.White, com.lop.budget.ui.theme.CategoryBlue, 28.dp, Modifier.align(Alignment.CenterEnd))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text("Expenses", style = MaterialTheme.typography.titleMedium)
+                            Text("3 transactions", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Text(Format.money(29.97, state.currency), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            
+            // Section Accounts
+            Text("Accounts", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            
+            FloatingCard(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+            ) {
+                Column {
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Column {
+                            Text("Total", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(Format.money(672.36, state.currency), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        }
+                        // Placeholder pour le mini graphique
+                        Box(modifier = Modifier.size(80.dp, 30.dp).background(com.lop.budget.ui.theme.IncomeGreen.copy(alpha = 0.2f)))
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("R", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.background(Color.DarkGray, androidx.compose.foundation.shape.RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("Revolut", style = MaterialTheme.typography.bodyLarge)
+                        }
+                        Text(Format.money(622.36, state.currency), style = MaterialTheme.typography.bodyLarge)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("M", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.background(Color.DarkGray, androidx.compose.foundation.shape.RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("Monobank", style = MaterialTheme.typography.bodyLarge)
+                        }
+                        Text(Format.money(50.0, state.currency), style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }
 
-            // Revenus / Dépenses du mois
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                SummaryTile(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickableNoRipple { onOpenMonthly(TransactionType.INCOME, state.month) },
-                    label = "Revenus",
-                    amount = Format.money(state.monthIncome, state.currency),
-                    color = ext.income,
-                    container = ext.incomeContainer,
-                    up = true,
-                )
-                SummaryTile(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickableNoRipple { onOpenMonthly(TransactionType.EXPENSE, state.month) },
-                    label = "Dépenses",
-                    amount = Format.money(state.monthExpense, state.currency),
-                    color = ext.expense,
-                    container = ext.expenseContainer,
-                    up = false,
-                )
-            }
-
+            // Titre Recent transactions
+            Text("Recent transactions", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            
             // Petit "souffle" visuel avant la liste (évite la coupure nette)
             Spacer(Modifier.height(8.dp))
         }

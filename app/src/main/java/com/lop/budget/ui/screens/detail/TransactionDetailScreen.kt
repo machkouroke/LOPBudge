@@ -64,9 +64,10 @@ fun TransactionDetailScreen(
     val twr = state.transaction
     val tx = twr?.transaction
 
+    // Bottom Sheet Style (Redesign)
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 20.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp, bottom = 40.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 40.dp, bottom = 40.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
@@ -75,9 +76,30 @@ fun TransactionDetailScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", modifier = Modifier.size(26.dp).clickableNoRipple(onBack))
-                Text("Détail", style = MaterialTheme.typography.titleLarge)
-                Icon(Icons.Filled.Delete, "Supprimer", modifier = Modifier.size(24.dp).clickableNoRipple { vm.delete(onBack) })
+                // Close button (cross)
+                Box(
+                    modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.CircleShape).clickableNoRipple(onBack),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(androidx.compose.material.icons.Icons.Filled.Close, "Fermer", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Edit button
+                    Box(
+                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.CircleShape).clickableNoRipple { /* Edit */ },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.Edit, "Modifier", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    // Delete button
+                    Box(
+                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.CircleShape).clickableNoRipple { vm.delete(onBack) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.Delete, "Supprimer", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         }
 
@@ -89,32 +111,71 @@ fun TransactionDetailScreen(
         val isIncome = tx.type == TransactionType.INCOME
         val accent = if (isIncome) ext.income else ext.expense
 
-        // En-tête montant
+        // En-tête montant (Redesign)
         item {
-            FloatingCard(Modifier.fillMaxWidth()) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    val catColor = twr.category?.colorArgb?.let { Color(it) } ?: accent
-                    CircleIcon(IconMapper.get(twr.category?.icon ?: "category"), catColor, catColor.copy(alpha = 0.18f), size = 60.dp)
-                    Spacer(Modifier.height(10.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                val catColor = twr.category?.colorArgb?.let { Color(it) } ?: com.lop.budget.ui.theme.CategoryOrange
+                CircleIcon(IconMapper.get(twr.category?.icon ?: "category"), Color.White, catColor, size = 80.dp)
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    Format.money(tx.amount),
+                    style = MaterialTheme.typography.displayMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        
+        // Détails en liste
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 24.dp)) {
+                // Category
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(tx.title, style = MaterialTheme.typography.titleLarge)
-                        if (tx.recurrenceFrequency != RecurrenceFrequency.NONE) {
-                            Spacer(Modifier.width(8.dp))
-                            Icon(Icons.Filled.Repeat, "Récurrent", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                        }
+                        Icon(androidx.compose.material.icons.Icons.Filled.Category, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Category", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Text(
-                        (if (isIncome) "+" else "−") + Format.money(tx.amount),
-                        style = MaterialTheme.typography.displaySmall,
-                        color = accent,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(Format.fullDate(tx.date), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(6.dp))
-                    PillTag(
-                        text = if (tx.status == TransactionStatus.PAID) "Payé" else "Planifié",
-                        color = if (tx.status == TransactionStatus.PAID) ext.income else MaterialTheme.colorScheme.primary,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val catColor = twr.category?.colorArgb?.let { Color(it) } ?: com.lop.budget.ui.theme.CategoryOrange
+                        CircleIcon(IconMapper.get(twr.category?.icon ?: "category"), Color.White, catColor, size = 24.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(twr.category?.name ?: "Restaurants", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                
+                // Date
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.CalendarMonth, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Date", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text(Format.fullDate(tx.date), style = MaterialTheme.typography.bodyLarge)
+                }
+                
+                // Type
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(androidx.compose.material.icons.Icons.Filled.SyncAlt, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Type", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text(if (isIncome) "Income" else "Expense", style = MaterialTheme.typography.bodyLarge)
+                }
+                
+                // Account
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(androidx.compose.material.icons.Icons.Filled.AccountBalance, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Account", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("R", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.background(Color.DarkGray, androidx.compose.foundation.shape.RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(twr.account?.name ?: "Revolut", style = MaterialTheme.typography.bodyLarge)
+                    }
                 }
             }
         }
