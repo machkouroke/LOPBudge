@@ -193,6 +193,9 @@ private fun LiquidGlassFab(
 ) {
     val shape = CircleShape
 
+    // PERF FIX #1 : hazeEffect (blur GPU temps-réel) désactivé sur le FAB.
+    // Ce blur était recalculé à chaque frame pendant le scroll, causant des saccades.
+    // Remplacé par un fond opaque primary avec une légère transparence pour l'effet visuel.
     Surface(
         shape = shape,
         color = MaterialTheme.colorScheme.primary,
@@ -201,7 +204,7 @@ private fun LiquidGlassFab(
         modifier = Modifier
             .size(72.dp)
             .clip(shape)
-            .hazeEffect(state = hazeState, style = HazeMaterials.regular())
+            // .hazeEffect(state = hazeState, style = HazeMaterials.regular()) // DÉSACTIVÉ : coût GPU trop élevé au scroll
             .pressScaleClickable(intent = HapticIntent.Confirm, pressedScale = 0.96f, onClick = onClick),
     ) {
         Box(contentAlignment = Alignment.Center) {

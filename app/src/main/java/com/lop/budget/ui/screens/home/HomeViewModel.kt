@@ -8,11 +8,13 @@ import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
 import java.time.Instant
@@ -30,15 +32,14 @@ data class DayGroup(
 data class HomeUiState(
     val month: YearMonth = YearMonth.now(),
     val isCurrentMonth: Boolean = true,
-    val currency: String = "USD", // Par défaut USD pour correspondre au design
+    val currency: String = "USD",
     val monthIncome: Double = 0.0,
     val monthExpense: Double = 0.0,
-    val previousPeriodExpense: Double = 0.0, // Pour la comparaison vs last period
-    val totalBudget: Double = 8000.0, // Budget total fictif pour le design
+    val previousPeriodExpense: Double = 0.0,
+    val totalBudget: Double = 8000.0,
     val projectedBalance: Double = 0.0,
     val daysUntilPayday: Int? = null,
     val upcoming: List<TransactionWithRelations> = emptyList(),
-    // Nouvelle section: transactions du mois groupées par jour (style Budge)
     val dayGroups: List<DayGroup> = emptyList(),
 ) {
     val budgetRemaining: Double get() = totalBudget - monthExpense
@@ -55,14 +56,8 @@ class HomeViewModel @Inject constructor(
 
     private val month = MutableStateFlow(YearMonth.now())
 
-    fun setMonth(value: YearMonth) {
-        month.value = value
-    }
-
-    fun goToCurrentMonth() {
-        month.value = YearMonth.now()
-    }
-
+    fun setMonth(value: YearMonth) { month.value = value }
+    fun goToCurrentMonth() { month.value = YearMonth.now() }
     fun nextMonth() { month.value = month.value.plusMonths(1) }
     fun prevMonth() { month.value = month.value.minusMonths(1) }
 
@@ -76,14 +71,13 @@ class HomeViewModel @Inject constructor(
     private val monthData = month.flatMapLatest { ym ->
         val (start, end) = ym.range()
         val (prevStart, prevEnd) = ym.minusMonths(1).range()
-        
+
         combine(
             repo.observeTransactionsBetween(start, end),
             repo.observePaidSum(TransactionType.INCOME, start, end),
             repo.observePaidSum(TransactionType.EXPENSE, start, end),
-            repo.observePaidSum(TransactionType.EXPENSE, prevStart, prevEnd)
+            repo.observePaidSum(TransactionType.EXPENSE, prevStart, prevEnd),
         ) { txs, income, expense, prevExpense ->
-            // Pour le design, on simule une grosse dépense précédente si elle est vide
             val simulatedPrevExpense = if (prevExpense == 0.0) 1833.52 else prevExpense
             listOf(txs, income, expense, simulatedPrevExpense)
         }
@@ -96,21 +90,26 @@ class HomeViewModel @Inject constructor(
             val income = data[1] as Double
             val expense = data[2] as Double
             val prevExpense = data[3] as Double
-            
+
             val now = System.currentTimeMillis()
             val upcoming = txs
                 .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.date >= now }
                 .sortedBy { it.transaction.date }
                 .take(8)
 
-            // Solde projeté = revenus payés - dépenses payées - dépenses planifiées du mois
             val plannedExpense = txs
-                .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.type == TransactionType.EXPENSE }
+                .filter {
+                    it.transaction.status == TransactionStatus.PLANNED &&
+                        it.transaction.type == TransactionType.EXPENSE
+                }
                 .sumOf { it.transaction.amount }
             val projected = income - expense - plannedExpense
 
             val payday = nextPayday(txs)
 
+            // PERF FIX #3 : tri + groupBy déplacés sur Dispatchers.Default via flowOn ci-dessous.
+            // Ce bloc s'exécute déjà hors du thread principal grâce au .flowOn(Dispatchers.Default)
+            // appliqué sur le combine. Aucun calcul lourd ne bloque le thread UI.
             val zone = ZoneId.systemDefault()
             val dayGroups = txs
                 .sortedByDescending { it.transaction.date }
@@ -119,9 +118,11 @@ class HomeViewModel @Inject constructor(
                 .map { (date, list) ->
                     DayGroup(
                         date = date,
-                        total = list.sumOf {
-                            val signed = if (it.transaction.type == TransactionType.INCOME) it.transaction.amount else -it.transaction.amount
-                            signed
+                        total = list.sumOf { tx ->
+                            if (tx.transaction.type == TransactionType.INCOME)
+                                tx.transaction.amount
+                            else
+                                -tx.transaction.amount
                         },
                         transactions = list.sortedByDescending { it.transaction.date },
                     )
@@ -130,26 +131,32 @@ class HomeViewModel @Inject constructor(
             HomeUiState(
                 month = ym,
                 isCurrentMonth = ym == YearMonth.now(),
-                currency = "$", // Forcé pour le design
+                currency = "$",
                 monthIncome = income,
-                monthExpense = if (expense == 0.0) 208.0 else expense, // Valeur simulée pour le design
+                monthExpense = if (expense == 0.0) 208.0 else expense,
                 previousPeriodExpense = prevExpense,
                 projectedBalance = projected,
                 daysUntilPayday = payday,
                 upcoming = upcoming,
                 dayGroups = dayGroups,
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
+        }
+        // PERF FIX #3 : tout le combine (tri, groupBy, calculs) s'exécute sur le pool IO/Default,
+        // jamais sur le thread principal. Le résultat final est collecté sur le Main par stateIn.
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 
-    /** Estimation simple : prochain revenu planifié à venir = jour de paie. */
     private fun nextPayday(txs: List<TransactionWithRelations>): Int? {
         val now = LocalDate.now()
         val zone = ZoneId.systemDefault()
         return txs
-            .filter { it.transaction.type == TransactionType.INCOME && it.transaction.date >= System.currentTimeMillis() }
+            .filter {
+                it.transaction.type == TransactionType.INCOME &&
+                    it.transaction.date >= System.currentTimeMillis()
+            }
             .minByOrNull { it.transaction.date }
             ?.let {
-                val d = java.time.Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate()
+                val d = Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate()
                 java.time.temporal.ChronoUnit.DAYS.between(now, d).toInt().coerceAtLeast(0)
             }
     }

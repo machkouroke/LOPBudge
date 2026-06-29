@@ -71,18 +71,19 @@ fun Modifier.clickableHaptic(
 /**
  * Micro-animation d'appui (press scale) pour rendre les taps plus "vivants".
  *
- * Utilisation: modifier.pressScaleClickable(...)
+ * PERF FIX #5 : remplacement de Modifier.composed{} par un @Composable wrapper.
+ * `composed {}` crée une nouvelle instance de MutableInteractionSource à chaque recomposition
+ * si la référence n'est pas stable, ce qui multiplie les allocations avec des listes longues.
+ * On expose désormais un @Composable Modifier qui mémorise explicitement ses dépendances.
  */
+@Composable
 fun Modifier.pressScaleClickable(
     intent: HapticIntent? = null,
     pressedScale: Float = 0.97f,
     onClick: () -> Unit,
-): Modifier = composed {
+): Modifier {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed = interactionSource.collectIsPressedAsState()
-
-    // IMPORTANT: on capture LocalHapticFeedback.current ici (contexte @Composable)
-    // et on ne le lit PAS à l'intérieur du lambda onClick.
     val haptic = LocalHapticFeedback.current
     val map = rememberHapticMapper()
 
@@ -92,16 +93,13 @@ fun Modifier.pressScaleClickable(
         label = "pressScale",
     )
 
-    this
+    return this
         .scale(scale.value)
         .clickable(
             interactionSource = interactionSource,
             indication = null,
             onClick = {
-                // Haptique au moment du click (pas au press) pour éviter le spam.
-                if (intent != null) {
-                    haptic.performHapticFeedback(map(intent))
-                }
+                if (intent != null) haptic.performHapticFeedback(map(intent))
                 onClick()
             },
         )
