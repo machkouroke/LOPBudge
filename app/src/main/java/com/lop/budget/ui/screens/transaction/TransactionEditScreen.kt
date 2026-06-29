@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -68,7 +68,15 @@ fun TransactionEditScreen(
     val accent = if (form.type == TransactionType.INCOME) ext.income else ext.expense
     val typeCategories = categories.filter { it.type == form.type }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+    // Dans un ModalBottomSheet, fillMaxSize() ne fonctionne pas (hauteur inconnue).
+    // On utilise fillMaxWidth() + fillMaxHeight(0.92f) pour que le contenu
+    // occupe 92% de l'écran en mode Expanded et soit visible en PartiallyExpanded.
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.92f)
+            .padding(horizontal = 20.dp),
+    ) {
         // En-tête simplifié pour le bottom sheet (icône de fermeture au lieu de retour)
         Row(
             Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
