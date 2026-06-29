@@ -1,16 +1,24 @@
 package com.lop.budget.ui.screens.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,18 +26,25 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -61,6 +76,11 @@ fun HomeScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+
+    // LOP-49 : insets dynamiques pour header et contenu
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     var isMonthPickerOpen by remember { mutableStateOf(false) }
 
@@ -73,14 +93,19 @@ fun HomeScreen(
     }
 
     val listState = rememberLazyListState()
+    // LOP-50 : bouton visible dès que le premier item n'est plus visible
+    val showScrollTop = listState.firstVisibleItemIndex > 0
 
     Box(modifier = Modifier.fillMaxSize()) {
         // 1. Contenu principal entièrement scrollable
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = listState,
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = 20.dp, end = 20.dp, top = 100.dp, bottom = 120.dp, // top padding pour laisser la place au header
+            contentPadding = PaddingValues(
+                // LOP-49 : top = status bar + hauteur header (~72 dp)
+                start = 20.dp, end = 20.dp,
+                top = statusBarPadding + 72.dp,
+                bottom = 120.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
@@ -493,6 +518,39 @@ fun HomeScreen(
             }
         }
 
+        // LOP-50 : bouton scroll-to-top flottant (bas gauche, au-dessus de la bottom bar)
+        AnimatedVisibility(
+            visible = showScrollTop,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(
+                    start = 20.dp,
+                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 88.dp,
+                ),
+        ) {
+            Surface(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    scope.launch { listState.animateScrollToItem(0) }
+                },
+                shape = androidx.compose.foundation.shape.CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
+                shadowElevation = 4.dp,
+                modifier = Modifier.size(48.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Icon(
+                        Icons.Filled.ArrowUpward,
+                        contentDescription = "Retour en haut",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+        }
+
         // 2. Header fixe en overlay avec effet gradient transparent
         Box(
             modifier = Modifier
@@ -505,10 +563,11 @@ fun HomeScreen(
                             MaterialTheme.colorScheme.background.copy(alpha = 0f),
                         ),
                         startY = 0f,
-                        endY = 300f // Ajuster la hauteur du dégradé selon le besoin
+                        endY = 300f
                     )
                 )
-                .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 16.dp)
+                // LOP-49 : top padding dynamique = status bar + marge
+                .padding(start = 20.dp, end = 20.dp, top = statusBarPadding + 12.dp, bottom = 16.dp)
                 .align(Alignment.TopCenter)
         ) {
             Row(
@@ -554,6 +613,29 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // LOP-51 : chip mois courant → ouvre le MonthPickerBottomSheet
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                                androidx.compose.foundation.shape.RoundedCornerShape(50),
+                            )
+                            .clickableNoRipple { isMonthPickerOpen = true }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                    ) {
+                        Icon(
+                            Icons.Filled.CalendarMonth,
+                            contentDescription = "Changer de mois",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            Format.monthYear(state.month),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                    }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
