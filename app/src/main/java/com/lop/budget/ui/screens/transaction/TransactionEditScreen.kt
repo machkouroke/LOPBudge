@@ -239,12 +239,69 @@ fun TransactionEditScreen(
 
         // Pavé numérique (reste fixé en bas du bottom sheet)
         NumericKeypad(
-            onDigit = { vm.appendDigit(it) },
+            onDigit = { digit -> vm.appendDigit(digit) },
             onDelete = { vm.deleteDigit() },
             onValidate = { vm.save(onBack) },
             accent = accent,
         )
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun NumericKeypad(
+    onDigit: (String) -> Unit,
+    onDelete: () -> Unit,
+    onValidate: () -> Unit,
+    accent: Color,
+) {
+    val rows = listOf(
+        listOf("1", "2", "3"),
+        listOf("4", "5", "6"),
+        listOf("7", "8", "9"),
+        listOf(",", "0", "⌫"),
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        rows.forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { key ->
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(54.dp)
+                            .pressScaleClickable(intent = HapticIntent.Tap) {
+                                when (key) {
+                                    "⌫" -> onDelete()
+                                    else -> onDigit(key)
+                                }
+                            },
+                        shape = MaterialTheme.shapes.large,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (key == "⌫") Icon(Icons.Filled.Backspace, "Effacer")
+                            else Text(key, style = MaterialTheme.typography.titleLarge)
+                        }
+                    }
+                }
+            }
+        }
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp)
+                .pressScaleClickable(intent = HapticIntent.Confirm, onClick = onValidate),
+            shape = MaterialTheme.shapes.large,
+            color = accent,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Check, null, tint = Color.Black)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Enregistrer", color = Color.Black, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
     }
 }
 
