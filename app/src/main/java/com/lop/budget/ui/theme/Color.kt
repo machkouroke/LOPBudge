@@ -19,13 +19,13 @@ val LavenderOnSecondary = Color(0xFF332D41)
 val LavenderSecondaryContainer = Color(0xFF4A4458)
 val LavenderOnSecondaryContainer = Color(0xFFE8DEF8)
 
-// --- Surfaces dark OLED ---
-val DarkBackground = Color(0xFF000000)
-val DarkSurface = Color(0xFF0F0E13)
-val DarkSurfaceVariant = Color(0xFF1C1B22)
-val DarkOnSurface = Color(0xFFE6E1E9)
-val DarkOnSurfaceVariant = Color(0xFFCAC4D0)
-val DarkOutline = Color(0xFF49454F)
+// --- Surfaces dark OLED (Redesign) ---
+val DarkBackground = Color(0xFF1A1A1A) // Fond principal très sombre
+val DarkSurface = Color(0xFF1E1E1E) // Bottom sheets
+val DarkSurfaceVariant = Color(0xFF242424) // Cartes arrondies
+val DarkOnSurface = Color(0xFFFFFFFF) // Texte principal blanc
+val DarkOnSurfaceVariant = Color(0xFF888888) // Texte secondaire gris
+val DarkOutline = Color(0xFF333333) // Séparateurs discrets
 
 // --- Surfaces clair ---
 val LightBackground = Color(0xFFFEF7FF)
@@ -38,8 +38,15 @@ val LightOnSurfaceVariant = Color(0xFF49454F)
  * Couleurs sémantiques de l'app (constantes, ne dépendent PAS de la couleur dynamique) :
  * vert = revenu, corail = dépense. Exposées via [LopExtendedColors].
  */
-val IncomeGreen = Color(0xFF4ADE80)
-val IncomeGreenContainer = Color(0xFF143D24)
-val ExpenseCoral = Color(0xFFFF6B6B)
+val IncomeGreen = Color(0xFF4CAF50) // Vert "Groceries"
+val IncomeGreenContainer = Color(0xFF1B3B22)
+val ExpenseCoral = Color(0xFFE53935) // Rouge tendance négative
 val ExpenseCoralContainer = Color(0xFF4A1717)
 val WarningAmber = Color(0xFFFFB74D)
+
+// --- Nouvelles couleurs sémantiques (Redesign) ---
+val AccentYellow = Color(0xFFC8A84B) // Avatar ring, icônes accent
+val CategoryOrange = Color(0xFFE8732A) // Icône Restaurants
+val CategoryGreen = Color(0xFF4CAF50) // Icône Groceries
+val CategoryBlue = Color(0xFF2196F3) // Prime Video
+val CategoryRed = Color(0xFFE53935) // Apple Music, YouTube

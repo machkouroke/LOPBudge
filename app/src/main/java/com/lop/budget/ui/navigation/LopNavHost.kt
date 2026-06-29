@@ -307,7 +307,8 @@ fun LopNavHost() {
                 }
             }
 
-            // Bottom bar en overlay (vraiment flottante)
+            // Header / Floating actions (Top/Bottom) - Navigation simplifiée
+            // Dans ce design, la bottom bar est différente, on va utiliser la bar standard de la vidéo
             AnimatedVisibility(
                 visible = showBar,
                 enter = slideInVertically(
