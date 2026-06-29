@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -20,7 +20,6 @@ import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +30,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -41,17 +42,11 @@ import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
-import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.clickableNoRipple
-import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.IconMapper
 
-/**
- * Contenu du formulaire d'ajout de transaction.
- * Conçu pour être affiché dans un ModalBottomSheet expansible.
- */
 @Composable
 fun TransactionEditScreen(
     onBack: () -> Unit,
@@ -64,37 +59,31 @@ fun TransactionEditScreen(
     val goals by vm.goals.collectAsStateWithLifecycle()
     val debts by vm.debts.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
+    val haptic = LocalHapticFeedback.current
 
     val accent = if (form.type == TransactionType.INCOME) ext.income else ext.expense
     val typeCategories = categories.filter { it.type == form.type }
 
-    // Dans un ModalBottomSheet, fillMaxSize() ne fonctionne pas (hauteur inconnue).
-    // On utilise fillMaxWidth() + fillMaxHeight(0.92f) pour que le contenu
-    // occupe 92% de l'écran en mode Expanded et soit visible en PartiallyExpanded.
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(0.92f)
-            .padding(horizontal = 20.dp),
-    ) {
-        // En-tête simplifié pour le bottom sheet (icône de fermeture au lieu de retour)
+    // fillMaxSize() fonctionne ici car le ModalBottomSheet en mode Expanded
+    // fournit une contrainte de hauteur bornée. En mode PartiallyExpanded,
+    // le sheet se redimensionne automatiquement à la hauteur du contenu.
+    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        // En-tête — icône Close (X) au lieu de ArrowBack pour le BottomSheet
         Row(
-            Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
+            Modifier.fillMaxWidth().padding(top = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("Nouvelle transaction", style = MaterialTheme.typography.titleLarge)
             Icon(
                 Icons.Filled.Close,
                 contentDescription = "Fermer",
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickableNoRipple(onBack),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                modifier = Modifier.size(26.dp).clickableNoRipple(onBack),
             )
+            Text("Nouvelle transaction", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.width(26.dp))
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
 
         // Sélecteur de type (segmenté capsule)
         Row(
@@ -148,7 +137,7 @@ fun TransactionEditScreen(
                         val c = Color(cat.colorArgb)
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) { vm.setCategory(cat.id) },
+                            modifier = Modifier.clickableNoRipple { vm.setCategory(cat.id) },
                         ) {
                             CircleIcon(
                                 icon = IconMapper.get(cat.icon),
@@ -174,7 +163,7 @@ fun TransactionEditScreen(
                         Surface(
                             color = if (selected) c.copy(alpha = 0.30f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             shape = CircleShape,
-                            modifier = Modifier.pressScaleClickable(intent = HapticIntent.Tap) { vm.toggleTag(tag.id) },
+                            modifier = Modifier.clickableNoRipple { vm.toggleTag(tag.id) },
                         ) {
                             Text(
                                 "#${tag.name}",
@@ -197,7 +186,7 @@ fun TransactionEditScreen(
                         PillTag(
                             text = acc.name,
                             color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) { vm.setAccount(acc.id) },
+                            modifier = Modifier.clickableNoRipple { vm.setAccount(acc.id) },
                         )
                     }
                 }
@@ -219,9 +208,7 @@ fun TransactionEditScreen(
                             PillTag(
                                 text = "🎯 ${g.name}",
                                 color = if (selected) ext.income else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) {
-                                    vm.setLinkedGoal(if (selected) null else g.id)
-                                },
+                                modifier = Modifier.clickableNoRipple { vm.setLinkedGoal(if (selected) null else g.id) },
                             )
                         }
                         items(debts, key = { "d${it.id}" }) { d ->
@@ -229,9 +216,7 @@ fun TransactionEditScreen(
                             PillTag(
                                 text = "💳 ${d.name}",
                                 color = if (selected) ext.expense else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) {
-                                    vm.setLinkedDebt(if (selected) null else d.id)
-                                },
+                                modifier = Modifier.clickableNoRipple { vm.setLinkedDebt(if (selected) null else d.id) },
                             )
                         }
                     }
@@ -248,11 +233,14 @@ fun TransactionEditScreen(
             }
         }
 
-        // Pavé numérique (reste fixé en bas du bottom sheet)
+        // Pavé numérique (fixe en bas)
         NumericKeypad(
-            onDigit = { digit -> vm.appendDigit(digit) },
-            onDelete = { vm.deleteDigit() },
-            onValidate = { vm.save(onBack) },
+            onDigit = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); vm.appendDigit(it) },
+            onDelete = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); vm.deleteDigit() },
+            onValidate = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                vm.save(onBack)
+            },
             accent = accent,
         )
         Spacer(Modifier.height(16.dp))
@@ -260,66 +248,9 @@ fun TransactionEditScreen(
 }
 
 @Composable
-private fun NumericKeypad(
-    onDigit: (String) -> Unit,
-    onDelete: () -> Unit,
-    onValidate: () -> Unit,
-    accent: Color,
-) {
-    val rows = listOf(
-        listOf("1", "2", "3"),
-        listOf("4", "5", "6"),
-        listOf("7", "8", "9"),
-        listOf(",", "0", "⌫"),
-    )
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        rows.forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { key ->
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(54.dp)
-                            .pressScaleClickable(intent = HapticIntent.Tap) {
-                                when (key) {
-                                    "⌫" -> onDelete()
-                                    else -> onDigit(key)
-                                }
-                            },
-                        shape = MaterialTheme.shapes.large,
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            if (key == "⌫") Icon(Icons.Filled.Backspace, "Effacer")
-                            else Text(key, style = MaterialTheme.typography.titleLarge)
-                        }
-                    }
-                }
-            }
-        }
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp)
-                .pressScaleClickable(intent = HapticIntent.Confirm, onClick = onValidate),
-            shape = MaterialTheme.shapes.large,
-            color = accent,
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Check, null, tint = Color.Black)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Enregistrer", color = Color.Black, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun TypeSegment(label: String, selected: Boolean, color: Color, modifier: Modifier, onClick: () -> Unit) {
     Surface(
-        modifier = modifier.pressScaleClickable(intent = HapticIntent.Selection, onClick = onClick),
+        modifier = modifier.clickableNoRipple(onClick),
         shape = CircleShape,
         color = if (selected) color.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
     ) {
@@ -351,7 +282,7 @@ private fun RecurrenceSection(form: TransactionForm, vm: TransactionEditViewMode
                 PillTag(
                     text = label,
                     color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) { vm.setFrequency(f) },
+                    modifier = Modifier.clickableNoRipple { vm.setFrequency(f) },
                 )
             }
         }
@@ -381,7 +312,7 @@ private fun RecurrenceSection(form: TransactionForm, vm: TransactionEditViewMode
                                 Box(
                                     Modifier
                                         .size(36.dp)
-                                        .pressScaleClickable(intent = HapticIntent.Selection) { vm.toggleDayOfWeek(num) },
+                                        .clickableNoRipple { vm.toggleDayOfWeek(num) },
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Surface(
@@ -401,6 +332,49 @@ private fun RecurrenceSection(form: TransactionForm, vm: TransactionEditViewMode
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit, onValidate: () -> Unit, accent: Color) {
+    val rows = listOf(
+        listOf("1", "2", "3"),
+        listOf("4", "5", "6"),
+        listOf("7", "8", "9"),
+        listOf(",", "0", "⌫"),
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        rows.forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { key ->
+                    Surface(
+                        modifier = Modifier.weight(1f).height(54.dp).clickableNoRipple {
+                            when (key) { "⌫" -> onDelete(); else -> onDigit(key) }
+                        },
+                        shape = MaterialTheme.shapes.large,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (key == "⌫") Icon(Icons.Filled.Backspace, "Effacer")
+                            else Text(key, style = MaterialTheme.typography.titleLarge)
+                        }
+                    }
+                }
+            }
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth().height(54.dp).clickableNoRipple(onValidate),
+            shape = MaterialTheme.shapes.large,
+            color = accent,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Check, null, tint = Color.Black)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Enregistrer", color = Color.Black, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
