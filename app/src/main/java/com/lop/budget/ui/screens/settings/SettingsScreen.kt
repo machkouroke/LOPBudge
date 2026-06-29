@@ -46,13 +46,24 @@ fun SettingsScreen(
     var currencyInput by remember(state.currency) { mutableStateOf(state.currency) }
 
     LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = 20.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp, bottom = 60.dp),
+        Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            top = 20.dp,
+            bottom = 60.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", modifier = Modifier.size(26.dp).clickableNoRipple(onBack))
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    "Retour",
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clickableNoRipple(onBack)
+                )
                 Spacer(Modifier.width(12.dp))
                 Text("Réglages", style = MaterialTheme.typography.headlineMedium)
             }
@@ -64,10 +75,18 @@ fun SettingsScreen(
                 Column {
                     Text("Apparence", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(12.dp))
-                    Text("Thème", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "Thème",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(Modifier.height(8.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val modes = listOf(ThemeMode.SYSTEM to "Système", ThemeMode.LIGHT to "Clair", ThemeMode.DARK to "Sombre")
+                        val modes = listOf(
+                            ThemeMode.SYSTEM to "Système",
+                            ThemeMode.LIGHT to "Clair",
+                            ThemeMode.DARK to "Sombre"
+                        )
                         items(modes, key = { it.first.name }) { (mode, label) ->
                             PillTag(
                                 text = label,
@@ -77,10 +96,21 @@ fun SettingsScreen(
                         }
                     }
                     Spacer(Modifier.height(14.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Column(Modifier.weight(1f)) {
-                            Text("Couleurs dynamiques (Material You)", style = MaterialTheme.typography.bodyLarge)
-                            Text("Adapte la palette au thème du système (Android 12+)", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "Couleurs dynamiques (Material You)",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                "Adapte la palette au thème du système (Android 12+)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                         Switch(checked = state.dynamicColor, onCheckedChange = vm::setDynamicColor)
                     }
@@ -96,7 +126,11 @@ fun SettingsScreen(
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = currencyInput,
-                        onValueChange = { currencyInput = it.uppercase().take(3); vm.setCurrency(currencyInput) },
+                        onValueChange = {
+                            currencyInput = it.uppercase().take(3); vm.setCurrency(
+                            currencyInput
+                        )
+                        },
                         label = { Text("Code ISO (EUR, USD, GBP…)") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),

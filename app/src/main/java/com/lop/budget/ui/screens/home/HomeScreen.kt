@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +60,7 @@ import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.navigation.Routes
 import com.lop.budget.ui.theme.ExpenseCoral
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
@@ -72,6 +74,7 @@ fun HomeScreen(
     onOpenTransaction: (Long) -> Unit,
     onOpenAi: () -> Unit,
     onOpenMonthly: (TransactionType, YearMonth) -> Unit,
+    navController: androidx.navigation.NavController,
     vm: HomeViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -104,7 +107,7 @@ fun HomeScreen(
             contentPadding = PaddingValues(
                 // LOP-49 : top = status bar + hauteur header (~72 dp)
                 start = 20.dp, end = 20.dp,
-                top = statusBarPadding + 72.dp,
+                top = statusBarPadding + 50.dp,
                 bottom = 120.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -153,7 +156,10 @@ fun HomeScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             // Mini Donut Chart
-                            Box(modifier = Modifier.size(60.dp), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier.size(60.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
                                     drawArc(
                                         color = Color.DarkGray,
@@ -170,12 +176,21 @@ fun HomeScreen(
                                         style = androidx.compose.ui.graphics.drawscope.Stroke(12f)
                                     )
                                 }
-                                Text("2%", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(
+                                    "2%",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                             Spacer(Modifier.width(16.dp))
                             Column {
                                 Text(
-                                    "${Format.money(7792.0, state.currency)} restants dans le budget",
+                                    "${
+                                        Format.money(
+                                            7792.0,
+                                            state.currency
+                                        )
+                                    } restants dans le budget",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -378,14 +393,19 @@ fun HomeScreen(
                                         modifier = Modifier
                                             .background(
                                                 Color.DarkGray,
-                                                androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                                                androidx.compose.foundation.shape.RoundedCornerShape(
+                                                    4.dp
+                                                )
                                             )
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                     Spacer(Modifier.width(12.dp))
                                     Text("Revolut", style = MaterialTheme.typography.bodyLarge)
                                 }
-                                Text(Format.money(622.36, state.currency), style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    Format.money(622.36, state.currency),
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
                             }
                             Spacer(Modifier.height(12.dp))
                             Row(
@@ -400,14 +420,19 @@ fun HomeScreen(
                                         modifier = Modifier
                                             .background(
                                                 Color.DarkGray,
-                                                androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                                                androidx.compose.foundation.shape.RoundedCornerShape(
+                                                    4.dp
+                                                )
                                             )
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                     Spacer(Modifier.width(12.dp))
                                     Text("Monobank", style = MaterialTheme.typography.bodyLarge)
                                 }
-                                Text(Format.money(50.0, state.currency), style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    Format.money(50.0, state.currency),
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
                             }
                         }
                     }
@@ -524,10 +549,11 @@ fun HomeScreen(
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier
-                .align(Alignment.BottomStart)
+                .align(Alignment.TopCenter)
                 .padding(
                     start = 20.dp,
-                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 88.dp,
+                    top = WindowInsets.navigationBars.asPaddingValues()
+                        .calculateBottomPadding() + 88.dp,
                 ),
         ) {
             Surface(
@@ -567,7 +593,7 @@ fun HomeScreen(
                     )
                 )
                 // LOP-49 : top padding dynamique = status bar + marge
-                .padding(start = 20.dp, end = 20.dp, top = statusBarPadding + 12.dp, bottom = 16.dp)
+                .padding(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 16.dp)
                 .align(Alignment.TopCenter)
         ) {
             Row(
@@ -575,36 +601,26 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Avatar + My space
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(50))
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .background(
-                                com.lop.budget.ui.theme.AccentYellow.copy(alpha = 0.8f),
-                                androidx.compose.foundation.shape.CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.background,
-                                    androidx.compose.foundation.shape.CircleShape
-                                )
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                            androidx.compose.foundation.shape.RoundedCornerShape(50),
                         )
-                    }
-                    Spacer(Modifier.width(8.dp))
+                        .clickableNoRipple { isMonthPickerOpen = true }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.CalendarMonth,
+                        contentDescription = "Changer de mois",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
                     Text(
-                        "Mon espace",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        Format.monthYear(state.month),
+                        style = MaterialTheme.typography.titleSmall,
                     )
                 }
 
@@ -614,32 +630,14 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // LOP-51 : chip mois courant → ouvre le MonthPickerBottomSheet
+
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-                                androidx.compose.foundation.shape.RoundedCornerShape(50),
+                                androidx.compose.foundation.shape.RoundedCornerShape(50)
                             )
-                            .clickableNoRipple { isMonthPickerOpen = true }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                    ) {
-                        Icon(
-                            Icons.Filled.CalendarMonth,
-                            contentDescription = "Changer de mois",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            Format.monthYear(state.month),
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(50))
                             .padding(horizontal = 12.dp, vertical = 10.dp)
                     ) {
                         Text("€ 1,16", style = MaterialTheme.typography.titleSmall)
@@ -647,18 +645,42 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                                androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Filled.Wallet, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Filled.Wallet,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                                androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Filled.BarChart, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Filled.Settings,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clickableNoRipple {
+                                    navController.navigate(
+                                        Routes.SETTINGS
+                                    )
+                                },
+
+//
+                        )
                     }
                 }
             }

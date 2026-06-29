@@ -123,6 +123,7 @@ fun LopNavHost() {
                     HomeScreen(
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
                         onOpenAi = { navController.navigate(Routes.AI) },
+                        navController= navController,
                         onOpenMonthly = { type, ym ->
                             navController.navigate(
                                 Routes.monthly(
@@ -137,17 +138,17 @@ fun LopNavHost() {
                 composable(
                     Routes.ANALYTICS,
 
-                ) { AnalyticsScreen() }
+                    ) { AnalyticsScreen() }
 
                 composable(
                     Routes.GOALS,
 
-                ) { GoalsScreen() }
+                    ) { GoalsScreen() }
 
                 composable(
                     Routes.ACCOUNTS,
 
-                ) { AccountsScreen() }
+                    ) { AccountsScreen() }
 
                 // Monthly income/expense detail
                 composable(
@@ -246,30 +247,7 @@ fun LopNavHost() {
 
                 composable(
                     Routes.SETTINGS,
-                    enterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.fastTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
+
                 ) { SettingsScreen(onBack = { navController.popBackStack() }) }
 
                 composable(
@@ -352,17 +330,17 @@ fun LopNavHost() {
                 )
             }
 
-            if (showBar) {
-                Icon(
-                    Icons.Filled.Settings,
-                    contentDescription = "Réglages",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 26.dp, end = 20.dp)
-                        .clickableNoRipple { navController.navigate(Routes.SETTINGS) },
-                )
-            }
+//            if (showBar) {
+//                Icon(
+//                    Icons.Filled.Settings,
+//                    contentDescription = "Réglages",
+//                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+//                    modifier = Modifier
+//                        .align(Alignment.TopEnd)
+//                        .padding(top = 26.dp, end = 20.dp)
+//                        .clickableNoRipple { navController.navigate(Routes.SETTINGS) },
+//                )
+//            }
         }
     }
 }
