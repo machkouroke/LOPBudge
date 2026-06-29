@@ -16,9 +16,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Backspace
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -46,6 +45,10 @@ import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.IconMapper
 
+/**
+ * Contenu du formulaire d'ajout de transaction.
+ * Conçu pour être affiché dans un ModalBottomSheet expansible.
+ */
 @Composable
 fun TransactionEditScreen(
     onBack: () -> Unit,
@@ -63,18 +66,24 @@ fun TransactionEditScreen(
     val typeCategories = categories.filter { it.type == form.type }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        // En-tête
+        // En-tête simplifié pour le bottom sheet (icône de fermeture au lieu de retour)
         Row(
-            Modifier.fillMaxWidth().padding(top = 20.dp),
+            Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", modifier = Modifier.size(26.dp).clickableNoRipple(onBack))
             Text("Nouvelle transaction", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.width(26.dp))
+            Icon(
+                Icons.Filled.Close,
+                contentDescription = "Fermer",
+                modifier = Modifier
+                    .size(28.dp)
+                    .clickableNoRipple(onBack),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
 
         // Sélecteur de type (segmenté capsule)
         Row(
@@ -228,7 +237,7 @@ fun TransactionEditScreen(
             }
         }
 
-        // Pavé numérique
+        // Pavé numérique (reste fixé en bas du bottom sheet)
         NumericKeypad(
             onDigit = { vm.appendDigit(it) },
             onDelete = { vm.deleteDigit() },
@@ -324,58 +333,6 @@ private fun RecurrenceSection(form: TransactionForm, vm: TransactionEditViewMode
                             }
                         }
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit, onValidate: () -> Unit, accent: Color) {
-    val rows = listOf(
-        listOf("1", "2", "3"),
-        listOf("4", "5", "6"),
-        listOf("7", "8", "9"),
-        listOf(",", "0", "⌫"),
-    )
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        rows.forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { key ->
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(54.dp)
-                            .pressScaleClickable(intent = if (key == "⌫") HapticIntent.Tap else HapticIntent.Tap) {
-                                when (key) {
-                                    "⌫" -> onDelete()
-                                    else -> onDigit(key)
-                                }
-                            },
-                        shape = MaterialTheme.shapes.large,
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            if (key == "⌫") Icon(Icons.Filled.Backspace, "Effacer")
-                            else Text(key, style = MaterialTheme.typography.titleLarge)
-                        }
-                    }
-                }
-            }
-        }
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp)
-                .pressScaleClickable(intent = HapticIntent.Confirm, onClick = onValidate),
-            shape = MaterialTheme.shapes.large,
-            color = accent,
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Check, null, tint = Color.Black)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Enregistrer", color = Color.Black, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
