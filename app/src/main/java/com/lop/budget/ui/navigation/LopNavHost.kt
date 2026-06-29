@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -20,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -92,14 +96,21 @@ fun LopNavHost() {
     val currentRoute = backStack?.destination?.route
     val showBar = currentRoute in Routes.rootRoutes
 
-    // ─── État du ModalBottomSheet d'ajout ───────────────────────────────────
-    // skipPartiallyExpanded = false : permet les 3 états (Hidden → PartiallyExpanded → Expanded)
-    // confirmValueChange : empêche la fermeture accidentelle si le clavier est ouvert
     var showAddSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = false,
         confirmValueChange = { it != SheetValue.Hidden || true },
     )
+
+    // FIX sheet vide — CAUSE RACINE :
+    // hiltViewModel() dans un ModalBottomSheet ne trouve pas de ViewModelStoreOwner
+    // valide car le sheet est rendu dans une fenêtre séparée (PopupLayout).
+    // Solution : capturer le LocalViewModelStoreOwner ICI (avant le Scaffold,
+    // dans le contexte Activity) et le réinjecter via CompositionLocalProvider
+    // à l'intérieur du sheet.
+    val vmStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
+        "Aucun ViewModelStoreOwner trouvé — LopNavHost doit être dans un contexte Activity."
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -110,7 +121,7 @@ fun LopNavHost() {
                 .padding(padding)
                 .hazeSource(state = hazeState),
         ) {
-            // ─── NavHost principal (sans la route ADD) ───────────────────────
+            // ─── NavHost principal ───────────────────────────────────────────
             NavHost(
                 navController = navController,
                 startDestination = Routes.HOME,
@@ -278,68 +289,55 @@ fun LopNavHost() {
                             restoreState = true
                         }
                     },
-                    // FAB ouvre le ModalBottomSheet au lieu de naviguer vers Routes.ADD
                     onAdd = { showAddSheet = true },
                     hazeState = hazeState,
                 )
             }
-        }
 
-        // ─── ModalBottomSheet expansible ────────────────────────────────────
-        // Comportement :
-        //   • Ouverture → état PartiallyExpanded (mi-hauteur, ~50% de l'écran)
-        //   • Glisse vers le haut → état Expanded (plein écran)
-        //   • Glisse vers le bas depuis PartiallyExpanded → fermeture
-        if (showAddSheet) {
-            ModalBottomSheet(
-                onDismissRequest = {
-                    // Fermeture via glisse vers le bas ou tap sur le scrim
-                    showAddSheet = false
-                },
-                sheetState = sheetState,
-                // Fond du sheet aligné sur la surface de l'app
-                containerColor = MaterialTheme.colorScheme.surface,
-                // Drag handle visible pour indiquer l'expansibilité
-                dragHandle = {
-                    // Handle personnalisé centré
-                    Box(
-                        modifier = Modifier
-                            .padding(vertical = 12.dp)
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.TopCenter,
-                    ) {
-                        androidx.compose.foundation.layout.Box(
-                            modifier = Modifier
-                                .padding(top = 0.dp)
-                                .fillMaxWidth(0.12f)
-                                .padding(vertical = 0.dp),
-                        ) {
-                            androidx.compose.foundation.Canvas(
+            // ─── ModalBottomSheet expansible ────────────────────────────────
+            // IMPORTANT : le sheet est DANS le Box (même scope Composable que
+            // le NavHost). Le CompositionLocalProvider réinjecte le vmStoreOwner
+            // capturé avant le Scaffold pour que hiltViewModel() fonctionne.
+            //
+            // Comportement :
+            //   • Ouverture → PartiallyExpanded (~50% de l'écran)
+            //   • Glisse vers le haut → Expanded (plein écran)
+            //   • Glisse vers le bas / tap scrim → fermeture
+            if (showAddSheet) {
+                CompositionLocalProvider(LocalViewModelStoreOwner provides vmStoreOwner) {
+                    ModalBottomSheet(
+                        onDismissRequest = { showAddSheet = false },
+                        sheetState = sheetState,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        dragHandle = {
+                            Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 0.dp)
-                                    .height(4.dp),
+                                    .fillMaxSize()
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.TopCenter,
                             ) {
-                                drawRoundRect(
-                                    color = androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.4f),
-                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(50f),
-                                )
+                                androidx.compose.foundation.Canvas(
+                                    modifier = Modifier
+                                        .width(40.dp)
+                                        .height(4.dp),
+                                ) {
+                                    drawRoundRect(
+                                        color = androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.4f),
+                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(50f),
+                                    )
+                                }
                             }
-                        }
+                        },
+                    ) {
+                        TransactionEditScreen(
+                            onBack = {
+                                scope.launch { sheetState.hide() }.invokeOnCompletion {
+                                    showAddSheet = false
+                                }
+                            },
+                        )
                     }
-                },
-            ) {
-                // Contenu du formulaire — occupe toute la hauteur disponible
-                // (PartiallyExpanded = ~50% ; Expanded = 100%)
-                TransactionEditScreen(
-                    onBack = {
-                        scope.launch {
-                            sheetState.hide()
-                        }.invokeOnCompletion {
-                            showAddSheet = false
-                        }
-                    },
-                )
+                }
             }
         }
     }
