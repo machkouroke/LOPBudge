@@ -167,7 +167,6 @@ private fun NavItem(
         Surface(
             shape = CircleShape,
             color = bubbleColor,
-            border = BorderStroke(1.dp, bubbleBorder),
             modifier = Modifier
                 .size(64.dp)
                 .pressScaleClickable(intent = HapticIntent.Tap, pressedScale = 0.97f, onClick = onClick),
