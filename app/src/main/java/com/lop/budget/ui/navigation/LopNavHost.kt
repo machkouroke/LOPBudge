@@ -100,6 +100,7 @@ fun LopNavHost() {
     val showBar = currentRoute in Routes.rootRoutes
 
     var showAddSheet by remember { mutableStateOf(false) }
+    var returnToSheetAfterCategoryCreate by remember { mutableStateOf(false) }
     // skipPartiallyExpanded = false : active les 3 états (Hidden → PartiallyExpanded → Expanded)
     // NE PAS utiliser confirmValueChange ici — cela interfère avec la gestion interne
     // des états du sheet et provoque des oscillations (vibrations) lors du glissement.
