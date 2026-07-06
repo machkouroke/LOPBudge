@@ -11,12 +11,15 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,12 +30,12 @@ import kotlinx.coroutines.launch
  * Composant générique de swipe pour les lignes de transaction.
  *
  * - Swipe droite (StartToEnd) : toggle Payé / Non payé — la ligne reste visible
- * - Swipe gauche (EndToStart)  : suppression immédiate (onDelete).
+ * - Swipe gauche (EndToStart)  : suppression via onDelete()
  *
- * NOTE: La disparition visuelle est entièrement gérée par la LazyColumn.
- * Dès que onDelete() (qui fait un softDelete en DB) est appelé, la transaction
- * est retirée du StateFlow et la LazyColumn supprime le composant de l'UI.
- * S'il y a un "Undo", la transaction réapparaît dans le StateFlow et est redessinée.
+ * Utilise un flag [hasActionFired] pour garantir qu'une action de swipe ne se déclenche
+ * qu'une seule fois par composant, même si LazyColumn réutilise l'instance après un Undo.
+ * Quand la transaction est restaurée (Undo), LazyColumn détruit et recrée le composant
+ * avec une nouvelle instance de [hasActionFired] à false.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,23 +47,34 @@ fun SwipeableTransactionRow(
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    // Flag pour s'assurer que l'action de swipe ne se déclenche qu'une seule fois.
+    // Cela évite la race condition où LazyColumn réutilise le composant après un Undo
+    // et le LaunchedEffect se re-déclenche sur EndToStart en rappelant onDelete().
+    var hasActionFired by remember { mutableStateOf(false) }
 
     val dismissState = rememberSwipeToDismissBoxState(
         initialValue = SwipeToDismissBoxValue.Settled,
         positionalThreshold = { totalDistance -> totalDistance * 0.4f },
     )
 
-    // Observer currentValue pour déclencher la logique métier après que le swipe est confirmé.
     LaunchedEffect(dismissState.currentValue) {
+        if (hasActionFired) return@LaunchedEffect
         when (dismissState.currentValue) {
             SwipeToDismissBoxValue.StartToEnd -> {
-                // Swipe droite : toggle statut, puis reset immédiat de la position
+                hasActionFired = true
                 onTogglePaid()
-                scope.launch { dismissState.snapTo(SwipeToDismissBoxValue.Settled) }
+                // Reset visuel immédiat pour le swipe droite (toggle ne supprime pas la ligne)
+                scope.launch {
+                    dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+                    hasActionFired = false // Autoriser un nouveau swipe droite
+                }
             }
             SwipeToDismissBoxValue.EndToStart -> {
-                // Swipe gauche : suppression (soft-delete en DB).
-                // Pas besoin de reset l'état ici, le composant va être détruit par la LazyColumn.
+                hasActionFired = true
+                // La suppression est gérée par le ViewModel (softDelete + Snackbar Undo).
+                // Le composant sera détruit par LazyColumn quand Room retire la transaction du Flow.
+                // Si Undo est cliqué, LazyColumn RECRÉE un nouveau composant (nouvelle clé de composition)
+                // avec hasActionFired = false, donc pas de double déclenchement.
                 onDelete()
             }
             SwipeToDismissBoxValue.Settled -> Unit
