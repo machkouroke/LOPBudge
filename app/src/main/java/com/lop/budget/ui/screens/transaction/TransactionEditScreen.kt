@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -163,7 +164,50 @@ fun TransactionEditScreen(
                 )
             }
 
-            // 2. Intitulé
+            // 2. Date de paiement
+            item {
+                var showDatePicker by remember { mutableStateOf(false) }
+                val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd MMMM yyyy", java.util.Locale.getDefault())
+                val formattedDate = java.time.Instant.ofEpochMilli(form.date)
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalDate()
+                    .format(dateFormatter)
+
+                if (showDatePicker) {
+                    val datePickerState = androidx.compose.material3.rememberDatePickerState(
+                        initialSelectedDateMillis = form.date
+                    )
+                    androidx.compose.material3.DatePickerDialog(
+                        onDismissRequest = { showDatePicker = false },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(onClick = {
+                                datePickerState.selectedDateMillis?.let { vm.setDate(it) }
+                                showDatePicker = false
+                            }) {
+                                Text("OK")
+                            }
+                        },
+                        dismissButton = {
+                            androidx.compose.material3.TextButton(onClick = { showDatePicker = false }) {
+                                Text("Annuler")
+                            }
+                        }
+                    ) {
+                        androidx.compose.material3.DatePicker(state = datePickerState)
+                    }
+                }
+
+                DropdownSelector(
+                    label = "Date",
+                    value = formattedDate,
+                    icon = androidx.compose.material.icons.Icons.Filled.DateRange,
+                    iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    expanded = false,
+                    onClick = { showDatePicker = true }
+                ) {}
+            }
+
+            // 3. Intitulé
             item {
                 OutlinedTextField(
                     value = form.title,
@@ -175,7 +219,7 @@ fun TransactionEditScreen(
                 )
             }
 
-            // 3. Catégorie (Dropdown)
+            // 4. Catégorie (Dropdown)
             item {
                 var expanded by remember { mutableStateOf(false) }
                 val selectedCat = typeCategories.find { it.id == form.categoryId }
@@ -232,7 +276,7 @@ fun TransactionEditScreen(
                 }
             }
 
-            // 4. Compte (Dropdown)
+            // 5. Compte (Dropdown)
             item {
                 var expanded by remember { mutableStateOf(false) }
                 val selectedAcc = accounts.find { it.id == form.accountId }
@@ -261,7 +305,7 @@ fun TransactionEditScreen(
                 }
             }
 
-            // 5. Notes
+            // 6. Notes
             item {
                 OutlinedTextField(
                     value = form.note,
@@ -274,7 +318,7 @@ fun TransactionEditScreen(
                 )
             }
 
-            // 6. Récurrence
+            // 7. Récurrence
             item {
                 var expanded by remember { mutableStateOf(false) }
                 val freqs = listOf(
@@ -350,11 +394,122 @@ fun TransactionEditScreen(
                                     }
                                 }
                             }
+                            }
+                        }
+                        
+                        Spacer(Modifier.height(16.dp))
+                        Text("Finit", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        
+                        // Options de fin
+                        val endPolicy = when {
+                            form.endDate != null -> "date"
+                            form.maxOccurrences != null -> "occurrences"
+                            else -> "never"
+                        }
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.RadioButton(
+                                selected = endPolicy == "never",
+                                onClick = { 
+                                    vm.setEndDate(null)
+                                    vm.setMaxOccurrences(null)
+                                }
+                            )
+                            Text("Jamais", modifier = Modifier.clickable { 
+                                vm.setEndDate(null)
+                                vm.setMaxOccurrences(null)
+                            })
+                        }
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.RadioButton(
+                                selected = endPolicy == "date",
+                                onClick = { 
+                                    vm.setEndDate(form.date + 86400000L * 30) // +30 jours par défaut
+                                    vm.setMaxOccurrences(null)
+                                }
+                            )
+                            Text("Le", modifier = Modifier.clickable { 
+                                if (endPolicy != "date") {
+                                    vm.setEndDate(form.date + 86400000L * 30)
+                                    vm.setMaxOccurrences(null)
+                                }
+                            })
+                            Spacer(Modifier.width(8.dp))
+                            if (endPolicy == "date") {
+                                var showEndDatePicker by remember { mutableStateOf(false) }
+                                val endFormatted = java.time.Instant.ofEpochMilli(form.endDate ?: System.currentTimeMillis())
+                                    .atZone(java.time.ZoneId.systemDefault())
+                                    .toLocalDate()
+                                    .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy", java.util.Locale.getDefault()))
+                                
+                                if (showEndDatePicker) {
+                                    val endDatePickerState = androidx.compose.material3.rememberDatePickerState(
+                                        initialSelectedDateMillis = form.endDate ?: System.currentTimeMillis()
+                                    )
+                                    androidx.compose.material3.DatePickerDialog(
+                                        onDismissRequest = { showEndDatePicker = false },
+                                        confirmButton = {
+                                            androidx.compose.material3.TextButton(onClick = {
+                                                endDatePickerState.selectedDateMillis?.let { vm.setEndDate(it) }
+                                                showEndDatePicker = false
+                                            }) { Text("OK") }
+                                        },
+                                        dismissButton = {
+                                            androidx.compose.material3.TextButton(onClick = { showEndDatePicker = false }) { Text("Annuler") }
+                                        }
+                                    ) {
+                                        androidx.compose.material3.DatePicker(state = endDatePickerState)
+                                    }
+                                }
+                                
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.clickable { showEndDatePicker = true }
+                                ) {
+                                    Text(
+                                        endFormatted, 
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                        }
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.RadioButton(
+                                selected = endPolicy == "occurrences",
+                                onClick = { 
+                                    vm.setMaxOccurrences(10) // 10 par défaut
+                                    vm.setEndDate(null)
+                                }
+                            )
+                            Text("Après", modifier = Modifier.clickable { 
+                                if (endPolicy != "occurrences") {
+                                    vm.setMaxOccurrences(10)
+                                    vm.setEndDate(null)
+                                }
+                            })
+                            Spacer(Modifier.width(8.dp))
+                            if (endPolicy == "occurrences") {
+                                OutlinedTextField(
+                                    value = form.maxOccurrences?.toString() ?: "",
+                                    onValueChange = { 
+                                        val n = it.filter { c -> c.isDigit() }.toIntOrNull()
+                                        if (n != null && n > 0) vm.setMaxOccurrences(n)
+                                    },
+                                    modifier = Modifier.width(80.dp).height(50.dp),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    textStyle = androidx.compose.ui.text.TextStyle(textAlign = TextAlign.Center)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("occurrences")
+                            }
                         }
                     }
                 }
             }
-
             // Espace pour le bouton
             item { Spacer(Modifier.height(80.dp)) }
         }
