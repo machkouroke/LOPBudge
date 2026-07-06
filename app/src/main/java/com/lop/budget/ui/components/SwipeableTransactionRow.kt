@@ -63,19 +63,18 @@ fun SwipeableTransactionRow(
             SwipeToDismissBoxValue.StartToEnd -> {
                 hasActionFired = true
                 onTogglePaid()
-                // Reset visuel immédiat pour le swipe droite (toggle ne supprime pas la ligne)
                 scope.launch {
                     dismissState.snapTo(SwipeToDismissBoxValue.Settled)
-                    hasActionFired = false // Autoriser un nouveau swipe droite
+                    hasActionFired = false
                 }
             }
             SwipeToDismissBoxValue.EndToStart -> {
                 hasActionFired = true
-                // La suppression est gérée par le ViewModel (softDelete + Snackbar Undo).
-                // Le composant sera détruit par LazyColumn quand Room retire la transaction du Flow.
-                // Si Undo est cliqué, LazyColumn RECRÉE un nouveau composant (nouvelle clé de composition)
-                // avec hasActionFired = false, donc pas de double déclenchement.
                 onDelete()
+                // Ne PAS appeler snapTo(Settled) ici.
+                // L'item va être immédiatement retiré de la liste par le filtre in-memory du ViewModel.
+                // S'il y a un Undo, le ViewModel le remet dans la liste, et LazyColumn créera 
+                // une NOUVELLE instance de ce composant avec initialValue = Settled et hasActionFired = false.
             }
             SwipeToDismissBoxValue.Settled -> Unit
         }

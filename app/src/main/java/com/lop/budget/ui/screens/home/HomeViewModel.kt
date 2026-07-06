@@ -67,11 +67,13 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private val pendingDeletes = MutableStateFlow<Set<Long>>(emptySet())
+
     fun deleteWithUndo(transactionId: Long, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
+        // 1. Soft-delete in-memory : on masque immédiatement la transaction de l'UI
+        pendingDeletes.value = pendingDeletes.value + transactionId
+
         viewModelScope.launch {
-            // Soft delete : on marque la transaction comme supprimée (elle disparaît de l'UI)
-            repo.softDeleteTransaction(transactionId)
-            
             val result = snackbarHostState.showSnackbar(
                 message = "Transaction supprimée",
                 actionLabel = "Annuler",
@@ -79,11 +81,12 @@ class HomeViewModel @Inject constructor(
             )
             
             if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                // L'utilisateur a cliqué sur "Annuler" : on restaure la transaction
-                repo.restoreTransaction(transactionId)
+                // 2a. Undo : on retire l'ID de la liste d'attente, la transaction réapparaît
+                pendingDeletes.value = pendingDeletes.value - transactionId
             } else {
-                // Le Snackbar a disparu sans annulation (timeout ou autre action) : suppression définitive optionnelle
-                // repo.hardDeleteTransaction(transactionId) // Décommenter si on veut purger la DB
+                // 2b. Timeout : on supprime réellement en DB (soft-delete persistant)
+                pendingDeletes.value = pendingDeletes.value - transactionId
+                repo.softDeleteTransaction(transactionId)
             }
         }
     }
@@ -115,9 +118,10 @@ class HomeViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<HomeUiState> =
-        combine(monthData, settings.currency, month) { data, currency, ym ->
+        combine(monthData, settings.currency, month, pendingDeletes) { data, currency, ym, pending ->
             @Suppress("UNCHECKED_CAST")
-            val txs = data[0] as List<TransactionWithRelations>
+            val allTxs = data[0] as List<TransactionWithRelations>
+            val txs = allTxs.filter { it.transaction.id !in pending }
             val income = data[1] as Double
             val expense = data[2] as Double
             val prevExpense = data[3] as Double
