@@ -94,6 +94,7 @@ fun LopNavHost() {
     val navController = rememberNavController()
     val hazeState = rememberHazeState()
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
@@ -120,6 +121,7 @@ fun LopNavHost() {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(
             modifier = Modifier
@@ -138,6 +140,7 @@ fun LopNavHost() {
             ) {
                 composable(Routes.HOME) {
                     HomeScreen(
+                        snackbarHostState = snackbarHostState,
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
                         onOpenAi = { navController.navigate(Routes.AI) },
                         navController = navController,
