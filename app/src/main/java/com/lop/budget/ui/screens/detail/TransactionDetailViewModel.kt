@@ -61,6 +61,6 @@ class TransactionDetailViewModel @Inject constructor(
 
     fun delete(onDone: () -> Unit) {
         val id = txId.value ?: return
-        viewModelScope.launch { repo.deleteTransaction(id); onDone() }
+        viewModelScope.launch { repo.softDeleteTransaction(id); onDone() }
     }
 }

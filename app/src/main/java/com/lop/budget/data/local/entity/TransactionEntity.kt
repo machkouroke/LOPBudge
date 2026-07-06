@@ -48,4 +48,7 @@ data class TransactionEntity(
     // --- Liens ---
     val linkedGoalId: Long? = null,
     val linkedDebtId: Long? = null,
+
+    // --- Soft Delete ---
+    val deleted: Boolean = false,
 )

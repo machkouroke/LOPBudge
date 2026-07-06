@@ -67,11 +67,8 @@ class HomeViewModel @Inject constructor(
 
     fun deleteWithUndo(transactionId: Long, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
         viewModelScope.launch {
-            // Soft delete ou restauration nécessiterait une évolution du repo/DB.
-            // Pour l'instant, on simule l'UI de l'undo.
-            // Dans une vraie app, on mettrait un champ "deleted" à true, 
-            // et on le remettrait à false si l'utilisateur clique sur "Annuler".
-            repo.deleteTransaction(transactionId)
+            // Soft delete : on marque la transaction comme supprimée (elle disparaît de l'UI)
+            repo.softDeleteTransaction(transactionId)
             
             val result = snackbarHostState.showSnackbar(
                 message = "Transaction supprimée",
@@ -80,7 +77,11 @@ class HomeViewModel @Inject constructor(
             )
             
             if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                // TODO: Restaurer la transaction (nécessite de garder la transaction en mémoire avant delete)
+                // L'utilisateur a cliqué sur "Annuler" : on restaure la transaction
+                repo.restoreTransaction(transactionId)
+            } else {
+                // Le Snackbar a disparu sans annulation (timeout ou autre action) : suppression définitive optionnelle
+                // repo.hardDeleteTransaction(transactionId) // Décommenter si on veut purger la DB
             }
         }
     }
