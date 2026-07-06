@@ -55,7 +55,9 @@ class BudgetRepository @Inject constructor(
     suspend fun setStatus(transactionId: Long, status: String) =
         transactionDao.updateStatus(transactionId, status)
 
-    suspend fun deleteTransaction(id: Long) = transactionDao.delete(id)
+    suspend fun softDeleteTransaction(id: Long) = transactionDao.softDelete(id)
+    suspend fun restoreTransaction(id: Long) = transactionDao.restore(id)
+    suspend fun hardDeleteTransaction(id: Long) = transactionDao.hardDelete(id)
 
     // Référentiels
     fun observeAccounts() = accountDao.observeAll()

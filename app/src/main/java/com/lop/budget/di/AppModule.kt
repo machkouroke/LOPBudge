@@ -39,6 +39,7 @@ object AppModule {
                     scope.launch { DatabaseSeeder.seed(dbRef) }
                 }
             })
+            .addMigrations(LopDatabase.MIGRATION_1_2)
             .fallbackToDestructiveMigration()
             .build()
         return dbRef

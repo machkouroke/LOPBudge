@@ -16,23 +16,23 @@ import kotlinx.coroutines.flow.Flow
 interface TransactionDao {
 
     @Transaction
-    @Query("SELECT * FROM transactions ORDER BY date ASC")
+    @Query("SELECT * FROM transactions WHERE deleted = 0 ORDER BY date ASC")
     fun observeAll(): Flow<List<TransactionWithRelations>>
 
     @Transaction
-    @Query("SELECT * FROM transactions WHERE date BETWEEN :start AND :end ORDER BY date ASC")
+    @Query("SELECT * FROM transactions WHERE deleted = 0 AND date BETWEEN :start AND :end ORDER BY date ASC")
     fun observeBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>>
 
     @Transaction
-    @Query("SELECT * FROM transactions WHERE id = :id")
+    @Query("SELECT * FROM transactions WHERE id = :id AND deleted = 0")
     fun observeById(id: Long): Flow<TransactionWithRelations?>
 
     /** Toutes les occurrences d'une même série récurrente. */
     @Transaction
-    @Query("SELECT * FROM transactions WHERE seriesId = :seriesId ORDER BY date ASC")
+    @Query("SELECT * FROM transactions WHERE seriesId = :seriesId AND deleted = 0 ORDER BY date ASC")
     fun observeSeries(seriesId: String): Flow<List<TransactionWithRelations>>
 
-    @Query("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE type = :type AND status = 'PAID' AND date BETWEEN :start AND :end")
+    @Query("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE type = :type AND status = 'PAID' AND deleted = 0 AND date BETWEEN :start AND :end")
     fun observePaidSum(type: String, start: Long, end: Long): Flow<Double>
 
     @Upsert
@@ -47,8 +47,14 @@ interface TransactionDao {
     @Query("UPDATE transactions SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: Long, status: String)
 
+    @Query("UPDATE transactions SET deleted = 1 WHERE id = :id")
+    suspend fun softDelete(id: Long)
+
+    @Query("UPDATE transactions SET deleted = 0 WHERE id = :id")
+    suspend fun restore(id: Long)
+
     @Query("DELETE FROM transactions WHERE id = :id")
-    suspend fun delete(id: Long)
+    suspend fun hardDelete(id: Long)
 
     // --- Tags ---
     @Insert(onConflict = OnConflictStrategy.IGNORE)

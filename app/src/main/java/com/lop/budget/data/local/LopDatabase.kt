@@ -27,7 +27,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         GoalEntity::class,
         DebtEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -41,5 +41,11 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transactions ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
+            }
+        }
     }
 }
