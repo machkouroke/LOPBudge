@@ -44,6 +44,8 @@ data class HomeUiState(
     val daysUntilPayday: Int? = null,
     val upcoming: List<TransactionWithRelations> = emptyList(),
     val dayGroups: List<DayGroup> = emptyList(),
+    /** Version par transaction : incrémenté à chaque Undo pour forcer la recréation du composant Compose */
+    val txVersions: Map<Long, Int> = emptyMap(),
 ) {
     val budgetRemaining: Double get() = totalBudget - monthExpense
     val budgetPercentage: Float get() = if (totalBudget > 0) (monthExpense / totalBudget).toFloat() else 0f
@@ -67,10 +69,15 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    // IDs des transactions masquées en attente de confirmation de suppression
     private val pendingDeletes = MutableStateFlow<Set<Long>>(emptySet())
+    // Compteur de version par transaction : incrémenté à chaque Undo pour forcer
+    // Compose à créer un NOUVEAU composant (nouvelle clé) plutôt que de réutiliser l'ancien.
+    // Sans ça, SwipeToDismissBoxState reste à EndToStart et rappelle onDelete().
+    private val txVersions = MutableStateFlow<Map<Long, Int>>(emptyMap())
 
     fun deleteWithUndo(transactionId: Long, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
-        // 1. Soft-delete in-memory : on masque immédiatement la transaction de l'UI
+        // 1. Masquer immédiatement la transaction de l'UI (sans toucher la DB)
         pendingDeletes.value = pendingDeletes.value + transactionId
 
         viewModelScope.launch {
@@ -79,12 +86,16 @@ class HomeViewModel @Inject constructor(
                 actionLabel = "Annuler",
                 duration = androidx.compose.material3.SnackbarDuration.Short
             )
-            
+
             if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                // 2a. Undo : on retire l'ID de la liste d'attente, la transaction réapparaît
+                // 2a. Undo : incrémenter la version AVANT de retirer de pendingDeletes.
+                // Cela change la clé de l'item dans LazyColumn (« tx_${id}_v${n+1} »)
+                // ce qui force Compose à créer un nouveau composant avec dismissState = Settled.
+                val currentVersion = txVersions.value[transactionId] ?: 0
+                txVersions.value = txVersions.value + (transactionId to currentVersion + 1)
                 pendingDeletes.value = pendingDeletes.value - transactionId
             } else {
-                // 2b. Timeout : on supprime réellement en DB (soft-delete persistant)
+                // 2b. Timeout : suppression réelle en DB
                 pendingDeletes.value = pendingDeletes.value - transactionId
                 repo.softDeleteTransaction(transactionId)
             }
@@ -118,7 +129,7 @@ class HomeViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<HomeUiState> =
-        combine(monthData, settings.currency, month, pendingDeletes) { data, currency, ym, pending ->
+        combine(monthData, settings.currency, month, pendingDeletes, txVersions) { data, currency, ym, pending, versions ->
             @Suppress("UNCHECKED_CAST")
             val allTxs = data[0] as List<TransactionWithRelations>
             val txs = allTxs.filter { it.transaction.id !in pending }
@@ -174,6 +185,7 @@ class HomeViewModel @Inject constructor(
                 daysUntilPayday = payday,
                 upcoming = upcoming,
                 dayGroups = dayGroups,
+                txVersions = versions as Map<Long, Int>,
             )
         }
         // PERF FIX #3 : tout le combine (tri, groupBy, calculs) s'exécute sur le pool IO/Default,

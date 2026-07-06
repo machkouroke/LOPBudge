@@ -485,7 +485,12 @@ fun HomeScreen(
                 // Items de transaction individuels — recyclables par LazyColumn
                 items(
                     items = day.transactions,
-                    key = { tx -> "tx_${tx.transaction.id}" },
+                    key = { tx ->
+                        // La version change après un Undo, ce qui force Compose à créer
+                        // un NOUVEAU composant SwipeableTransactionRow (dismissState = Settled).
+                        val v = state.txVersions[tx.transaction.id] ?: 0
+                        "tx_${tx.transaction.id}_v$v"
+                    },
                 ) { tx ->
                     // Modifier.animateItem() pour animer l'apparition/disparition/déplacement
                     // géré nativement par LazyColumn quand la liste change
