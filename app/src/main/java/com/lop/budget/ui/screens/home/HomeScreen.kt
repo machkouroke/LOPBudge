@@ -58,6 +58,8 @@ import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.SwipeableTransactionRow
+import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.navigation.Routes
@@ -71,6 +73,7 @@ import java.util.Locale
 
 @Composable
 fun HomeScreen(
+    snackbarHostState: androidx.compose.material3.SnackbarHostState,
     onOpenTransaction: (Long) -> Unit,
     onOpenAi: () -> Unit,
     onOpenMonthly: (TransactionType, YearMonth) -> Unit,
@@ -150,7 +153,13 @@ fun HomeScreen(
                     Spacer(Modifier.height(24.dp))
 
                     // Carte Budget global (Donut 2%)
-                    FloatingCard(
+                    val isPaid = tx.transaction.status == TransactionStatus.PAID
+                    SwipeableTransactionRow(
+                        isPaid = isPaid,
+                        onTogglePaid = { viewModel.togglePaid(tx.transaction.id, tx.transaction.status) },
+                        onDelete = { viewModel.deleteWithUndo(tx.transaction.id, snackbarHostState) }
+                    ) {
+                        FloatingCard(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
@@ -217,6 +226,12 @@ fun HomeScreen(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         // Carte Restaurants
+                        val isPaid = tx.transaction.status == TransactionStatus.PAID
+                    SwipeableTransactionRow(
+                        isPaid = isPaid,
+                        onTogglePaid = { viewModel.togglePaid(tx.transaction.id, tx.transaction.status) },
+                        onDelete = { viewModel.deleteWithUndo(tx.transaction.id, snackbarHostState) }
+                    ) {
                         FloatingCard(
                             modifier = Modifier.weight(1f),
                             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -250,6 +265,12 @@ fun HomeScreen(
                         }
 
                         // Carte Épicerie
+                        val isPaid = tx.transaction.status == TransactionStatus.PAID
+                    SwipeableTransactionRow(
+                        isPaid = isPaid,
+                        onTogglePaid = { viewModel.togglePaid(tx.transaction.id, tx.transaction.status) },
+                        onDelete = { viewModel.deleteWithUndo(tx.transaction.id, snackbarHostState) }
+                    ) {
                         FloatingCard(
                             modifier = Modifier.weight(1f),
                             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -294,7 +315,13 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    FloatingCard(
+                    val isPaid = tx.transaction.status == TransactionStatus.PAID
+                    SwipeableTransactionRow(
+                        isPaid = isPaid,
+                        onTogglePaid = { viewModel.togglePaid(tx.transaction.id, tx.transaction.status) },
+                        onDelete = { viewModel.deleteWithUndo(tx.transaction.id, snackbarHostState) }
+                    ) {
+                        FloatingCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickableNoRipple { /* Open Upcoming Modal */ },
@@ -352,7 +379,13 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    FloatingCard(
+                    val isPaid = tx.transaction.status == TransactionStatus.PAID
+                    SwipeableTransactionRow(
+                        isPaid = isPaid,
+                        onTogglePaid = { viewModel.togglePaid(tx.transaction.id, tx.transaction.status) },
+                        onDelete = { viewModel.deleteWithUndo(tx.transaction.id, snackbarHostState) }
+                    ) {
+                        FloatingCard(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
@@ -490,13 +523,20 @@ fun HomeScreen(
                     val recurring =
                         tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
 
-                    FloatingCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickableNoRipple { onOpenTransaction(tx.transaction.id) },
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+                    val isPaid = tx.transaction.status == TransactionStatus.PAID
+                    SwipeableTransactionRow(
+                        isPaid = isPaid,
+                        onTogglePaid = { viewModel.togglePaid(tx.transaction.id, tx.transaction.status) },
+                        onDelete = { viewModel.deleteWithUndo(tx.transaction.id, snackbarHostState) }
                     ) {
+                        FloatingCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickableNoRipple { onOpenTransaction(tx.transaction.id) }
+                                .alpha(if (isPaid) 0.5f else 1f),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+                        ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             CircleIcon(
                                 icon = IconMapper.get(tx.category?.icon ?: "category"),
@@ -527,15 +567,13 @@ fun HomeScreen(
                                 )
                             }
                             Text(
-                                (if (isIncome) "+" else "−") + Format.money(
-                                    tx.transaction.amount,
-                                    state.currency
-                                ),
+                                (if (isIncome) "+" else "−") + Format.money(tx.transaction.amount, state.currency),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = amountColor,
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
+                    }
                     }
                 }
             }

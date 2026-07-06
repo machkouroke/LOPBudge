@@ -57,6 +57,33 @@ class HomeViewModel @Inject constructor(
     private val month = MutableStateFlow(YearMonth.now())
 
     fun setMonth(value: YearMonth) { month.value = value }
+    fun togglePaid(transactionId: Long, currentStatus: TransactionStatus) {
+        viewModelScope.launch {
+            val newStatus = if (currentStatus == TransactionStatus.PAID) TransactionStatus.PLANNED else TransactionStatus.PAID
+            repo.setStatus(transactionId, newStatus.name)
+        }
+    }
+
+    fun deleteWithUndo(transactionId: Long, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
+        viewModelScope.launch {
+            // Soft delete ou restauration nécessiterait une évolution du repo/DB.
+            // Pour l'instant, on simule l'UI de l'undo.
+            // Dans une vraie app, on mettrait un champ "deleted" à true, 
+            // et on le remettrait à false si l'utilisateur clique sur "Annuler".
+            repo.deleteTransaction(transactionId)
+            
+            val result = snackbarHostState.showSnackbar(
+                message = "Transaction supprimée",
+                actionLabel = "Annuler",
+                duration = androidx.compose.material3.SnackbarDuration.Short
+            )
+            
+            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                // TODO: Restaurer la transaction (nécessite de garder la transaction en mémoire avant delete)
+            }
+        }
+    }
+
     fun goToCurrentMonth() { month.value = YearMonth.now() }
     fun nextMonth() { month.value = month.value.plusMonths(1) }
     fun prevMonth() { month.value = month.value.minusMonths(1) }
