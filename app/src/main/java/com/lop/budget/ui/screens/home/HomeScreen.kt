@@ -487,6 +487,9 @@ fun HomeScreen(
                     items = day.transactions,
                     key = { tx -> "tx_${tx.transaction.id}" },
                 ) { tx ->
+                    // Modifier.animateItem() pour animer l'apparition/disparition/déplacement
+                    // géré nativement par LazyColumn quand la liste change
+                    Box(modifier = Modifier.animateItem()) {
                     val isIncome = tx.transaction.type == TransactionType.INCOME
                     val amountColor = if (isIncome) ext.income else ext.expense
                     val catColor = tx.category?.colorArgb?.let { Color(it) }
@@ -547,6 +550,7 @@ fun HomeScreen(
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
+                    }
                     }
                     }
                 }
