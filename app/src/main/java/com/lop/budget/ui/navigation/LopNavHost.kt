@@ -22,7 +22,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -100,9 +99,11 @@ fun LopNavHost() {
     val showBar = currentRoute in Routes.rootRoutes
 
     var showAddSheet by remember { mutableStateOf(false) }
+    // skipPartiallyExpanded = false : active les 3 états (Hidden → PartiallyExpanded → Expanded)
+    // NE PAS utiliser confirmValueChange ici — cela interfère avec la gestion interne
+    // des états du sheet et provoque des oscillations (vibrations) lors du glissement.
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = false,
-        confirmValueChange = { it != SheetValue.Hidden || true },
     )
 
     // FIX sheet vide — CAUSE RACINE :
