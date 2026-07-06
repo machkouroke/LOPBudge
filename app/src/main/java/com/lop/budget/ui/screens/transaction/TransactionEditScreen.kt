@@ -1,5 +1,10 @@
 package com.lop.budget.ui.screens.transaction
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,25 +15,35 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Backspace
-import androidx.compose.material.icons.filled.Backspace
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -39,46 +54,36 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
-import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.HapticIntent
-import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.IconMapper
 
-/**
- * Contenu du formulaire d'ajout de transaction.
- * Conçu pour être affiché dans un ModalBottomSheet expansible.
- */
 @Composable
 fun TransactionEditScreen(
     onBack: () -> Unit,
+    onNavigateToCreateCategory: () -> Unit,
     vm: TransactionEditViewModel = hiltViewModel(),
 ) {
     val form by vm.form.collectAsStateWithLifecycle()
     val categories by vm.categories.collectAsStateWithLifecycle()
     val accounts by vm.accounts.collectAsStateWithLifecycle()
     val tags by vm.tags.collectAsStateWithLifecycle()
-    val goals by vm.goals.collectAsStateWithLifecycle()
-    val debts by vm.debts.collectAsStateWithLifecycle()
+    
     val ext = LopTheme.extended
-
     val accent = if (form.type == TransactionType.INCOME) ext.income else ext.expense
     val typeCategories = categories.filter { it.type == form.type }
 
     // IMPORTANT : ne pas utiliser fillMaxHeight() ici.
-    // Le ModalBottomSheet gère lui-même sa hauteur selon son état (PartiallyExpanded / Expanded).
-    // fillMaxHeight() force une hauteur fixe qui entre en conflit avec l'animation du sheet
-    // et provoque des oscillations (vibrations) lors du glissement entre les deux états.
     Column(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
     ) {
-        // En-tête simplifié pour le bottom sheet (icône de fermeture au lieu de retour)
+        // En-tête
         Row(
-            Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
+            Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -93,9 +98,7 @@ fun TransactionEditScreen(
             )
         }
 
-        Spacer(Modifier.height(8.dp))
-
-        // Sélecteur de type (segmenté capsule)
+        // Sélecteur de type
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -107,286 +110,235 @@ fun TransactionEditScreen(
                 vm.setType(TransactionType.INCOME)
             }
         }
-
-        Spacer(Modifier.height(20.dp))
-
-        // Montant affiché
-        Text(
-            (if (form.type == TransactionType.INCOME) "+" else "−") + form.amountInput.replace('.', ',') + " €",
-            style = MaterialTheme.typography.displaySmall,
-            color = accent,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Spacer(Modifier.height(8.dp))
+        
+        Spacer(Modifier.height(24.dp))
 
         // Contenu défilant : champs + options
-        androidx.compose.foundation.lazy.LazyColumn(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        LazyColumn(
+            modifier = Modifier.weight(1f, fill = false),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // 1. Montant (Clavier système)
+            item {
+                OutlinedTextField(
+                    value = form.amountInput.takeIf { it != "0" } ?: "",
+                    onValueChange = { newValue ->
+                        // Filtrer : chiffres + une seule virgule/point
+                        val filtered = newValue.filter { it.isDigit() || it == ',' || it == '.' }
+                        val normalized = filtered.replace(',', '.')
+                        if (normalized.count { it == '.' } <= 1 && normalized.length <= 12) {
+                            vm.setAmountRaw(normalized)
+                        }
+                    },
+                    label = { Text("Montant") },
+                    leadingIcon = {
+                        Text(
+                            text = if (form.type == TransactionType.INCOME) "+" else "−",
+                            color = accent,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 16.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        Text(
+                            text = "€",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(end = 16.dp)
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.headlineMedium.copy(
+                        color = accent,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.End
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                    )
+                )
+            }
+
+            // 2. Intitulé
             item {
                 OutlinedTextField(
                     value = form.title,
                     onValueChange = vm::setTitle,
-                    label = { Text("Intitulé") },
+                    label = { Text("Nom de la transaction") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
                 )
             }
 
-            // Catégories
+            // 3. Catégorie (Dropdown)
             item {
-                Text("Catégorie", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(typeCategories, key = { it.id }) { cat ->
-                        val selected = form.categoryId == cat.id
-                        val c = Color(cat.colorArgb)
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) { vm.setCategory(cat.id) },
-                        ) {
-                            CircleIcon(
-                                icon = IconMapper.get(cat.icon),
-                                tint = c,
-                                background = if (selected) c.copy(alpha = 0.32f) else c.copy(alpha = 0.14f),
-                                size = 52.dp,
+                var expanded by remember { mutableStateOf(false) }
+                val selectedCat = typeCategories.find { it.id == form.categoryId }
+                
+                DropdownSelector(
+                    label = "Catégorie",
+                    value = selectedCat?.name ?: "Sélectionner une catégorie",
+                    icon = selectedCat?.let { IconMapper.get(it.icon) },
+                    iconTint = selectedCat?.let { Color(it.colorArgb) },
+                    expanded = expanded,
+                    onClick = { expanded = true }
+                ) {
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        typeCategories.forEach { cat ->
+                            DropdownMenuItem(
+                                text = { Text(cat.name) },
+                                leadingIcon = {
+                                    CircleIcon(
+                                        icon = IconMapper.get(cat.icon),
+                                        tint = Color(cat.colorArgb),
+                                        background = Color(cat.colorArgb).copy(alpha = 0.14f),
+                                        size = 32.dp,
+                                    )
+                                },
+                                onClick = {
+                                    vm.setCategory(cat.id)
+                                    expanded = false
+                                }
                             )
-                            Spacer(Modifier.height(4.dp))
-                            Text(cat.name, style = MaterialTheme.typography.labelSmall)
                         }
-                    }
-                }
-            }
-
-            // Tags
-            item {
-                Text("Tags", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(tags, key = { it.id }) { tag ->
-                        val selected = tag.id in form.tagIds
-                        val c = Color(tag.colorArgb)
+                        
+                        // Bouton "Créer une catégorie"
                         Surface(
-                            color = if (selected) c.copy(alpha = 0.30f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            shape = CircleShape,
-                            modifier = Modifier.pressScaleClickable(intent = HapticIntent.Tap) { vm.toggleTag(tag.id) },
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            modifier = Modifier.fillMaxWidth().clickable { 
+                                expanded = false
+                                onNavigateToCreateCategory()
+                            }
                         ) {
-                            Text(
-                                "#${tag.name}",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = if (selected) c else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            )
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(12.dp))
+                                Text("Créer une nouvelle catégorie", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }
             }
 
-            // Comptes
+            // 4. Compte (Dropdown)
             item {
-                Text("Compte", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(accounts, key = { it.id }) { acc ->
-                        val selected = form.accountId == acc.id
-                        PillTag(
-                            text = acc.name,
-                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) { vm.setAccount(acc.id) },
-                        )
-                    }
-                }
-            }
-
-            // Récurrence avancée
-            item {
-                RecurrenceSection(form, vm)
-            }
-
-            // Rattachement objectif / dette (uniquement dépense)
-            if (form.type == TransactionType.EXPENSE && (goals.isNotEmpty() || debts.isNotEmpty())) {
-                item {
-                    Text("Rattacher à", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(8.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(goals, key = { "g${it.id}" }) { g ->
-                            val selected = form.linkedGoalId == g.id
-                            PillTag(
-                                text = "🎯 ${g.name}",
-                                color = if (selected) ext.income else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) {
-                                    vm.setLinkedGoal(if (selected) null else g.id)
-                                },
-                            )
-                        }
-                        items(debts, key = { "d${it.id}" }) { d ->
-                            val selected = form.linkedDebtId == d.id
-                            PillTag(
-                                text = "💳 ${d.name}",
-                                color = if (selected) ext.expense else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) {
-                                    vm.setLinkedDebt(if (selected) null else d.id)
-                                },
+                var expanded by remember { mutableStateOf(false) }
+                val selectedAcc = accounts.find { it.id == form.accountId }
+                
+                DropdownSelector(
+                    label = "Compte",
+                    value = selectedAcc?.name ?: "Sélectionner un compte",
+                    expanded = expanded,
+                    onClick = { expanded = true }
+                ) {
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        accounts.forEach { acc ->
+                            DropdownMenuItem(
+                                text = { Text(acc.name) },
+                                onClick = {
+                                    vm.setAccount(acc.id)
+                                    expanded = false
+                                }
                             )
                         }
                     }
                 }
             }
 
+            // 5. Notes
             item {
                 OutlinedTextField(
                     value = form.note,
                     onValueChange = vm::setNote,
-                    label = { Text("Note (optionnel)") },
+                    label = { Text("Notes (optionnel)") },
+                    minLines = 2,
+                    maxLines = 4,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
                 )
             }
-        }
 
-        // Pavé numérique (reste fixé en bas du bottom sheet)
-        NumericKeypad(
-            onDigit = { digit -> vm.appendDigit(digit) },
-            onDelete = { vm.deleteDigit() },
-            onValidate = { vm.save(onBack) },
-            accent = accent,
-        )
-        Spacer(Modifier.height(16.dp))
-    }
-}
+            // 6. Récurrence
+            item {
+                var expanded by remember { mutableStateOf(false) }
+                val freqs = listOf(
+                    RecurrenceFrequency.NONE to "Ne se répète pas",
+                    RecurrenceFrequency.DAILY to "Tous les jours",
+                    RecurrenceFrequency.WEEKLY to "Toutes les semaines",
+                    RecurrenceFrequency.MONTHLY to "Tous les mois",
+                    RecurrenceFrequency.YEARLY to "Tous les ans",
+                )
+                val selectedFreqLabel = freqs.find { it.first == form.frequency }?.second ?: "Ne se répète pas"
 
-@Composable
-private fun NumericKeypad(
-    onDigit: (String) -> Unit,
-    onDelete: () -> Unit,
-    onValidate: () -> Unit,
-    accent: Color,
-) {
-    val rows = listOf(
-        listOf("1", "2", "3"),
-        listOf("4", "5", "6"),
-        listOf("7", "8", "9"),
-        listOf(",", "0", "⌫"),
-    )
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        rows.forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { key ->
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(54.dp)
-                            .pressScaleClickable(intent = HapticIntent.Tap) {
-                                when (key) {
-                                    "⌫" -> onDelete()
-                                    else -> onDigit(key)
-                                }
-                            },
-                        shape = MaterialTheme.shapes.large,
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                DropdownSelector(
+                    label = "Répéter",
+                    value = selectedFreqLabel,
+                    expanded = expanded,
+                    onClick = { expanded = true }
+                ) {
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            if (key == "⌫") Icon(Icons.Filled.Backspace, "Effacer")
-                            else Text(key, style = MaterialTheme.typography.titleLarge)
+                        freqs.forEach { (freq, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    vm.setFrequency(freq)
+                                    expanded = false
+                                }
+                            )
                         }
                     }
                 }
-            }
-        }
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp)
-                .pressScaleClickable(intent = HapticIntent.Confirm, onClick = onValidate),
-            shape = MaterialTheme.shapes.large,
-            color = accent,
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Check, null, tint = Color.Black)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Enregistrer", color = Color.Black, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-    }
-}
 
-@Composable
-private fun TypeSegment(label: String, selected: Boolean, color: Color, modifier: Modifier, onClick: () -> Unit) {
-    Surface(
-        modifier = modifier.pressScaleClickable(intent = HapticIntent.Selection, onClick = onClick),
-        shape = CircleShape,
-        color = if (selected) color.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) color else MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(vertical = 12.dp),
-        )
-    }
-}
-
-@Composable
-private fun RecurrenceSection(form: TransactionForm, vm: TransactionEditViewModel) {
-    val freqs = listOf(
-        RecurrenceFrequency.NONE to "Jamais",
-        RecurrenceFrequency.DAILY to "Quotidien",
-        RecurrenceFrequency.WEEKLY to "Hebdo",
-        RecurrenceFrequency.MONTHLY to "Mensuel",
-        RecurrenceFrequency.YEARLY to "Annuel",
-    )
-    Column {
-        Text("Répétition", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(8.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(freqs, key = { it.first.name }) { (f, label) ->
-                val selected = form.frequency == f
-                PillTag(
-                    text = label,
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) { vm.setFrequency(f) },
-                )
-            }
-        }
-        if (form.frequency != RecurrenceFrequency.NONE) {
-            Spacer(Modifier.height(10.dp))
-            FloatingCard(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Tous les ", style = MaterialTheme.typography.bodyLarge)
-                        OutlinedTextField(
-                            value = form.interval.toString(),
-                            onValueChange = { vm.setInterval(it.toIntOrNull() ?: 1) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.width(80.dp),
-                        )
-                        Text("  intervalle(s)", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if (form.frequency == RecurrenceFrequency.WEEKLY) {
-                        Spacer(Modifier.height(10.dp))
-                        Text("Jours", style = MaterialTheme.typography.labelLarge)
-                        Spacer(Modifier.height(6.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            val days = listOf("L" to 1, "M" to 2, "M" to 3, "J" to 4, "V" to 5, "S" to 6, "D" to 7)
-                            days.forEach { (lbl, num) ->
-                                val sel = num in form.daysOfWeek
-                                Box(
-                                    Modifier
-                                        .size(36.dp)
-                                        .pressScaleClickable(intent = HapticIntent.Selection) { vm.toggleDayOfWeek(num) },
-                                    contentAlignment = Alignment.Center,
-                                ) {
+                // Options avancées si récurrent
+                AnimatedVisibility(visible = form.frequency != RecurrenceFrequency.NONE) {
+                    Column(Modifier.padding(top = 12.dp, start = 12.dp, end = 12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Tous les ", style = MaterialTheme.typography.bodyLarge)
+                            OutlinedTextField(
+                                value = form.interval.toString(),
+                                onValueChange = { vm.setInterval(it.toIntOrNull() ?: 1) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.width(80.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            Text(" intervalle(s)", style = MaterialTheme.typography.bodyMedium)
+                        }
+                        
+                        if (form.frequency == RecurrenceFrequency.WEEKLY) {
+                            Spacer(Modifier.height(16.dp))
+                            Text("Jours de la semaine", style = MaterialTheme.typography.labelLarge)
+                            Spacer(Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                val days = listOf("L" to 1, "M" to 2, "M" to 3, "J" to 4, "V" to 5, "S" to 6, "D" to 7)
+                                days.forEach { (lbl, num) ->
+                                    val sel = num in form.daysOfWeek
                                     Surface(
                                         shape = CircleShape,
                                         color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                                        modifier = Modifier.size(36.dp),
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .pressScaleClickable(intent = HapticIntent.Selection) { vm.toggleDayOfWeek(num) },
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Text(
@@ -402,6 +354,100 @@ private fun RecurrenceSection(form: TransactionForm, vm: TransactionEditViewMode
                     }
                 }
             }
+
+            // Espace pour le bouton
+            item { Spacer(Modifier.height(80.dp)) }
         }
+    }
+
+    // Bouton Enregistrer flottant en bas
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(20.dp),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Button(
+            onClick = { vm.save(onDone = onBack) },
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = accent),
+            enabled = form.amount > 0.0 && form.categoryId != null && form.accountId != null
+        ) {
+            Text("Créer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun TypeSegment(label: String, selected: Boolean, color: Color, modifier: Modifier, onClick: () -> Unit) {
+    Surface(
+        modifier = modifier.pressScaleClickable(intent = HapticIntent.Selection, onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = if (selected) color.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        border = if (selected) BorderStroke(1.dp, color.copy(alpha = 0.5f)) else null
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) color else MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(vertical = 12.dp),
+        )
+    }
+}
+
+@Composable
+private fun DropdownSelector(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    iconTint: Color? = null,
+    expanded: Boolean,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val rotation by animateFloatAsState(if (expanded) 180f else 0f)
+    
+    Box {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(onClick = onClick)
+                .border(
+                    1.dp,
+                    if (expanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    RoundedCornerShape(16.dp)
+                ),
+            color = Color.Transparent
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (icon != null && iconTint != null) {
+                    CircleIcon(
+                        icon = icon,
+                        tint = iconTint,
+                        background = iconTint.copy(alpha = 0.14f),
+                        size = 32.dp,
+                    )
+                    Spacer(Modifier.width(12.dp))
+                }
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(2.dp))
+                    Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                }
+                
+                Icon(
+                    Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.rotate(rotation),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        content()
     }
 }

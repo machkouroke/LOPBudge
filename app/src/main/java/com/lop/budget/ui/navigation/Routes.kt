@@ -12,6 +12,7 @@ object Routes {
     const val ADD = "add"
     const val AI = "ai"
     const val SETTINGS = "settings"
+    const val CATEGORY_CREATE = "category/create"
     const val DETAIL = "detail/{id}"
     fun detail(id: Long) = "detail/$id"
 

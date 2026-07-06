@@ -79,6 +79,10 @@ class TransactionEditViewModel @Inject constructor(
         val cur = _form.value.amountInput
         _form.value = _form.value.copy(amountInput = if (cur.length <= 1) "0" else cur.dropLast(1))
     }
+    fun setAmountRaw(raw: String) {
+        val clamped = if (raw.isEmpty() || raw == ".") "0" else raw
+        _form.value = _form.value.copy(amountInput = clamped)
+    }
     fun setTitle(v: String) { _form.value = _form.value.copy(title = v) }
     fun setCategory(id: Long) { _form.value = _form.value.copy(categoryId = id) }
     fun setAccount(id: Long) { _form.value = _form.value.copy(accountId = id) }

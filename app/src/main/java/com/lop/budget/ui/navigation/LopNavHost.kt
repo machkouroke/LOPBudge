@@ -51,6 +51,7 @@ import com.lop.budget.ui.screens.goals.GoalsScreen
 import com.lop.budget.ui.screens.home.HomeScreen
 import com.lop.budget.ui.screens.monthly.MonthlyTransactionsScreen
 import com.lop.budget.ui.screens.settings.SettingsScreen
+import com.lop.budget.ui.screens.category.CategoryCreateScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -217,6 +218,9 @@ fun LopNavHost() {
                 composable(Routes.SETTINGS) {
                     SettingsScreen(onBack = { navController.popBackStack() })
                 }
+                composable(Routes.CATEGORY_CREATE) {
+                    CategoryCreateScreen(onBack = { navController.popBackStack() })
+                }
 
                 composable(
                     Routes.DETAIL,
@@ -354,6 +358,13 @@ fun LopNavHost() {
                             onBack = {
                                 scope.launch { sheetState.hide() }.invokeOnCompletion {
                                     showAddSheet = false
+                                }
+                            },
+                            onNavigateToCreateCategory = {
+                                // Fermer le sheet puis naviguer vers l'écran de création de catégorie
+                                scope.launch { sheetState.hide() }.invokeOnCompletion {
+                                    showAddSheet = false
+                                    navController.navigate(Routes.CATEGORY_CREATE)
                                 }
                             },
                         )
