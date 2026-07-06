@@ -219,7 +219,12 @@ fun LopNavHost() {
                     },
                 ) { AiScreen(onBack = { navController.popBackStack() }) }
 
-                composable(Routes.SETTINGS) {
+                composable(Routes.SETTINGS,
+                    enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                    exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                    popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                    popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
+                ) {
                     SettingsScreen(onBack = { navController.popBackStack() })
                 }
                 composable(Routes.CATEGORY_CREATE) {
