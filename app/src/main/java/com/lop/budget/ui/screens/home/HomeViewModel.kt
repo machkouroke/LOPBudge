@@ -22,6 +22,8 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
+import kotlinx.coroutines.launch  // ← manquait
+
 
 data class DayGroup(
     val date: LocalDate,
