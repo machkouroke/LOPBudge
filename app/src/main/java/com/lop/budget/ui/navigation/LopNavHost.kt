@@ -252,7 +252,7 @@ fun LopNavHost() {
                 }
             }
 
-            // ─── Bottom bar flottante ────────────────────────────────────────
+            // ─── Bottom bar flottante + Dégradé de fond ──────────────────────
             AnimatedVisibility(
                 visible = showBar,
                 enter = slideInVertically(
@@ -279,10 +279,26 @@ fun LopNavHost() {
                 ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 20.dp),
+                    .fillMaxWidth(),
             ) {
-                FloatingBottomBar(
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        // Dégradé : du transparent (haut) vers la couleur de fond (bas)
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(
+                                    androidx.compose.ui.graphics.Color.Transparent,
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
+                                    MaterialTheme.colorScheme.background,
+                                    MaterialTheme.colorScheme.background
+                                )
+                            )
+                        )
+                        .navigationBarsPadding()
+                        .padding(bottom = 20.dp, top = 40.dp) // padding top pour étendre le dégradé au-dessus de la barre
+                ) {
+                    FloatingBottomBar(
                     current = currentRoute ?: Routes.HOME,
                     onSelect = { route ->
                         navController.navigate(route) {
@@ -294,6 +310,7 @@ fun LopNavHost() {
                     onAdd = { showAddSheet = true },
                     hazeState = hazeState,
                 )
+                }
             }
 
             // ─── ModalBottomSheet expansible ────────────────────────────────
