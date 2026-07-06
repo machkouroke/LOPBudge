@@ -314,7 +314,7 @@ fun LopNavHost() {
                         dragHandle = {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxSize()
+                                    .fillMaxWidth() // <-- CORRECTION ICI : fillMaxWidth au lieu de fillMaxSize
                                     .padding(vertical = 12.dp),
                                 contentAlignment = Alignment.TopCenter,
                             ) {
