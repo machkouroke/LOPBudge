@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -61,7 +62,7 @@ fun FloatingBottomBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 30.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
@@ -70,10 +71,10 @@ fun FloatingBottomBar(
             shape = pillShape,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)),
             shadowElevation = 14.dp,
-            tonalElevation = 0.dp,
+            tonalElevation = 15.dp,
             modifier = Modifier
                 .weight(1f)
-                .height(72.dp)
+                .height(65.dp)
                 .clip(pillShape)
                 // Blur plus fort pour éviter l'illisibilité quand du contenu passe derrière.
 //                .hazeEffect(state = hazeState, style = HazeMaterials.regular())
@@ -83,6 +84,7 @@ fun FloatingBottomBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .fillMaxHeight()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -108,13 +110,13 @@ fun FloatingBottomBar(
                     current = current,
                     onClick = { onSelect("goals") },
                 )
-                NavItem(
-                    icon = Icons.Outlined.AccountBalanceWallet,
-                    label = "Compte",
-                    route = "accounts",
-                    current = current,
-                    onClick = { onSelect("accounts") },
-                )
+//                NavItem(
+//                    icon = Icons.Outlined.AccountBalanceWallet,
+//                    label = "Compte",
+//                    route = "accounts",
+//                    current = current,
+//                    onClick = { onSelect("accounts") },
+//                )
             }
         }
 
@@ -147,19 +149,21 @@ private fun NavItem(
     val content: @Composable () -> Unit = {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.SpaceBetween,
+
+            modifier = Modifier.padding(vertical = 15.dp)
         ) {
             Icon(icon, contentDescription = label, tint = iconTint, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = label,
-                color = textColor,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Ellipsis,
-            )
+//            Spacer(Modifier.height(2.dp))
+//            Text(
+//                text = label,
+//                color = textColor,
+//                style = MaterialTheme.typography.labelSmall,
+//                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+//                maxLines = 1,
+//                softWrap = false,
+//                overflow = TextOverflow.Ellipsis,
+//            )
         }
     }
 

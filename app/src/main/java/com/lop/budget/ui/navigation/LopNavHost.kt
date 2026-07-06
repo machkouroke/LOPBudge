@@ -290,8 +290,8 @@ fun LopNavHost() {
                             brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                                 colors = listOf(
                                     androidx.compose.ui.graphics.Color.Transparent,
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.4f),
                                     MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-                                    MaterialTheme.colorScheme.background,
                                     MaterialTheme.colorScheme.background
                                 )
                             )
