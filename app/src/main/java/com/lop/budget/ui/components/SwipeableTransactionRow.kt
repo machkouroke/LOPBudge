@@ -58,7 +58,7 @@ fun SwipeableTransactionRow(
     // positionalThreshold : le swipe doit couvrir 40 % de la largeur pour se déclencher.
     val dismissState = rememberSwipeToDismissBoxState(
         initialValue = SwipeToDismissBoxValue.Settled,
-        positionalThreshold = { totalDistance -> totalDistance * 0.4f },
+        positionalThreshold = { totalDistance -> totalDistance * 0.9f },
     )
 
     // Observer currentValue pour déclencher la logique métier après que le swipe est confirmé.
@@ -112,7 +112,7 @@ fun SwipeableTransactionRow(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 20.dp, vertical = 6.dp)
+//                        .padding(horizontal = 20.dp, vertical = 6.dp)
                         .background(
                             color = bgColor,
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
