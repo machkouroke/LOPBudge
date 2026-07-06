@@ -394,7 +394,6 @@ fun TransactionEditScreen(
                                     }
                                 }
                             }
-                            }
                         }
                         
                         Spacer(Modifier.height(16.dp))
@@ -513,21 +512,21 @@ fun TransactionEditScreen(
             // Espace pour le bouton
             item { Spacer(Modifier.height(80.dp)) }
         }
-    }
 
-    // Bouton Enregistrer flottant en bas
-    Box(
-        modifier = Modifier.fillMaxWidth().padding(20.dp),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        Button(
-            onClick = { vm.save(onDone = onBack) },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = accent),
-            enabled = form.amount > 0.0 && form.categoryId != null && form.accountId != null
+        // Bouton Enregistrer flottant en bas
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 0.dp, vertical = 16.dp),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            Text("Créer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Button(
+                onClick = { vm.save(onDone = onBack) },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = accent),
+                enabled = form.amount > 0.0 && form.categoryId != null && form.accountId != null
+            ) {
+                Text("Créer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
