@@ -62,16 +62,17 @@ fun FloatingBottomBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 30.dp),
+            .padding(horizontal = 60.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
         // --- Pilule principale ---
         Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
             shape = pillShape,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)),
             shadowElevation = 14.dp,
-            tonalElevation = 15.dp,
+//            tonalElevation = 15.dp,
             modifier = Modifier
                 .weight(1f)
                 .height(65.dp)
@@ -151,19 +152,19 @@ private fun NavItem(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
 
-            modifier = Modifier.padding(vertical = 15.dp)
+            modifier = Modifier.padding(vertical = 2.dp, horizontal = 2.dp)
         ) {
             Icon(icon, contentDescription = label, tint = iconTint, modifier = Modifier.size(20.dp))
-//            Spacer(Modifier.height(2.dp))
-//            Text(
-//                text = label,
-//                color = textColor,
-//                style = MaterialTheme.typography.labelSmall,
-//                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-//                maxLines = 1,
-//                softWrap = false,
-//                overflow = TextOverflow.Ellipsis,
-//            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = label,
+                color = textColor,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 

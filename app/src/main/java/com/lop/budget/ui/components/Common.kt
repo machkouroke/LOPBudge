@@ -1,5 +1,6 @@
 package com.lop.budget.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -31,7 +32,8 @@ fun FloatingCard(
 ) {
     Surface(
         modifier = modifier,
-        color = color,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.5f)),
         shape = RoundedCornerShape(cornerRadius),
         tonalElevation = 2.dp,
     ) {

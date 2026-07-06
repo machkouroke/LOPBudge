@@ -303,20 +303,23 @@ fun LopNavHost() {
                             )
                         )
                         .navigationBarsPadding()
-                        .padding(bottom = 20.dp, top = 40.dp) // padding top pour étendre le dégradé au-dessus de la barre
+                        .padding(
+                            bottom = 20.dp,
+                            top = 40.dp
+                        ) // padding top pour étendre le dégradé au-dessus de la barre
                 ) {
                     FloatingBottomBar(
-                    current = currentRoute ?: Routes.HOME,
-                    onSelect = { route ->
-                        navController.navigate(route) {
-                            popUpTo(Routes.HOME) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onAdd = { showAddSheet = true },
-                    hazeState = hazeState,
-                )
+                        current = currentRoute ?: Routes.HOME,
+                        onSelect = { route ->
+                            navController.navigate(route) {
+                                popUpTo(Routes.HOME) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        onAdd = { showAddSheet = true },
+                        hazeState = hazeState,
+                    )
                 }
             }
 
