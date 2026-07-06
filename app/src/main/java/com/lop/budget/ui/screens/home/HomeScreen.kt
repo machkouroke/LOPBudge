@@ -55,11 +55,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.TransactionStatus
+import com.lop.budget.ui.components.SwipeableTransactionRow
+import androidx.compose.ui.draw.alpha
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
-import com.lop.budget.ui.components.SwipeableTransactionRow
-import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.navigation.Routes
@@ -153,13 +154,7 @@ fun HomeScreen(
                     Spacer(Modifier.height(24.dp))
 
                     // Carte Budget global (Donut 2%)
-                    val isPaid = tx.transaction.status == TransactionStatus.PAID
-                    SwipeableTransactionRow(
-                        isPaid = isPaid,
-                        onTogglePaid = { viewModel.togglePaid(tx.transaction.id, tx.transaction.status) },
-                        onDelete = { viewModel.deleteWithUndo(tx.transaction.id, snackbarHostState) }
-                    ) {
-                        FloatingCard(
+                    FloatingCard(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
@@ -226,12 +221,6 @@ fun HomeScreen(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         // Carte Restaurants
-                        val isPaid = tx.transaction.status == TransactionStatus.PAID
-                    SwipeableTransactionRow(
-                        isPaid = isPaid,
-                        onTogglePaid = { viewModel.togglePaid(tx.transaction.id, tx.transaction.status) },
-                        onDelete = { viewModel.deleteWithUndo(tx.transaction.id, snackbarHostState) }
-                    ) {
                         FloatingCard(
                             modifier = Modifier.weight(1f),
                             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -265,12 +254,6 @@ fun HomeScreen(
                         }
 
                         // Carte Épicerie
-                        val isPaid = tx.transaction.status == TransactionStatus.PAID
-                    SwipeableTransactionRow(
-                        isPaid = isPaid,
-                        onTogglePaid = { viewModel.togglePaid(tx.transaction.id, tx.transaction.status) },
-                        onDelete = { viewModel.deleteWithUndo(tx.transaction.id, snackbarHostState) }
-                    ) {
                         FloatingCard(
                             modifier = Modifier.weight(1f),
                             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -315,13 +298,7 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    val isPaid = tx.transaction.status == TransactionStatus.PAID
-                    SwipeableTransactionRow(
-                        isPaid = isPaid,
-                        onTogglePaid = { viewModel.togglePaid(tx.transaction.id, tx.transaction.status) },
-                        onDelete = { viewModel.deleteWithUndo(tx.transaction.id, snackbarHostState) }
-                    ) {
-                        FloatingCard(
+                    FloatingCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickableNoRipple { /* Open Upcoming Modal */ },
@@ -379,13 +356,7 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    val isPaid = tx.transaction.status == TransactionStatus.PAID
-                    SwipeableTransactionRow(
-                        isPaid = isPaid,
-                        onTogglePaid = { viewModel.togglePaid(tx.transaction.id, tx.transaction.status) },
-                        onDelete = { viewModel.deleteWithUndo(tx.transaction.id, snackbarHostState) }
-                    ) {
-                        FloatingCard(
+                    FloatingCard(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
@@ -526,8 +497,8 @@ fun HomeScreen(
                     val isPaid = tx.transaction.status == TransactionStatus.PAID
                     SwipeableTransactionRow(
                         isPaid = isPaid,
-                        onTogglePaid = { viewModel.togglePaid(tx.transaction.id, tx.transaction.status) },
-                        onDelete = { viewModel.deleteWithUndo(tx.transaction.id, snackbarHostState) }
+                        onTogglePaid = { vm.togglePaid(tx.transaction.id, tx.transaction.status) },
+                        onDelete = { vm.deleteWithUndo(tx.transaction.id, snackbarHostState) }
                     ) {
                         FloatingCard(
                             modifier = Modifier
@@ -567,7 +538,10 @@ fun HomeScreen(
                                 )
                             }
                             Text(
-                                (if (isIncome) "+" else "−") + Format.money(tx.transaction.amount, state.currency),
+                                (if (isIncome) "+" else "−") + Format.money(
+                                    tx.transaction.amount,
+                                    state.currency
+                                ),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = amountColor,
                                 fontWeight = FontWeight.SemiBold,
