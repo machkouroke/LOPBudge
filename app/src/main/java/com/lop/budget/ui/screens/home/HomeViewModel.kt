@@ -120,12 +120,16 @@ class HomeViewModel @Inject constructor(
 
         combine(
             repo.observeTransactionsBetween(start, end),
-            repo.observePaidSum(TransactionType.INCOME, start, end),
-            repo.observePaidSum(TransactionType.EXPENSE, start, end),
-            repo.observePaidSum(TransactionType.EXPENSE, prevStart, prevEnd),
-        ) { txs, income, expense, prevExpense ->
-            val simulatedPrevExpense = if (prevExpense == 0.0) 1833.52 else prevExpense
-            listOf(txs, income, expense, simulatedPrevExpense)
+            repo.observeTransactionsBetween(prevStart, prevEnd),
+        ) { txs, prevTxs ->
+            // Dépenses et revenus = toutes les transactions du mois (PAID + PLANNED)
+            val income = txs.filter { it.transaction.type == TransactionType.INCOME }
+                .sumOf { it.transaction.amount }
+            val expense = txs.filter { it.transaction.type == TransactionType.EXPENSE }
+                .sumOf { it.transaction.amount }
+            val prevExpense = prevTxs.filter { it.transaction.type == TransactionType.EXPENSE }
+                .sumOf { it.transaction.amount }
+            listOf(txs, income, expense, prevExpense)
         }
     }
 
