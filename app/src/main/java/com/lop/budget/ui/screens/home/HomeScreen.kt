@@ -128,9 +128,9 @@ fun HomeScreen(
                 val monthName = Format.monthYear(state.month).split(" ").first()
                 val solde = state.monthIncome - state.monthExpense
                 
-                // Animation du solde
-                var targetSolde by remember { mutableStateOf(0f) }
-                LaunchedEffect(solde) { targetSolde = solde.toFloat() }
+                // Animation du solde : reset à 0 à chaque changement de mois, puis anime vers la valeur cible
+                var targetSolde by remember(state.month) { mutableStateOf(0f) }
+                LaunchedEffect(state.month, solde) { targetSolde = solde.toFloat() }
                 val animatedSolde by animateFloatAsState(
                     targetValue = targetSolde,
                     animationSpec = tween(durationMillis = 1000),
