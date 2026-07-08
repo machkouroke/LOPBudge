@@ -54,7 +54,7 @@ fun SwipeableTransactionRow(
 
     val dismissState = rememberSwipeToDismissBoxState(
         initialValue = SwipeToDismissBoxValue.Settled,
-        positionalThreshold = { totalDistance -> totalDistance * 0.9f },
+        positionalThreshold = { totalDistance -> totalDistance },
     )
 
     LaunchedEffect(dismissState.currentValue) {
