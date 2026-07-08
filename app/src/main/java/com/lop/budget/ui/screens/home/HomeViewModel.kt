@@ -187,7 +187,7 @@ class HomeViewModel @Inject constructor(
                 isCurrentMonth = ym == YearMonth.now(),
                 currency = "$",
                 monthIncome = income,
-                monthExpense = if (expense == 0.0) 208.0 else expense,
+                monthExpense = expense,
                 previousPeriodExpense = prevExpense,
                 projectedBalance = projected,
                 daysUntilPayday = payday,
