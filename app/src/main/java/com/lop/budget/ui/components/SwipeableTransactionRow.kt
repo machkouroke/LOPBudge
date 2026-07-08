@@ -23,6 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
@@ -46,16 +48,24 @@ fun SwipeableTransactionRow(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-    // Flag pour s'assurer que l'action de swipe ne se déclenche qu'une seule fois.
-    // Cela évite la race condition où LazyColumn réutilise le composant après un Undo
-    // et le LaunchedEffect se re-déclenche sur EndToStart en rappelant onDelete().
+        val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
     var hasActionFired by remember { mutableStateOf(false) }
 
+    // On utilise un seuil de 40% pour déclencher le swipe (totalDistance * 0.4f).
+    // Si l'utilisateur relâche avant 40%, l'item revient à sa place.
+    // S'il swipe rapidement (fling), la vélocité déclenche l'action même avant 40%.
     val dismissState = rememberSwipeToDismissBoxState(
         initialValue = SwipeToDismissBoxValue.Settled,
-        positionalThreshold = { totalDistance -> totalDistance },
+        positionalThreshold = { totalDistance -> totalDistance * 0.4f },
     )
+
+    // Retour haptique lors du passage du seuil (quand l'icône apparaît / change d'état)
+    LaunchedEffect(dismissState.targetValue) {
+        if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
 
     LaunchedEffect(dismissState.currentValue) {
         if (hasActionFired) return@LaunchedEffect
@@ -71,10 +81,13 @@ fun SwipeableTransactionRow(
             SwipeToDismissBoxValue.EndToStart -> {
                 hasActionFired = true
                 onDelete()
-                // Ne PAS appeler snapTo(Settled) ici.
-                // L'item va être immédiatement retiré de la liste par le filtre in-memory du ViewModel.
-                // S'il y a un Undo, le ViewModel le remet dans la liste, et LazyColumn créera 
-                // une NOUVELLE instance de ce composant avec initialValue = Settled et hasActionFired = false.
+                // Pour éviter que l'item ne reste "bloqué" à l'écran si le filtre in-memory 
+                // met quelques millisecondes à s'appliquer, on force le reset visuel immédiatement.
+                // Comme la clé Compose (versionnée) changera au prochain Undo, ce composant
+                // sera détruit de toute façon, mais au moins il ne glitchera pas pendant la transition.
+                scope.launch {
+                    dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+                }
             }
             SwipeToDismissBoxValue.Settled -> Unit
         }
