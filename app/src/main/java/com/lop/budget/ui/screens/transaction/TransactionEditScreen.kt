@@ -22,6 +22,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
@@ -61,6 +68,7 @@ import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.IconMapper
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TransactionEditScreen(
     onBack: () -> Unit,
@@ -71,6 +79,8 @@ fun TransactionEditScreen(
     val categories by vm.categories.collectAsStateWithLifecycle()
     val accounts by vm.accounts.collectAsStateWithLifecycle()
     val tags by vm.tags.collectAsStateWithLifecycle()
+    
+    var showTagsSheet by remember { mutableStateOf(false) }
     
     val ext = LopTheme.extended
     val accent = if (form.type == TransactionType.INCOME) ext.income else ext.expense
@@ -305,8 +315,39 @@ fun TransactionEditScreen(
                 }
             }
 
-            // 6. Notes
+            // 6. Étiquettes (Tags)
             item {
+                val selectedTags = tags.filter { it.id in form.tagIds }
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable { showTagsSheet = true },
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("Étiquettes (max 3)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(8.dp))
+                        if (selectedTags.isEmpty()) {
+                            Text("Aucune étiquette", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                selectedTags.forEach { tag ->
+                                    com.lop.budget.ui.components.PillTag(text = tag.name, color = Color(tag.colorArgb))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 7. Notes
+            item {
+                Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = form.note,
                     onValueChange = vm::setNote,
@@ -318,7 +359,7 @@ fun TransactionEditScreen(
                 )
             }
 
-            // 7. Récurrence
+            // 8. Récurrence
             item {
                 var expanded by remember { mutableStateOf(false) }
                 val freqs = listOf(
@@ -527,6 +568,129 @@ fun TransactionEditScreen(
             ) {
                 Text("Créer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
+        }
+    }
+
+    if (showTagsSheet) {
+        TagsBottomSheet(
+            tags = tags,
+            selectedTagIds = form.tagIds,
+            onToggleTag = { id ->
+                if (form.tagIds.contains(id) || form.tagIds.size < 3) {
+                    vm.toggleTag(id)
+                }
+            },
+            onCreateTag = { name, color -> vm.createTag(name, color) },
+            onDismiss = { showTagsSheet = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun TagsBottomSheet(
+    tags: List<com.lop.budget.data.local.entity.TagEntity>,
+    selectedTagIds: Set<Long>,
+    onToggleTag: (Long) -> Unit,
+    onCreateTag: (String, Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var newTagName by remember { mutableStateOf("") }
+    val colors = listOf(
+        Color(0xFFE53935), Color(0xFFD81B60), Color(0xFF8E24AA), Color(0xFF5E35B1),
+        Color(0xFF3949AB), Color(0xFF1E88E5), Color(0xFF039BE5), Color(0xFF00ACC1),
+        Color(0xFF00897B), Color(0xFF00838F), Color(0xFF43A047), Color(0xFF2E7D32),
+        Color(0xFF7CB342), Color(0xFFC0CA33), Color(0xFFFDD835), Color(0xFFFFB300),
+        Color(0xFFFB8C00), Color(0xFFF4511E), Color(0xFF6D4C41), Color(0xFF546E7A)
+    )
+    var selectedColor by remember { mutableStateOf(colors[0]) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(Modifier.padding(horizontal = 24.dp, vertical = 8.dp).fillMaxWidth()) {
+            Text("Étiquettes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Sélectionnez jusqu'à 3 étiquettes pour cette transaction", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(24.dp))
+
+            // Liste des tags existants
+            if (tags.isNotEmpty()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    tags.forEach { tag ->
+                        val isSelected = selectedTagIds.contains(tag.id)
+                        val color = Color(tag.colorArgb)
+                        Surface(
+                            modifier = Modifier.clickable { onToggleTag(tag.id) },
+                            shape = CircleShape,
+                            color = if (isSelected) color.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = if (isSelected) BorderStroke(1.dp, color) else BorderStroke(1.dp, Color.Transparent)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(color))
+                                Spacer(Modifier.width(8.dp))
+                                Text(tag.name, style = MaterialTheme.typography.labelMedium, color = if (isSelected) color else MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+            }
+
+            // Création d'un nouveau tag
+            Text("Créer une étiquette", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = newTagName,
+                onValueChange = { newTagName = it },
+                label = { Text("Nom de l'étiquette") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+            Spacer(Modifier.height(16.dp))
+            
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(colors) { color ->
+                    val isSelected = selectedColor == color
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .clickable { selectedColor = color }
+                            .border(if (isSelected) 3.dp else 0.dp, MaterialTheme.colorScheme.onSurface, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+            
+            Button(
+                onClick = {
+                    onCreateTag(newTagName, selectedColor.toArgb())
+                    newTagName = ""
+                },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                enabled = newTagName.isNotBlank() && (selectedTagIds.size < 3),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Ajouter", fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(32.dp))
         }
     }
 }

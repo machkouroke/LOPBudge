@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -72,6 +74,7 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
@@ -544,6 +547,20 @@ fun HomeScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (tx.tags.isNotEmpty()) {
+                                    Spacer(Modifier.height(4.dp))
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        tx.tags.take(3).forEach { tag ->
+                                            com.lop.budget.ui.components.PillTag(
+                                                text = tag.name,
+                                                color = Color(tag.colorArgb)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                             Text(
                                 (if (isIncome) "+" else "−") + Format.money(
