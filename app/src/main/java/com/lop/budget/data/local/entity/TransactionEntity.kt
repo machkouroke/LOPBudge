@@ -44,6 +44,8 @@ data class TransactionEntity(
     val recurrenceEndDate: Long? = null,
     val recurrenceMaxOccurrences: Int? = null,
     val seriesId: String? = null,
+    val seriesDate: Long? = null,
+    val isException: Boolean = false,
 
     // --- Liens ---
     val linkedGoalId: Long? = null,

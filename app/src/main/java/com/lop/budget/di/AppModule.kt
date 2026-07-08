@@ -39,7 +39,7 @@ object AppModule {
                     scope.launch { DatabaseSeeder.seed(dbRef) }
                 }
             })
-            .addMigrations(LopDatabase.MIGRATION_1_2)
+            .addMigrations(LopDatabase.MIGRATION_1_2, LopDatabase.MIGRATION_2_3)
             .fallbackToDestructiveMigration()
             .build()
         return dbRef
@@ -51,4 +51,5 @@ object AppModule {
     @Provides fun provideTagDao(db: LopDatabase): TagDao = db.tagDao()
     @Provides fun provideGoalDao(db: LopDatabase): GoalDao = db.goalDao()
     @Provides fun provideDebtDao(db: LopDatabase): DebtDao = db.debtDao()
+    @Provides fun provideRecurringSeriesDao(db: LopDatabase): com.lop.budget.data.local.dao.RecurringSeriesDao = db.recurringSeriesDao()
 }

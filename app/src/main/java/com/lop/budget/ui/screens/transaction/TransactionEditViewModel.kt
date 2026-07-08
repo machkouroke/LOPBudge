@@ -8,6 +8,7 @@ import com.lop.budget.data.local.entity.DebtEntity
 import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
+import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
@@ -120,25 +121,44 @@ class TransactionEditViewModel @Inject constructor(
         val f = _form.value
         if (f.amount <= 0.0 || f.categoryId == null || f.accountId == null) return
         viewModelScope.launch {
-            val tx = TransactionEntity(
-                title = f.title.ifBlank { "Transaction" },
-                amount = f.amount,
-                type = f.type,
-                status = TransactionStatus.PLANNED,
-                date = f.date,
-                accountId = f.accountId,
-                categoryId = f.categoryId,
-                note = f.note.ifBlank { null },
-                recurrenceFrequency = f.frequency,
-                recurrenceInterval = f.interval,
-                recurrenceDaysOfWeek = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(","),
-                recurrenceEndDate = f.endDate,
-                recurrenceMaxOccurrences = f.maxOccurrences,
-                seriesId = if (f.frequency != RecurrenceFrequency.NONE) UUID.randomUUID().toString() else null,
-                linkedGoalId = f.linkedGoalId,
-                linkedDebtId = f.linkedDebtId,
-            )
-            repo.saveTransaction(tx, f.tagIds.toList())
+            if (f.frequency != RecurrenceFrequency.NONE) {
+                // Créer une série récurrente
+                val series = RecurringSeriesEntity(
+                    title = f.title.ifBlank { "Transaction" },
+                    amount = f.amount,
+                    type = f.type,
+                    categoryId = f.categoryId,
+                    accountId = f.accountId,
+                    frequency = f.frequency,
+                    interval = f.interval,
+                    startDate = f.date,
+                    endDate = f.endDate,
+                    maxOccurrences = f.maxOccurrences,
+                    daysOfWeek = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(","),
+                    status = "ACTIVE",
+                    note = f.note.ifBlank { null },
+                    linkedGoalId = f.linkedGoalId,
+                    linkedDebtId = f.linkedDebtId
+                )
+                repo.saveRecurringSeries(series)
+                // Note : Les tags sur les séries nécessiteraient une table de jointure séparée,
+                // ignoré pour l'instant pour la simplicité.
+            } else {
+                // Créer une transaction ponctuelle
+                val tx = TransactionEntity(
+                    title = f.title.ifBlank { "Transaction" },
+                    amount = f.amount,
+                    type = f.type,
+                    status = TransactionStatus.PLANNED,
+                    date = f.date,
+                    accountId = f.accountId,
+                    categoryId = f.categoryId,
+                    note = f.note.ifBlank { null },
+                    linkedGoalId = f.linkedGoalId,
+                    linkedDebtId = f.linkedDebtId,
+                )
+                repo.saveTransaction(tx, f.tagIds.toList())
+            }
             onDone()
         }
     }

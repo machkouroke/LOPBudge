@@ -151,7 +151,7 @@ class HomeViewModel @Inject constructor(
             val subscriptions = txs
                 .filter { 
                     it.transaction.status == TransactionStatus.PLANNED && 
-                    it.transaction.recurrenceFrequency != com.lop.budget.domain.model.RecurrenceFrequency.NONE 
+                    it.transaction.seriesId != null 
                 }
                 .sortedBy { it.transaction.date }
 
