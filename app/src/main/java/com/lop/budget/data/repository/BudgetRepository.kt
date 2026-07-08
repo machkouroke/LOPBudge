@@ -41,11 +41,52 @@ class BudgetRepository @Inject constructor(
         transactionDao.observePaidSum(type.name, start, end)
 
     suspend fun saveTransaction(tx: TransactionEntity, tagIds: List<Long> = emptyList()): Long {
+        // 1. Sauvegarder la transaction initiale (ou mettre à jour si tx.id != 0L)
         val id = transactionDao.upsert(tx)
         val txId = if (tx.id == 0L) id else tx.id
         transactionDao.clearTags(txId)
         tagIds.forEach { transactionDao.addTagCrossRef(TransactionTagCrossRef(txId, it)) }
+
+        // 2. Si c'est une création (id == 0L) et que c'est récurrent, générer les occurrences futures
+        if (tx.id == 0L && tx.recurrenceFrequency != com.lop.budget.domain.model.RecurrenceFrequency.NONE) {
+            generateFutureOccurrences(tx, tagIds)
+        }
         return txId
+    }
+
+    private suspend fun generateFutureOccurrences(baseTx: TransactionEntity, tagIds: List<Long>) {
+        val zone = java.time.ZoneId.systemDefault()
+        var currentDate = java.time.Instant.ofEpochMilli(baseTx.date).atZone(zone).toLocalDate()
+        val endDate = baseTx.recurrenceEndDate?.let {
+            java.time.Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
+        } ?: currentDate.plusYears(5) // Limite de sécurité : 5 ans par défaut
+        
+        val maxOccurrences = baseTx.recurrenceMaxOccurrences ?: 1000 // Limite de sécurité
+        var occurrencesGenerated = 1 // La baseTx compte comme la 1ère
+
+        while (occurrencesGenerated < maxOccurrences) {
+            // Calculer la prochaine date selon la fréquence et l'intervalle
+            currentDate = when (baseTx.recurrenceFrequency) {
+                com.lop.budget.domain.model.RecurrenceFrequency.DAILY -> currentDate.plusDays(baseTx.recurrenceInterval.toLong())
+                com.lop.budget.domain.model.RecurrenceFrequency.WEEKLY -> currentDate.plusWeeks(baseTx.recurrenceInterval.toLong())
+                com.lop.budget.domain.model.RecurrenceFrequency.MONTHLY -> currentDate.plusMonths(baseTx.recurrenceInterval.toLong())
+                com.lop.budget.domain.model.RecurrenceFrequency.YEARLY -> currentDate.plusYears(baseTx.recurrenceInterval.toLong())
+                else -> break
+            }
+
+            if (currentDate.isAfter(endDate)) break
+
+            // Créer la nouvelle occurrence
+            val nextTx = baseTx.copy(
+                id = 0L, // Forcer l'insertion
+                date = currentDate.atStartOfDay(zone).toInstant().toEpochMilli()
+            )
+            
+            val nextId = transactionDao.upsert(nextTx)
+            tagIds.forEach { transactionDao.addTagCrossRef(TransactionTagCrossRef(nextId, it)) }
+            
+            occurrencesGenerated++
+        }
     }
 
     /** Modifie la catégorie même si la transaction est déjà payée. */
