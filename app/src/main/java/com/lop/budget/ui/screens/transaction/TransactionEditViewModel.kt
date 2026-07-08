@@ -103,6 +103,19 @@ class TransactionEditViewModel @Inject constructor(
     fun setLinkedGoal(id: Long?) { _form.value = _form.value.copy(linkedGoalId = id, linkedDebtId = null) }
     fun setLinkedDebt(id: Long?) { _form.value = _form.value.copy(linkedDebtId = id, linkedGoalId = null) }
 
+    fun createTag(name: String, colorArgb: Int) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            val newTag = TagEntity(name = name.trim(), colorArgb = colorArgb)
+            val newId = repo.saveTag(newTag)
+            // Sélectionner automatiquement le nouveau tag (max 3 géré dans l'UI)
+            val currentTags = _form.value.tagIds
+            if (currentTags.size < 3) {
+                toggleTag(newId)
+            }
+        }
+    }
+
     fun save(onDone: () -> Unit) {
         val f = _form.value
         if (f.amount <= 0.0 || f.categoryId == null || f.accountId == null) return
