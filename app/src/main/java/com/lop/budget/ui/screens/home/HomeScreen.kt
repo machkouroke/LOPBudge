@@ -634,22 +634,7 @@ fun HomeScreen(
                     ) {
                         Text("€ 1,16", style = MaterialTheme.typography.titleSmall)
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-                                androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Filled.Wallet,
-                            null,
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+
                     Box(
                         modifier = Modifier
                             .size(40.dp)
