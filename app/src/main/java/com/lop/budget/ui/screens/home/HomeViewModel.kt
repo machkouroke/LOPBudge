@@ -43,6 +43,7 @@ data class HomeUiState(
     val projectedBalance: Double = 0.0,
     val daysUntilPayday: Int? = null,
     val upcoming: List<TransactionWithRelations> = emptyList(),
+    val subscriptions: List<TransactionWithRelations> = emptyList(),
     val dayGroups: List<DayGroup> = emptyList(),
     /** Version par transaction : incrémenté à chaque Undo pour forcer la recréation du composant Compose */
     val txVersions: Map<Long, Int> = emptyMap(),
@@ -142,6 +143,13 @@ class HomeViewModel @Inject constructor(
                 .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.date >= now }
                 .sortedBy { it.transaction.date }
                 .take(8)
+                
+            val subscriptions = txs
+                .filter { 
+                    it.transaction.status == TransactionStatus.PLANNED && 
+                    it.transaction.recurrenceFrequency != com.lop.budget.domain.model.RecurrenceFrequency.NONE 
+                }
+                .sortedBy { it.transaction.date }
 
             val plannedExpense = txs
                 .filter {
@@ -184,6 +192,7 @@ class HomeViewModel @Inject constructor(
                 projectedBalance = projected,
                 daysUntilPayday = payday,
                 upcoming = upcoming,
+                subscriptions = subscriptions,
                 dayGroups = dayGroups,
                 txVersions = versions as Map<Long, Int>,
             )
