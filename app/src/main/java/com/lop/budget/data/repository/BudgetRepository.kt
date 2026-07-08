@@ -13,9 +13,18 @@ import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
+import com.lop.budget.data.local.dao.RecurringSeriesDao
+import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.model.TransactionStatus
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,6 +35,7 @@ import javax.inject.Singleton
 @Singleton
 class BudgetRepository @Inject constructor(
     private val transactionDao: TransactionDao,
+    private val recurringSeriesDao: RecurringSeriesDao,
     private val accountDao: AccountDao,
     private val categoryDao: CategoryDao,
     private val tagDao: TagDao,
@@ -34,11 +44,107 @@ class BudgetRepository @Inject constructor(
 ) {
     // Transactions
     fun observeTransactions(): Flow<List<TransactionWithRelations>> = transactionDao.observeAll()
-    fun observeTransactionsBetween(start: Long, end: Long) = transactionDao.observeBetween(start, end)
+    /**
+     * Retourne toutes les transactions d'un mois : les transactions ponctuelles, les exceptions,
+     * et les occurrences virtuelles générées à la volée à partir des séries actives.
+     */
+    fun observeTransactionsBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>> {
+        val exceptionsFlow = transactionDao.observeBetween(start, end)
+        val seriesFlow = recurringSeriesDao.observeActiveSeries()
+
+        return combine(exceptionsFlow, seriesFlow) { exceptions, seriesList ->
+            val result = exceptions.toMutableList()
+            val zone = ZoneId.systemDefault()
+            val startLocalDate = Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
+            val endLocalDate = Instant.ofEpochMilli(end).atZone(zone).toLocalDate()
+
+            for (series in seriesList) {
+                // 1. Calculer les occurrences virtuelles de cette série qui tombent dans ce mois
+                val occurrences = generateOccurrencesForMonth(series, startLocalDate, endLocalDate, zone)
+                
+                // 2. Pour chaque occurrence, vérifier s'il existe déjà une exception
+                for (occDate in occurrences) {
+                    val occEpoch = occDate.atStartOfDay(zone).toInstant().toEpochMilli()
+                    val hasException = exceptions.any { 
+                        it.transaction.seriesId == series.id.toString() && it.transaction.seriesDate == occEpoch 
+                    }
+                    
+                    if (!hasException) {
+                        // Créer une TransactionWithRelations virtuelle
+                        val virtualTx = TransactionEntity(
+                            id = -1L, // ID négatif pour indiquer une occurrence virtuelle
+                            title = series.title,
+                            amount = series.amount,
+                            type = series.type,
+                            status = TransactionStatus.PLANNED,
+                            date = occEpoch,
+                            accountId = series.accountId,
+                            categoryId = series.categoryId,
+                            note = series.note,
+                            seriesId = series.id.toString(),
+                            seriesDate = occEpoch,
+                            isException = false,
+                            linkedGoalId = series.linkedGoalId,
+                            linkedDebtId = series.linkedDebtId
+                        )
+                        // Note: Les tags et relations nécessiteraient des requêtes supplémentaires,
+                        // on laisse null pour l'instant pour la simplicité
+                        result.add(TransactionWithRelations(virtualTx, null, null, emptyList()))
+                    }
+                }
+            }
+            
+            // Trier par date
+            result.sortedBy { it.transaction.date }
+        }.flowOn(Dispatchers.Default)
+    }
+
+    private fun generateOccurrencesForMonth(
+        series: RecurringSeriesEntity, 
+        monthStart: LocalDate, 
+        monthEnd: LocalDate, 
+        zone: ZoneId
+    ): List<LocalDate> {
+        val occurrences = mutableListOf<LocalDate>()
+        val seriesStart = Instant.ofEpochMilli(series.startDate).atZone(zone).toLocalDate()
+        val seriesEnd = series.endDate?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
+        
+        // Si la série se termine avant le début du mois, ou commence après la fin du mois
+        if (seriesEnd != null && seriesEnd.isBefore(monthStart)) return occurrences
+        if (seriesStart.isAfter(monthEnd)) return occurrences
+        
+        var current = seriesStart
+        var count = 0
+        val max = series.maxOccurrences ?: Int.MAX_VALUE
+        
+        while (count < max) {
+            if (seriesEnd != null && current.isAfter(seriesEnd)) break
+            
+            // Si l'occurrence est dans le mois ciblé, on l'ajoute
+            if (!current.isBefore(monthStart) && !current.isAfter(monthEnd)) {
+                occurrences.add(current)
+            }
+            
+            // Si on a dépassé le mois, on peut s'arrêter (optimisation)
+            if (current.isAfter(monthEnd)) break
+            
+            // Prochaine occurrence
+            current = when (series.frequency) {
+                com.lop.budget.domain.model.RecurrenceFrequency.DAILY -> current.plusDays(series.interval.toLong())
+                com.lop.budget.domain.model.RecurrenceFrequency.WEEKLY -> current.plusWeeks(series.interval.toLong())
+                com.lop.budget.domain.model.RecurrenceFrequency.MONTHLY -> current.plusMonths(series.interval.toLong())
+                com.lop.budget.domain.model.RecurrenceFrequency.YEARLY -> current.plusYears(series.interval.toLong())
+                else -> break
+            }
+            count++
+        }
+        
+        return occurrences
+    }
     fun observeTransaction(id: Long) = transactionDao.observeById(id)
     fun observeSeries(seriesId: String) = transactionDao.observeSeries(seriesId)
-    fun observePaidSum(type: TransactionType, start: Long, end: Long) =
-        transactionDao.observePaidSum(type.name, start, end)
+    // observePaidSum est supprimé car le calcul se fait désormais en mémoire dans le ViewModel
+    // à partir de observeTransactionsBetween() qui inclut les occurrences virtuelles.
 
     suspend fun saveTransaction(tx: TransactionEntity, tagIds: List<Long> = emptyList()): Long {
         // 1. Sauvegarder la transaction initiale (ou mettre à jour si tx.id != 0L)
@@ -47,46 +153,13 @@ class BudgetRepository @Inject constructor(
         transactionDao.clearTags(txId)
         tagIds.forEach { transactionDao.addTagCrossRef(TransactionTagCrossRef(txId, it)) }
 
-        // 2. Si c'est une création (id == 0L) et que c'est récurrent, générer les occurrences futures
-        if (tx.id == 0L && tx.recurrenceFrequency != com.lop.budget.domain.model.RecurrenceFrequency.NONE) {
-            generateFutureOccurrences(tx, tagIds)
-        }
+        // L'ancienne logique generateFutureOccurrences est supprimée.
+        // Les transactions récurrentes sont maintenant gérées via RecurringSeriesEntity.
         return txId
     }
 
-    private suspend fun generateFutureOccurrences(baseTx: TransactionEntity, tagIds: List<Long>) {
-        val zone = java.time.ZoneId.systemDefault()
-        var currentDate = java.time.Instant.ofEpochMilli(baseTx.date).atZone(zone).toLocalDate()
-        val endDate = baseTx.recurrenceEndDate?.let {
-            java.time.Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
-        } ?: currentDate.plusYears(5) // Limite de sécurité : 5 ans par défaut
-        
-        val maxOccurrences = baseTx.recurrenceMaxOccurrences ?: 1000 // Limite de sécurité
-        var occurrencesGenerated = 1 // La baseTx compte comme la 1ère
-
-        while (occurrencesGenerated < maxOccurrences) {
-            // Calculer la prochaine date selon la fréquence et l'intervalle
-            currentDate = when (baseTx.recurrenceFrequency) {
-                com.lop.budget.domain.model.RecurrenceFrequency.DAILY -> currentDate.plusDays(baseTx.recurrenceInterval.toLong())
-                com.lop.budget.domain.model.RecurrenceFrequency.WEEKLY -> currentDate.plusWeeks(baseTx.recurrenceInterval.toLong())
-                com.lop.budget.domain.model.RecurrenceFrequency.MONTHLY -> currentDate.plusMonths(baseTx.recurrenceInterval.toLong())
-                com.lop.budget.domain.model.RecurrenceFrequency.YEARLY -> currentDate.plusYears(baseTx.recurrenceInterval.toLong())
-                else -> break
-            }
-
-            if (currentDate.isAfter(endDate)) break
-
-            // Créer la nouvelle occurrence
-            val nextTx = baseTx.copy(
-                id = 0L, // Forcer l'insertion
-                date = currentDate.atStartOfDay(zone).toInstant().toEpochMilli()
-            )
-            
-            val nextId = transactionDao.upsert(nextTx)
-            tagIds.forEach { transactionDao.addTagCrossRef(TransactionTagCrossRef(nextId, it)) }
-            
-            occurrencesGenerated++
-        }
+    suspend fun saveRecurringSeries(series: RecurringSeriesEntity): Long {
+        return recurringSeriesDao.upsert(series)
     }
 
     /** Modifie la catégorie même si la transaction est déjà payée. */

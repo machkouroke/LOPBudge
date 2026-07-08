@@ -23,11 +23,12 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         CategoryEntity::class,
         TagEntity::class,
         TransactionEntity::class,
+        RecurringSeriesEntity::class,
         TransactionTagCrossRef::class,
         GoalEntity::class,
         DebtEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -38,6 +39,7 @@ abstract class LopDatabase : RoomDatabase() {
     abstract fun tagDao(): TagDao
     abstract fun goalDao(): GoalDao
     abstract fun debtDao(): DebtDao
+    abstract fun recurringSeriesDao(): com.lop.budget.data.local.dao.RecurringSeriesDao
 
     companion object {
         const val NAME = "lopbudge.db"
@@ -45,6 +47,33 @@ abstract class LopDatabase : RoomDatabase() {
         val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE transactions ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transactions ADD COLUMN seriesDate INTEGER")
+                db.execSQL("ALTER TABLE transactions ADD COLUMN isException INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `recurring_series` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `amount` REAL NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `categoryId` INTEGER NOT NULL,
+                        `accountId` INTEGER NOT NULL,
+                        `frequency` TEXT NOT NULL,
+                        `interval` INTEGER NOT NULL,
+                        `startDate` INTEGER NOT NULL,
+                        `endDate` INTEGER,
+                        `maxOccurrences` INTEGER,
+                        `daysOfWeek` TEXT,
+                        `status` TEXT NOT NULL,
+                        `note` TEXT,
+                        `linkedGoalId` INTEGER,
+                        `linkedDebtId` INTEGER
+                    )
+                """.trimIndent())
             }
         }
     }
