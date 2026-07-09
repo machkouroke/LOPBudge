@@ -99,7 +99,7 @@ fun TransactionEditScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("Nouvelle transaction", style = MaterialTheme.typography.titleLarge)
+            Text(if (vm.isEditing) "Modifier la transaction" else "Nouvelle transaction", style = MaterialTheme.typography.titleLarge)
             Icon(
                 Icons.Filled.Close,
                 contentDescription = "Fermer",
@@ -567,7 +567,7 @@ fun TransactionEditScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = accent),
                 enabled = form.amount > 0.0 && form.categoryId != null && form.accountId != null
             ) {
-                Text("Créer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(if (vm.isEditing) "Enregistrer" else "Créer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
         }
     }

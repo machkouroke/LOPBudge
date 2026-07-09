@@ -77,6 +77,15 @@ class HomeViewModel @Inject constructor(
     // Sans ça, SwipeToDismissBoxState reste à EndToStart et rappelle onDelete().
     private val txVersions = MutableStateFlow<Map<Long, Int>>(emptyMap())
 
+    fun materializeAndOpen(seriesId: Long, seriesDate: Long, onOpen: (Long) -> Unit) {
+        viewModelScope.launch {
+            val realId = repo.materializeOccurrence(seriesId, seriesDate)
+            if (realId >= 0L) {
+                onOpen(realId)
+            }
+        }
+    }
+
     fun deleteWithUndo(transactionId: Long, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
         // 1. Masquer immédiatement la transaction de l'UI (sans toucher la DB)
         pendingDeletes.value = pendingDeletes.value + transactionId
@@ -99,6 +108,24 @@ class HomeViewModel @Inject constructor(
                 // 2b. Timeout : suppression réelle en DB
                 pendingDeletes.value = pendingDeletes.value - transactionId
                 repo.softDeleteTransaction(transactionId)
+            }
+        }
+    }
+
+    fun deleteOccurrenceWithUndo(transactionId: Long, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
+        deleteWithUndo(transactionId, snackbarHostState)
+    }
+
+    fun deleteSeriesWithUndo(seriesId: String, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
+        viewModelScope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "Série supprimée",
+                actionLabel = "Annuler",
+                duration = androidx.compose.material3.SnackbarDuration.Short
+            )
+
+            if (result != androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                repo.cancelSeries(seriesId)
             }
         }
     }

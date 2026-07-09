@@ -57,6 +57,7 @@ import com.lop.budget.util.IconMapper
 fun TransactionDetailScreen(
     transactionId: Long,
     onBack: () -> Unit,
+    onEdit: (Long) -> Unit = {},
     vm: TransactionDetailViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(transactionId) { vm.load(transactionId) }
@@ -64,6 +65,7 @@ fun TransactionDetailScreen(
     val ext = LopTheme.extended
     val haptic = LocalHapticFeedback.current
     var editingCategory by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val twr = state.transaction
     val tx = twr?.transaction
@@ -91,14 +93,24 @@ fun TransactionDetailScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     // Edit button
                     Box(
-                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.CircleShape).clickableNoRipple { /* Edit */ },
+                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.CircleShape).clickableNoRipple {
+                            // TODO: Gérer l'édition d'une série récurrente avec modal contextuelle
+                            onEdit(transactionId)
+                        },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Filled.Edit, "Modifier", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     // Delete button
                     Box(
-                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.CircleShape).clickableNoRipple { vm.delete(onBack) },
+                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.CircleShape).clickableNoRipple { 
+                            if (tx?.seriesId != null) {
+                                // TODO: Modal contextuelle (cette occurrence / suivantes / toutes)
+                                showDeleteConfirm = true
+                            } else {
+                                showDeleteConfirm = true
+                            }
+                        },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Filled.Delete, "Supprimer", tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -241,9 +253,45 @@ fun TransactionDetailScreen(
         }
 
         // Occurrences récurrentes à venir — suggestion utilisateur
-        if (tx.recurrenceFrequency != RecurrenceFrequency.NONE && state.upcomingDates.isNotEmpty()) {
-            item {
-                FloatingCard(Modifier.fillMaxWidth()) {
+    if (showDeleteConfirm) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Supprimer la transaction ?") },
+            text = { 
+                if (tx.seriesId != null) {
+                    Text("Cette transaction fait partie d'une série récurrente. Voulez-vous supprimer uniquement cette occurrence, ou toute la série ?")
+                } else {
+                    Text("Cette action est irréversible.")
+                }
+            },
+            confirmButton = {
+                if (tx.seriesId != null) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        androidx.compose.material3.TextButton(onClick = {
+                            showDeleteConfirm = false
+                            vm.deleteOccurrence(onBack)
+                        }) { Text("Cette occurrence", color = MaterialTheme.colorScheme.error) }
+                        androidx.compose.material3.TextButton(onClick = {
+                            showDeleteConfirm = false
+                            vm.deleteSeries(onBack)
+                        }) { Text("Toute la série", color = MaterialTheme.colorScheme.error) }
+                    }
+                } else {
+                    androidx.compose.material3.TextButton(onClick = {
+                        showDeleteConfirm = false
+                        vm.delete(onBack)
+                    }) { Text("Supprimer", color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showDeleteConfirm = false }) { Text("Annuler") }
+            }
+        )
+    }
+
+    if (tx.recurrenceFrequency != RecurrenceFrequency.NONE && state.upcomingDates.isNotEmpty()) {
+        item {
+            FloatingCard(Modifier.fillMaxWidth()) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Filled.CalendarMonth, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))

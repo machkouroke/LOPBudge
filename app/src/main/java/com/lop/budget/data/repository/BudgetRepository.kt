@@ -44,6 +44,40 @@ class BudgetRepository @Inject constructor(
 ) {
     // Transactions
     fun observeTransactions(): Flow<List<TransactionWithRelations>> = transactionDao.observeAll()
+
+    /**
+     * Matérialise une occurrence virtuelle d'une série récurrente en une véritable exception persistée en DB.
+     * Si l'exception existe déjà, retourne son ID.
+     */
+    suspend fun materializeOccurrence(seriesId: Long, seriesDate: Long): Long {
+        // 1. Vérifier si l'exception existe déjà
+        val existing = transactionDao.getException(seriesId.toString(), seriesDate)
+        if (existing != null) return existing.id
+
+        // 2. Récupérer la série
+        val series = recurringSeriesDao.getById(seriesId) ?: return -1L
+
+        // 3. Créer l'exception
+        val exception = TransactionEntity(
+            title = series.title,
+            amount = series.amount,
+            type = series.type,
+            status = TransactionStatus.PLANNED,
+            date = seriesDate,
+            accountId = series.accountId,
+            categoryId = series.categoryId,
+            note = series.note,
+            seriesId = series.id.toString(),
+            seriesDate = seriesDate,
+            isException = true,
+            linkedGoalId = series.linkedGoalId,
+            linkedDebtId = series.linkedDebtId,
+            recurrenceFrequency = series.frequency,
+            recurrenceInterval = series.interval,
+            recurrenceEndDate = series.endDate
+        )
+        return transactionDao.upsert(exception)
+    }
     /**
      * Retourne toutes les transactions d'un mois : les transactions ponctuelles, les exceptions,
      * et les occurrences virtuelles générées à la volée à partir des séries actives.
@@ -51,8 +85,10 @@ class BudgetRepository @Inject constructor(
     fun observeTransactionsBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>> {
         val exceptionsFlow = transactionDao.observeBetween(start, end)
         val seriesFlow = recurringSeriesDao.observeActiveSeries()
+        val accountsFlow = accountDao.observeAll()
+        val categoriesFlow = categoryDao.observeAll()
 
-        return combine(exceptionsFlow, seriesFlow) { exceptions, seriesList ->
+        return combine(exceptionsFlow, seriesFlow, accountsFlow, categoriesFlow) { exceptions, seriesList, accounts, categories ->
             val result = exceptions.toMutableList()
             val zone = ZoneId.systemDefault()
             val startLocalDate = Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
@@ -91,9 +127,13 @@ class BudgetRepository @Inject constructor(
                             linkedGoalId = series.linkedGoalId,
                             linkedDebtId = series.linkedDebtId
                         )
-                        // Note: Les tags et relations nécessiteraient des requêtes supplémentaires,
-                        // on laisse null pour l'instant pour la simplicité
-                        result.add(TransactionWithRelations(virtualTx, null, null, emptyList()))
+                        // Résoudre les relations en mémoire
+                        val account = accounts.find { it.id == series.accountId }
+                        val category = series.categoryId?.let { catId -> categories.find { it.id == catId } }
+                        
+                        // Note: Les tags nécessiteraient une table de liaison series_tags, 
+                        // pour l'instant on laisse vide
+                        result.add(TransactionWithRelations(virtualTx, account, category, emptyList()))
                     }
                 }
             }
@@ -164,6 +204,11 @@ class BudgetRepository @Inject constructor(
 
     suspend fun saveRecurringSeries(series: RecurringSeriesEntity): Long {
         return recurringSeriesDao.upsert(series)
+    }
+
+    suspend fun cancelSeries(seriesIdStr: String) {
+        val seriesId = seriesIdStr.toLongOrNull() ?: return
+        recurringSeriesDao.updateStatus(seriesId, "CANCELLED")
     }
 
     /** Modifie la catégorie même si la transaction est déjà payée. */

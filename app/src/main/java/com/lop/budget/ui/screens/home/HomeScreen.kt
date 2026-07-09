@@ -97,6 +97,7 @@ fun HomeScreen(
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     var isMonthPickerOpen by remember { mutableStateOf(false) }
+    var showDeleteConfirmForTx by remember { mutableStateOf<com.lop.budget.data.local.entity.TransactionWithRelations?>(null) }
 
     if (isMonthPickerOpen) {
         MonthPickerBottomSheet(
@@ -441,7 +442,13 @@ fun HomeScreen(
                     SwipeableTransactionRow(
                         isPaid = isPaid,
                         onTogglePaid = { vm.togglePaid(tx.transaction.id, tx.transaction.status) },
-                        onDelete = { vm.deleteWithUndo(tx.transaction.id, snackbarHostState) }
+                        onDelete = { 
+                            if (tx.transaction.seriesId != null) {
+                                showDeleteConfirmForTx = tx
+                            } else {
+                                vm.deleteWithUndo(tx.transaction.id, snackbarHostState)
+                            }
+                        }
                     ) {
                         FloatingCard(
                             modifier = Modifier
@@ -454,6 +461,8 @@ fun HomeScreen(
                                     // ou on pourrait ouvrir l'édition de la série.
                                     if (tx.transaction.id >= 0L) {
                                         onOpenTransaction(tx.transaction.id) 
+                                    } else if (tx.transaction.seriesId != null) {
+                                        vm.materializeAndOpen(tx.transaction.seriesId!!.toLong(), tx.transaction.seriesDate, onOpenTransaction)
                                     }
                                 }
                                 .alpha(if (isPaid) 0.5f else 1f),
@@ -677,5 +686,41 @@ fun HomeScreen(
                 }
             }
         }
+    }
+    
+    if (showDeleteConfirmForTx != null) {
+        val txToDelete = showDeleteConfirmForTx!!
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteConfirmForTx = null },
+            title = { Text("Supprimer la transaction ?") },
+            text = { 
+                Text("Cette transaction fait partie d'une série récurrente. Voulez-vous supprimer uniquement cette occurrence, ou toute la série ?")
+            },
+            confirmButton = {
+                Column(horizontalAlignment = Alignment.End) {
+                    androidx.compose.material3.TextButton(onClick = {
+                        val tx = txToDelete.transaction
+                        if (tx.id >= 0L) {
+                            vm.deleteOccurrenceWithUndo(tx.id, snackbarHostState)
+                        } else if (tx.seriesId != null) {
+                            // C'est une occurrence virtuelle, on doit la matérialiser puis la supprimer
+                            vm.materializeAndOpen(tx.seriesId.toLong(), tx.seriesDate) { realId ->
+                                vm.deleteOccurrenceWithUndo(realId, snackbarHostState)
+                            }
+                        }
+                        showDeleteConfirmForTx = null
+                    }) { Text("Cette occurrence", color = MaterialTheme.colorScheme.error) }
+                    androidx.compose.material3.TextButton(onClick = {
+                        txToDelete.transaction.seriesId?.let {
+                            vm.deleteSeriesWithUndo(it, snackbarHostState)
+                        }
+                        showDeleteConfirmForTx = null
+                    }) { Text("Toute la série", color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showDeleteConfirmForTx = null }) { Text("Annuler") }
+            }
+        )
     }
 }

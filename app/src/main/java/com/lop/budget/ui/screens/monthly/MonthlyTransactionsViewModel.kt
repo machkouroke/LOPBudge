@@ -56,7 +56,16 @@ class MonthlyTransactionsViewModel @Inject constructor(
     private val type = MutableStateFlow(initialType)
     private val filter = MutableStateFlow(PaidFilter.ALL)
 
-    fun setFilter(value: PaidFilter) { filter.value = value }
+    fun setFilter(f: PaidFilter) { filter.value = f }
+
+    fun materializeAndOpen(seriesId: Long, seriesDate: Long, onOpen: (Long) -> Unit) {
+        viewModelScope.launch {
+            val realId = repo.materializeOccurrence(seriesId, seriesDate)
+            if (realId >= 0L) {
+                onOpen(realId)
+            }
+        }
+    }
 
     private fun YearMonth.range(): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()
