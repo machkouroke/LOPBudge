@@ -71,8 +71,12 @@ class BudgetRepository @Inject constructor(
                     
                     if (!hasException) {
                         // Créer une TransactionWithRelations virtuelle
+                        // ID virtuel unique déterministe (négatif pour éviter collision avec DB)
+                        // hashCode() de seriesId + seriesDate donne un Int, on le passe en Long négatif
+                        val virtualId = -Math.abs("${series.id}_$occEpoch".hashCode().toLong()) - 1L
+                        
                         val virtualTx = TransactionEntity(
-                            id = -1L, // ID négatif pour indiquer une occurrence virtuelle
+                            id = virtualId,
                             title = series.title,
                             amount = series.amount,
                             type = series.type,
