@@ -15,6 +15,9 @@ object Routes {
     const val CATEGORY_CREATE = "category/create"
     const val DETAIL = "detail/{id}"
     fun detail(id: Long) = "detail/$id"
+    
+    const val EDIT = "edit/{id}"
+    fun edit(id: Long) = "edit/$id"
 
     // Monthly income/expense pages
     const val MONTHLY = "monthly/{type}/{ym}"

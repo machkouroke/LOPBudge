@@ -232,6 +232,28 @@ fun LopNavHost() {
                 }
 
                 composable(
+                    Routes.EDIT,
+                    arguments = listOf(navArgument("id") { type = NavType.LongType }),
+                    enterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = MotionSpec.fastTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    }
+                ) {
+                    TransactionEditScreen(
+                        onBack = { navController.popBackStack() },
+                        onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) }
+                    )
+                }
+
+                composable(
                     Routes.DETAIL,
                     arguments = listOf(navArgument("id") { type = NavType.LongType }),
                     enterTransition = {
@@ -263,6 +285,7 @@ fun LopNavHost() {
                     TransactionDetailScreen(
                         transactionId = id,
                         onBack = { navController.popBackStack() },
+                        onEdit = { txId -> navController.navigate(Routes.edit(txId)) }
                     )
                 }
             }

@@ -63,4 +63,23 @@ class TransactionDetailViewModel @Inject constructor(
         val id = txId.value ?: return
         viewModelScope.launch { repo.softDeleteTransaction(id); onDone() }
     }
+
+    fun deleteOccurrence(onDone: () -> Unit) {
+        val id = txId.value ?: return
+        viewModelScope.launch { 
+            repo.softDeleteTransaction(id)
+            onDone() 
+        }
+    }
+
+    fun deleteSeries(onDone: () -> Unit) {
+        val id = txId.value ?: return
+        val tx = uiState.value.transaction?.transaction ?: return
+        val seriesId = tx.seriesId ?: return
+        
+        viewModelScope.launch {
+            repo.cancelSeries(seriesId)
+            onDone()
+        }
+    }
 }

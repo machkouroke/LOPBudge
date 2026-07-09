@@ -32,6 +32,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE seriesId = :seriesId AND deleted = 0 ORDER BY date ASC")
     fun observeSeries(seriesId: String): Flow<List<TransactionWithRelations>>
 
+    @Query("SELECT * FROM transactions WHERE seriesId = :seriesId AND seriesDate = :seriesDate AND isException = 1 AND deleted = 0 LIMIT 1")
+    suspend fun getException(seriesId: String, seriesDate: Long): TransactionEntity?
+
     @Query("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE type = :type AND status = 'PAID' AND deleted = 0 AND date BETWEEN :start AND :end")
     fun observePaidSum(type: String, start: Long, end: Long): Flow<Double>
 

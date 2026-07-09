@@ -48,9 +48,52 @@ data class TransactionForm(
 @HiltViewModel
 class TransactionEditViewModel @Inject constructor(
     private val repo: BudgetRepository,
+    private val savedStateHandle: androidx.lifecycle.SavedStateHandle,
 ) : ViewModel() {
 
     private val _form = MutableStateFlow(TransactionForm())
+    
+    private var editingTransactionId: Long? = null
+    private var isLoaded = false
+    
+    val isEditing: Boolean
+        get() = editingTransactionId != null
+    
+    init {
+        val txId = savedStateHandle.get<String>("id")?.toLongOrNull()
+        if (txId != null && !isLoaded) {
+            editingTransactionId = txId
+            loadTransaction(txId)
+        }
+    }
+    
+    private fun loadTransaction(id: Long) {
+        viewModelScope.launch {
+            repo.observeTransaction(id).collect { twr ->
+                if (twr != null && !isLoaded) {
+                    val tx = twr.transaction
+                    _form.value = TransactionForm(
+                        type = tx.type,
+                        amountInput = tx.amount.toString(),
+                        title = tx.title,
+                        date = tx.date,
+                        categoryId = tx.categoryId,
+                        accountId = tx.accountId,
+                        tagIds = twr.tags.map { it.id }.toSet(),
+                        note = tx.note ?: "",
+                        frequency = tx.recurrenceFrequency,
+                        interval = tx.recurrenceInterval,
+                        daysOfWeek = tx.recurrenceDaysOfWeek?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet(),
+                        endDate = tx.recurrenceEndDate,
+                        maxOccurrences = tx.recurrenceMaxOccurrences,
+                        linkedGoalId = tx.linkedGoalId,
+                        linkedDebtId = tx.linkedDebtId
+                    )
+                    isLoaded = true
+                }
+            }
+        }
+    }
     val form: StateFlow<TransactionForm> = _form.asStateFlow()
 
     val categories: StateFlow<List<CategoryEntity>> =
@@ -122,7 +165,10 @@ class TransactionEditViewModel @Inject constructor(
         if (f.amount <= 0.0 || f.categoryId == null || f.accountId == null) return
         viewModelScope.launch {
             if (f.frequency != RecurrenceFrequency.NONE) {
-                // Créer une série récurrente
+                // Créer ou mettre à jour une série récurrente (TODO: Gérer l'édition de série existante)
+                // Pour l'instant, on crée toujours une nouvelle série si c'est une création
+                // ou si on transforme une ponctuelle en récurrente.
+                // L'édition d'une occurrence d'une série nécessite une logique plus complexe (portée).
                 val series = RecurringSeriesEntity(
                     title = f.title.ifBlank { "Transaction" },
                     amount = f.amount,
@@ -144,8 +190,9 @@ class TransactionEditViewModel @Inject constructor(
                 // Note : Les tags sur les séries nécessiteraient une table de jointure séparée,
                 // ignoré pour l'instant pour la simplicité.
             } else {
-                // Créer une transaction ponctuelle
+                // Créer ou mettre à jour une transaction ponctuelle
                 val tx = TransactionEntity(
+                    id = editingTransactionId ?: 0L,
                     title = f.title.ifBlank { "Transaction" },
                     amount = f.amount,
                     type = f.type,
