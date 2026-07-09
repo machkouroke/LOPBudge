@@ -145,10 +145,20 @@ fun MonthlyTransactionsScreen(
             Text("Transactions", style = MaterialTheme.typography.titleLarge)
         }
 
-        items(state.transactions, key = { it.transaction.id }) { tx ->
+        items(state.transactions, key = { tx -> 
+            if (tx.transaction.id < 0L) {
+                "tx_virtual_${tx.transaction.seriesId}_${tx.transaction.seriesDate}"
+            } else {
+                tx.transaction.id 
+            }
+        }) { tx ->
             val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
             FloatingCard(
-                modifier = Modifier.fillMaxWidth().clickableNoRipple { onOpenTransaction(tx.transaction.id) },
+                modifier = Modifier.fillMaxWidth().clickableNoRipple { 
+                    if (tx.transaction.id >= 0L) {
+                        onOpenTransaction(tx.transaction.id) 
+                    }
+                },
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
             ) {

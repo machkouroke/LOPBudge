@@ -415,10 +415,16 @@ fun HomeScreen(
                 items(
                     items = day.transactions,
                     key = { tx ->
-                        // La version change après un Undo, ce qui force Compose à créer
-                        // un NOUVEAU composant SwipeableTransactionRow (dismissState = Settled).
-                        val v = state.txVersions[tx.transaction.id] ?: 0
-                        "tx_${tx.transaction.id}_v$v"
+                        val id = tx.transaction.id
+                        if (id < 0L) {
+                            // Occurrence virtuelle : clé basée sur seriesId et seriesDate
+                            "tx_virtual_${tx.transaction.seriesId}_${tx.transaction.seriesDate}"
+                        } else {
+                            // La version change après un Undo, ce qui force Compose à créer
+                            // un NOUVEAU composant SwipeableTransactionRow (dismissState = Settled).
+                            val v = state.txVersions[id] ?: 0
+                            "tx_${id}_v$v"
+                        }
                     },
                 ) { tx ->
                     // Modifier.animateItem() pour animer l'apparition/disparition/déplacement
@@ -440,7 +446,16 @@ fun HomeScreen(
                         FloatingCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickableNoRipple { onOpenTransaction(tx.transaction.id) }
+                                .clickableNoRipple { 
+                                    // Si c'est une occurrence virtuelle, on n'a pas d'ID en DB.
+                                    // Dans un cas réel, il faudrait ouvrir un écran de détail spécial ou
+                                    // matérialiser la transaction en DB avant de l'éditer.
+                                    // Pour l'instant, on ignore le clic sur les occurrences virtuelles
+                                    // ou on pourrait ouvrir l'édition de la série.
+                                    if (tx.transaction.id >= 0L) {
+                                        onOpenTransaction(tx.transaction.id) 
+                                    }
+                                }
                                 .alpha(if (isPaid) 0.5f else 1f),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
