@@ -50,7 +50,7 @@ fun RecurringDeleteSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Opaque + premium (évite l'illisibilité sur fond sombre)
-    val container = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+    val container = MaterialTheme.colorScheme.surface
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -174,7 +174,6 @@ private fun ActionRow(
 
     Surface(
         shape = shape,
-        color = Color.Transparent,
         border = BorderStroke(1.dp, border),
         shadowElevation = 6.dp,
         tonalElevation = 0.dp,
