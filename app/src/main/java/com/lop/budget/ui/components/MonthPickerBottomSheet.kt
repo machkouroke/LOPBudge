@@ -66,7 +66,7 @@ fun MonthPickerBottomSheet(
 
     // IMPORTANT: on ne peut pas laisser le bottom sheet transparent, sinon sur un fond sombre
     // (et avec blur) le contenu derrière "mange" la lisibilité.
-    val sheetContainer = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+    val sheetContainer = MaterialTheme.colorScheme.surface
     val scrim = Color.Black.copy(alpha = 0.55f)
 
     ModalBottomSheet(
