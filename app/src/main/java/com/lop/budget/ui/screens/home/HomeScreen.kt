@@ -119,7 +119,7 @@ fun HomeScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            item(key = "budget_summary") {
+            item(key = "budget_summary", contentType = "summary") {
                 val monthName = Format.monthYear(state.month).split(" ").first()
                 val solde = state.monthIncome - state.monthExpense
 
@@ -208,7 +208,7 @@ fun HomeScreen(
                 }
             }
 
-            item {
+            item(contentType = "unpaid_subscriptions") {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(stringResource(R.string.home_unpaid_subscriptions), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
 
@@ -244,12 +244,12 @@ fun HomeScreen(
                 }
             }
 
-            item {
+            item(contentType = "recent_transactions_header") {
                 Text(stringResource(R.string.home_recent_transactions), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
             }
 
             state.dayGroups.forEach { day ->
-                item(key = "day_header_${day.date}") {
+                item(key = "day_header_${day.date}", contentType = "day_header") {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -277,6 +277,7 @@ fun HomeScreen(
                             "tx_${id}_v$v"
                         }
                     },
+                    contentType = { "transaction" }
                 ) { tx ->
                     Box(modifier = Modifier.animateItem()) {
                         val isIncome = tx.transaction.type == TransactionType.INCOME
@@ -347,7 +348,7 @@ fun HomeScreen(
             }
 
             if (state.dayGroups.isEmpty()) {
-                item {
+                item(contentType = "empty_state") {
                     Text(stringResource(R.string.home_no_transactions_month), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

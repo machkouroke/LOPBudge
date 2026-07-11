@@ -23,7 +23,14 @@ import com.lop.budget.domain.model.TransactionType
  */
 @Entity(
     tableName = "transactions",
-    indices = [Index("accountId"), Index("categoryId"), Index("seriesId")],
+    indices = [
+        Index("accountId"),
+        Index("categoryId"),
+        Index("seriesId"),
+        Index("date"),
+        Index("status"),
+        Index("deleted")
+    ],
 )
 data class TransactionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

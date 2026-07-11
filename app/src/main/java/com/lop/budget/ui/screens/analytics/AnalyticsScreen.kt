@@ -85,9 +85,10 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
                 verticalAlignment = Alignment.Top
             ) {
                 Column {
+                    val totalSpent = state.breakdown.sumOf { it.total }
                     Text(stringResource(R.string.analytics_spent_period), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(4.dp))
-                    Text(Format.money(128.0, state.currency), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
+                    Text(Format.money(totalSpent, state.currency), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.ArrowUpward, null, tint = com.lop.budget.ui.theme.ExpenseCoral, modifier = Modifier.size(14.dp))

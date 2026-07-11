@@ -174,13 +174,12 @@ class HomeViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<HomeUiState> =
-        combine(monthData, settings.currency, month, pendingDeletes, txVersions, detectedCount) { args ->
+        combine(monthData, settings.currency, month, pendingDeletes, txVersions) { args ->
             val data = args[0] as List<*>
             val currency = args[1] as String
             val ym = args[2] as YearMonth
             val pending = args[3] as Set<Long>
             val versions = args[4] as Map<Long, Int>
-            val detected = args[5] as Int
 
             @Suppress("UNCHECKED_CAST")
             val allTxs = data[0] as List<TransactionWithRelations>
@@ -232,9 +231,10 @@ class HomeViewModel @Inject constructor(
                 subscriptions = subscriptions,
                 dayGroups = dayGroups,
                 txVersions = versions,
-                detectedCount = detected,
+                detectedCount = 0, // Sera combiné après
             )
         }
+            .combine(detectedCount) { state, count -> state.copy(detectedCount = count) }
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 

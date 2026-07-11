@@ -95,20 +95,24 @@ fun SwipeableTransactionRow(
             .onSizeChanged { componentWidthPx = it.width.toFloat() }
     ) {
         // ── Fond coloré ──────────────────────────────────────────────────────
-        val bgColor = when (swipeDirection) {
-            SwipeDir.Right -> if (isPaid) Color(0xFFE53935) else Color(0xFF4CAF50)
-            SwipeDir.Left  -> Color(0xFFE53935)
-            SwipeDir.None  -> Color.Transparent
+        val bgColor by remember(swipeDirection, isPaid) {
+            mutableStateOf(
+                when (swipeDirection) {
+                    SwipeDir.Right -> if (isPaid) Color(0xFFE53935) else Color(0xFF4CAF50)
+                    SwipeDir.Left -> Color(0xFFE53935)
+                    SwipeDir.None -> Color.Transparent
+                }
+            )
         }
         val bgAlignment = when (swipeDirection) {
             SwipeDir.Right -> Alignment.CenterStart
-            SwipeDir.Left  -> Alignment.CenterEnd
-            SwipeDir.None  -> Alignment.Center
+            SwipeDir.Left -> Alignment.CenterEnd
+            SwipeDir.None -> Alignment.Center
         }
         val bgIcon = when (swipeDirection) {
             SwipeDir.Right -> if (isPaid) Icons.Default.Close else Icons.Default.Check
-            SwipeDir.Left  -> Icons.Default.Delete
-            SwipeDir.None  -> null
+            SwipeDir.Left -> Icons.Default.Delete
+            SwipeDir.None -> null
         }
 
         Box(
