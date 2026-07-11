@@ -52,13 +52,12 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.9.2") {
         version { strictly("1.9.2") }
     }
-    // NavigationEvent is usually brought in by Activity 1.10+
-    // We try to force it to a version that doesn't exist or a known stable one if possible,
-    // but better to force Activity down first.
-    // If it's still there, we might need to exclude it or force it to a lower version.
 
     // Core
     implementation("androidx.core:core-ktx:1.13.1")
+    // SplashScreen API (installSplashScreen)
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
     implementation("androidx.activity:activity-compose:1.9.2")
