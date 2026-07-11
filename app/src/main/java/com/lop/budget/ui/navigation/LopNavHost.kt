@@ -399,7 +399,6 @@ fun LopNavHost() {
                                 // Fermer le sheet puis naviguer vers l'écran de création de catégorie
                                 scope.launch { sheetState.hide() }.invokeOnCompletion {
                                     showAddSheet = false
-                                    returnToSheetAfterCategoryCreate = true
                                     navController.navigate(Routes.CATEGORY_CREATE)
                                 }
                             },

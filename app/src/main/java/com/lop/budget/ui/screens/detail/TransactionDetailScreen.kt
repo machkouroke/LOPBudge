@@ -72,8 +72,13 @@ fun TransactionDetailScreen(
 
     // Bottom Sheet Style (Redesign)
     LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = 20.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 40.dp, bottom = 40.dp),
+        Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            top = 40.dp,
+            bottom = 40.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
@@ -84,36 +89,66 @@ fun TransactionDetailScreen(
             ) {
                 // Close button (cross)
                 Box(
-                    modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.CircleShape).clickableNoRipple(onBack),
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            androidx.compose.foundation.shape.CircleShape
+                        )
+                        .clickableNoRipple(onBack),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.Close, "Fermer", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(
+                        Icons.Filled.Close,
+                        "Fermer",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                
+
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     // Edit button
                     Box(
-                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.CircleShape).clickableNoRipple {
-                            // TODO: Gérer l'édition d'une série récurrente avec modal contextuelle
-                            onEdit(transactionId)
-                        },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                androidx.compose.foundation.shape.CircleShape
+                            )
+                            .clickableNoRipple {
+                                // TODO: Gérer l'édition d'une série récurrente avec modal contextuelle
+                                onEdit(transactionId)
+                            },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Filled.Edit, "Modifier", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(
+                            Icons.Filled.Edit,
+                            "Modifier",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     // Delete button
                     Box(
-                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.CircleShape).clickableNoRipple { 
-                            if (tx?.seriesId != null) {
-                                // TODO: Modal contextuelle (cette occurrence / suivantes / toutes)
-                                showDeleteConfirm = true
-                            } else {
-                                showDeleteConfirm = true
-                            }
-                        },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                androidx.compose.foundation.shape.CircleShape
+                            )
+                            .clickableNoRipple {
+                                if (tx?.seriesId != null) {
+                                    // TODO: Modal contextuelle (cette occurrence / suivantes / toutes)
+                                    showDeleteConfirm = true
+                                } else {
+                                    showDeleteConfirm = true
+                                }
+                            },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Filled.Delete, "Supprimer", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(
+                            Icons.Filled.Delete,
+                            "Supprimer",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -129,9 +164,18 @@ fun TransactionDetailScreen(
 
         // En-tête montant (Redesign)
         item {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                val catColor = twr.category?.colorArgb?.let { Color(it) } ?: com.lop.budget.ui.theme.CategoryOrange
-                CircleIcon(IconMapper.get(twr.category?.icon ?: "category"), Color.White, catColor, size = 80.dp)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                val catColor = twr.category?.colorArgb?.let { Color(it) }
+                    ?: com.lop.budget.ui.theme.CategoryOrange
+                CircleIcon(
+                    IconMapper.get(twr.category?.icon ?: "category"),
+                    Color.White,
+                    catColor,
+                    size = 80.dp
+                )
                 Spacer(Modifier.height(16.dp))
                 Text(
                     Format.money(tx.amount),
@@ -141,56 +185,136 @@ fun TransactionDetailScreen(
                 )
             }
         }
-        
+
         // Détails en liste
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 24.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(top = 24.dp)
+            ) {
                 // Category
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Category, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Filled.Category,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(Modifier.width(12.dp))
-                        Text("Category", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "Category",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val catColor = twr.category?.colorArgb?.let { Color(it) } ?: com.lop.budget.ui.theme.CategoryOrange
-                        CircleIcon(IconMapper.get(twr.category?.icon ?: "category"), Color.White, catColor, size = 24.dp)
+                        val catColor = twr.category?.colorArgb?.let { Color(it) }
+                            ?: com.lop.budget.ui.theme.CategoryOrange
+                        CircleIcon(
+                            IconMapper.get(twr.category?.icon ?: "category"),
+                            Color.White,
+                            catColor,
+                            size = 24.dp
+                        )
                         Spacer(Modifier.width(8.dp))
-                        Text(twr.category?.name ?: "Restaurants", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            twr.category?.name ?: "Restaurants",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
                 }
-                
+
                 // Date
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.CalendarMonth, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Filled.CalendarMonth,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(Modifier.width(12.dp))
-                        Text("Date", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "Date",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     Text(Format.fullDate(tx.date), style = MaterialTheme.typography.bodyLarge)
                 }
-                
+
                 // Type
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.SyncAlt, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Filled.SyncAlt,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(Modifier.width(12.dp))
-                        Text("Type", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "Type",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                    Text(if (isIncome) "Income" else "Expense", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        if (isIncome) "Income" else "Expense",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 }
-                
+
                 // Account
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.AccountBalance, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Filled.AccountBalance,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(Modifier.width(12.dp))
-                        Text("Account", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "Account",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("R", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.background(Color.DarkGray, androidx.compose.foundation.shape.RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
+                        Text(
+                            "R",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .background(
+                                    Color.DarkGray,
+                                    androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
                         Spacer(Modifier.width(8.dp))
-                        Text(twr.account?.name ?: "Revolut", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            twr.account?.name ?: "Revolut",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
                 }
             }
@@ -217,11 +341,22 @@ fun TransactionDetailScreen(
                         Text("Catégorie", style = MaterialTheme.typography.titleMedium)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickableNoRipple { editingCategory = !editingCategory },
+                            modifier = Modifier.clickableNoRipple {
+                                editingCategory = !editingCategory
+                            },
                         ) {
-                            Icon(Icons.Filled.Edit, "Modifier la catégorie", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Filled.Edit,
+                                "Modifier la catégorie",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
                             Spacer(Modifier.width(4.dp))
-                            Text("Modifier", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                            Text(
+                                "Modifier",
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelLarge
+                            )
                         }
                     }
                     if (editingCategory) {
@@ -238,7 +373,12 @@ fun TransactionDetailScreen(
                                         editingCategory = false
                                     },
                                 ) {
-                                    CircleIcon(IconMapper.get(cat.icon), c, if (selected) c.copy(alpha = 0.32f) else c.copy(alpha = 0.14f), size = 48.dp)
+                                    CircleIcon(
+                                        IconMapper.get(cat.icon),
+                                        c,
+                                        if (selected) c.copy(alpha = 0.32f) else c.copy(alpha = 0.14f),
+                                        size = 48.dp
+                                    )
                                     Spacer(Modifier.height(4.dp))
                                     Text(cat.name, style = MaterialTheme.typography.labelSmall)
                                 }
@@ -246,29 +386,47 @@ fun TransactionDetailScreen(
                         }
                     } else {
                         Spacer(Modifier.height(6.dp))
-                        Text(twr.category?.name ?: "—", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            twr.category?.name ?: "—",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
         }
 
-    if (tx.recurrenceFrequency != RecurrenceFrequency.NONE && state.upcomingDates.isNotEmpty()) {
-        item {
-            FloatingCard(Modifier.fillMaxWidth()) {
+        if (tx.recurrenceFrequency != RecurrenceFrequency.NONE && state.upcomingDates.isNotEmpty()) {
+            item {
+                FloatingCard(Modifier.fillMaxWidth()) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.CalendarMonth, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Icon(
+                                Icons.Filled.CalendarMonth,
+                                null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
                             Spacer(Modifier.width(8.dp))
-                            Text("Prochaines occurrences", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Prochaines occurrences",
+                                style = MaterialTheme.typography.titleMedium
+                            )
                         }
                         Spacer(Modifier.height(10.dp))
                         state.upcomingDates.forEach { d ->
                             Row(
-                                Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text(Format.fullDate(d), style = MaterialTheme.typography.bodyLarge)
-                                Text((if (isIncome) "+" else "−") + Format.money(tx.amount), color = accent, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    (if (isIncome) "+" else "−") + Format.money(tx.amount),
+                                    color = accent,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
                             }
                         }
                     }
@@ -280,16 +438,26 @@ fun TransactionDetailScreen(
         if (tx.status == TransactionStatus.PLANNED) {
             item {
                 FloatingCard(
-                    modifier = Modifier.fillMaxWidth().clickableNoRipple {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        vm.markPaid()
-                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickableNoRipple {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            vm.markPaid()
+                        },
                     color = ext.incomeContainer.copy(alpha = 0.4f),
                 ) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Icon(Icons.Filled.Check, null, tint = ext.income)
                         Spacer(Modifier.width(8.dp))
-                        Text("Marquer comme payé", color = ext.income, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Marquer comme payé",
+                            color = ext.income,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
@@ -300,7 +468,7 @@ fun TransactionDetailScreen(
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Supprimer la transaction ?") },
-            text = { 
+            text = {
                 if (tx.seriesId != null) {
                     Text("Cette transaction fait partie d'une série récurrente. Voulez-vous supprimer uniquement cette occurrence, ou toute la série ?")
                 } else {
@@ -327,7 +495,9 @@ fun TransactionDetailScreen(
                 }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showDeleteConfirm = false }) { Text("Annuler") }
+                androidx.compose.material3.TextButton(onClick = {
+                    showDeleteConfirm = false
+                }) { Text("Annuler") }
             }
         )
     }

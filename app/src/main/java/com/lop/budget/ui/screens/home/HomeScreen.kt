@@ -97,7 +97,11 @@ fun HomeScreen(
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     var isMonthPickerOpen by remember { mutableStateOf(false) }
-    var showDeleteConfirmForTx by remember { mutableStateOf<com.lop.budget.data.local.entity.TransactionWithRelations?>(null) }
+    var showDeleteConfirmForTx by remember {
+        mutableStateOf<com.lop.budget.data.local.entity.TransactionWithRelations?>(
+            null
+        )
+    }
 
     if (isMonthPickerOpen) {
         MonthPickerBottomSheet(
@@ -128,7 +132,7 @@ fun HomeScreen(
             item(key = "budget_summary") {
                 val monthName = Format.monthYear(state.month).split(" ").first()
                 val solde = state.monthIncome - state.monthExpense
-                
+
                 // Animation du solde : reset à 0 à chaque changement de mois, puis anime vers la valeur cible
                 var targetSolde by remember(state.month) { mutableStateOf(0f) }
                 LaunchedEffect(state.month, solde) { targetSolde = solde.toFloat() }
@@ -137,7 +141,7 @@ fun HomeScreen(
                     animationSpec = tween(durationMillis = 1000),
                     label = "soldeAnimation"
                 )
-                
+
                 val soldeColor = when {
                     animatedSolde > 50 -> com.lop.budget.ui.theme.IncomeGreen
                     animatedSolde < -50 -> ExpenseCoral
@@ -171,7 +175,10 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.surfaceVariant,
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
                                 CircleIcon(
                                     icon = Icons.Filled.ArrowDownward,
                                     tint = ExpenseCoral,
@@ -200,7 +207,10 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.surfaceVariant,
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
                                 CircleIcon(
                                     icon = Icons.Filled.ArrowUpward,
                                     tint = com.lop.budget.ui.theme.IncomeGreen,
@@ -255,9 +265,12 @@ fun HomeScreen(
                                 )
                                 Spacer(Modifier.width(12.dp))
                                 Column {
-                                    Text("Abonnements", style = MaterialTheme.typography.titleMedium)
                                     Text(
-                                        if (state.subscriptions.isEmpty()) "Aucun abonnement en attente" 
+                                        "Abonnements",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Text(
+                                        if (state.subscriptions.isEmpty()) "Aucun abonnement en attente"
                                         else "${state.subscriptions.size} transaction(s) en attente",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -431,99 +444,108 @@ fun HomeScreen(
                     // Modifier.animateItem() pour animer l'apparition/disparition/déplacement
                     // géré nativement par LazyColumn quand la liste change
                     Box(modifier = Modifier.animateItem()) {
-                    val isIncome = tx.transaction.type == TransactionType.INCOME
-                    val amountColor = if (isIncome) ext.income else ext.expense
-                    val catColor = tx.category?.colorArgb?.let { Color(it) }
-                        ?: MaterialTheme.colorScheme.primary
-                    val recurring =
-                        tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
+                        val isIncome = tx.transaction.type == TransactionType.INCOME
+                        val amountColor = if (isIncome) ext.income else ext.expense
+                        val catColor = tx.category?.colorArgb?.let { Color(it) }
+                            ?: MaterialTheme.colorScheme.primary
+                        val recurring =
+                            tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
 
-                    val isPaid = tx.transaction.status == TransactionStatus.PAID
-                    SwipeableTransactionRow(
-                        isPaid = isPaid,
-                        onTogglePaid = { vm.togglePaid(tx.transaction.id, tx.transaction.status) },
-                        onDelete = { 
-                            if (tx.transaction.seriesId != null) {
-                                showDeleteConfirmForTx = tx
-                            } else {
-                                vm.deleteWithUndo(tx.transaction.id, snackbarHostState)
-                            }
-                        }
-                    ) {
-                        FloatingCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickableNoRipple { 
-                                    // Si c'est une occurrence virtuelle, on n'a pas d'ID en DB.
-                                    // Dans un cas réel, il faudrait ouvrir un écran de détail spécial ou
-                                    // matérialiser la transaction en DB avant de l'éditer.
-                                    // Pour l'instant, on ignore le clic sur les occurrences virtuelles
-                                    // ou on pourrait ouvrir l'édition de la série.
-                                    if (tx.transaction.id >= 0L) {
-                                        onOpenTransaction(tx.transaction.id) 
-                                    } else if (tx.transaction.seriesId != null) {
-                                        vm.materializeAndOpen(tx.transaction.seriesId!!.toLong(), tx.transaction.seriesDate!!, onOpenTransaction)
-                                    }
-                                }
-                                .alpha(if (isPaid) 0.5f else 1f),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
-                        ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircleIcon(
-                                icon = IconMapper.get(tx.category?.icon ?: "category"),
-                                tint = catColor,
-                                background = catColor.copy(alpha = 0.18f),
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        tx.transaction.title,
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                    if (recurring) {
-                                        Spacer(Modifier.width(6.dp))
-                                        Icon(
-                                            Icons.Filled.Repeat,
-                                            "Récurrent",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(15.dp)
-                                        )
-                                    }
-                                }
-                                Text(
-                                    tx.account?.name ?: "",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        val isPaid = tx.transaction.status == TransactionStatus.PAID
+                        SwipeableTransactionRow(
+                            isPaid = isPaid,
+                            onTogglePaid = {
+                                vm.togglePaid(
+                                    tx.transaction.id,
+                                    tx.transaction.status
                                 )
-                                if (tx.tags.isNotEmpty()) {
-                                    Spacer(Modifier.height(4.dp))
-                                    FlowRow(
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        tx.tags.take(3).forEach { tag ->
-                                            com.lop.budget.ui.components.PillTag(
-                                                text = tag.name,
-                                                color = Color(tag.colorArgb)
+                            },
+                            onDelete = {
+                                if (tx.transaction.seriesId != null) {
+                                    showDeleteConfirmForTx = tx
+                                } else {
+                                    vm.deleteWithUndo(tx.transaction.id, snackbarHostState)
+                                }
+                            }
+                        ) {
+                            FloatingCard(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickableNoRipple {
+                                        // Si c'est une occurrence virtuelle, on n'a pas d'ID en DB.
+                                        // Dans un cas réel, il faudrait ouvrir un écran de détail spécial ou
+                                        // matérialiser la transaction en DB avant de l'éditer.
+                                        // Pour l'instant, on ignore le clic sur les occurrences virtuelles
+                                        // ou on pourrait ouvrir l'édition de la série.
+                                        if (tx.transaction.id >= 0L) {
+                                            onOpenTransaction(tx.transaction.id)
+                                        } else if (tx.transaction.seriesId != null) {
+                                            vm.materializeAndOpen(
+                                                tx.transaction.seriesId!!.toLong(),
+                                                tx.transaction.seriesDate!!,
+                                                onOpenTransaction
                                             )
                                         }
                                     }
+                                    .alpha(if (isPaid) 0.5f else 1f),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircleIcon(
+                                        icon = IconMapper.get(tx.category?.icon ?: "category"),
+                                        tint = catColor,
+                                        background = catColor.copy(alpha = 0.18f),
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                tx.transaction.title,
+                                                style = MaterialTheme.typography.titleMedium
+                                            )
+                                            if (recurring) {
+                                                Spacer(Modifier.width(6.dp))
+                                                Icon(
+                                                    Icons.Filled.Repeat,
+                                                    "Récurrent",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(15.dp)
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            tx.account?.name ?: "",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        if (tx.tags.isNotEmpty()) {
+                                            Spacer(Modifier.height(4.dp))
+                                            FlowRow(
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                tx.tags.take(3).forEach { tag ->
+                                                    com.lop.budget.ui.components.PillTag(
+                                                        text = tag.name,
+                                                        color = Color(tag.colorArgb)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Text(
+                                        (if (isIncome) "+" else "−") + Format.money(
+                                            tx.transaction.amount,
+                                            state.currency
+                                        ),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = amountColor,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
                                 }
                             }
-                            Text(
-                                (if (isIncome) "+" else "−") + Format.money(
-                                    tx.transaction.amount,
-                                    state.currency
-                                ),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = amountColor,
-                                fontWeight = FontWeight.SemiBold,
-                            )
                         }
-                    }
-                    }
                     }
                 }
             }
@@ -687,13 +709,13 @@ fun HomeScreen(
             }
         }
     }
-    
+
     if (showDeleteConfirmForTx != null) {
         val txToDelete = showDeleteConfirmForTx!!
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showDeleteConfirmForTx = null },
             title = { Text("Supprimer la transaction ?") },
-            text = { 
+            text = {
                 Text("Cette transaction fait partie d'une série récurrente. Voulez-vous supprimer uniquement cette occurrence, ou toute la série ?")
             },
             confirmButton = {
@@ -719,7 +741,9 @@ fun HomeScreen(
                 }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showDeleteConfirmForTx = null }) { Text("Annuler") }
+                androidx.compose.material3.TextButton(onClick = {
+                    showDeleteConfirmForTx = null
+                }) { Text("Annuler") }
             }
         )
     }
