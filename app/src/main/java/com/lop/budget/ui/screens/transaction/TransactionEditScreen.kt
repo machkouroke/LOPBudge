@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -51,6 +52,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,6 +101,7 @@ fun TransactionEditScreen(
 
     // creation flow: open category picker first
     var showCategorySheet by remember { mutableStateOf(false) }
+    var showAccountSheet by remember { mutableStateOf(false) }
     var showTagsSheet by remember { mutableStateOf(false) }
 
     val ext = LopTheme.extended
@@ -113,39 +116,71 @@ fun TransactionEditScreen(
         }
     }
 
+    val listState = rememberLazyListState()
+    val showTopBarDivider by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        if (vm.isEditing) stringResource(R.string.tx_edit_title) else stringResource(
-                            R.string.tx_new_title
-                        ),
-                        fontWeight = FontWeight.SemiBold,
+            // OneUI-ish: gradient header instead of an opaque block.
+            // Opaque near the bottom (behind the appbar content), fading upwards.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
+                                MaterialTheme.colorScheme.background,
+                            )
+                        )
                     )
-                },
-                navigationIcon = {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.back),
-                        modifier = Modifier.size(26.dp).clickableNoRipple(onBack),
+            ) {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            if (vm.isEditing) stringResource(R.string.tx_edit_title) else stringResource(R.string.tx_new_title),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    },
+                    navigationIcon = {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = stringResource(R.string.close),
+                            modifier = Modifier
+                                .padding(start = 12.dp)
+                                .size(26.dp)
+                                .clickableNoRipple(onBack),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    ),
+                    // FIX: avoid double inset in edge-to-edge.
+                    windowInsets = WindowInsets(0, 0, 0, 0),
+                )
+
+                // When scrolling, just show a subtle outline (no heavy blocks)
+                if (showTopBarDivider) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = Color.Unspecified,
-                    navigationIconContentColor = Color.Unspecified,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = Color.Unspecified
-                ),
-                // FIX: évite un "double inset" quand l'app est en edge-to-edge.
-                // Material met déjà un inset statusBar par défaut; si un parent applique aussi
-                // des insets, on obtient un grand espace vide.
-                windowInsets = WindowInsets(0, 0, 0, 0),
-            )
+                }
+            }
         },
         bottomBar = {
+            // Keep the background container transparent; only the button is solid.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -198,6 +233,7 @@ fun TransactionEditScreen(
         },
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
@@ -336,27 +372,8 @@ fun TransactionEditScreen(
                         SelectorRow(
                             label = stringResource(R.string.tx_account_label),
                             value = selectedAcc?.name ?: stringResource(R.string.tx_select_account),
-                            onClick = { /* keep dropdown for now */ },
+                            onClick = { showAccountSheet = true },
                             trailingChevron = true,
-                            dropdown = {
-                                var expandedAccount by remember { mutableStateOf(false) }
-                                LaunchedEffect(Unit) { expandedAccount = true }
-                                DropdownMenu(
-                                    expanded = expandedAccount,
-                                    onDismissRequest = { expandedAccount = false },
-                                    modifier = Modifier.fillMaxWidth(0.92f),
-                                ) {
-                                    accounts.forEach { acc ->
-                                        DropdownMenuItem(
-                                            text = { Text(acc.name) },
-                                            onClick = {
-                                                vm.setAccount(acc.id)
-                                                expandedAccount = false
-                                            },
-                                        )
-                                    }
-                                }
-                            },
                         )
 
                         val selectedTags = tags.filter { it.id in form.tagIds }
@@ -449,6 +466,19 @@ fun TransactionEditScreen(
                 onNavigateToCreateCategory()
             },
             onDismiss = { showCategorySheet = false },
+        )
+    }
+
+    if (showAccountSheet) {
+        AccountBottomSheet(
+            title = stringResource(R.string.tx_account_sheet_title),
+            accounts = accounts,
+            selectedId = form.accountId,
+            onSelect = { id ->
+                vm.setAccount(id)
+                showAccountSheet = false
+            },
+            onDismiss = { showAccountSheet = false },
         )
     }
 
@@ -998,6 +1028,75 @@ private fun CategoryBottomSheet(
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.SemiBold
                     )
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountBottomSheet(
+    title: String,
+    accounts: List<com.lop.budget.data.local.entity.AccountEntity>,
+    selectedId: Long?,
+    onSelect: (Long) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        scrimColor = Color.Black.copy(alpha = 0.55f),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+
+            if (accounts.isEmpty()) {
+                Text(stringResource(R.string.tx_no_accounts), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            accounts.forEach { acc ->
+                val selected = acc.id == selectedId
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .pressScaleClickable(intent = HapticIntent.Selection, pressedScale = 0.98f) { onSelect(acc.id) },
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // Simple avatar (first letter) to keep it clean
+                        val letter = acc.name.firstOrNull()?.uppercase() ?: "A"
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+                            modifier = Modifier.size(38.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(letter, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text(acc.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        if (selected) {
+                            Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
                 }
             }
 
