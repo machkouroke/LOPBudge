@@ -1,5 +1,8 @@
 package com.lop.budget.ai
 
+import android.content.Context
+import com.lop.budget.R
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -22,7 +25,9 @@ import javax.inject.Singleton
  * lecture seule et on récupère une réponse textuelle.
  */
 @Singleton
-class GeminiClient @Inject constructor() {
+class GeminiClient @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
@@ -59,7 +64,7 @@ class GeminiClient @Inject constructor() {
         model: String = "gemini-1.5-flash",
     ): Result<String> = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) {
-            return@withContext Result.failure(IllegalStateException("Clé API Gemini manquante. Ajoute-la dans Réglages."))
+            return@withContext Result.failure(IllegalStateException(context.getString(R.string.gemini_error_no_key)))
         }
         runCatching {
             val contents = buildList {
@@ -76,10 +81,10 @@ class GeminiClient @Inject constructor() {
             val request = Request.Builder().url(url).post(body).build()
             client.newCall(request).execute().use { resp ->
                 val raw = resp.body?.string().orEmpty()
-                if (!resp.isSuccessful) error("Erreur API (${resp.code}). Vérifie ta clé Gemini.")
+                if (!resp.isSuccessful) error(context.getString(R.string.gemini_error_api, resp.code))
                 val parsed = json.decodeFromString(GenerateResponse.serializer(), raw)
                 parsed.candidates.firstOrNull()?.content?.parts?.firstOrNull()?.text
-                    ?: error("Réponse vide de l'assistant.")
+                    ?: error(context.getString(R.string.gemini_error_empty))
             }
         }
     }

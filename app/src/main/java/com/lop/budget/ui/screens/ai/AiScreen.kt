@@ -31,10 +31,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.R
 import com.lop.budget.ui.components.clickableNoRipple
 
 @Composable
@@ -55,9 +57,9 @@ fun AiScreen(
             Modifier.fillMaxWidth().padding(vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", modifier = Modifier.size(26.dp).clickableNoRipple(onBack))
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.ai_back), modifier = Modifier.size(26.dp).clickableNoRipple(onBack))
             Spacer(Modifier.width(12.dp))
-            Text("Assistant LOP", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.ai_title), style = MaterialTheme.typography.titleLarge)
         }
 
         LazyColumn(
@@ -71,7 +73,7 @@ fun AiScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
-                        Text("L'assistant réfléchit…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.ai_loading), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -84,7 +86,7 @@ fun AiScreen(
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
-                placeholder = { Text("Pose une question…") },
+                placeholder = { Text(stringResource(R.string.ai_input_placeholder)) },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(26.dp),
             )
@@ -98,7 +100,7 @@ fun AiScreen(
                 },
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.AutoMirrored.Filled.Send, "Envoyer", tint = MaterialTheme.colorScheme.onPrimary)
+                    Icon(Icons.AutoMirrored.Filled.Send, stringResource(R.string.ai_send), tint = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }

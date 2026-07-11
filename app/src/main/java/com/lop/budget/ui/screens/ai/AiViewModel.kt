@@ -1,7 +1,9 @@
 package com.lop.budget.ui.screens.ai
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lop.budget.R
 import com.lop.budget.ai.GeminiClient
 import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.SettingsRepository
@@ -9,6 +11,7 @@ import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -18,9 +21,7 @@ import javax.inject.Inject
 data class ChatMessage(val fromUser: Boolean, val text: String)
 
 data class AiUiState(
-    val messages: List<ChatMessage> = listOf(
-        ChatMessage(false, "Bonjour ! Je suis ton assistant budgétaire. Pose-moi des questions sur tes finances : je peux analyser et conseiller, mais je ne modifie rien moi-même.")
-    ),
+    val messages: List<ChatMessage> = emptyList(),
     val loading: Boolean = false,
     val hasKey: Boolean = true,
 )
@@ -34,10 +35,19 @@ class AiViewModel @Inject constructor(
     private val gemini: GeminiClient,
     private val repo: BudgetRepository,
     private val settings: SettingsRepository,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AiUiState())
     val state = _state.asStateFlow()
+
+    init {
+        _state.value = _state.value.copy(
+            messages = listOf(
+                ChatMessage(false, context.getString(R.string.ai_welcome_message))
+            )
+        )
+    }
 
     private val systemPrompt = """
         Tu es l'assistant budgétaire de l'application LOPBudge.

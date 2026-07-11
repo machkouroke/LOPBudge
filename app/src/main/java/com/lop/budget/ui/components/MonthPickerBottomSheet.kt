@@ -39,9 +39,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.lop.budget.R
 import java.time.Month
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -83,7 +85,7 @@ fun MonthPickerBottomSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = "Choisir un mois",
+                text = stringResource(R.string.month_picker_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -170,7 +172,7 @@ private fun YearHeaderPill(
         ) {
             Icon(
                 imageVector = Icons.Filled.ChevronLeft,
-                contentDescription = "Année précédente",
+                contentDescription = stringResource(R.string.month_picker_prev_year),
                 tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .size(32.dp)
@@ -213,7 +215,7 @@ private fun YearHeaderPill(
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Filled.Today,
-                            contentDescription = "Aujourd'hui",
+                            contentDescription = stringResource(R.string.month_picker_today),
                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                             modifier = Modifier.size(18.dp),
                         )
@@ -224,7 +226,7 @@ private fun YearHeaderPill(
 
                 Icon(
                     imageVector = Icons.Filled.ChevronRight,
-                    contentDescription = "Année suivante",
+                    contentDescription = stringResource(R.string.month_picker_next_year),
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
                         .size(32.dp)

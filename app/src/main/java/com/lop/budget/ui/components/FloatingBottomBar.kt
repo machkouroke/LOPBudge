@@ -33,9 +33,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lop.budget.R
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
@@ -92,32 +94,25 @@ fun FloatingBottomBar(
             ) {
                 NavItem(
                     icon = Icons.Filled.Home,
-                    label = "Accueil",
+                    label = stringResource(R.string.nav_home),
                     route = "home",
                     current = current,
                     onClick = { onSelect("home") },
                 )
                 NavItem(
                     icon = Icons.Filled.Assessment,
-                    label = "Analyse",
+                    label = stringResource(R.string.nav_analytics),
                     route = "analytics",
                     current = current,
                     onClick = { onSelect("analytics") },
                 )
                 NavItem(
                     icon = Icons.Filled.Flag,
-                    label = "Objectif",
+                    label = stringResource(R.string.nav_goals),
                     route = "goals",
                     current = current,
                     onClick = { onSelect("goals") },
                 )
-//                NavItem(
-//                    icon = Icons.Outlined.AccountBalanceWallet,
-//                    label = "Compte",
-//                    route = "accounts",
-//                    current = current,
-//                    onClick = { onSelect("accounts") },
-//                )
             }
         }
 
@@ -214,7 +209,7 @@ private fun LiquidGlassFab(
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 Icons.Filled.Add,
-                contentDescription = "Ajouter",
+                contentDescription = stringResource(R.string.add),
                 tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(30.dp),
             )

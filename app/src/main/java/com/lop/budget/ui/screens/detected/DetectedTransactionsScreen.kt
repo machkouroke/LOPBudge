@@ -24,10 +24,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.R
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.clickableNoRipple
@@ -53,11 +55,11 @@ fun DetectedTransactionsScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Retour",
+                    contentDescription = stringResource(R.string.back),
                     modifier = Modifier.size(26.dp).clickableNoRipple(onBack),
                 )
                 Spacer(Modifier.width(12.dp))
-                Text("Transactions détectées", style = MaterialTheme.typography.headlineMedium)
+                Text(stringResource(R.string.detected_title), style = MaterialTheme.typography.headlineMedium)
             }
         }
 
@@ -68,10 +70,10 @@ fun DetectedTransactionsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Filled.NotificationsActive, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Aucune proposition", style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.detected_no_proposals_title), style = MaterialTheme.typography.titleMedium)
                         }
                         Text(
-                            "Quand une notification de paiement est détectée, elle apparaitra ici.",
+                            stringResource(R.string.detected_no_proposals_desc),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -97,7 +99,7 @@ fun DetectedTransactionsScreen(
                         )
                     }
                     Text(
-                        "Source : ${p.sourcePackage}",
+                        stringResource(R.string.detected_source, p.sourcePackage),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -120,7 +122,7 @@ fun DetectedTransactionsScreen(
                             ) {
                                 Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Accepter", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.detected_accept), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                             }
                         }
 
@@ -139,7 +141,7 @@ fun DetectedTransactionsScreen(
                             ) {
                                 Icon(Icons.Filled.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Refuser", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.detected_ignore), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }

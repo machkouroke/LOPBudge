@@ -49,7 +49,7 @@ class LopNotificationListenerService : NotificationListenerService() {
             val pkg = sbn.packageName
             if (!settings.isAllowedNotificationSource(pkg)) return@launch
 
-            val parsed = PaymentNotificationParser.parse(sbn) ?: return@launch
+            val parsed = PaymentNotificationParser.parse(sbn, applicationContext) ?: return@launch
 
             val proposal = DetectedTransactionProposalEntity(
                 amount = parsed.amount,
@@ -87,7 +87,7 @@ class LopNotificationListenerService : NotificationListenerService() {
 
         val notif = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Transaction détectée")
+            .setContentTitle(applicationContext.getString(R.string.notif_detected_title))
             .setContentText(text)
             .setContentIntent(pi)
             .setAutoCancel(true)
@@ -105,10 +105,10 @@ class LopNotificationListenerService : NotificationListenerService() {
 
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Transactions détectées",
+            applicationContext.getString(R.string.notif_channel_name),
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
-            description = "Notifications quand une transaction est détectée via Google Wallet/Samsung Wallet"
+            description = applicationContext.getString(R.string.notif_channel_desc)
         }
         mgr.createNotificationChannel(channel)
     }

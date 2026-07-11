@@ -31,10 +31,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.R
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.clickableNoRipple
@@ -64,13 +66,13 @@ fun SettingsScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    "Retour",
+                    stringResource(R.string.back),
                     modifier = Modifier
                         .size(26.dp)
                         .clickableNoRipple(onBack)
                 )
                 Spacer(Modifier.width(12.dp))
-                Text("Réglages", style = MaterialTheme.typography.headlineMedium)
+                Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
             }
         }
 
@@ -78,23 +80,23 @@ fun SettingsScreen(
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column {
-                    Text("Apparence", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.settings_appearance), style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "Thème",
+                        stringResource(R.string.settings_theme),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(8.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         val modes = listOf(
-                            ThemeMode.SYSTEM to "Système",
-                            ThemeMode.LIGHT to "Clair",
-                            ThemeMode.DARK to "Sombre"
+                            ThemeMode.SYSTEM to R.string.settings_theme_system,
+                            ThemeMode.LIGHT to R.string.settings_theme_light,
+                            ThemeMode.DARK to R.string.settings_theme_dark
                         )
-                        items(modes, key = { it.first.name }) { (mode, label) ->
+                        items(modes, key = { it.first.name }) { (mode, labelRes) ->
                             PillTag(
-                                text = label,
+                                text = stringResource(labelRes),
                                 color = if (state.themeMode == mode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.clickableNoRipple { vm.setThemeMode(mode) },
                             )
@@ -108,11 +110,11 @@ fun SettingsScreen(
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(
-                                "Couleurs dynamiques (Material You)",
+                                stringResource(R.string.settings_dynamic_color_title),
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
-                                "Adapte la palette au thème du système (Android 12+)",
+                                stringResource(R.string.settings_dynamic_color_desc),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -127,10 +129,10 @@ fun SettingsScreen(
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column {
-                    Text("Détection automatique", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.settings_auto_detection), style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "LOPBudge peut analyser localement certaines notifications de paiement pour vous proposer une transaction à ajouter.",
+                        stringResource(R.string.settings_auto_detection_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -141,7 +143,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Détecter via notifications", style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(R.string.settings_detect_via_notif), style = MaterialTheme.typography.bodyLarge)
                         Switch(
                             checked = state.notificationDetectionEnabled,
                             onCheckedChange = vm::setNotificationDetectionEnabled,
@@ -154,7 +156,7 @@ fun SettingsScreen(
                             context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                         },
                     ) {
-                        Text("Autoriser l'accès aux notifications")
+                        Text(stringResource(R.string.settings_allow_notif_access))
                     }
                 }
             }
@@ -164,14 +166,14 @@ fun SettingsScreen(
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column {
-                    Text("Devise", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.settings_currency), style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = currencyInput,
                         onValueChange = {
                             currencyInput = it.uppercase().take(3); vm.setCurrency(currencyInput)
                         },
-                        label = { Text("Code ISO (EUR, USD, GBP…)") },
+                        label = { Text(stringResource(R.string.settings_currency_label)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -183,10 +185,10 @@ fun SettingsScreen(
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column {
-                    Text("Assistant IA (Gemini)", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.settings_ai_title), style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Colle ta clé API Gemini (gratuite via Google AI Studio). Elle reste stockée localement sur l'appareil.",
+                        stringResource(R.string.settings_ai_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -194,7 +196,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = keyInput,
                         onValueChange = { keyInput = it; vm.setGeminiKey(it.trim()) },
-                        label = { Text("Clé API Gemini") },
+                        label = { Text(stringResource(R.string.settings_ai_key_label)) },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),

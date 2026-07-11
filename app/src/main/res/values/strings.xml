@@ -1,4 +1,176 @@
 <resources>
     <string name="app_name">LOPBudge</string>
     <string name="balance_widget_description">Solde et prochaines dépenses</string>
+
+    <!-- Common -->
+    <string name="back">Retour</string>
+    <string name="cancel">Annuler</string>
+    <string name="ok">OK</string>
+    <string name="save">Enregistrer</string>
+    <string name="delete">Supprimer</string>
+    <string name="close">Fermer</string>
+    <string name="edit">Modifier</string>
+    <string name="add">Ajouter</string>
+    <string name="create">Créer</string>
+    <string name="income">Revenus</string>
+    <string name="expense">Dépenses</string>
+    <string name="total">Total</string>
+    <string name="loading">Chargement…</string>
+    <string name="none">Aucun</string>
+    <string name="other">Autre</string>
+    <string name="others">Autres</string>
+
+    <!-- Home Screen -->
+    <string name="home_balance_title">Solde de %1$s</string>
+    <string name="home_unpaid_subscriptions">Abonnements non payés</string>
+    <string name="home_subscriptions">Abonnements</string>
+    <string name="home_no_pending_subscriptions">Aucun abonnement en attente</string>
+    <string name="home_pending_subscriptions_count">%1$d transaction(s) en attente</string>
+    <string name="home_recent_transactions">Recent transactions</string>
+    <string name="home_recurring_tag">Récurrent</string>
+    <string name="home_no_transactions_month">Aucune transaction ce mois-ci.</string>
+    <string name="home_scroll_to_top">Retour en haut</string>
+    <string name="home_change_month">Changer de mois</string>
+    <string name="home_go_to_current_month">Revenir au mois actuel</string>
+    <string name="home_detected_transactions">Transactions détectées</string>
+
+    <!-- Transaction Edit Screen -->
+    <string name="tx_edit_title">Modifier la transaction</string>
+    <string name="tx_new_title">Nouvelle transaction</string>
+    <string name="tx_type_expense">Dépense</string>
+    <string name="tx_type_income">Revenu</string>
+    <string name="tx_amount_label">Montant</string>
+    <string name="tx_date_label">Date</string>
+    <string name="tx_name_label">Nom de la transaction</string>
+    <string name="tx_category_label">Catégorie</string>
+    <string name="tx_select_category">Sélectionner une catégorie</string>
+    <string name="tx_create_category">Créer une nouvelle catégorie</string>
+    <string name="tx_account_label">Compte</string>
+    <string name="tx_select_account">Sélectionner un compte</string>
+    <string name="tx_tags_label">Étiquettes (max 3)</string>
+    <string name="tx_no_tags">Aucune étiquette</string>
+    <string name="tx_notes_label">Notes (optionnel)</string>
+    <string name="tx_repeat_label">Répéter</string>
+    <string name="tx_repeat_none">Ne se répète pas</string>
+    <string name="tx_repeat_daily">Tous les jours</string>
+    <string name="tx_repeat_weekly">Toutes les semaines</string>
+    <string name="tx_repeat_monthly">Tous les mois</string>
+    <string name="tx_repeat_yearly">Tous les ans</string>
+    <string name="tx_repeat_every">Tous les </string>
+    <string name="tx_repeat_intervals"> intervalle(s)</string>
+    <string name="tx_repeat_days_of_week">Jours de la semaine</string>
+    <string name="tx_repeat_ends">Finit</string>
+    <string name="tx_repeat_ends_never">Jamais</string>
+    <string name="tx_repeat_ends_on">Le</string>
+    <string name="tx_repeat_ends_after">Après</string>
+    <string name="tx_repeat_occurrences_label">occurrences</string>
+    <string name="tx_tags_sheet_title">Étiquettes</string>
+    <string name="tx_tags_sheet_subtitle">Sélectionnez jusqu\'à 3 étiquettes pour cette transaction</string>
+    <string name="tx_tags_create_title">Créer une étiquette</string>
+    <string name="tx_tags_name_label">Nom de l\'étiquette</string>
+
+    <!-- Transaction Detail Screen -->
+    <string name="tx_detail_category">Category</string>
+    <string name="tx_detail_date">Date</string>
+    <string name="tx_detail_type">Type</string>
+    <string name="tx_detail_account">Account</string>
+    <string name="tx_detail_edit_category">Modifier la catégorie</string>
+    <string name="tx_detail_upcoming_occurrences">Prochaines occurrences</string>
+    <string name="tx_detail_mark_as_paid">Marquer comme payé</string>
+    <string name="tx_detail_delete_title">Supprimer la transaction ?</string>
+    <string name="tx_detail_delete_recurring_msg">Cette transaction fait partie d\'une série récurrente. Voulez-vous supprimer uniquement cette occurrence, ou toute la série ?</string>
+    <string name="tx_detail_delete_msg">Cette action est irréversible.</string>
+    <string name="tx_detail_delete_occurrence">Cette occurrence</string>
+    <string name="tx_detail_delete_series">Toute la série</string>
+
+    <!-- Analytics Screen -->
+    <string name="analytics_spent_period">Spent in budget period</string>
+    <string name="analytics_vs_last_period">%1$s vs last period</string>
+    <string name="analytics_actual">Actual</string>
+    <string name="analytics_forecast">Forecast</string>
+    <string name="analytics_budget">Budget</string>
+    <string name="analytics_left">Left</string>
+    <string name="analytics_spend_forecast">Spend %1$s / day\nto stay within the limit</string>
+    <string name="analytics_today">Today</string>
+
+    <!-- Category Create Screen -->
+    <string name="cat_new_title">Nouvelle catégorie</string>
+    <string name="cat_create_placeholder">Écran de création de catégorie\n(à implémenter)</string>
+
+    <!-- Monthly Screen -->
+    <string name="monthly_filter_all">Tous</string>
+    <string name="monthly_filter_paid">Payé</string>
+    <string name="monthly_filter_planned">Planifié</string>
+    <string name="monthly_no_data">Aucune donnée</string>
+    <string name="monthly_no_transactions">Aucune transaction pour ce filtre.</string>
+    <string name="monthly_transactions_title">Transactions</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Réglages</string>
+    <string name="settings_appearance">Apparence</string>
+    <string name="settings_theme">Thème</string>
+    <string name="settings_theme_system">Système</string>
+    <string name="settings_theme_light">Clair</string>
+    <string name="settings_theme_dark">Sombre</string>
+    <string name="settings_dynamic_color_title">Couleurs dynamiques (Material You)</string>
+    <string name="settings_dynamic_color_desc">Adapte la palette au thème du système (Android 12+)</string>
+    <string name="settings_auto_detection">Détection automatique</string>
+    <string name="settings_auto_detection_desc">LOPBudge peut analyser localement certaines notifications de paiement pour vous proposer une transaction à ajouter.</string>
+    <string name="settings_detect_via_notif">Détecter via notifications</string>
+    <string name="settings_allow_notif_access">Autoriser l\'accès aux notifications</string>
+    <string name="settings_currency">Devise</string>
+    <string name="settings_currency_label">Code ISO (EUR, USD, GBP…)</string>
+    <string name="settings_ai_title">Assistant IA (Gemini)</string>
+    <string name="settings_ai_desc">Colle ta clé API Gemini (gratuite via Google AI Studio). Elle reste stockée localement sur l\'appareil.</string>
+    <string name="settings_ai_key_label">Clé API Gemini</string>
+
+    <!-- Detected Transactions Screen -->
+    <string name="detected_title">Transactions détectées</string>
+    <string name="detected_no_proposals_title">Aucune proposition</string>
+    <string name="detected_no_proposals_desc">Quand une notification de paiement est détectée, elle apparaitra ici.</string>
+    <string name="detected_source">Source : %1$s</string>
+    <string name="detected_accept">Accepter</string>
+    <string name="detected_ignore">Refuser</string>
+
+    <!-- Goals & Debts -->
+    <string name="goals_title">Objectifs</string>
+    <string name="debts_title">Dettes</string>
+    <string name="debt_repaid_amount">Remboursé %1$s / %2$s</string>
+
+    <!-- Accounts -->
+    <string name="accounts_title">Comptes</string>
+    <string name="accounts_total_balance">Solde total</string>
+
+    <!-- Month Picker -->
+    <string name="month_picker_title">Choisir un mois</string>
+    <string name="month_picker_prev_year">Année précédente</string>
+    <string name="month_picker_next_year">Année suivante</string>
+    <string name="month_picker_today">Aujourd\'hui</string>
+
+    <!-- AI Screen -->
+    <string name="ai_back">Retour</string>
+    <string name="ai_title">Assistant LOP</string>
+    <string name="ai_loading">L\'assistant réfléchit…</string>
+    <string name="ai_input_placeholder">Pose une question…</string>
+    <string name="ai_send">Envoyer</string>
+    <string name="ai_welcome_message">Bonjour ! Je suis ton assistant budgétaire. Pose-moi des questions sur tes finances : je peux analyser et conseiller, mais je ne modifie rien moi-même.</string>
+
+    <!-- Gemini API Errors -->
+    <string name="gemini_error_no_key">Clé API Gemini manquante. Ajoute-la dans Réglages.</string>
+    <string name="gemini_error_api">Erreur API (%1$d). Vérifie ta clé Gemini.</string>
+    <string name="gemini_error_empty">Réponse vide de l\'assistant.</string>
+    <!-- Notifications Service -->
+    <string name="notif_detected_title">Transaction détectée</string>
+    <string name="notif_channel_name">Transactions détectées</string>
+    <string name="notif_channel_desc">Notifications quand une transaction est détectée via Google Wallet/Samsung Wallet</string>
+    <!-- Snackbar / Undo -->
+    <string name="tx_deleted_snackbar">Transaction supprimée</string>
+    <string name="series_deleted_snackbar">Série supprimée</string>
+    <string name="undo">Annuler</string>
+    <string name="tx_default_title">Transaction</string>
+    <string name="payment_detected_default">Paiement détecté</string>
+    <!-- Bottom Bar -->
+    <string name="nav_home">Accueil</string>
+    <string name="nav_analytics">Analyse</string>
+    <string name="nav_goals">Objectif</string>
 </resources>

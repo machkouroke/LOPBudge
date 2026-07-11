@@ -1,6 +1,8 @@
 package com.lop.budget.notifications
 
+import android.content.Context
 import android.service.notification.StatusBarNotification
+import com.lop.budget.R
 import java.text.Normalizer
 import java.util.Locale
 
@@ -20,7 +22,7 @@ object PaymentNotificationParser {
     // Très tolérant : 12,50 € / €12.50 / 12.50 EUR / -12,50 €
     private val amountRegex = Regex("(-?\\d{1,6}(?:[.,]\\d{1,2})?)\\s*([€$]|EUR|USD|GBP)?", RegexOption.IGNORE_CASE)
 
-    fun parse(sbn: StatusBarNotification): ParsedPayment? {
+    fun parse(sbn: StatusBarNotification, context: Context): ParsedPayment? {
         val n = sbn.notification
         val extras = n.extras
         val title = extras.getCharSequence("android.title")?.toString().orEmpty()
@@ -46,7 +48,7 @@ object PaymentNotificationParser {
             else -> null
         }
 
-        val label = buildLabel(title, text, bigText)
+        val label = buildLabel(title, text, bigText, context)
 
         return ParsedPayment(
             amount = kotlin.math.abs(amount),
@@ -56,12 +58,12 @@ object PaymentNotificationParser {
         )
     }
 
-    private fun buildLabel(title: String, text: String, bigText: String): String {
+    private fun buildLabel(title: String, text: String, bigText: String, context: Context): String {
         // Priorité au texte le plus "informatif"
         return listOf(text, bigText, title)
             .firstOrNull { it.isNotBlank() }
             ?.take(80)
-            ?: "Paiement détecté"
+            ?: context.getString(R.string.payment_detected_default)
     }
 
     fun normalizeForDedupe(input: String): String {

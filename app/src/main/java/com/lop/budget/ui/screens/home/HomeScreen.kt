@@ -53,10 +53,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.R
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
@@ -140,7 +142,7 @@ fun HomeScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "Solde de $monthName",
+                        stringResource(R.string.home_balance_title, monthName),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -168,7 +170,7 @@ fun HomeScreen(
                                     size = 40.dp
                                 )
                                 Spacer(Modifier.height(12.dp))
-                                Text("Dépenses", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.expense), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     Format.money(state.monthExpense, state.currency),
@@ -192,7 +194,7 @@ fun HomeScreen(
                                     size = 40.dp
                                 )
                                 Spacer(Modifier.height(12.dp))
-                                Text("Revenus", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.income), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     Format.money(state.monthIncome, state.currency),
@@ -208,7 +210,7 @@ fun HomeScreen(
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("Abonnements non payés", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.home_unpaid_subscriptions), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
 
                     FloatingCard(
                         modifier = Modifier.fillMaxWidth().clickableNoRipple { },
@@ -225,9 +227,9 @@ fun HomeScreen(
                                 )
                                 Spacer(Modifier.width(12.dp))
                                 Column {
-                                    Text("Abonnements", style = MaterialTheme.typography.titleMedium)
+                                    Text(stringResource(R.string.home_subscriptions), style = MaterialTheme.typography.titleMedium)
                                     Text(
-                                        if (state.subscriptions.isEmpty()) "Aucun abonnement en attente" else "${state.subscriptions.size} transaction(s) en attente",
+                                        if (state.subscriptions.isEmpty()) stringResource(R.string.home_no_pending_subscriptions) else stringResource(R.string.home_pending_subscriptions_count, state.subscriptions.size),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -243,7 +245,7 @@ fun HomeScreen(
             }
 
             item {
-                Text("Recent transactions", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+                Text(stringResource(R.string.home_recent_transactions), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
             }
 
             state.dayGroups.forEach { day ->
@@ -283,12 +285,14 @@ fun HomeScreen(
                         val recurring = tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
 
                         val isPaid = tx.transaction.status == TransactionStatus.PAID
+                        val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
+                        val undoMsg = stringResource(R.string.undo)
                         SwipeableTransactionRow(
                             isPaid = isPaid,
                             onTogglePaid = { vm.togglePaid(tx.transaction.id, tx.transaction.status) },
                             onDelete = {
                                 if (tx.transaction.seriesId != null) showDeleteConfirmForTx = tx
-                                else vm.deleteWithUndo(tx.transaction.id, snackbarHostState)
+                                else vm.deleteWithUndo(tx.transaction.id, snackbarHostState, txDeletedMsg, undoMsg)
                             }
                         ) {
                             FloatingCard(
@@ -316,7 +320,7 @@ fun HomeScreen(
                                             Text(tx.transaction.title, style = MaterialTheme.typography.titleMedium)
                                             if (recurring) {
                                                 Spacer(Modifier.width(6.dp))
-                                                Icon(Icons.Filled.Repeat, "Récurrent", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
+                                                Icon(Icons.Filled.Repeat, stringResource(R.string.home_recurring_tag), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
                                             }
                                         }
                                         Text(tx.account?.name ?: "", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -344,7 +348,7 @@ fun HomeScreen(
 
             if (state.dayGroups.isEmpty()) {
                 item {
-                    Text("Aucune transaction ce mois-ci.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.home_no_transactions_month), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -371,7 +375,7 @@ fun HomeScreen(
                 modifier = Modifier.size(48.dp),
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Icon(Icons.Filled.ArrowUpward, contentDescription = "Retour en haut", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+                    Icon(Icons.Filled.ArrowUpward, contentDescription = stringResource(R.string.home_scroll_to_top), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
                 }
             }
         }
@@ -405,7 +409,7 @@ fun HomeScreen(
                         .clickableNoRipple { isMonthPickerOpen = true }
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
-                    Icon(Icons.Filled.CalendarMonth, contentDescription = "Changer de mois", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Filled.CalendarMonth, contentDescription = stringResource(R.string.home_change_month), tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(Format.monthYear(state.month), style = MaterialTheme.typography.titleSmall)
                 }
@@ -419,7 +423,7 @@ fun HomeScreen(
                                 .clickableNoRipple { vm.goToCurrentMonth() },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Filled.Today, contentDescription = "Revenir au mois actuel", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Filled.Today, contentDescription = stringResource(R.string.home_go_to_current_month), tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
                         }
                     }
 
@@ -433,7 +437,7 @@ fun HomeScreen(
                     ) {
                         Icon(
                             Icons.Filled.NotificationsActive,
-                            contentDescription = "Transactions détectées",
+                            contentDescription = stringResource(R.string.home_detected_transactions),
                             tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(20.dp),
                         )

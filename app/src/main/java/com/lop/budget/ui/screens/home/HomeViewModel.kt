@@ -90,13 +90,18 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun deleteWithUndo(transactionId: Long, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
+    fun deleteWithUndo(
+        transactionId: Long,
+        snackbarHostState: androidx.compose.material3.SnackbarHostState,
+        message: String,
+        actionLabel: String
+    ) {
         pendingDeletes.value = pendingDeletes.value + transactionId
 
         viewModelScope.launch {
             val result = snackbarHostState.showSnackbar(
-                message = "Transaction supprimée",
-                actionLabel = "Annuler",
+                message = message,
+                actionLabel = actionLabel,
                 duration = androidx.compose.material3.SnackbarDuration.Short
             )
 
@@ -111,15 +116,25 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun deleteOccurrenceWithUndo(transactionId: Long, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
-        deleteWithUndo(transactionId, snackbarHostState)
+    fun deleteOccurrenceWithUndo(
+        transactionId: Long,
+        snackbarHostState: androidx.compose.material3.SnackbarHostState,
+        message: String,
+        actionLabel: String
+    ) {
+        deleteWithUndo(transactionId, snackbarHostState, message, actionLabel)
     }
 
-    fun deleteSeriesWithUndo(seriesId: String, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
+    fun deleteSeriesWithUndo(
+        seriesId: String,
+        snackbarHostState: androidx.compose.material3.SnackbarHostState,
+        message: String,
+        actionLabel: String
+    ) {
         viewModelScope.launch {
             val result = snackbarHostState.showSnackbar(
-                message = "Série supprimée",
-                actionLabel = "Annuler",
+                message = message,
+                actionLabel = actionLabel,
                 duration = androidx.compose.material3.SnackbarDuration.Short
             )
 

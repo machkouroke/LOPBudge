@@ -30,11 +30,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.R
 import com.lop.budget.ui.components.DonutSlice
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.clickableNoRipple
@@ -51,7 +53,7 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
     val othersTotal = state.breakdown.drop(6).sumOf { it.total }
     val slices = buildList {
         top.forEach { add(DonutSlice(it.total, Color(it.colorArgb), it.name)) }
-        if (othersTotal > 0) add(DonutSlice(othersTotal, Color(0xFF9E9E9E), "Autres"))
+        if (othersTotal > 0) add(DonutSlice(othersTotal, Color(0xFF9E9E9E), stringResource(R.string.others)))
     }
 
     LazyColumn(
@@ -66,11 +68,11 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, "Retour", modifier = Modifier.size(26.dp).clickableNoRipple { /* Back */ })
-                Text("Restaurants", style = MaterialTheme.typography.titleLarge)
+                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), modifier = Modifier.size(26.dp).clickableNoRipple { /* Back */ })
+                Text(stringResource(R.string.other), style = MaterialTheme.typography.titleLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.CalendarMonth, "Calendrier", modifier = Modifier.size(24.dp))
-                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.MoreHoriz, "Plus", modifier = Modifier.size(24.dp))
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.CalendarMonth, null, modifier = Modifier.size(24.dp))
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.MoreHoriz, null, modifier = Modifier.size(24.dp))
                 }
             }
         }
@@ -83,13 +85,13 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
                 verticalAlignment = Alignment.Top
             ) {
                 Column {
-                    Text("Spent in budget period", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.analytics_spent_period), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(4.dp))
                     Text(Format.money(128.0, state.currency), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.ArrowUpward, null, tint = com.lop.budget.ui.theme.ExpenseCoral, modifier = Modifier.size(14.dp))
-                        Text(Format.money(109.89, state.currency) + " vs last period", style = MaterialTheme.typography.bodyMedium, color = com.lop.budget.ui.theme.ExpenseCoral)
+                        Text(stringResource(R.string.analytics_vs_last_period, Format.money(109.89, state.currency)), style = MaterialTheme.typography.bodyMedium, color = com.lop.budget.ui.theme.ExpenseCoral)
                     }
                 }
                 com.lop.budget.ui.components.CircleIcon(
@@ -164,12 +166,12 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(10.dp).clip(CircleShape).background(com.lop.budget.ui.theme.CategoryOrange))
                     Spacer(Modifier.width(6.dp))
-                    Text("Actual", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.analytics_actual), style = MaterialTheme.typography.bodyMedium)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(10.dp).clip(CircleShape).background(Color.Gray))
                     Spacer(Modifier.width(6.dp))
-                    Text("Forecast", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.analytics_forecast), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -187,7 +189,7 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.AccountBalanceWallet, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Budget", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.analytics_budget), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(Modifier.height(16.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -202,7 +204,7 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
                             Spacer(Modifier.width(16.dp))
                             Column {
                                 Text(Format.money(1372.0, state.currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                Text("Left", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.analytics_left), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -218,12 +220,12 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.AutoGraph, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Forecast", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.analytics_forecast), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(Modifier.height(20.dp))
                         Text(Format.money(430.0, state.currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(4.dp))
-                        Text("Spend ${Format.money(45.73, state.currency)} / day\nto stay within the limit", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.analytics_spend_forecast, Format.money(45.73, state.currency)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -232,7 +234,7 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
         // Today Transactions
         item {
             Row(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Today", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.analytics_today), style = MaterialTheme.typography.titleMedium)
                 Text(Format.money(128.0, state.currency), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -252,11 +254,11 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
                     )
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Restaurants", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.other), style = MaterialTheme.typography.titleMedium)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("R", style = MaterialTheme.typography.labelSmall, modifier = Modifier.background(Color.DarkGray, androidx.compose.foundation.shape.RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 1.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Revolut", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.other), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     Text(Format.money(128.0, state.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)

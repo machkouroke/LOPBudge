@@ -22,10 +22,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.R
 import com.lop.budget.data.local.entity.DebtEntity
 import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.ui.components.CircleIcon
@@ -44,13 +46,13 @@ fun GoalsScreen(vm: GoalsViewModel = hiltViewModel()) {
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item { Text("Objectifs", style = MaterialTheme.typography.headlineMedium) }
+        item { Text(stringResource(R.string.goals_title), style = MaterialTheme.typography.headlineMedium) }
 
         items(state.goals, key = { "g${it.id}" }) { goal ->
             GoalCard(goal, state.currency, ext.income)
         }
 
-        item { Text("Dettes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp)) }
+        item { Text(stringResource(R.string.debts_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp)) }
 
         items(state.debts, key = { "d${it.id}" }) { debt ->
             DebtCard(debt, state.currency, ext.expense)
@@ -88,7 +90,7 @@ private fun DebtCard(debt: DebtEntity, currency: String, color: Color) {
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(debt.name, style = MaterialTheme.typography.titleMedium)
-                    Text("Remboursé ${Format.money(debt.repaidAmount, currency)} / ${Format.money(debt.totalAmount, currency)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.debt_repaid_amount, Format.money(debt.repaidAmount, currency), Format.money(debt.totalAmount, currency)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text("${(progress * 100).toInt()} %", style = MaterialTheme.typography.titleMedium, color = color, fontWeight = FontWeight.Bold)
             }

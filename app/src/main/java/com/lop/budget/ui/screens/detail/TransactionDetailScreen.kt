@@ -38,10 +38,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.R
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
@@ -100,7 +102,7 @@ fun TransactionDetailScreen(
                 ) {
                     Icon(
                         Icons.Filled.Close,
-                        "Fermer",
+                        stringResource(R.string.close),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -122,7 +124,7 @@ fun TransactionDetailScreen(
                     ) {
                         Icon(
                             Icons.Filled.Edit,
-                            "Modifier",
+                            stringResource(R.string.edit),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -146,7 +148,7 @@ fun TransactionDetailScreen(
                     ) {
                         Icon(
                             Icons.Filled.Delete,
-                            "Supprimer",
+                            stringResource(R.string.delete),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -155,7 +157,7 @@ fun TransactionDetailScreen(
         }
 
         if (tx == null) {
-            item { Text("Chargement…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { Text(stringResource(R.string.loading), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             return@LazyColumn
         }
 
@@ -207,7 +209,7 @@ fun TransactionDetailScreen(
                         )
                         Spacer(Modifier.width(12.dp))
                         Text(
-                            "Category",
+                            stringResource(R.string.tx_detail_category),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -223,7 +225,7 @@ fun TransactionDetailScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            twr.category?.name ?: "Restaurants",
+                            twr.category?.name ?: stringResource(R.string.other),
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
@@ -244,7 +246,7 @@ fun TransactionDetailScreen(
                         )
                         Spacer(Modifier.width(12.dp))
                         Text(
-                            "Date",
+                            stringResource(R.string.tx_detail_date),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -267,13 +269,13 @@ fun TransactionDetailScreen(
                         )
                         Spacer(Modifier.width(12.dp))
                         Text(
-                            "Type",
+                            stringResource(R.string.tx_detail_type),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
-                        if (isIncome) "Income" else "Expense",
+                        if (isIncome) stringResource(R.string.tx_type_income) else stringResource(R.string.tx_type_expense),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -293,7 +295,7 @@ fun TransactionDetailScreen(
                         )
                         Spacer(Modifier.width(12.dp))
                         Text(
-                            "Account",
+                            stringResource(R.string.tx_detail_account),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -312,7 +314,7 @@ fun TransactionDetailScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            twr.account?.name ?: "Revolut",
+                            twr.account?.name ?: stringResource(R.string.other),
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
@@ -338,7 +340,7 @@ fun TransactionDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Catégorie", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.tx_category_label), style = MaterialTheme.typography.titleMedium)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.clickableNoRipple {
@@ -347,13 +349,13 @@ fun TransactionDetailScreen(
                         ) {
                             Icon(
                                 Icons.Filled.Edit,
-                                "Modifier la catégorie",
+                                stringResource(R.string.tx_detail_edit_category),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                "Modifier",
+                                stringResource(R.string.edit),
                                 color = MaterialTheme.colorScheme.primary,
                                 style = MaterialTheme.typography.labelLarge
                             )
@@ -409,7 +411,7 @@ fun TransactionDetailScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Prochaines occurrences",
+                                stringResource(R.string.tx_detail_upcoming_occurrences),
                                 style = MaterialTheme.typography.titleMedium
                             )
                         }
@@ -454,7 +456,7 @@ fun TransactionDetailScreen(
                         Icon(Icons.Filled.Check, null, tint = ext.income)
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "Marquer comme payé",
+                            stringResource(R.string.tx_detail_mark_as_paid),
                             color = ext.income,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -467,12 +469,12 @@ fun TransactionDetailScreen(
     if (showDeleteConfirm && tx != null) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Supprimer la transaction ?") },
+            title = { Text(stringResource(R.string.tx_detail_delete_title)) },
             text = {
                 if (tx.seriesId != null) {
-                    Text("Cette transaction fait partie d'une série récurrente. Voulez-vous supprimer uniquement cette occurrence, ou toute la série ?")
+                    Text(stringResource(R.string.tx_detail_delete_recurring_msg))
                 } else {
-                    Text("Cette action est irréversible.")
+                    Text(stringResource(R.string.tx_detail_delete_msg))
                 }
             },
             confirmButton = {
@@ -481,23 +483,23 @@ fun TransactionDetailScreen(
                         androidx.compose.material3.TextButton(onClick = {
                             showDeleteConfirm = false
                             vm.deleteOccurrence(onBack)
-                        }) { Text("Cette occurrence", color = MaterialTheme.colorScheme.error) }
+                        }) { Text(stringResource(R.string.tx_detail_delete_occurrence), color = MaterialTheme.colorScheme.error) }
                         androidx.compose.material3.TextButton(onClick = {
                             showDeleteConfirm = false
                             vm.deleteSeries(onBack)
-                        }) { Text("Toute la série", color = MaterialTheme.colorScheme.error) }
+                        }) { Text(stringResource(R.string.tx_detail_delete_series), color = MaterialTheme.colorScheme.error) }
                     }
                 } else {
                     androidx.compose.material3.TextButton(onClick = {
                         showDeleteConfirm = false
                         vm.delete(onBack)
-                    }) { Text("Supprimer", color = MaterialTheme.colorScheme.error) }
+                    }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
                 }
             },
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = {
                     showDeleteConfirm = false
-                }) { Text("Annuler") }
+                }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }

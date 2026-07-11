@@ -54,12 +54,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.R
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
@@ -99,10 +101,10 @@ fun TransactionEditScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(if (vm.isEditing) "Modifier la transaction" else "Nouvelle transaction", style = MaterialTheme.typography.titleLarge)
+            Text(if (vm.isEditing) stringResource(R.string.tx_edit_title) else stringResource(R.string.tx_new_title), style = MaterialTheme.typography.titleLarge)
             Icon(
                 Icons.Filled.Close,
-                contentDescription = "Fermer",
+                contentDescription = stringResource(R.string.close),
                 modifier = Modifier
                     .size(28.dp)
                     .clickableNoRipple(onBack),
@@ -115,10 +117,10 @@ fun TransactionEditScreen(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            TypeSegment("Dépense", form.type == TransactionType.EXPENSE, ext.expense, Modifier.weight(1f)) {
+            TypeSegment(stringResource(R.string.tx_type_expense), form.type == TransactionType.EXPENSE, ext.expense, Modifier.weight(1f)) {
                 vm.setType(TransactionType.EXPENSE)
             }
-            TypeSegment("Revenu", form.type == TransactionType.INCOME, ext.income, Modifier.weight(1f)) {
+            TypeSegment(stringResource(R.string.tx_type_income), form.type == TransactionType.INCOME, ext.income, Modifier.weight(1f)) {
                 vm.setType(TransactionType.INCOME)
             }
         }
@@ -142,7 +144,7 @@ fun TransactionEditScreen(
                             vm.setAmountRaw(normalized)
                         }
                     },
-                    label = { Text("Montant") },
+                    label = { Text(stringResource(R.string.tx_amount_label)) },
                     leadingIcon = {
                         Text(
                             text = if (form.type == TransactionType.INCOME) "+" else "−",
@@ -200,7 +202,7 @@ fun TransactionEditScreen(
                         },
                         dismissButton = {
                             androidx.compose.material3.TextButton(onClick = { showDatePicker = false }) {
-                                Text("Annuler")
+                                Text(stringResource(R.string.cancel))
                             }
                         }
                     ) {
@@ -209,7 +211,7 @@ fun TransactionEditScreen(
                 }
 
                 DropdownSelector(
-                    label = "Date",
+                    label = stringResource(R.string.tx_date_label),
                     value = formattedDate,
                     icon = androidx.compose.material.icons.Icons.Filled.DateRange,
                     iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -223,7 +225,7 @@ fun TransactionEditScreen(
                 OutlinedTextField(
                     value = form.title,
                     onValueChange = vm::setTitle,
-                    label = { Text("Nom de la transaction") },
+                    label = { Text(stringResource(R.string.tx_name_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -236,8 +238,8 @@ fun TransactionEditScreen(
                 val selectedCat = typeCategories.find { it.id == form.categoryId }
                 
                 DropdownSelector(
-                    label = "Catégorie",
-                    value = selectedCat?.name ?: "Sélectionner une catégorie",
+                    label = stringResource(R.string.tx_category_label),
+                    value = selectedCat?.name ?: stringResource(R.string.tx_select_category),
                     icon = selectedCat?.let { IconMapper.get(it.icon) },
                     iconTint = selectedCat?.let { Color(it.colorArgb) },
                     expanded = expanded,
@@ -280,7 +282,7 @@ fun TransactionEditScreen(
                             ) {
                                 Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                 Spacer(Modifier.width(12.dp))
-                                Text("Créer une nouvelle catégorie", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.tx_create_category), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -293,8 +295,8 @@ fun TransactionEditScreen(
                 val selectedAcc = accounts.find { it.id == form.accountId }
                 
                 DropdownSelector(
-                    label = "Compte",
-                    value = selectedAcc?.name ?: "Sélectionner un compte",
+                    label = stringResource(R.string.tx_account_label),
+                    value = selectedAcc?.name ?: stringResource(R.string.tx_select_account),
                     expanded = expanded,
                     onClick = { expanded = true }
                 ) {
@@ -328,10 +330,10 @@ fun TransactionEditScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                 ) {
                     Column(Modifier.padding(16.dp)) {
-                        Text("Étiquettes (max 3)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.tx_tags_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.height(8.dp))
                         if (selectedTags.isEmpty()) {
-                            Text("Aucune étiquette", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.tx_no_tags), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -352,7 +354,7 @@ fun TransactionEditScreen(
                 OutlinedTextField(
                     value = form.note,
                     onValueChange = vm::setNote,
-                    label = { Text("Notes (optionnel)") },
+                    label = { Text(stringResource(R.string.tx_notes_label)) },
                     minLines = 2,
                     maxLines = 4,
                     modifier = Modifier.fillMaxWidth(),
@@ -364,16 +366,16 @@ fun TransactionEditScreen(
             item {
                 var expanded by remember { mutableStateOf(false) }
                 val freqs = listOf(
-                    RecurrenceFrequency.NONE to "Ne se répète pas",
-                    RecurrenceFrequency.DAILY to "Tous les jours",
-                    RecurrenceFrequency.WEEKLY to "Toutes les semaines",
-                    RecurrenceFrequency.MONTHLY to "Tous les mois",
-                    RecurrenceFrequency.YEARLY to "Tous les ans",
+                    RecurrenceFrequency.NONE to stringResource(R.string.tx_repeat_none),
+                    RecurrenceFrequency.DAILY to stringResource(R.string.tx_repeat_daily),
+                    RecurrenceFrequency.WEEKLY to stringResource(R.string.tx_repeat_weekly),
+                    RecurrenceFrequency.MONTHLY to stringResource(R.string.tx_repeat_monthly),
+                    RecurrenceFrequency.YEARLY to stringResource(R.string.tx_repeat_yearly),
                 )
-                val selectedFreqLabel = freqs.find { it.first == form.frequency }?.second ?: "Ne se répète pas"
+                val selectedFreqLabel = freqs.find { it.first == form.frequency }?.second ?: stringResource(R.string.tx_repeat_none)
 
                 DropdownSelector(
-                    label = "Répéter",
+                    label = stringResource(R.string.tx_repeat_label),
                     value = selectedFreqLabel,
                     expanded = expanded,
                     onClick = { expanded = true }
@@ -399,7 +401,7 @@ fun TransactionEditScreen(
                 AnimatedVisibility(visible = form.frequency != RecurrenceFrequency.NONE) {
                     Column(Modifier.padding(top = 12.dp, start = 12.dp, end = 12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Tous les ", style = MaterialTheme.typography.bodyLarge)
+                            Text(stringResource(R.string.tx_repeat_every), style = MaterialTheme.typography.bodyLarge)
                             OutlinedTextField(
                                 value = form.interval.toString(),
                                 onValueChange = { vm.setInterval(it.toIntOrNull() ?: 1) },
@@ -408,12 +410,12 @@ fun TransactionEditScreen(
                                 modifier = Modifier.width(80.dp),
                                 shape = RoundedCornerShape(12.dp)
                             )
-                            Text(" intervalle(s)", style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.tx_repeat_intervals), style = MaterialTheme.typography.bodyMedium)
                         }
                         
                         if (form.frequency == RecurrenceFrequency.WEEKLY) {
                             Spacer(Modifier.height(16.dp))
-                            Text("Jours de la semaine", style = MaterialTheme.typography.labelLarge)
+                            Text(stringResource(R.string.tx_repeat_days_of_week), style = MaterialTheme.typography.labelLarge)
                             Spacer(Modifier.height(8.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 val days = listOf("L" to 1, "M" to 2, "M" to 3, "J" to 4, "V" to 5, "S" to 6, "D" to 7)
@@ -439,7 +441,7 @@ fun TransactionEditScreen(
                         }
                         
                         Spacer(Modifier.height(16.dp))
-                        Text("Finit", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.tx_repeat_ends), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         
                         // Options de fin
                         val endPolicy = when {
@@ -456,7 +458,7 @@ fun TransactionEditScreen(
                                     vm.setMaxOccurrences(null)
                                 }
                             )
-                            Text("Jamais", modifier = Modifier.clickable { 
+                            Text(stringResource(R.string.tx_repeat_ends_never), modifier = Modifier.clickable { 
                                 vm.setEndDate(null)
                                 vm.setMaxOccurrences(null)
                             })
@@ -470,7 +472,7 @@ fun TransactionEditScreen(
                                     vm.setMaxOccurrences(null)
                                 }
                             )
-                            Text("Le", modifier = Modifier.clickable { 
+                            Text(stringResource(R.string.tx_repeat_ends_on), modifier = Modifier.clickable { 
                                 if (endPolicy != "date") {
                                     vm.setEndDate(form.date + 86400000L * 30)
                                     vm.setMaxOccurrences(null)
@@ -494,10 +496,10 @@ fun TransactionEditScreen(
                                             androidx.compose.material3.TextButton(onClick = {
                                                 endDatePickerState.selectedDateMillis?.let { vm.setEndDate(it) }
                                                 showEndDatePicker = false
-                                            }) { Text("OK") }
+                                            }) { Text(stringResource(R.string.ok)) }
                                         },
                                         dismissButton = {
-                                            androidx.compose.material3.TextButton(onClick = { showEndDatePicker = false }) { Text("Annuler") }
+                                            androidx.compose.material3.TextButton(onClick = { showEndDatePicker = false }) { Text(stringResource(R.string.cancel)) }
                                         }
                                     ) {
                                         androidx.compose.material3.DatePicker(state = endDatePickerState)
@@ -526,7 +528,7 @@ fun TransactionEditScreen(
                                     vm.setEndDate(null)
                                 }
                             )
-                            Text("Après", modifier = Modifier.clickable { 
+                            Text(stringResource(R.string.tx_repeat_ends_after), modifier = Modifier.clickable { 
                                 if (endPolicy != "occurrences") {
                                     vm.setMaxOccurrences(10)
                                     vm.setEndDate(null)
@@ -545,7 +547,7 @@ fun TransactionEditScreen(
                                     textStyle = androidx.compose.ui.text.TextStyle(textAlign = TextAlign.Center)
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text("occurrences")
+                                Text(stringResource(R.string.tx_repeat_occurrences_label))
                             }
                         }
                     }
@@ -567,7 +569,7 @@ fun TransactionEditScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = accent),
                 enabled = form.amount > 0.0 && form.categoryId != null && form.accountId != null
             ) {
-                Text(if (vm.isEditing) "Enregistrer" else "Créer", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(if (vm.isEditing) stringResource(R.string.save) else stringResource(R.string.create), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -613,8 +615,8 @@ private fun TagsBottomSheet(
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
         Column(Modifier.padding(horizontal = 24.dp, vertical = 8.dp).fillMaxWidth()) {
-            Text("Étiquettes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("Sélectionnez jusqu'à 3 étiquettes pour cette transaction", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.tx_tags_sheet_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.tx_tags_sheet_subtitle), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(24.dp))
 
             // Liste des tags existants
@@ -648,12 +650,12 @@ private fun TagsBottomSheet(
             }
 
             // Création d'un nouveau tag
-            Text("Créer une étiquette", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.tx_tags_create_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = newTagName,
                 onValueChange = { newTagName = it },
-                label = { Text("Nom de l'étiquette") },
+                label = { Text(stringResource(R.string.tx_tags_name_label)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
@@ -689,7 +691,7 @@ private fun TagsBottomSheet(
                 enabled = newTagName.isNotBlank() && (selectedTagIds.size < 3),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Ajouter", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.add), fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(32.dp))
         }

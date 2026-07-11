@@ -1,7 +1,9 @@
 package com.lop.budget.ui.screens.transaction
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.DebtEntity
@@ -14,6 +16,7 @@ import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -49,6 +52,7 @@ data class TransactionForm(
 class TransactionEditViewModel @Inject constructor(
     private val repo: BudgetRepository,
     private val savedStateHandle: androidx.lifecycle.SavedStateHandle,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _form = MutableStateFlow(TransactionForm())
@@ -170,7 +174,7 @@ class TransactionEditViewModel @Inject constructor(
                 // ou si on transforme une ponctuelle en récurrente.
                 // L'édition d'une occurrence d'une série nécessite une logique plus complexe (portée).
                 val series = RecurringSeriesEntity(
-                    title = f.title.ifBlank { "Transaction" },
+                    title = f.title.ifBlank { context.getString(R.string.tx_default_title) },
                     amount = f.amount,
                     type = f.type,
                     categoryId = f.categoryId,
@@ -193,7 +197,7 @@ class TransactionEditViewModel @Inject constructor(
                 // Créer ou mettre à jour une transaction ponctuelle
                 val tx = TransactionEntity(
                     id = editingTransactionId ?: 0L,
-                    title = f.title.ifBlank { "Transaction" },
+                    title = f.title.ifBlank { context.getString(R.string.tx_default_title) },
                     amount = f.amount,
                     type = f.type,
                     status = TransactionStatus.PLANNED,

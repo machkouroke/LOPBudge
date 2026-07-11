@@ -15,6 +15,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.lop.budget.R
 
 /**
  * Écran de création de catégorie.
@@ -28,10 +30,10 @@ fun CategoryCreateScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Nouvelle catégorie") },
+                title = { Text(stringResource(R.string.cat_new_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -42,7 +44,7 @@ fun CategoryCreateScreen(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Écran de création de catégorie\n(à implémenter)",
+                text = stringResource(R.string.cat_create_placeholder),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

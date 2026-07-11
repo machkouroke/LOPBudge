@@ -29,11 +29,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.R
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.DonutChart
@@ -56,14 +58,14 @@ fun MonthlyTransactionsScreen(
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
 
-    val title = if (state.type == TransactionType.EXPENSE) "Dépenses" else "Revenus"
+    val title = if (state.type == TransactionType.EXPENSE) stringResource(R.string.expense) else stringResource(R.string.income)
     val accent = if (state.type == TransactionType.EXPENSE) ext.expense else ext.income
 
     val top = state.breakdown.take(6)
     val othersTotal = state.breakdown.drop(6).sumOf { it.total }
     val slices = buildList {
         top.forEach { add(DonutSlice(it.total, Color(it.colorArgb), it.name)) }
-        if (othersTotal > 0) add(DonutSlice(othersTotal, Color(0xFF9E9E9E), "Autres"))
+        if (othersTotal > 0) add(DonutSlice(othersTotal, Color(0xFF9E9E9E), stringResource(R.string.others)))
     }
 
     LazyColumn(
@@ -77,7 +79,7 @@ fun MonthlyTransactionsScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Retour", modifier = Modifier.size(26.dp).clickableNoRipple(onBack))
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), modifier = Modifier.size(26.dp).clickableNoRipple(onBack))
                 Text(title, style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.size(26.dp))
             }
@@ -94,9 +96,9 @@ fun MonthlyTransactionsScreen(
         // Filtre payé
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FilterChip("Tous", state.filter == PaidFilter.ALL, Modifier.weight(1f), accent) { vm.setFilter(PaidFilter.ALL) }
-                FilterChip("Payé", state.filter == PaidFilter.PAID, Modifier.weight(1f), accent) { vm.setFilter(PaidFilter.PAID) }
-                FilterChip("Planifié", state.filter == PaidFilter.PLANNED, Modifier.weight(1f), accent) { vm.setFilter(PaidFilter.PLANNED) }
+                FilterChip(stringResource(R.string.monthly_filter_all), state.filter == PaidFilter.ALL, Modifier.weight(1f), accent) { vm.setFilter(PaidFilter.ALL) }
+                FilterChip(stringResource(R.string.monthly_filter_paid), state.filter == PaidFilter.PAID, Modifier.weight(1f), accent) { vm.setFilter(PaidFilter.PAID) }
+                FilterChip(stringResource(R.string.monthly_filter_planned), state.filter == PaidFilter.PLANNED, Modifier.weight(1f), accent) { vm.setFilter(PaidFilter.PLANNED) }
             }
         }
 
@@ -105,11 +107,11 @@ fun MonthlyTransactionsScreen(
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     if (slices.isEmpty()) {
-                        Text("Aucune donnée", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(40.dp))
+                        Text(stringResource(R.string.monthly_no_data), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(40.dp))
                     } else {
                         DonutChart(slices = slices) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Total", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.total), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(
                                     Format.money(state.total, state.currency),
                                     style = MaterialTheme.typography.titleLarge,
@@ -142,7 +144,7 @@ fun MonthlyTransactionsScreen(
         }
 
         item {
-            Text("Transactions", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.monthly_transactions_title), style = MaterialTheme.typography.titleLarge)
         }
 
         items(state.transactions, key = { tx -> 
@@ -202,7 +204,7 @@ fun MonthlyTransactionsScreen(
         if (state.transactions.isEmpty()) {
             item {
                 Text(
-                    "Aucune transaction pour ce filtre.",
+                    stringResource(R.string.monthly_no_transactions),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
