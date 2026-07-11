@@ -185,30 +185,10 @@ fun LopNavHost(startRoute: String? = null) {
                 // NEW: Add is a full screen (not a modal bottom sheet)
                 composable(
                     Routes.ADD,
-                    enterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = MotionSpec.fastTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = MotionSpec.fastTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
+                    enterTransition = { slideInVertically (initialOffsetY = { it }) },
+                    exitTransition = { slideOutVertically (targetOffsetY = { -it }) },
+                    popEnterTransition = { slideInVertically (initialOffsetY = { -it }) },
+                    popExitTransition = { slideOutVertically(targetOffsetY = { it }) },
                 ) {
                     TransactionEditScreen(
                         onBack = { navController.popBackStack() },

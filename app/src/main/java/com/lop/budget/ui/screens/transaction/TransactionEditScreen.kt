@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
@@ -199,7 +201,9 @@ fun TransactionEditScreen(
                 ) {
                     Button(
                         onClick = { vm.save(onDone = onBack) },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         enabled = canSave,
                         colors = ButtonDefaults.buttonColors(
@@ -267,7 +271,8 @@ fun TransactionEditScreen(
                             label = stringResource(R.string.tx_amount_label),
                             value = form.amountInput.takeIf { it != "0" } ?: "",
                             onValueChange = { newValue ->
-                                val filtered = newValue.filter { it.isDigit() || it == ',' || it == '.' }
+                                val filtered =
+                                    newValue.filter { it.isDigit() || it == ',' || it == '.' }
                                 val normalized = filtered.replace(',', '.')
                                 if (normalized.count { it == '.' } <= 1 && normalized.length <= 12) {
                                     vm.setAmountRaw(normalized)
@@ -307,7 +312,8 @@ fun TransactionEditScreen(
                             .format(dateFormatter)
 
                         if (showDatePicker) {
-                            val state = rememberDatePickerState(initialSelectedDateMillis = form.date)
+                            val state =
+                                rememberDatePickerState(initialSelectedDateMillis = form.date)
                             androidx.compose.material3.DatePickerDialog(
                                 onDismissRequest = { showDatePicker = false },
                                 confirmButton = {
@@ -317,7 +323,9 @@ fun TransactionEditScreen(
                                     }) { Text(stringResource(R.string.ok)) }
                                 },
                                 dismissButton = {
-                                    androidx.compose.material3.TextButton(onClick = { showDatePicker = false }) {
+                                    androidx.compose.material3.TextButton(onClick = {
+                                        showDatePicker = false
+                                    }) {
                                         Text(stringResource(R.string.cancel))
                                     }
                                 },
@@ -352,8 +360,10 @@ fun TransactionEditScreen(
                         val selectedCat = typeCategories.find { it.id == form.categoryId }
                         SelectorRow(
                             label = stringResource(R.string.tx_category_label),
-                            value = selectedCat?.name ?: stringResource(R.string.tx_select_category),
-                            icon = selectedCat?.let { IconMapper.get(it.icon) } ?: Icons.Filled.KeyboardArrowDown,
+                            value = selectedCat?.name
+                                ?: stringResource(R.string.tx_select_category),
+                            icon = selectedCat?.let { IconMapper.get(it.icon) }
+                                ?: Icons.Filled.KeyboardArrowDown,
                             iconTint = selectedCat?.let { Color(it.colorArgb) },
                             onClick = { showCategorySheet = true },
                         )
@@ -373,7 +383,10 @@ fun TransactionEditScreen(
                                 .clip(RoundedCornerShape(16.dp))
                                 .clickable { showTagsSheet = true },
                             color = MaterialTheme.colorScheme.surfaceVariant,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+                            border = BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                            ),
                         ) {
                             Column(Modifier.padding(16.dp)) {
                                 Text(
@@ -523,7 +536,12 @@ private fun TypeSegment(
         modifier = modifier.pressScaleClickable(intent = HapticIntent.Selection, onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         color = if (selected) color.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
-        border = BorderStroke(1.dp, if (selected) color.copy(alpha = 0.35f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
+        border = BorderStroke(
+            1.dp,
+            if (selected) color.copy(alpha = 0.35f) else MaterialTheme.colorScheme.outline.copy(
+                alpha = 0.14f
+            )
+        ),
     ) {
         Text(
             label,
@@ -608,7 +626,11 @@ private fun SelectorRow(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .clickable(onClick = onClick)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f), RoundedCornerShape(16.dp)),
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.10f),
+                    RoundedCornerShape(16.dp)
+                ),
             color = MaterialTheme.colorScheme.surfaceVariant,
         ) {
             Row(
@@ -619,16 +641,26 @@ private fun SelectorRow(
                     CircleIcon(
                         icon = icon,
                         tint = iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant,
-                        background = (iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.12f),
+                        background = (iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant).copy(
+                            alpha = 0.12f
+                        ),
                         size = 34.dp,
                     )
                     Spacer(Modifier.width(12.dp))
                 }
 
                 Column(Modifier.weight(1f)) {
-                    Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(Modifier.height(2.dp))
-                    Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        value,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
 
                 if (trailingChevron) {
@@ -710,7 +742,10 @@ private fun RecurrenceBlock(
             shape = RoundedCornerShape(12.dp),
         )
         Spacer(Modifier.width(10.dp))
-        Text(stringResource(R.string.tx_repeat_intervals), style = MaterialTheme.typography.bodyMedium)
+        Text(
+            stringResource(R.string.tx_repeat_intervals),
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 
     Spacer(Modifier.height(8.dp))
@@ -743,11 +778,18 @@ private fun RecurrenceBlock(
     }
 
     AnimatedVisibility(visible = expandedAdvanced) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 10.dp)) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(top = 10.dp)
+        ) {
             if (form.frequency == RecurrenceFrequency.WEEKLY) {
-                Text(stringResource(R.string.tx_repeat_days_of_week), style = MaterialTheme.typography.labelLarge)
+                Text(
+                    stringResource(R.string.tx_repeat_days_of_week),
+                    style = MaterialTheme.typography.labelLarge
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val days = listOf("L" to 1, "M" to 2, "M" to 3, "J" to 4, "V" to 5, "S" to 6, "D" to 7)
+                    val days =
+                        listOf("L" to 1, "M" to 2, "M" to 3, "J" to 4, "V" to 5, "S" to 6, "D" to 7)
                     days.forEach { (lbl, num) ->
                         val sel = num in form.daysOfWeek
                         Surface(
@@ -755,7 +797,11 @@ private fun RecurrenceBlock(
                             color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier
                                 .size(40.dp)
-                                .pressScaleClickable(intent = HapticIntent.Selection) { onToggleDow(num) },
+                                .pressScaleClickable(intent = HapticIntent.Selection) {
+                                    onToggleDow(
+                                        num
+                                    )
+                                },
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
@@ -769,7 +815,10 @@ private fun RecurrenceBlock(
                 }
             }
 
-            Text(stringResource(R.string.tx_repeat_ends), style = MaterialTheme.typography.labelLarge)
+            Text(
+                stringResource(R.string.tx_repeat_ends),
+                style = MaterialTheme.typography.labelLarge
+            )
 
             val endPolicy = when {
                 form.endDate != null -> "date"
@@ -778,12 +827,18 @@ private fun RecurrenceBlock(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = endPolicy == "never", onClick = { onSetEndDate(null); onSetMaxOccurrences(null) })
-                Text(stringResource(R.string.tx_repeat_ends_never), modifier = Modifier.clickable { onSetEndDate(null); onSetMaxOccurrences(null) })
+                RadioButton(
+                    selected = endPolicy == "never",
+                    onClick = { onSetEndDate(null); onSetMaxOccurrences(null) })
+                Text(
+                    stringResource(R.string.tx_repeat_ends_never),
+                    modifier = Modifier.clickable { onSetEndDate(null); onSetMaxOccurrences(null) })
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = endPolicy == "date", onClick = { onSetEndDate(form.date + 86400000L * 30); })
+                RadioButton(
+                    selected = endPolicy == "date",
+                    onClick = { onSetEndDate(form.date + 86400000L * 30); })
                 Text(stringResource(R.string.tx_repeat_ends_on), modifier = Modifier.clickable {
                     if (endPolicy != "date") onSetEndDate(form.date + 86400000L * 30)
                 })
@@ -791,7 +846,9 @@ private fun RecurrenceBlock(
                 if (endPolicy == "date") {
                     var showEndDatePicker by remember { mutableStateOf(false) }
                     if (showEndDatePicker) {
-                        val endState = rememberDatePickerState(initialSelectedDateMillis = form.endDate ?: System.currentTimeMillis())
+                        val endState = rememberDatePickerState(
+                            initialSelectedDateMillis = form.endDate ?: System.currentTimeMillis()
+                        )
                         androidx.compose.material3.DatePickerDialog(
                             onDismissRequest = { showEndDatePicker = false },
                             confirmButton = {
@@ -801,7 +858,9 @@ private fun RecurrenceBlock(
                                 }) { Text(stringResource(R.string.ok)) }
                             },
                             dismissButton = {
-                                androidx.compose.material3.TextButton(onClick = { showEndDatePicker = false }) { Text(stringResource(R.string.cancel)) }
+                                androidx.compose.material3.TextButton(onClick = {
+                                    showEndDatePicker = false
+                                }) { Text(stringResource(R.string.cancel)) }
                             },
                         ) {
                             androidx.compose.material3.DatePicker(state = endState)
@@ -813,10 +872,17 @@ private fun RecurrenceBlock(
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.clickable { showEndDatePicker = true }
                     ) {
-                        val endFormatted = java.time.Instant.ofEpochMilli(form.endDate ?: System.currentTimeMillis())
+                        val endFormatted = java.time.Instant.ofEpochMilli(
+                            form.endDate ?: System.currentTimeMillis()
+                        )
                             .atZone(java.time.ZoneId.systemDefault())
                             .toLocalDate()
-                            .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy", java.util.Locale.getDefault()))
+                            .format(
+                                java.time.format.DateTimeFormatter.ofPattern(
+                                    "dd MMM yyyy",
+                                    java.util.Locale.getDefault()
+                                )
+                            )
                         Text(
                             endFormatted,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -840,7 +906,9 @@ private fun RecurrenceBlock(
                             val n = it.filter { c -> c.isDigit() }.toIntOrNull()
                             if (n != null && n > 0) onSetMaxOccurrences(n)
                         },
-                        modifier = Modifier.width(80.dp).height(50.dp),
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(50.dp),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         textStyle = androidx.compose.ui.text.TextStyle(textAlign = TextAlign.Center)
                     )
@@ -862,7 +930,8 @@ private fun CategoryBottomSheet(
     onCreate: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState =
+        androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     androidx.compose.material3.ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -876,9 +945,16 @@ private fun CategoryBottomSheet(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
             if (categories.isEmpty()) {
-                Text(stringResource(R.string.tx_no_categories), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.tx_no_categories),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             categories.forEach { cat ->
@@ -887,9 +963,15 @@ private fun CategoryBottomSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .pressScaleClickable(intent = HapticIntent.Selection, pressedScale = 0.98f) { onSelect(cat.id) },
+                        .pressScaleClickable(
+                            intent = HapticIntent.Selection,
+                            pressedScale = 0.98f
+                        ) { onSelect(cat.id) },
                     color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f))
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+                    )
                 ) {
                     Row(
                         modifier = Modifier.padding(14.dp),
@@ -904,9 +986,15 @@ private fun CategoryBottomSheet(
                         )
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(cat.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             Text(
-                                if (cat.type == TransactionType.INCOME) stringResource(R.string.tx_type_income) else stringResource(R.string.tx_type_expense),
+                                cat.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                if (cat.type == TransactionType.INCOME) stringResource(R.string.tx_type_income) else stringResource(
+                                    R.string.tx_type_expense
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -929,9 +1017,17 @@ private fun CategoryBottomSheet(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                     Spacer(Modifier.width(12.dp))
-                    Text(stringResource(R.string.tx_create_category), color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        stringResource(R.string.tx_create_category),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
 
@@ -1010,7 +1106,10 @@ private fun AccountBottomSheet(
 }
 
 // Tags sheet kept as-is (existing UI).
-@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.layout.ExperimentalLayoutApi::class
+)
 @Composable
 private fun TagsBottomSheet(
     tags: List<com.lop.budget.data.local.entity.TagEntity>,
@@ -1019,7 +1118,8 @@ private fun TagsBottomSheet(
     onCreateTag: (String, Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState =
+        androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var newTagName by remember { mutableStateOf("") }
 
     val colors = listOf(
@@ -1066,14 +1166,24 @@ private fun TagsBottomSheet(
                         Surface(
                             modifier = Modifier.clickable { onToggleTag(tag.id) },
                             shape = CircleShape,
-                            color = if (isSelected) color.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            border = if (isSelected) BorderStroke(1.dp, color) else BorderStroke(1.dp, Color.Transparent)
+                            color = if (isSelected) color.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(
+                                alpha = 0.5f
+                            ),
+                            border = if (isSelected) BorderStroke(
+                                1.dp,
+                                color
+                            ) else BorderStroke(1.dp, Color.Transparent)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                             ) {
-                                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(color))
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(color)
+                                )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     tag.name,
@@ -1112,11 +1222,20 @@ private fun TagsBottomSheet(
                             .clip(CircleShape)
                             .background(color)
                             .clickable { selectedColor = color }
-                            .border(if (isSelected) 3.dp else 0.dp, MaterialTheme.colorScheme.onSurface, CircleShape),
+                            .border(
+                                if (isSelected) 3.dp else 0.dp,
+                                MaterialTheme.colorScheme.onSurface,
+                                CircleShape
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         if (isSelected) {
-                            Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
                 }
@@ -1128,7 +1247,9 @@ private fun TagsBottomSheet(
                     onCreateTag(newTagName, selectedColor.toArgb())
                     newTagName = ""
                 },
-                modifier = Modifier.fillMaxWidth().height(50.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
                 enabled = newTagName.isNotBlank() && (selectedTagIds.size < 3),
                 shape = RoundedCornerShape(12.dp)
             ) {
