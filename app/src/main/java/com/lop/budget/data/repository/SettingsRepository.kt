@@ -29,6 +29,9 @@ class SettingsRepository @Inject constructor(
 
         // Notifications
         val NOTIF_DETECTION = stringPreferencesKey("notif_tx_detection")
+
+        // UX helpers
+        val LAST_ACCOUNT_ID = stringPreferencesKey("last_account_id")
     }
 
     val currency: Flow<String> = context.dataStore.data.map { it[Keys.CURRENCY] ?: "EUR" }
@@ -41,6 +44,11 @@ class SettingsRepository @Inject constructor(
     val notificationDetectionEnabled: Flow<Boolean> =
         context.dataStore.data.map { (it[Keys.NOTIF_DETECTION] ?: "false").toBoolean() }
 
+    /** Dernier compte utilisé (pour pré-sélection à l'ajout). */
+    val lastAccountId: Flow<Long?> = context.dataStore.data.map {
+        it[Keys.LAST_ACCOUNT_ID]?.toLongOrNull()
+    }
+
     suspend fun setCurrency(value: String) = context.dataStore.edit { it[Keys.CURRENCY] = value }
     suspend fun setGeminiKey(value: String) = context.dataStore.edit { it[Keys.GEMINI_KEY] = value }
     suspend fun setThemeMode(mode: ThemeMode) = context.dataStore.edit { it[Keys.THEME_MODE] = mode.name }
@@ -49,7 +57,13 @@ class SettingsRepository @Inject constructor(
     suspend fun setNotificationDetectionEnabled(enabled: Boolean) =
         context.dataStore.edit { it[Keys.NOTIF_DETECTION] = enabled.toString() }
 
+    suspend fun setLastAccountId(id: Long?) = context.dataStore.edit {
+        if (id == null) it.remove(Keys.LAST_ACCOUNT_ID) else it[Keys.LAST_ACCOUNT_ID] = id.toString()
+    }
+
     suspend fun isNotificationDetectionEnabledOnce(): Boolean = notificationDetectionEnabled.first()
+
+    suspend fun lastAccountIdOnce(): Long? = lastAccountId.first()
 
     fun isAllowedNotificationSource(packageName: String): Boolean {
         // MVP : sources fixes
