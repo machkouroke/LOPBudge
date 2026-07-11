@@ -159,7 +159,14 @@ class HomeViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<HomeUiState> =
-        combine(monthData, settings.currency, month, pendingDeletes, txVersions, detectedCount) { data, currency, ym, pending, versions, detected ->
+        combine(monthData, settings.currency, month, pendingDeletes, txVersions, detectedCount) { args ->
+            val data = args[0] as List<*>
+            val currency = args[1] as String
+            val ym = args[2] as YearMonth
+            val pending = args[3] as Set<Long>
+            val versions = args[4] as Map<Long, Int>
+            val detected = args[5] as Int
+
             @Suppress("UNCHECKED_CAST")
             val allTxs = data[0] as List<TransactionWithRelations>
             val txs = allTxs.filter { it.transaction.id !in pending }
@@ -209,7 +216,7 @@ class HomeViewModel @Inject constructor(
                 upcoming = upcoming,
                 subscriptions = subscriptions,
                 dayGroups = dayGroups,
-                txVersions = versions as Map<Long, Int>,
+                txVersions = versions,
                 detectedCount = detected,
             )
         }
