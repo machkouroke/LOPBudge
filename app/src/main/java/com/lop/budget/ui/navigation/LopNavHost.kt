@@ -13,10 +13,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -45,13 +43,13 @@ import com.lop.budget.ui.motion.MotionSpec
 import com.lop.budget.ui.screens.accounts.AccountsScreen
 import com.lop.budget.ui.screens.ai.AiScreen
 import com.lop.budget.ui.screens.analytics.AnalyticsScreen
+import com.lop.budget.ui.screens.category.CategoryCreateScreen
 import com.lop.budget.ui.screens.detail.TransactionDetailScreen
 import com.lop.budget.ui.screens.detected.DetectedTransactionsScreen
 import com.lop.budget.ui.screens.goals.GoalsScreen
 import com.lop.budget.ui.screens.home.HomeScreen
 import com.lop.budget.ui.screens.monthly.MonthlyTransactionsScreen
 import com.lop.budget.ui.screens.settings.SettingsScreen
-import com.lop.budget.ui.screens.category.CategoryCreateScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -60,7 +58,10 @@ import kotlinx.coroutines.launch
 private val screenOrder = listOf(Routes.HOME, Routes.ANALYTICS, Routes.GOALS, Routes.ACCOUNTS)
 
 @OptIn(ExperimentalAnimationApi::class)
-private fun createEnterTransition(initialState: NavBackStackEntry, targetState: NavBackStackEntry): EnterTransition {
+private fun createEnterTransition(
+    initialState: NavBackStackEntry,
+    targetState: NavBackStackEntry
+): EnterTransition {
     val initialIndex = screenOrder.indexOf(initialState.destination.route)
     val targetIndex = screenOrder.indexOf(targetState.destination.route)
     return if (initialIndex == -1 || targetIndex == -1) fadeIn()
@@ -69,7 +70,10 @@ private fun createEnterTransition(initialState: NavBackStackEntry, targetState: 
 }
 
 @OptIn(ExperimentalAnimationApi::class)
-private fun createExitTransition(initialState: NavBackStackEntry, targetState: NavBackStackEntry): ExitTransition {
+private fun createExitTransition(
+    initialState: NavBackStackEntry,
+    targetState: NavBackStackEntry
+): ExitTransition {
     val initialIndex = screenOrder.indexOf(initialState.destination.route)
     val targetIndex = screenOrder.indexOf(targetState.destination.route)
     return if (initialIndex == -1 || targetIndex == -1) fadeOut()
@@ -130,11 +134,24 @@ fun LopNavHost(startRoute: String? = null) {
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
                         onOpenAi = { navController.navigate(Routes.AI) },
                         navController = navController,
-                        onOpenMonthly = { type, ym -> navController.navigate(Routes.monthly(type, ym)) },
+                        onOpenMonthly = { type, ym ->
+                            navController.navigate(
+                                Routes.monthly(
+                                    type,
+                                    ym
+                                )
+                            )
+                        },
                     )
                 }
 
-                composable(Routes.DETECTED) {
+                composable(
+                    Routes.DETECTED,
+                    enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+                    exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
+                    popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
+                    popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
+                ) {
                     DetectedTransactionsScreen(
                         onBack = { navController.popBackStack() },
                         onOpenEdit = { id -> navController.navigate(Routes.edit(id)) },
@@ -152,12 +169,18 @@ fun LopNavHost(startRoute: String? = null) {
                         navArgument("ym") { type = NavType.StringType },
                     ),
                     enterTransition = {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = MotionSpec.mediumTween()) +
-                            fadeIn(animationSpec = MotionSpec.mediumTween())
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = MotionSpec.mediumTween()
+                        ) +
+                                fadeIn(animationSpec = MotionSpec.mediumTween())
                     },
                     exitTransition = {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = MotionSpec.fastTween()) +
-                            fadeOut(animationSpec = MotionSpec.fastTween())
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = MotionSpec.fastTween()
+                        ) +
+                                fadeOut(animationSpec = MotionSpec.fastTween())
                     },
                 ) {
                     MonthlyTransactionsScreen(
@@ -168,7 +191,8 @@ fun LopNavHost(startRoute: String? = null) {
 
                 composable(Routes.AI) { AiScreen(onBack = { navController.popBackStack() }) }
 
-                composable(Routes.SETTINGS,
+                composable(
+                    Routes.SETTINGS,
                     enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
                     exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
                     popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
@@ -182,12 +206,18 @@ fun LopNavHost(startRoute: String? = null) {
                     Routes.EDIT,
                     arguments = listOf(navArgument("id") { type = NavType.LongType }),
                     enterTransition = {
-                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, animationSpec = MotionSpec.mediumTween()) +
-                            fadeIn(animationSpec = MotionSpec.mediumTween())
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = MotionSpec.mediumTween()
+                        ) +
+                                fadeIn(animationSpec = MotionSpec.mediumTween())
                     },
                     exitTransition = {
-                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, animationSpec = MotionSpec.fastTween()) +
-                            fadeOut(animationSpec = MotionSpec.fastTween())
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = MotionSpec.fastTween()
+                        ) +
+                                fadeOut(animationSpec = MotionSpec.fastTween())
                     }
                 ) {
                     TransactionEditScreen(
@@ -201,21 +231,36 @@ fun LopNavHost(startRoute: String? = null) {
                     arguments = listOf(navArgument("id") { type = NavType.LongType }),
                 ) { entry ->
                     val id = entry.arguments?.getLong("id") ?: 0L
-                    TransactionDetailScreen(transactionId = id, onBack = { navController.popBackStack() }, onEdit = { txId -> navController.navigate(Routes.edit(txId)) })
+                    TransactionDetailScreen(
+                        transactionId = id,
+                        onBack = { navController.popBackStack() },
+                        onEdit = { txId -> navController.navigate(Routes.edit(txId)) })
                 }
             }
 
             AnimatedVisibility(
                 visible = showBar,
                 enter = slideInVertically(
-                    animationSpec = androidx.compose.animation.core.tween(durationMillis = MotionSpec.SLOW_MS, easing = MotionSpec.easeOut),
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = MotionSpec.SLOW_MS,
+                        easing = MotionSpec.easeOut
+                    ),
                 ) { it / 2 } + fadeIn(
-                    animationSpec = androidx.compose.animation.core.tween(durationMillis = MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut),
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = MotionSpec.MEDIUM_MS,
+                        easing = MotionSpec.easeOut
+                    ),
                 ),
                 exit = slideOutVertically(
-                    animationSpec = androidx.compose.animation.core.tween(durationMillis = MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut),
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = MotionSpec.MEDIUM_MS,
+                        easing = MotionSpec.easeOut
+                    ),
                 ) { it / 2 } + fadeOut(
-                    animationSpec = androidx.compose.animation.core.tween(durationMillis = MotionSpec.FAST_MS, easing = MotionSpec.easeOut),
+                    animationSpec = androidx.compose.animation.core.tween(
+                        durationMillis = MotionSpec.FAST_MS,
+                        easing = MotionSpec.easeOut
+                    ),
                 ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -261,7 +306,8 @@ fun LopNavHost(startRoute: String? = null) {
                     ) {
                         TransactionEditScreen(
                             onBack = {
-                                scope.launch { sheetState.hide() }.invokeOnCompletion { showAddSheet = false }
+                                scope.launch { sheetState.hide() }
+                                    .invokeOnCompletion { showAddSheet = false }
                             },
                             onNavigateToCreateCategory = {
                                 scope.launch { sheetState.hide() }.invokeOnCompletion {
