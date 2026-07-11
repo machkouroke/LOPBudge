@@ -17,20 +17,13 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -53,7 +46,6 @@ import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import kotlinx.coroutines.launch
 
 private val screenOrder = listOf(Routes.HOME, Routes.ANALYTICS, Routes.GOALS, Routes.ACCOUNTS)
 
@@ -89,7 +81,6 @@ private typealias ExitTransition = androidx.compose.animation.ExitTransition
 fun LopNavHost(startRoute: String? = null) {
     val navController = rememberNavController()
     val hazeState = rememberHazeState()
-    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
     // deep link simple depuis notification
@@ -102,13 +93,6 @@ fun LopNavHost(startRoute: String? = null) {
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBar = currentRoute in Routes.rootRoutes
-
-    var showAddSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-
-    val vmStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
-        "Aucun ViewModelStoreOwner trouvé — LopNavHost doit être dans un contexte Activity."
-    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -135,12 +119,7 @@ fun LopNavHost(startRoute: String? = null) {
                         onOpenAi = { navController.navigate(Routes.AI) },
                         navController = navController,
                         onOpenMonthly = { type, ym ->
-                            navController.navigate(
-                                Routes.monthly(
-                                    type,
-                                    ym
-                                )
-                            )
+                            navController.navigate(Routes.monthly(type, ym))
                         },
                     )
                 }
@@ -172,15 +151,13 @@ fun LopNavHost(startRoute: String? = null) {
                         slideIntoContainer(
                             AnimatedContentTransitionScope.SlideDirection.Left,
                             animationSpec = MotionSpec.mediumTween()
-                        ) +
-                                fadeIn(animationSpec = MotionSpec.mediumTween())
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
                     },
                     exitTransition = {
                         slideOutOfContainer(
                             AnimatedContentTransitionScope.SlideDirection.Right,
                             animationSpec = MotionSpec.fastTween()
-                        ) +
-                                fadeOut(animationSpec = MotionSpec.fastTween())
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
                     },
                 ) {
                     MonthlyTransactionsScreen(
@@ -200,7 +177,44 @@ fun LopNavHost(startRoute: String? = null) {
                 ) {
                     SettingsScreen(onBack = { navController.popBackStack() })
                 }
-                composable(Routes.CATEGORY_CREATE) { CategoryCreateScreen(onBack = { navController.popBackStack() }) }
+
+                composable(Routes.CATEGORY_CREATE) {
+                    CategoryCreateScreen(onBack = { navController.popBackStack() })
+                }
+
+                // NEW: Add is a full screen (not a modal bottom sheet)
+                composable(
+                    Routes.ADD,
+                    enterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = MotionSpec.fastTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = MotionSpec.mediumTween(),
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = MotionSpec.fastTween(),
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                    },
+                ) {
+                    TransactionEditScreen(
+                        onBack = { navController.popBackStack() },
+                        onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
+                    )
+                }
 
                 composable(
                     Routes.EDIT,
@@ -209,20 +223,18 @@ fun LopNavHost(startRoute: String? = null) {
                         slideIntoContainer(
                             AnimatedContentTransitionScope.SlideDirection.Up,
                             animationSpec = MotionSpec.mediumTween()
-                        ) +
-                                fadeIn(animationSpec = MotionSpec.mediumTween())
+                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
                     },
                     exitTransition = {
                         slideOutOfContainer(
                             AnimatedContentTransitionScope.SlideDirection.Down,
                             animationSpec = MotionSpec.fastTween()
-                        ) +
-                                fadeOut(animationSpec = MotionSpec.fastTween())
+                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
                     }
                 ) {
                     TransactionEditScreen(
                         onBack = { navController.popBackStack() },
-                        onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) }
+                        onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
                     )
                 }
 
@@ -291,32 +303,9 @@ fun LopNavHost(startRoute: String? = null) {
                                 restoreState = true
                             }
                         },
-                        onAdd = { showAddSheet = true },
+                        onAdd = { navController.navigate(Routes.ADD) },
                         hazeState = hazeState,
                     )
-                }
-            }
-
-            if (showAddSheet) {
-                CompositionLocalProvider(LocalViewModelStoreOwner provides vmStoreOwner) {
-                    ModalBottomSheet(
-                        onDismissRequest = { showAddSheet = false },
-                        sheetState = sheetState,
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ) {
-                        TransactionEditScreen(
-                            onBack = {
-                                scope.launch { sheetState.hide() }
-                                    .invokeOnCompletion { showAddSheet = false }
-                            },
-                            onNavigateToCreateCategory = {
-                                scope.launch { sheetState.hide() }.invokeOnCompletion {
-                                    showAddSheet = false
-                                    navController.navigate(Routes.CATEGORY_CREATE)
-                                }
-                            },
-                        )
-                    }
                 }
             }
         }
