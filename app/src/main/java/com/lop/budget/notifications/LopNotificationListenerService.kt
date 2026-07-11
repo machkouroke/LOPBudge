@@ -1,10 +1,20 @@
 package com.lop.budget.notifications
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
+import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import com.lop.budget.MainActivity
+import com.lop.budget.R
 import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.ui.navigation.Routes
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -51,7 +61,59 @@ class LopNotificationListenerService : NotificationListenerService() {
             )
 
             // Anti-doublon : fenêtre courte (2 minutes)
-            repo.upsertIfNotDuplicate(proposal, dedupeWindowMs = 2 * 60 * 1000L)
+            val inserted = repo.upsertIfNotDuplicate(proposal, dedupeWindowMs = 2 * 60 * 1000L)
+            if (inserted > 0) {
+                postDetectedNotification(proposal)
+            }
         }
+    }
+
+    private fun postDetectedNotification(p: DetectedTransactionProposalEntity) {
+        ensureChannel()
+
+        val intent = Intent(applicationContext, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("route", Routes.DETECTED)
+        }
+
+        val pi = PendingIntent.getActivity(
+            applicationContext,
+            1001,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0),
+        )
+
+        val text = "${p.label} • ${p.amount} ${p.currency ?: ""}".trim()
+
+        val notif = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("Transaction détectée")
+            .setContentText(text)
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        NotificationManagerCompat.from(applicationContext).notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notif)
+    }
+
+    private fun ensureChannel() {
+        if (Build.VERSION.SDK_INT < 26) return
+        val mgr = getSystemService(NotificationManager::class.java)
+        val existing = mgr.getNotificationChannel(CHANNEL_ID)
+        if (existing != null) return
+
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Transactions détectées",
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = "Notifications quand une transaction est détectée via Google Wallet/Samsung Wallet"
+        }
+        mgr.createNotificationChannel(channel)
+    }
+
+    companion object {
+        private const val CHANNEL_ID = "detected_transactions"
     }
 }
