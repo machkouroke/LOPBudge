@@ -66,6 +66,8 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.MonthPickerBottomSheet
+import com.lop.budget.ui.components.RecurringDeleteChoice
+import com.lop.budget.ui.components.RecurringDeleteSheet
 import com.lop.budget.ui.components.SwipeableTransactionRow
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.navigation.Routes
@@ -485,30 +487,30 @@ fun HomeScreen(
         }
     }
 
+    // NEW: Modern bottom sheet (remplace l'AlertDialog)
     if (showDeleteConfirmForTx != null) {
-        val tx = showDeleteConfirmForTx!!
+        val toDelete = showDeleteConfirmForTx!!
         val context = androidx.compose.ui.platform.LocalContext.current
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showDeleteConfirmForTx = null },
-            title = { Text(stringResource(R.string.tx_detail_delete_title)) },
-            text = { Text(stringResource(R.string.tx_detail_delete_recurring_msg)) },
-            confirmButton = {
-                Column(horizontalAlignment = Alignment.End) {
-                    androidx.compose.material3.TextButton(onClick = {
-                        val toDelete = showDeleteConfirmForTx!!
-                        showDeleteConfirmForTx = null
+
+        RecurringDeleteSheet(
+            onDismiss = { showDeleteConfirmForTx = null },
+            // Option FUTURE_ONLY dispo si le mode FUTURE est géré côté VM.
+            showFutureOnly = true,
+            onChoose = { choice ->
+                showDeleteConfirmForTx = null
+                when (choice) {
+                    RecurringDeleteChoice.THIS_OCCURRENCE -> {
                         vm.deleteOccurrenceWithUndo(
                             toDelete.transaction.id,
                             snackbarHostState,
                             context.getString(R.string.tx_deleted_snackbar),
-                            context.getString(R.string.undo)
+                            context.getString(R.string.undo),
                         )
-                    }) { Text(stringResource(R.string.tx_detail_delete_occurrence), color = MaterialTheme.colorScheme.error) }
+                    }
 
-                    androidx.compose.material3.TextButton(onClick = {
-                        val seriesId = showDeleteConfirmForTx?.transaction?.seriesId
-                        val fromDate = showDeleteConfirmForTx?.transaction?.date
-                        showDeleteConfirmForTx = null
+                    RecurringDeleteChoice.FUTURE_ONLY -> {
+                        val seriesId = toDelete.transaction.seriesId
+                        val fromDate = toDelete.transaction.date
                         if (seriesId != null) {
                             vm.deleteSeriesWithUndo(
                                 seriesId = seriesId,
@@ -519,11 +521,10 @@ fun HomeScreen(
                                 actionLabel = context.getString(R.string.undo)
                             )
                         }
-                    }) { Text(stringResource(R.string.tx_detail_delete_future), color = MaterialTheme.colorScheme.error) }
+                    }
 
-                    androidx.compose.material3.TextButton(onClick = {
-                        val seriesId = showDeleteConfirmForTx?.transaction?.seriesId
-                        showDeleteConfirmForTx = null
+                    RecurringDeleteChoice.ALL_SERIES -> {
+                        val seriesId = toDelete.transaction.seriesId
                         if (seriesId != null) {
                             vm.deleteSeriesWithUndo(
                                 seriesId = seriesId,
@@ -533,14 +534,9 @@ fun HomeScreen(
                                 actionLabel = context.getString(R.string.undo)
                             )
                         }
-                    }) { Text(stringResource(R.string.tx_detail_delete_series), color = MaterialTheme.colorScheme.error) }
+                    }
                 }
             },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showDeleteConfirmForTx = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
         )
     }
 }
