@@ -13,6 +13,7 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.DebtEntity
 import com.lop.budget.data.local.entity.GoalEntity
+import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef

@@ -252,43 +252,6 @@ fun TransactionDetailScreen(
             }
         }
 
-        // Occurrences récurrentes à venir — suggestion utilisateur
-    if (showDeleteConfirm) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Supprimer la transaction ?") },
-            text = { 
-                if (tx.seriesId != null) {
-                    Text("Cette transaction fait partie d'une série récurrente. Voulez-vous supprimer uniquement cette occurrence, ou toute la série ?")
-                } else {
-                    Text("Cette action est irréversible.")
-                }
-            },
-            confirmButton = {
-                if (tx.seriesId != null) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        androidx.compose.material3.TextButton(onClick = {
-                            showDeleteConfirm = false
-                            vm.deleteOccurrence(onBack)
-                        }) { Text("Cette occurrence", color = MaterialTheme.colorScheme.error) }
-                        androidx.compose.material3.TextButton(onClick = {
-                            showDeleteConfirm = false
-                            vm.deleteSeries(onBack)
-                        }) { Text("Toute la série", color = MaterialTheme.colorScheme.error) }
-                    }
-                } else {
-                    androidx.compose.material3.TextButton(onClick = {
-                        showDeleteConfirm = false
-                        vm.delete(onBack)
-                    }) { Text("Supprimer", color = MaterialTheme.colorScheme.error) }
-                }
-            },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showDeleteConfirm = false }) { Text("Annuler") }
-            }
-        )
-    }
-
     if (tx.recurrenceFrequency != RecurrenceFrequency.NONE && state.upcomingDates.isNotEmpty()) {
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
@@ -331,5 +294,41 @@ fun TransactionDetailScreen(
                 }
             }
         }
+    }
+
+    if (showDeleteConfirm && tx != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Supprimer la transaction ?") },
+            text = { 
+                if (tx.seriesId != null) {
+                    Text("Cette transaction fait partie d'une série récurrente. Voulez-vous supprimer uniquement cette occurrence, ou toute la série ?")
+                } else {
+                    Text("Cette action est irréversible.")
+                }
+            },
+            confirmButton = {
+                if (tx.seriesId != null) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        androidx.compose.material3.TextButton(onClick = {
+                            showDeleteConfirm = false
+                            vm.deleteOccurrence(onBack)
+                        }) { Text("Cette occurrence", color = MaterialTheme.colorScheme.error) }
+                        androidx.compose.material3.TextButton(onClick = {
+                            showDeleteConfirm = false
+                            vm.deleteSeries(onBack)
+                        }) { Text("Toute la série", color = MaterialTheme.colorScheme.error) }
+                    }
+                } else {
+                    androidx.compose.material3.TextButton(onClick = {
+                        showDeleteConfirm = false
+                        vm.delete(onBack)
+                    }) { Text("Supprimer", color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showDeleteConfirm = false }) { Text("Annuler") }
+            }
+        )
     }
 }

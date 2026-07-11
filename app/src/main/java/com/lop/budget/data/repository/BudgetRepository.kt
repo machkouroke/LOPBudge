@@ -55,7 +55,7 @@ class BudgetRepository @Inject constructor(
         if (existing != null) return existing.id
 
         // 2. Récupérer la série
-        val series = recurringSeriesDao.getById(seriesId) ?: return -1L
+        val series = recurringSeriesDao.getSeriesById(seriesId) ?: return -1L
 
         // 3. Créer l'exception
         val exception = TransactionEntity(
@@ -129,11 +129,11 @@ class BudgetRepository @Inject constructor(
                         )
                         // Résoudre les relations en mémoire
                         val account = accounts.find { it.id == series.accountId }
-                        val category = series.categoryId?.let { catId -> categories.find { it.id == catId } }
+                        val category = categories.find { it.id == series.categoryId }
                         
                         // Note: Les tags nécessiteraient une table de liaison series_tags, 
                         // pour l'instant on laisse vide
-                        result.add(TransactionWithRelations(virtualTx, account, category, emptyList()))
+                        result.add(TransactionWithRelations(virtualTx, category, account, emptyList()))
                     }
                 }
             }

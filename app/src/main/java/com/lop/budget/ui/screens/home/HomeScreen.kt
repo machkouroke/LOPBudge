@@ -462,7 +462,7 @@ fun HomeScreen(
                                     if (tx.transaction.id >= 0L) {
                                         onOpenTransaction(tx.transaction.id) 
                                     } else if (tx.transaction.seriesId != null) {
-                                        vm.materializeAndOpen(tx.transaction.seriesId!!.toLong(), tx.transaction.seriesDate, onOpenTransaction)
+                                        vm.materializeAndOpen(tx.transaction.seriesId!!.toLong(), tx.transaction.seriesDate!!, onOpenTransaction)
                                     }
                                 }
                                 .alpha(if (isPaid) 0.5f else 1f),
@@ -704,7 +704,7 @@ fun HomeScreen(
                             vm.deleteOccurrenceWithUndo(tx.id, snackbarHostState)
                         } else if (tx.seriesId != null) {
                             // C'est une occurrence virtuelle, on doit la matérialiser puis la supprimer
-                            vm.materializeAndOpen(tx.seriesId.toLong(), tx.seriesDate) { realId ->
+                            vm.materializeAndOpen(tx.seriesId.toLong(), tx.seriesDate!!) { realId ->
                                 vm.deleteOccurrenceWithUndo(realId, snackbarHostState)
                             }
                         }

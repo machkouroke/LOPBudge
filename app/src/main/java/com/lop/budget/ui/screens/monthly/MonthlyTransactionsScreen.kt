@@ -158,7 +158,7 @@ fun MonthlyTransactionsScreen(
                     if (tx.transaction.id >= 0L) {
                         onOpenTransaction(tx.transaction.id) 
                     } else if (tx.transaction.seriesId != null) {
-                        vm.materializeAndOpen(tx.transaction.seriesId!!.toLong(), tx.transaction.seriesDate, onOpenTransaction)
+                        vm.materializeAndOpen(tx.transaction.seriesId!!.toLong(), tx.transaction.seriesDate!!, onOpenTransaction)
                     }
                 },
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),

@@ -60,7 +60,7 @@ class TransactionEditViewModel @Inject constructor(
         get() = editingTransactionId != null
     
     init {
-        val txId = savedStateHandle.get<String>("id")?.toLongOrNull()
+        val txId = savedStateHandle.get<Long>("id")
         if (txId != null && !isLoaded) {
             editingTransactionId = txId
             loadTransaction(txId)
