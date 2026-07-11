@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -47,6 +46,7 @@ import com.lop.budget.ui.screens.accounts.AccountsScreen
 import com.lop.budget.ui.screens.ai.AiScreen
 import com.lop.budget.ui.screens.analytics.AnalyticsScreen
 import com.lop.budget.ui.screens.detail.TransactionDetailScreen
+import com.lop.budget.ui.screens.detected.DetectedTransactionsScreen
 import com.lop.budget.ui.screens.goals.GoalsScreen
 import com.lop.budget.ui.screens.home.HomeScreen
 import com.lop.budget.ui.screens.monthly.MonthlyTransactionsScreen
@@ -57,14 +57,10 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 
-private val screenOrder =
-    listOf(Routes.HOME, Routes.ANALYTICS, Routes.GOALS, Routes.ACCOUNTS)
+private val screenOrder = listOf(Routes.HOME, Routes.ANALYTICS, Routes.GOALS, Routes.ACCOUNTS)
 
 @OptIn(ExperimentalAnimationApi::class)
-private fun createEnterTransition(
-    initialState: NavBackStackEntry,
-    targetState: NavBackStackEntry,
-): EnterTransition {
+private fun createEnterTransition(initialState: NavBackStackEntry, targetState: NavBackStackEntry): EnterTransition {
     val initialIndex = screenOrder.indexOf(initialState.destination.route)
     val targetIndex = screenOrder.indexOf(targetState.destination.route)
     return if (initialIndex == -1 || targetIndex == -1) fadeIn()
@@ -73,10 +69,7 @@ private fun createEnterTransition(
 }
 
 @OptIn(ExperimentalAnimationApi::class)
-private fun createExitTransition(
-    initialState: NavBackStackEntry,
-    targetState: NavBackStackEntry,
-): ExitTransition {
+private fun createExitTransition(initialState: NavBackStackEntry, targetState: NavBackStackEntry): ExitTransition {
     val initialIndex = screenOrder.indexOf(initialState.destination.route)
     val targetIndex = screenOrder.indexOf(targetState.destination.route)
     return if (initialIndex == -1 || targetIndex == -1) fadeOut()
@@ -84,37 +77,31 @@ private fun createExitTransition(
     else slideOutHorizontally(targetOffsetX = { -it })
 }
 
-// Nécessaire pour résoudre EnterTransition / ExitTransition sans ambiguïté
 private typealias EnterTransition = androidx.compose.animation.EnterTransition
 private typealias ExitTransition = androidx.compose.animation.ExitTransition
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LopNavHost() {
+fun LopNavHost(startRoute: String? = null) {
     val navController = rememberNavController()
     val hazeState = rememberHazeState()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+
+    // deep link simple depuis notification
+    androidx.compose.runtime.LaunchedEffect(startRoute) {
+        if (!startRoute.isNullOrBlank()) {
+            navController.navigate(startRoute) { launchSingleTop = true }
+        }
+    }
 
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBar = currentRoute in Routes.rootRoutes
 
     var showAddSheet by remember { mutableStateOf(false) }
-    var returnToSheetAfterCategoryCreate by remember { mutableStateOf(false) }
-    // skipPartiallyExpanded = false : active les 3 états (Hidden → PartiallyExpanded → Expanded)
-    // NE PAS utiliser confirmValueChange ici — cela interfère avec la gestion interne
-    // des états du sheet et provoque des oscillations (vibrations) lors du glissement.
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = false,
-    )
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
-    // FIX sheet vide — CAUSE RACINE :
-    // hiltViewModel() dans un ModalBottomSheet ne trouve pas de ViewModelStoreOwner
-    // valide car le sheet est rendu dans une fenêtre séparée (PopupLayout).
-    // Solution : capturer le LocalViewModelStoreOwner ICI (avant le Scaffold,
-    // dans le contexte Activity) et le réinjecter via CompositionLocalProvider
-    // à l'intérieur du sheet.
     val vmStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
         "Aucun ViewModelStoreOwner trouvé — LopNavHost doit être dans un contexte Activity."
     }
@@ -129,7 +116,6 @@ fun LopNavHost() {
                 .padding(padding)
                 .hazeSource(state = hazeState),
         ) {
-            // ─── NavHost principal ───────────────────────────────────────────
             NavHost(
                 navController = navController,
                 startDestination = Routes.HOME,
@@ -144,9 +130,14 @@ fun LopNavHost() {
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
                         onOpenAi = { navController.navigate(Routes.AI) },
                         navController = navController,
-                        onOpenMonthly = { type, ym ->
-                            navController.navigate(Routes.monthly(type, ym))
-                        },
+                        onOpenMonthly = { type, ym -> navController.navigate(Routes.monthly(type, ym)) },
+                    )
+                }
+
+                composable(Routes.DETECTED) {
+                    DetectedTransactionsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenEdit = { id -> navController.navigate(Routes.edit(id)) },
                     )
                 }
 
@@ -161,28 +152,12 @@ fun LopNavHost() {
                         navArgument("ym") { type = NavType.StringType },
                     ),
                     enterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = MotionSpec.mediumTween()) +
+                            fadeIn(animationSpec = MotionSpec.mediumTween())
                     },
                     exitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.fastTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = MotionSpec.fastTween()) +
+                            fadeOut(animationSpec = MotionSpec.fastTween())
                     },
                 ) {
                     MonthlyTransactionsScreen(
@@ -191,33 +166,7 @@ fun LopNavHost() {
                     )
                 }
 
-                composable(
-                    Routes.AI,
-                    enterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.fastTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                ) { AiScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.AI) { AiScreen(onBack = { navController.popBackStack() }) }
 
                 composable(Routes.SETTINGS,
                     enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
@@ -227,24 +176,18 @@ fun LopNavHost() {
                 ) {
                     SettingsScreen(onBack = { navController.popBackStack() })
                 }
-                composable(Routes.CATEGORY_CREATE) {
-                    CategoryCreateScreen(onBack = { navController.popBackStack() })
-                }
+                composable(Routes.CATEGORY_CREATE) { CategoryCreateScreen(onBack = { navController.popBackStack() }) }
 
                 composable(
                     Routes.EDIT,
                     arguments = listOf(navArgument("id") { type = NavType.LongType }),
                     enterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, animationSpec = MotionSpec.mediumTween()) +
+                            fadeIn(animationSpec = MotionSpec.mediumTween())
                     },
                     exitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = MotionSpec.fastTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, animationSpec = MotionSpec.fastTween()) +
+                            fadeOut(animationSpec = MotionSpec.fastTween())
                     }
                 ) {
                     TransactionEditScreen(
@@ -256,64 +199,23 @@ fun LopNavHost() {
                 composable(
                     Routes.DETAIL,
                     arguments = listOf(navArgument("id") { type = NavType.LongType }),
-                    enterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.fastTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.mediumTween(),
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
-                    },
                 ) { entry ->
                     val id = entry.arguments?.getLong("id") ?: 0L
-                    TransactionDetailScreen(
-                        transactionId = id,
-                        onBack = { navController.popBackStack() },
-                        onEdit = { txId -> navController.navigate(Routes.edit(txId)) }
-                    )
+                    TransactionDetailScreen(transactionId = id, onBack = { navController.popBackStack() }, onEdit = { txId -> navController.navigate(Routes.edit(txId)) })
                 }
             }
 
-            // ─── Bottom bar flottante + Dégradé de fond ──────────────────────
             AnimatedVisibility(
                 visible = showBar,
                 enter = slideInVertically(
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = MotionSpec.SLOW_MS,
-                        easing = MotionSpec.easeOut,
-                    ),
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = MotionSpec.SLOW_MS, easing = MotionSpec.easeOut),
                 ) { it / 2 } + fadeIn(
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = MotionSpec.MEDIUM_MS,
-                        easing = MotionSpec.easeOut,
-                    ),
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut),
                 ),
                 exit = slideOutVertically(
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = MotionSpec.MEDIUM_MS,
-                        easing = MotionSpec.easeOut,
-                    ),
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut),
                 ) { it / 2 } + fadeOut(
-                    animationSpec = androidx.compose.animation.core.tween(
-                        durationMillis = MotionSpec.FAST_MS,
-                        easing = MotionSpec.easeOut,
-                    ),
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = MotionSpec.FAST_MS, easing = MotionSpec.easeOut),
                 ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -322,22 +224,18 @@ fun LopNavHost() {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        // Dégradé : du transparent (haut) vers la couleur de fond (bas)
                         .background(
                             brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                                 colors = listOf(
                                     androidx.compose.ui.graphics.Color.Transparent,
                                     MaterialTheme.colorScheme.background.copy(alpha = 0.4f),
                                     MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-                                    MaterialTheme.colorScheme.background
+                                    MaterialTheme.colorScheme.background,
                                 )
                             )
                         )
                         .navigationBarsPadding()
-                        .padding(
-                            bottom = 20.dp,
-                            top = 40.dp
-                        ) // padding top pour étendre le dégradé au-dessus de la barre
+                        .padding(bottom = 20.dp, top = 40.dp)
                 ) {
                     FloatingBottomBar(
                         current = currentRoute ?: Routes.HOME,
@@ -354,49 +252,18 @@ fun LopNavHost() {
                 }
             }
 
-            // ─── ModalBottomSheet expansible ────────────────────────────────
-            // IMPORTANT : le sheet est DANS le Box (même scope Composable que
-            // le NavHost). Le CompositionLocalProvider réinjecte le vmStoreOwner
-            // capturé avant le Scaffold pour que hiltViewModel() fonctionne.
-            //
-            // Comportement :
-            //   • Ouverture → PartiallyExpanded (~50% de l'écran)
-            //   • Glisse vers le haut → Expanded (plein écran)
-            //   • Glisse vers le bas / tap scrim → fermeture
             if (showAddSheet) {
                 CompositionLocalProvider(LocalViewModelStoreOwner provides vmStoreOwner) {
                     ModalBottomSheet(
                         onDismissRequest = { showAddSheet = false },
                         sheetState = sheetState,
                         containerColor = MaterialTheme.colorScheme.surface,
-                        dragHandle = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth() // <-- CORRECTION ICI : fillMaxWidth au lieu de fillMaxSize
-                                    .padding(vertical = 12.dp),
-                                contentAlignment = Alignment.TopCenter,
-                            ) {
-                                androidx.compose.foundation.Canvas(
-                                    modifier = Modifier
-                                        .width(40.dp)
-                                        .height(4.dp),
-                                ) {
-                                    drawRoundRect(
-                                        color = androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.4f),
-                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(50f),
-                                    )
-                                }
-                            }
-                        },
                     ) {
                         TransactionEditScreen(
                             onBack = {
-                                scope.launch { sheetState.hide() }.invokeOnCompletion {
-                                    showAddSheet = false
-                                }
+                                scope.launch { sheetState.hide() }.invokeOnCompletion { showAddSheet = false }
                             },
                             onNavigateToCreateCategory = {
-                                // Fermer le sheet puis naviguer vers l'écran de création de catégorie
                                 scope.launch { sheetState.hide() }.invokeOnCompletion {
                                     showAddSheet = false
                                     navController.navigate(Routes.CATEGORY_CREATE)

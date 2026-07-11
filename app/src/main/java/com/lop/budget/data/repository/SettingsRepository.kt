@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.lop.budget.ui.theme.ThemeMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -14,8 +15,7 @@ import javax.inject.Singleton
 private val Context.dataStore by preferencesDataStore(name = "lop_settings")
 
 /**
- * Préférences persistées : devise (EUR par défaut, configurable), clé API Gemini
- * saisie par l'utilisateur, mode de thème et activation de la couleur dynamique.
+ * Préférences persistées : devise, clé API Gemini, mode de thème, etc.
  */
 @Singleton
 class SettingsRepository @Inject constructor(
@@ -26,6 +26,9 @@ class SettingsRepository @Inject constructor(
         val GEMINI_KEY = stringPreferencesKey("gemini_api_key")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val DYNAMIC_COLOR = stringPreferencesKey("dynamic_color")
+
+        // Notifications
+        val NOTIF_DETECTION = stringPreferencesKey("notif_tx_detection")
     }
 
     val currency: Flow<String> = context.dataStore.data.map { it[Keys.CURRENCY] ?: "EUR" }
@@ -35,8 +38,24 @@ class SettingsRepository @Inject constructor(
     }
     val dynamicColor: Flow<Boolean> = context.dataStore.data.map { (it[Keys.DYNAMIC_COLOR] ?: "true").toBoolean() }
 
+    val notificationDetectionEnabled: Flow<Boolean> =
+        context.dataStore.data.map { (it[Keys.NOTIF_DETECTION] ?: "false").toBoolean() }
+
     suspend fun setCurrency(value: String) = context.dataStore.edit { it[Keys.CURRENCY] = value }
     suspend fun setGeminiKey(value: String) = context.dataStore.edit { it[Keys.GEMINI_KEY] = value }
     suspend fun setThemeMode(mode: ThemeMode) = context.dataStore.edit { it[Keys.THEME_MODE] = mode.name }
     suspend fun setDynamicColor(enabled: Boolean) = context.dataStore.edit { it[Keys.DYNAMIC_COLOR] = enabled.toString() }
+
+    suspend fun setNotificationDetectionEnabled(enabled: Boolean) =
+        context.dataStore.edit { it[Keys.NOTIF_DETECTION] = enabled.toString() }
+
+    suspend fun isNotificationDetectionEnabledOnce(): Boolean = notificationDetectionEnabled.first()
+
+    fun isAllowedNotificationSource(packageName: String): Boolean {
+        // MVP : sources fixes
+        return packageName in setOf(
+            "com.google.android.apps.walletnfcrel", // Google Wallet/Pay
+            "com.samsung.android.spay", // Samsung Wallet
+        )
+    }
 }
