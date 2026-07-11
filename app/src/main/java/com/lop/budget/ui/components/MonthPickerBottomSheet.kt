@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -63,12 +64,17 @@ fun MonthPickerBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var year by remember(selected) { mutableStateOf(selected.year) }
 
+    // IMPORTANT: on ne peut pas laisser le bottom sheet transparent, sinon sur un fond sombre
+    // (et avec blur) le contenu derrière "mange" la lisibilité.
+    val sheetContainer = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+    val scrim = Color.Black.copy(alpha = 0.55f)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         modifier = modifier,
-        // On laisse le container transparent pour que le design de fond (AppBackground) reste visible.
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        containerColor = sheetContainer,
+        scrimColor = scrim,
     ) {
         Column(
             modifier = Modifier
@@ -141,7 +147,7 @@ private fun YearHeaderPill(
 
     Surface(
         shape = shape,
-        color = androidx.compose.ui.graphics.Color.Transparent,
+        color = Color.Transparent,
         border = BorderStroke(1.dp, borderColor),
         shadowElevation = 10.dp,
         tonalElevation = 0.dp,
@@ -261,7 +267,7 @@ private fun MonthPill(
 
     Surface(
         shape = shape,
-        color = androidx.compose.ui.graphics.Color.Transparent,
+        color = Color.Transparent,
         border = BorderStroke(1.dp, border),
         tonalElevation = 0.dp,
         shadowElevation = if (isSelected) 8.dp else 2.dp,
