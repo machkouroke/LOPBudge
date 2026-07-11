@@ -25,6 +25,10 @@ interface TransactionDao {
 
     @Transaction
     @Query("SELECT * FROM transactions WHERE id = :id AND deleted = 0")
+    suspend fun getById(id: Long): TransactionWithRelations?
+
+    @Transaction
+    @Query("SELECT * FROM transactions WHERE id = :id AND deleted = 0")
     fun observeById(id: Long): Flow<TransactionWithRelations?>
 
     /** Toutes les occurrences d'une même série récurrente. */

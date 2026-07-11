@@ -67,6 +67,13 @@ fun TransactionDetailScreen(
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
     val haptic = LocalHapticFeedback.current
+
+    // Si la transaction a été supprimée (ex: suite à une conversion en série), on ferme l'écran
+    LaunchedEffect(state.transaction, state.isLoaded) {
+        if (state.isLoaded && state.transaction == null) {
+            onBack()
+        }
+    }
     var editingCategory by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 

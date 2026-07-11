@@ -76,6 +76,11 @@ class TransactionEditViewModel @Inject constructor(
             repo.observeTransaction(id).collect { twr ->
                 if (twr != null && !isLoaded) {
                     val tx = twr.transaction
+                    
+                    // Si c'est une occurrence d'une série, on récupère les infos de récurrence
+                    val seriesId = tx.seriesId?.toLongOrNull()
+                    val series = if (seriesId != null) repo.getSeriesById(seriesId) else null
+                    
                     _form.value = TransactionForm(
                         type = tx.type,
                         amountInput = tx.amount.toString(),
@@ -85,6 +90,11 @@ class TransactionEditViewModel @Inject constructor(
                         accountId = tx.accountId,
                         tagIds = twr.tags.map { it.id }.toSet(),
                         note = tx.note ?: "",
+                        frequency = series?.frequency ?: RecurrenceFrequency.NONE,
+                        interval = series?.interval ?: 1,
+                        daysOfWeek = series?.daysOfWeek?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet(),
+                        endDate = series?.endDate,
+                        maxOccurrences = series?.maxOccurrences,
                         linkedGoalId = tx.linkedGoalId,
                         linkedDebtId = tx.linkedDebtId
                     )
@@ -163,48 +173,24 @@ class TransactionEditViewModel @Inject constructor(
         val f = _form.value
         if (f.amount <= 0.0 || f.categoryId == null || f.accountId == null) return
         viewModelScope.launch {
-            if (f.frequency != RecurrenceFrequency.NONE) {
-                // Créer ou mettre à jour une série récurrente (TODO: Gérer l'édition de série existante)
-                // Pour l'instant, on crée toujours une nouvelle série si c'est une création
-                // ou si on transforme une ponctuelle en récurrente.
-                // L'édition d'une occurrence d'une série nécessite une logique plus complexe (portée).
-                val series = RecurringSeriesEntity(
-                    title = f.title.ifBlank { context.getString(R.string.tx_default_title) },
-                    amount = f.amount,
-                    type = f.type,
-                    categoryId = f.categoryId,
-                    accountId = f.accountId,
-                    frequency = f.frequency,
-                    interval = f.interval,
-                    startDate = f.date,
-                    endDate = f.endDate,
-                    maxOccurrences = f.maxOccurrences,
-                    daysOfWeek = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(","),
-                    status = "ACTIVE",
-                    note = f.note.ifBlank { null },
-                    linkedGoalId = f.linkedGoalId,
-                    linkedDebtId = f.linkedDebtId
-                )
-                repo.saveRecurringSeries(series)
-                // Note : Les tags sur les séries nécessiteraient une table de jointure séparée,
-                // ignoré pour l'instant pour la simplicité.
-            } else {
-                // Créer ou mettre à jour une transaction ponctuelle
-                val tx = TransactionEntity(
-                    id = editingTransactionId ?: 0L,
-                    title = f.title.ifBlank { context.getString(R.string.tx_default_title) },
-                    amount = f.amount,
-                    type = f.type,
-                    status = TransactionStatus.PLANNED,
-                    date = f.date,
-                    accountId = f.accountId,
-                    categoryId = f.categoryId,
-                    note = f.note.ifBlank { null },
-                    linkedGoalId = f.linkedGoalId,
-                    linkedDebtId = f.linkedDebtId,
-                )
-                repo.saveTransaction(tx, f.tagIds.toList())
-            }
+            repo.saveWithTransition(
+                editingId = editingTransactionId,
+                title = f.title.ifBlank { context.getString(R.string.tx_default_title) },
+                amount = f.amount,
+                type = f.type,
+                date = f.date,
+                accountId = f.accountId,
+                categoryId = f.categoryId,
+                note = f.note.ifBlank { null },
+                frequency = f.frequency,
+                interval = f.interval,
+                daysOfWeek = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(","),
+                endDate = f.endDate,
+                maxOccurrences = f.maxOccurrences,
+                linkedGoalId = f.linkedGoalId,
+                linkedDebtId = f.linkedDebtId,
+                tagIds = f.tagIds.toList()
+            )
             onDone()
         }
     }

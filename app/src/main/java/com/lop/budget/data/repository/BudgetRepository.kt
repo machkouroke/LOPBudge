@@ -184,6 +184,7 @@ class BudgetRepository @Inject constructor(
         return occurrences
     }
     fun observeTransaction(id: Long) = transactionDao.observeById(id)
+    suspend fun getTxById(id: Long) = transactionDao.getById(id)
     fun observeSeries(seriesId: String) = transactionDao.observeSeries(seriesId)
     // observePaidSum est supprimé car le calcul se fait désormais en mémoire dans le ViewModel
     // à partir de observeTransactionsBetween() qui inclut les occurrences virtuelles.
@@ -194,10 +195,126 @@ class BudgetRepository @Inject constructor(
         val txId = if (tx.id == 0L) id else tx.id
         transactionDao.clearTags(txId)
         tagIds.forEach { transactionDao.addTagCrossRef(TransactionTagCrossRef(txId, it)) }
-
-        // L'ancienne logique generateFutureOccurrences est supprimée.
-        // Les transactions récurrentes sont maintenant gérées via RecurringSeriesEntity.
         return txId
+    }
+
+    /**
+     * Gère la sauvegarde d'une transaction avec transition de type intelligente.
+     * Cette fonction orchestre le passage de ponctuel à série, de série à ponctuel,
+     * ou la mise à jour d'une série existante.
+     */
+    suspend fun saveWithTransition(
+        editingId: Long?, // ID de la transaction physique éditée (si existe)
+        title: String,
+        amount: Double,
+        type: TransactionType,
+        date: Long,
+        accountId: Long,
+        categoryId: Long,
+        note: String?,
+        frequency: com.lop.budget.domain.model.RecurrenceFrequency,
+        interval: Int,
+        daysOfWeek: String?,
+        endDate: Long?,
+        maxOccurrences: Int?,
+        linkedGoalId: Long?,
+        linkedDebtId: Long?,
+        tagIds: List<Long>
+    ) {
+        val currentTwr = editingId?.let { transactionDao.getById(it) }
+        val currentSeriesId = currentTwr?.transaction?.seriesId?.toLongOrNull()
+
+        if (frequency == com.lop.budget.domain.model.RecurrenceFrequency.NONE) {
+            // --- CAS 1 : VERS PONCTUEL ---
+            if (currentSeriesId != null) {
+                // On passe de série à ponctuel : 
+                // 1. On arrête la série parente pour le futur (conserve le passé)
+                cancelSeries(currentSeriesId.toString(), com.lop.budget.domain.model.SeriesDeletionMode.FUTURE, date)
+                
+                // 2. On transforme l'occurrence éditée en transaction isolée
+                val singleTx = TransactionEntity(
+                    id = editingId ?: 0L,
+                    title = title,
+                    amount = amount,
+                    type = type,
+                    status = currentTwr?.transaction?.status ?: TransactionStatus.PLANNED,
+                    date = date,
+                    accountId = accountId,
+                    categoryId = categoryId,
+                    note = note,
+                    seriesId = null, // Débranchée
+                    seriesDate = null,
+                    isException = false,
+                    linkedGoalId = linkedGoalId,
+                    linkedDebtId = linkedDebtId
+                )
+                saveTransaction(singleTx, tagIds)
+            } else {
+                // Simple mise à jour ou création de transaction ponctuelle
+                val tx = TransactionEntity(
+                    id = editingId ?: 0L,
+                    title = title,
+                    amount = amount,
+                    type = type,
+                    status = currentTwr?.transaction?.status ?: TransactionStatus.PLANNED,
+                    date = date,
+                    accountId = accountId,
+                    categoryId = categoryId,
+                    note = note,
+                    linkedGoalId = linkedGoalId,
+                    linkedDebtId = linkedDebtId
+                )
+                saveTransaction(tx, tagIds)
+            }
+        } else {
+            // --- CAS 2 : VERS SÉRIE ---
+            if (currentSeriesId != null) {
+                // Mise à jour d'une série existante
+                val series = RecurringSeriesEntity(
+                    id = currentSeriesId,
+                    title = title,
+                    amount = amount,
+                    type = type,
+                    categoryId = categoryId,
+                    accountId = accountId,
+                    frequency = frequency,
+                    interval = interval,
+                    startDate = date, // Repart de la date éditée
+                    endDate = endDate,
+                    maxOccurrences = maxOccurrences,
+                    daysOfWeek = daysOfWeek,
+                    status = "ACTIVE",
+                    note = note,
+                    linkedGoalId = linkedGoalId,
+                    linkedDebtId = linkedDebtId
+                )
+                saveRecurringSeries(series)
+            } else {
+                // Conversion ponctuel -> série
+                // 1. Supprimer l'ancienne transaction isolée
+                editingId?.let { hardDeleteTransaction(it) }
+                
+                // 2. Créer la nouvelle série
+                val series = RecurringSeriesEntity(
+                    title = title,
+                    amount = amount,
+                    type = type,
+                    categoryId = categoryId,
+                    accountId = accountId,
+                    frequency = frequency,
+                    interval = interval,
+                    startDate = date,
+                    endDate = endDate,
+                    maxOccurrences = maxOccurrences,
+                    daysOfWeek = daysOfWeek,
+                    status = "ACTIVE",
+                    note = note,
+                    linkedGoalId = linkedGoalId,
+                    linkedDebtId = linkedDebtId
+                )
+                saveRecurringSeries(series)
+            }
+        }
     }
 
     suspend fun saveRecurringSeries(series: RecurringSeriesEntity): Long {

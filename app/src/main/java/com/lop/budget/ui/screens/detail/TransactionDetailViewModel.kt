@@ -25,6 +25,7 @@ data class DetailUiState(
     val upcomingDates: List<Long> = emptyList(),
     val seriesOccurrences: List<TransactionWithRelations> = emptyList(),
     val availableCategories: List<CategoryEntity> = emptyList(),
+    val isLoaded: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -40,7 +41,7 @@ class TransactionDetailViewModel @Inject constructor(
 
     val uiState: StateFlow<DetailUiState> =
         combine(txFlow, repo.observeCategories()) { tx, categories ->
-            if (tx == null) return@combine DetailUiState(availableCategories = categories)
+            if (tx == null) return@combine DetailUiState(availableCategories = categories, isLoaded = txId.value != null)
             
             val seriesId = tx.transaction.seriesId?.toLongOrNull()
             val series = if (seriesId != null) repo.getSeriesById(seriesId) else null
@@ -50,6 +51,7 @@ class TransactionDetailViewModel @Inject constructor(
                 transaction = tx,
                 upcomingDates = upcoming,
                 availableCategories = categories.filter { it.type == tx.transaction.type },
+                isLoaded = true
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DetailUiState())
 
