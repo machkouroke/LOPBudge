@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -38,13 +40,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
@@ -67,14 +71,17 @@ import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.HapticIntent
+import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.IconMapper
 
 /**
- * Redesign "Material expressive" : lisible, hiérarchie claire, surfaces M3.
- * Pas d'effet glass/transparent.
+ * Material expressive, lisible, ergonomique.
+ * - proportions inspirées de Home (padding 20.dp + header léger)
+ * - bottom gradient similaire à Home
+ * - progressive disclosure pour la récurrence
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,6 +95,8 @@ fun TransactionEditScreen(
     val accounts by vm.accounts.collectAsStateWithLifecycle()
     val tags by vm.tags.collectAsStateWithLifecycle()
 
+    // creation flow: open category picker first
+    var showCategorySheet by remember { mutableStateOf(false) }
     var showTagsSheet by remember { mutableStateOf(false) }
 
     val ext = LopTheme.extended
@@ -95,6 +104,13 @@ fun TransactionEditScreen(
     val typeCategories = categories.filter { it.type == form.type }
 
     val canSave = form.amount > 0.0 && form.categoryId != null && form.accountId != null
+
+    LaunchedEffect(vm.isEditing, categories.size) {
+        // On veut d'abord sélectionner une catégorie pour la création
+        if (!vm.isEditing && categories.isNotEmpty() && form.categoryId == null) {
+            showCategorySheet = true
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -124,11 +140,19 @@ fun TransactionEditScreen(
             )
         },
         bottomBar = {
-            // Bouton d'action principal, fixe, ergonomique.
-            Surface(
-                color = MaterialTheme.colorScheme.background,
-                tonalElevation = 0.dp,
-                shadowElevation = 10.dp,
+            // Bottom gradient like Home
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.55f),
+                                MaterialTheme.colorScheme.background,
+                            )
+                        )
+                    )
             ) {
                 Column(
                     modifier = Modifier
@@ -174,8 +198,8 @@ fun TransactionEditScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            // Segmented control
             item {
-                // Segmented control (expressive)
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -196,14 +220,14 @@ fun TransactionEditScreen(
                 }
             }
 
-            item {
-                SectionTitle(stringResource(R.string.tx_section_main))
-            }
+            item { SectionTitle(stringResource(R.string.tx_section_main)) }
 
             item {
-                ElevatedCard {
+                ExpressiveCard {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
+                        // Amount as filled field (more Revolut-like)
+                        FilledField(
+                            label = stringResource(R.string.tx_amount_label),
                             value = form.amountInput.takeIf { it != "0" } ?: "",
                             onValueChange = { newValue ->
                                 val filtered = newValue.filter { it.isDigit() || it == ',' || it == '.' }
@@ -212,36 +236,27 @@ fun TransactionEditScreen(
                                     vm.setAmountRaw(normalized)
                                 }
                             },
-                            label = { Text(stringResource(R.string.tx_amount_label)) },
-                            leadingIcon = {
+                            leading = {
                                 Text(
                                     text = if (form.type == TransactionType.INCOME) "+" else "−",
                                     color = accent,
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(start = 14.dp)
                                 )
                             },
-                            trailingIcon = {
+                            trailing = {
                                 Text(
                                     text = "€",
                                     style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.padding(end = 14.dp)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
+                            keyboardType = KeyboardType.Decimal,
                             textStyle = MaterialTheme.typography.headlineMedium.copy(
                                 color = accent,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.End,
                             ),
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = accent,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
-                            )
                         )
 
                         // Date
@@ -275,125 +290,65 @@ fun TransactionEditScreen(
                             }
                         }
 
-                        DropdownSelector(
+                        SelectorRow(
                             label = stringResource(R.string.tx_date_label),
                             value = formattedDate,
                             icon = Icons.Filled.DateRange,
-                            iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            expanded = false,
                             onClick = { showDatePicker = true },
-                        ) {}
+                        )
 
-                        OutlinedTextField(
+                        FilledField(
+                            label = stringResource(R.string.tx_name_label),
                             value = form.title,
                             onValueChange = vm::setTitle,
-                            label = { Text(stringResource(R.string.tx_name_label)) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
+                            keyboardType = KeyboardType.Text,
+                            textStyle = MaterialTheme.typography.bodyLarge,
                         )
                     }
                 }
             }
 
-            item {
-                SectionTitle(stringResource(R.string.tx_section_classification))
-            }
+            item { SectionTitle(stringResource(R.string.tx_section_classification)) }
 
             item {
-                ElevatedCard {
+                ExpressiveCard {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        // Catégorie
-                        var expandedCategory by remember { mutableStateOf(false) }
                         val selectedCat = typeCategories.find { it.id == form.categoryId }
-
-                        DropdownSelector(
+                        SelectorRow(
                             label = stringResource(R.string.tx_category_label),
                             value = selectedCat?.name ?: stringResource(R.string.tx_select_category),
-                            icon = selectedCat?.let { IconMapper.get(it.icon) },
+                            icon = selectedCat?.let { IconMapper.get(it.icon) } ?: Icons.Filled.KeyboardArrowDown,
                             iconTint = selectedCat?.let { Color(it.colorArgb) },
-                            expanded = expandedCategory,
-                            onClick = { expandedCategory = true },
-                        ) {
-                            DropdownMenu(
-                                expanded = expandedCategory,
-                                onDismissRequest = { expandedCategory = false },
-                                modifier = Modifier.fillMaxWidth(0.92f),
-                            ) {
-                                typeCategories.forEach { cat ->
-                                    DropdownMenuItem(
-                                        text = { Text(cat.name) },
-                                        leadingIcon = {
-                                            CircleIcon(
-                                                icon = IconMapper.get(cat.icon),
-                                                tint = Color(cat.colorArgb),
-                                                background = Color(cat.colorArgb).copy(alpha = 0.14f),
-                                                size = 32.dp,
-                                            )
-                                        },
-                                        onClick = {
-                                            vm.setCategory(cat.id)
-                                            expandedCategory = false
-                                        },
-                                    )
-                                }
+                            onClick = { showCategorySheet = true },
+                        )
 
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            expandedCategory = false
-                                            onNavigateToCreateCategory()
-                                        },
+                        val selectedAcc = accounts.find { it.id == form.accountId }
+                        SelectorRow(
+                            label = stringResource(R.string.tx_account_label),
+                            value = selectedAcc?.name ?: stringResource(R.string.tx_select_account),
+                            onClick = { /* keep dropdown for now */ },
+                            trailingChevron = true,
+                            dropdown = {
+                                var expandedAccount by remember { mutableStateOf(false) }
+                                LaunchedEffect(Unit) { expandedAccount = true }
+                                DropdownMenu(
+                                    expanded = expandedAccount,
+                                    onDismissRequest = { expandedAccount = false },
+                                    modifier = Modifier.fillMaxWidth(0.92f),
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Icon(
-                                            Icons.Filled.Add,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        )
-                                        Spacer(Modifier.width(12.dp))
-                                        Text(
-                                            stringResource(R.string.tx_create_category),
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            fontWeight = FontWeight.SemiBold,
+                                    accounts.forEach { acc ->
+                                        DropdownMenuItem(
+                                            text = { Text(acc.name) },
+                                            onClick = {
+                                                vm.setAccount(acc.id)
+                                                expandedAccount = false
+                                            },
                                         )
                                     }
                                 }
-                            }
-                        }
+                            },
+                        )
 
-                        // Compte
-                        var expandedAccount by remember { mutableStateOf(false) }
-                        val selectedAcc = accounts.find { it.id == form.accountId }
-                        DropdownSelector(
-                            label = stringResource(R.string.tx_account_label),
-                            value = selectedAcc?.name ?: stringResource(R.string.tx_select_account),
-                            expanded = expandedAccount,
-                            onClick = { expandedAccount = true },
-                        ) {
-                            DropdownMenu(
-                                expanded = expandedAccount,
-                                onDismissRequest = { expandedAccount = false },
-                                modifier = Modifier.fillMaxWidth(0.92f),
-                            ) {
-                                accounts.forEach { acc ->
-                                    DropdownMenuItem(
-                                        text = { Text(acc.name) },
-                                        onClick = {
-                                            vm.setAccount(acc.id)
-                                            expandedAccount = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
-
-                        // Tags
                         val selectedTags = tags.filter { it.id in form.tagIds }
                         Surface(
                             modifier = Modifier
@@ -401,7 +356,7 @@ fun TransactionEditScreen(
                                 .clip(RoundedCornerShape(16.dp))
                                 .clickable { showTagsSheet = true },
                             color = MaterialTheme.colorScheme.surfaceVariant,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
                         ) {
                             Column(Modifier.padding(16.dp)) {
                                 Text(
@@ -435,95 +390,57 @@ fun TransactionEditScreen(
                 }
             }
 
-            item {
-                SectionTitle(stringResource(R.string.tx_section_optional))
-            }
+            item { SectionTitle(stringResource(R.string.tx_section_optional)) }
 
             item {
-                ElevatedCard {
-                    OutlinedTextField(
+                ExpressiveCard {
+                    FilledField(
+                        label = stringResource(R.string.tx_notes_label),
                         value = form.note,
                         onValueChange = vm::setNote,
-                        label = { Text(stringResource(R.string.tx_notes_label)) },
+                        keyboardType = KeyboardType.Text,
+                        textStyle = MaterialTheme.typography.bodyLarge,
                         minLines = 3,
-                        maxLines = 6,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
                     )
                 }
             }
 
-            // Recurrence (gardée, mais dans une carte lisible)
-            item {
-                SectionTitle(stringResource(R.string.tx_repeat_label))
-            }
+            // Progressive disclosure recurrence
+            item { SectionTitle(stringResource(R.string.tx_repeat_label)) }
 
             item {
-                ElevatedCard {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        var expanded by remember { mutableStateOf(false) }
-                        val freqs = listOf(
-                            RecurrenceFrequency.NONE to stringResource(R.string.tx_repeat_none),
-                            RecurrenceFrequency.DAILY to stringResource(R.string.tx_repeat_daily),
-                            RecurrenceFrequency.WEEKLY to stringResource(R.string.tx_repeat_weekly),
-                            RecurrenceFrequency.MONTHLY to stringResource(R.string.tx_repeat_monthly),
-                            RecurrenceFrequency.YEARLY to stringResource(R.string.tx_repeat_yearly),
-                        )
-                        val selectedFreqLabel = freqs.find { it.first == form.frequency }?.second
-                            ?: stringResource(R.string.tx_repeat_none)
-
-                        DropdownSelector(
-                            label = stringResource(R.string.tx_repeat_label),
-                            value = selectedFreqLabel,
-                            expanded = expanded,
-                            onClick = { expanded = true },
-                        ) {
-                            DropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false },
-                                modifier = Modifier.fillMaxWidth(0.92f),
-                            ) {
-                                freqs.forEach { (freq, label) ->
-                                    DropdownMenuItem(
-                                        text = { Text(label) },
-                                        onClick = {
-                                            vm.setFrequency(freq)
-                                            expanded = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
-
-                        // Le reste des options avancées est conservé tel quel pour l'instant.
-                        // L'objectif ici est surtout de remettre une hiérarchie + lisibilité.
-                        AnimatedVisibility(visible = form.frequency != RecurrenceFrequency.NONE) {
-                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(stringResource(R.string.tx_repeat_every))
-                                    Spacer(Modifier.width(10.dp))
-                                    OutlinedTextField(
-                                        value = form.interval.toString(),
-                                        onValueChange = { vm.setInterval(it.toIntOrNull() ?: 1) },
-                                        singleLine = true,
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                        modifier = Modifier.width(90.dp),
-                                        shape = RoundedCornerShape(12.dp),
-                                    )
-                                    Spacer(Modifier.width(10.dp))
-                                    Text(stringResource(R.string.tx_repeat_intervals))
-                                }
-                            }
-                        }
-                    }
+                ExpressiveCard {
+                    RecurrenceBlock(
+                        form = form,
+                        onSetFrequency = vm::setFrequency,
+                        onSetInterval = vm::setInterval,
+                        onToggleDow = vm::toggleDayOfWeek,
+                        onSetEndDate = vm::setEndDate,
+                        onSetMaxOccurrences = vm::setMaxOccurrences,
+                    )
                 }
             }
         }
     }
 
+    if (showCategorySheet) {
+        CategoryBottomSheet(
+            title = stringResource(R.string.tx_category_sheet_title),
+            categories = typeCategories,
+            selectedId = form.categoryId,
+            onSelect = { id ->
+                vm.setCategory(id)
+                showCategorySheet = false
+            },
+            onCreate = {
+                showCategorySheet = false
+                onNavigateToCreateCategory()
+            },
+            onDismiss = { showCategorySheet = false },
+        )
+    }
+
     if (showTagsSheet) {
-        // On garde la bottom sheet tags pour l'instant (fonctionnelle), mais le screen principal
-        // est désormais lisible et entièrement Material M3.
         TagsBottomSheet(
             tags = tags,
             selectedTagIds = form.tagIds,
@@ -550,14 +467,14 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun ElevatedCard(content: @Composable () -> Unit) {
+private fun ExpressiveCard(content: @Composable () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp),
         tonalElevation = 2.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             content()
@@ -590,63 +507,414 @@ private fun TypeSegment(
 }
 
 @Composable
-private fun DropdownSelector(
+private fun FilledField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    keyboardType: KeyboardType,
+    textStyle: androidx.compose.ui.text.TextStyle,
+    leading: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    minLines: Int = 1,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (leading != null) {
+                    Box(Modifier.padding(end = 10.dp)) { leading() }
+                }
+
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    modifier = Modifier.weight(1f),
+                    textStyle = textStyle,
+                    keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                    singleLine = minLines == 1,
+                    minLines = minLines,
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
+                )
+
+                if (trailing != null) {
+                    Box(Modifier.padding(start = 10.dp)) { trailing() }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectorRow(
     label: String,
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     iconTint: Color? = null,
-    expanded: Boolean,
+    trailingChevron: Boolean = true,
     onClick: () -> Unit,
-    content: @Composable () -> Unit,
+    dropdown: (@Composable () -> Unit)? = null,
 ) {
-    val rotation by animateFloatAsState(if (expanded) 180f else 0f)
-
     Box {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .clickable(onClick = onClick)
-                .border(
-                    1.dp,
-                    if (expanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                    RoundedCornerShape(16.dp)
-                ),
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f), RoundedCornerShape(16.dp)),
             color = MaterialTheme.colorScheme.surfaceVariant,
         ) {
             Row(
                 modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (icon != null && iconTint != null) {
+                if (icon != null) {
                     CircleIcon(
                         icon = icon,
-                        tint = iconTint,
-                        background = iconTint.copy(alpha = 0.14f),
-                        size = 32.dp,
+                        tint = iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                        background = (iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.12f),
+                        size = 34.dp,
                     )
                     Spacer(Modifier.width(12.dp))
                 }
 
-                Column(modifier = Modifier.weight(1f)) {
+                Column(Modifier.weight(1f)) {
                     Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(2.dp))
-                    Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                    Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                 }
 
-                Icon(
-                    Icons.Filled.ArrowDropDown,
-                    contentDescription = null,
-                    modifier = Modifier.rotate(rotation),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (trailingChevron) {
+                    Icon(
+                        Icons.Filled.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
-        content()
+        dropdown?.invoke()
     }
 }
 
-// --- Tags sheet kept as-is (existing UI). ---
+@Composable
+private fun RecurrenceBlock(
+    form: TransactionForm,
+    onSetFrequency: (RecurrenceFrequency) -> Unit,
+    onSetInterval: (Int) -> Unit,
+    onToggleDow: (Int) -> Unit,
+    onSetEndDate: (Long?) -> Unit,
+    onSetMaxOccurrences: (Int?) -> Unit,
+) {
+    var expandedAdvanced by remember { mutableStateOf(false) }
+
+    // Frequency selector
+    var expandedFreq by remember { mutableStateOf(false) }
+    val freqs = listOf(
+        RecurrenceFrequency.NONE to stringResource(R.string.tx_repeat_none),
+        RecurrenceFrequency.DAILY to stringResource(R.string.tx_repeat_daily),
+        RecurrenceFrequency.WEEKLY to stringResource(R.string.tx_repeat_weekly),
+        RecurrenceFrequency.MONTHLY to stringResource(R.string.tx_repeat_monthly),
+        RecurrenceFrequency.YEARLY to stringResource(R.string.tx_repeat_yearly),
+    )
+    val selectedFreqLabel = freqs.find { it.first == form.frequency }?.second
+        ?: stringResource(R.string.tx_repeat_none)
+
+    SelectorRow(
+        label = stringResource(R.string.tx_repeat_label),
+        value = selectedFreqLabel,
+        icon = Icons.Filled.Repeat,
+        onClick = { expandedFreq = true },
+        dropdown = {
+            DropdownMenu(
+                expanded = expandedFreq,
+                onDismissRequest = { expandedFreq = false },
+                modifier = Modifier.fillMaxWidth(0.92f)
+            ) {
+                freqs.forEach { (freq, label) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            onSetFrequency(freq)
+                            expandedFreq = false
+                        }
+                    )
+                }
+            }
+        },
+    )
+
+    if (form.frequency == RecurrenceFrequency.NONE) return
+
+    Spacer(Modifier.height(8.dp))
+
+    // Interval always visible
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            stringResource(R.string.tx_repeat_every),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.width(10.dp))
+        OutlinedTextField(
+            value = form.interval.toString(),
+            onValueChange = { onSetInterval(it.filter { c -> c.isDigit() }.toIntOrNull() ?: 1) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.width(90.dp),
+            shape = RoundedCornerShape(12.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(stringResource(R.string.tx_repeat_intervals), style = MaterialTheme.typography.bodyMedium)
+    }
+
+    // Advanced progressive disclosure
+    Spacer(Modifier.height(8.dp))
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .pressScaleClickable(intent = HapticIntent.Tap, pressedScale = 0.99f) {
+                expandedAdvanced = !expandedAdvanced
+            },
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.tx_repeat_advanced),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.Filled.KeyboardArrowDown,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.rotate(if (expandedAdvanced) 180f else 0f),
+            )
+        }
+    }
+
+    AnimatedVisibility(visible = expandedAdvanced) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 10.dp)) {
+            if (form.frequency == RecurrenceFrequency.WEEKLY) {
+                Text(stringResource(R.string.tx_repeat_days_of_week), style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val days = listOf("L" to 1, "M" to 2, "M" to 3, "J" to 4, "V" to 5, "S" to 6, "D" to 7)
+                    days.forEach { (lbl, num) ->
+                        val sel = num in form.daysOfWeek
+                        Surface(
+                            shape = CircleShape,
+                            color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .pressScaleClickable(intent = HapticIntent.Selection) { onToggleDow(num) },
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    lbl,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = if (sel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text(stringResource(R.string.tx_repeat_ends), style = MaterialTheme.typography.labelLarge)
+
+            val endPolicy = when {
+                form.endDate != null -> "date"
+                form.maxOccurrences != null -> "occ"
+                else -> "never"
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = endPolicy == "never", onClick = { onSetEndDate(null); onSetMaxOccurrences(null) })
+                Text(stringResource(R.string.tx_repeat_ends_never), modifier = Modifier.clickable { onSetEndDate(null); onSetMaxOccurrences(null) })
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = endPolicy == "date", onClick = { onSetEndDate(form.date + 86400000L * 30); })
+                Text(stringResource(R.string.tx_repeat_ends_on), modifier = Modifier.clickable {
+                    if (endPolicy != "date") onSetEndDate(form.date + 86400000L * 30)
+                })
+                Spacer(Modifier.width(8.dp))
+                if (endPolicy == "date") {
+                    var showEndDatePicker by remember { mutableStateOf(false) }
+                    if (showEndDatePicker) {
+                        val endState = rememberDatePickerState(initialSelectedDateMillis = form.endDate ?: System.currentTimeMillis())
+                        androidx.compose.material3.DatePickerDialog(
+                            onDismissRequest = { showEndDatePicker = false },
+                            confirmButton = {
+                                androidx.compose.material3.TextButton(onClick = {
+                                    endState.selectedDateMillis?.let { onSetEndDate(it) }
+                                    showEndDatePicker = false
+                                }) { Text(stringResource(R.string.ok)) }
+                            },
+                            dismissButton = {
+                                androidx.compose.material3.TextButton(onClick = { showEndDatePicker = false }) { Text(stringResource(R.string.cancel)) }
+                            },
+                        ) {
+                            androidx.compose.material3.DatePicker(state = endState)
+                        }
+                    }
+
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.clickable { showEndDatePicker = true }
+                    ) {
+                        val endFormatted = java.time.Instant.ofEpochMilli(form.endDate ?: System.currentTimeMillis())
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toLocalDate()
+                            .format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy", java.util.Locale.getDefault()))
+                        Text(
+                            endFormatted,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = endPolicy == "occ", onClick = { onSetMaxOccurrences(10) })
+                Text(stringResource(R.string.tx_repeat_ends_after), modifier = Modifier.clickable {
+                    if (endPolicy != "occ") onSetMaxOccurrences(10)
+                })
+                Spacer(Modifier.width(8.dp))
+                if (endPolicy == "occ") {
+                    OutlinedTextField(
+                        value = form.maxOccurrences?.toString() ?: "",
+                        onValueChange = {
+                            val n = it.filter { c -> c.isDigit() }.toIntOrNull()
+                            if (n != null && n > 0) onSetMaxOccurrences(n)
+                        },
+                        modifier = Modifier.width(80.dp).height(50.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        textStyle = androidx.compose.ui.text.TextStyle(textAlign = TextAlign.Center)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.tx_repeat_occurrences_label))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategoryBottomSheet(
+    title: String,
+    categories: List<com.lop.budget.data.local.entity.CategoryEntity>,
+    selectedId: Long?,
+    onSelect: (Long) -> Unit,
+    onCreate: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        scrimColor = Color.Black.copy(alpha = 0.55f),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            if (categories.isEmpty()) {
+                Text(stringResource(R.string.tx_no_categories), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            categories.forEach { cat ->
+                val selected = cat.id == selectedId
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .pressScaleClickable(intent = HapticIntent.Selection, pressedScale = 0.98f) { onSelect(cat.id) },
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val c = Color(cat.colorArgb)
+                        CircleIcon(
+                            icon = IconMapper.get(cat.icon),
+                            tint = c,
+                            background = c.copy(alpha = 0.14f),
+                            size = 38.dp,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(cat.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                if (cat.type == TransactionType.INCOME) stringResource(R.string.tx_type_income) else stringResource(R.string.tx_type_expense),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (selected) {
+                            Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onCreate() }
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Spacer(Modifier.width(12.dp))
+                    Text(stringResource(R.string.tx_create_category), color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+        }
+    }
+}
+
+// Tags sheet kept as-is (existing UI).
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun TagsBottomSheet(
@@ -656,9 +924,6 @@ private fun TagsBottomSheet(
     onCreateTag: (String, Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // Keep existing implementation by delegating to the original file content.
-    // NOTE: In this repo, TagsBottomSheet is defined in this file historically.
-    // For now we keep the previous code path by reusing ModalBottomSheet.
     val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var newTagName by remember { mutableStateOf("") }
 
