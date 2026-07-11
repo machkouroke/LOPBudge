@@ -63,15 +63,13 @@ object LopTheme {
 /**
  * Thème racine de LOPBudge.
  *
- * @param dynamicColor quand true (par défaut) et Android >= 12, le schéma de
- * couleurs est dérivé du wallpaper / thème Material You du système. Sinon, on
- * retombe sur la palette lavande de l'app. Les couleurs revenu/dépense restent
- * constantes via [LopExtendedColors].
+ * IMPORTANT: ce composable ne doit pas "forcer" le thème ; il doit respecter
+ * les préférences utilisateur (ThemeMode + dynamicColor).
  */
 @Composable
 fun LopBudgeTheme(
-    themeMode: ThemeMode = ThemeMode.DARK, // Forcer le Dark Mode par défaut pour le nouveau design
-    dynamicColor: Boolean = false, // Désactiver les couleurs dynamiques par défaut pour garder notre palette
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val systemDark = isSystemInDarkTheme()
@@ -108,7 +106,6 @@ fun LopBudgeTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // LOP-49 : status bar entièrement transparente (edge-to-edge immersif).
             @Suppress("DEPRECATION")
             window.statusBarColor = android.graphics.Color.TRANSPARENT
             @Suppress("DEPRECATION")
