@@ -1,19 +1,26 @@
 package com.lop.budget.ui.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +37,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import java.time.Month
 import java.time.YearMonth
@@ -58,6 +67,8 @@ fun MonthPickerBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         modifier = modifier,
+        // On laisse le container transparent pour que le design de fond (AppBackground) reste visible.
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
     ) {
         Column(
             modifier = Modifier
@@ -65,43 +76,36 @@ fun MonthPickerBottomSheet(
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Header year switcher
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.ChevronLeft,
-                    contentDescription = "Année précédente",
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clickableNoRipple { year -= 1 },
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = year.toString(),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Spacer(Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.Filled.ChevronRight,
-                    contentDescription = "Année suivante",
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clickableNoRipple { year += 1 },
-                )
-            }
+            Text(
+                text = "Choisir un mois",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            // Header glass : année + nav + today
+            YearHeaderPill(
+                year = year,
+                selected = selected,
+                locale = config.locale,
+                onPrev = { year -= 1 },
+                onNext = { year += 1 },
+                onToday = {
+                    val now = YearMonth.now()
+                    year = now.year
+                    onSelect(now)
+                    onDismiss()
+                },
+            )
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 items(Month.values().toList()) { month ->
-                    MonthCell(
+                    MonthPill(
                         month = month,
                         selected = selected,
                         year = year,
@@ -115,13 +119,118 @@ fun MonthPickerBottomSheet(
                 }
             }
 
-            Spacer(Modifier.padding(bottom = 24.dp))
+            Spacer(Modifier.height(28.dp))
         }
     }
 }
 
 @Composable
-private fun MonthCell(
+private fun YearHeaderPill(
+    year: Int,
+    selected: YearMonth,
+    locale: Locale,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onToday: () -> Unit,
+) {
+    val shape = RoundedCornerShape(32.dp)
+
+    val borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    val surfaceTop = MaterialTheme.colorScheme.surface.copy(alpha = 0.70f)
+    val surfaceBottom = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+
+    Surface(
+        shape = shape,
+        color = androidx.compose.ui.graphics.Color.Transparent,
+        border = BorderStroke(1.dp, borderColor),
+        shadowElevation = 10.dp,
+        tonalElevation = 0.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(surfaceTop, surfaceBottom),
+                ),
+            ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.ChevronLeft,
+                contentDescription = "Année précédente",
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .size(32.dp)
+                    .pressScaleClickable(intent = HapticIntent.Tap, pressedScale = 0.92f, onClick = onPrev),
+            )
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = year.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+
+                val isCurrentYear = selected.year == year
+                val subtitle = if (isCurrentYear) {
+                    selected.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar { it.uppercase(locale) }
+                } else {
+                    ""
+                }
+
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                    )
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
+                    modifier = Modifier
+                        .size(34.dp)
+                        .pressScaleClickable(intent = HapticIntent.Selection, pressedScale = 0.94f, onClick = onToday),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Filled.Today,
+                            contentDescription = "Aujourd'hui",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.width(10.dp))
+
+                Icon(
+                    imageVector = Icons.Filled.ChevronRight,
+                    contentDescription = "Année suivante",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .pressScaleClickable(intent = HapticIntent.Tap, pressedScale = 0.92f, onClick = onNext),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthPill(
     month: Month,
     selected: YearMonth,
     year: Int,
@@ -130,28 +239,54 @@ private fun MonthCell(
 ) {
     val isSelected = selected.year == year && selected.month == month
 
-    val shape = MaterialTheme.shapes.large
-    val container = if (isSelected) MaterialTheme.colorScheme.primaryContainer
-    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+    val shape = RoundedCornerShape(28.dp)
 
-    val content = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-    else MaterialTheme.colorScheme.onSurface
+    val container = if (isSelected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+    } else {
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.42f)
+    }
+
+    val border = if (isSelected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.32f)
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
+    }
+
+    val content = if (isSelected) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f)
+    }
 
     Surface(
-        color = container,
         shape = shape,
+        color = androidx.compose.ui.graphics.Color.Transparent,
+        border = BorderStroke(1.dp, border),
+        tonalElevation = 0.dp,
+        shadowElevation = if (isSelected) 8.dp else 2.dp,
         modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
             .clip(shape)
-            .clickableNoRipple(onClick)
-            .padding(vertical = 14.dp),
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        container,
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isSelected) 0.20f else 0.16f),
+                    ),
+                ),
+            )
+            .pressScaleClickable(intent = HapticIntent.Selection, pressedScale = 0.97f, onClick = onClick),
     ) {
-        Text(
-            text = month.getDisplayName(TextStyle.SHORT, locale).replaceFirstChar { it.uppercase(locale) },
-            modifier = Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-            color = content,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = month.getDisplayName(TextStyle.SHORT, locale).replaceFirstChar { it.uppercase(locale) },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                color = content,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
