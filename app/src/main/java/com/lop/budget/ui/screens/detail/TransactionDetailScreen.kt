@@ -49,8 +49,11 @@ import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
+import com.lop.budget.ui.components.ConfirmDeleteSheet
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.PillTag
+import com.lop.budget.ui.components.RecurringDeleteChoice
+import com.lop.budget.ui.components.RecurringDeleteSheet
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
@@ -68,7 +71,6 @@ fun TransactionDetailScreen(
     val ext = LopTheme.extended
     val haptic = LocalHapticFeedback.current
 
-    // Si la transaction a été supprimée (ex: suite à une conversion en série), on ferme l'écran
     LaunchedEffect(state.transaction, state.isLoaded) {
         if (state.isLoaded && state.transaction == null) {
             onBack()
@@ -80,7 +82,6 @@ fun TransactionDetailScreen(
     val twr = state.transaction
     val tx = twr?.transaction
 
-    // Bottom Sheet Style (Redesign)
     LazyColumn(
         Modifier
             .fillMaxSize()
@@ -97,7 +98,6 @@ fun TransactionDetailScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                // Close button (cross)
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -116,7 +116,6 @@ fun TransactionDetailScreen(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Edit button
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -124,10 +123,7 @@ fun TransactionDetailScreen(
                                 MaterialTheme.colorScheme.surfaceVariant,
                                 androidx.compose.foundation.shape.CircleShape
                             )
-                            .clickableNoRipple {
-                                // TODO: Gérer l'édition d'une série récurrente avec modal contextuelle
-                                onEdit(transactionId)
-                            },
+                            .clickableNoRipple { onEdit(transactionId) },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -136,7 +132,6 @@ fun TransactionDetailScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    // Delete button
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -144,14 +139,7 @@ fun TransactionDetailScreen(
                                 MaterialTheme.colorScheme.surfaceVariant,
                                 androidx.compose.foundation.shape.CircleShape
                             )
-                            .clickableNoRipple {
-                                if (tx?.seriesId != null) {
-                                    // TODO: Modal contextuelle (cette occurrence / suivantes / toutes)
-                                    showDeleteConfirm = true
-                                } else {
-                                    showDeleteConfirm = true
-                                }
-                            },
+                            .clickableNoRipple { showDeleteConfirm = true },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -172,7 +160,6 @@ fun TransactionDetailScreen(
         val isIncome = tx.type == TransactionType.INCOME
         val accent = if (isIncome) ext.income else ext.expense
 
-        // En-tête montant (Redesign)
         item {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -196,13 +183,11 @@ fun TransactionDetailScreen(
             }
         }
 
-        // Détails en liste
         item {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.padding(top = 24.dp)
             ) {
-                // Category
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -223,12 +208,12 @@ fun TransactionDetailScreen(
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val catColor = twr.category?.colorArgb?.let { Color(it) }
+                        val c = twr.category?.colorArgb?.let { Color(it) }
                             ?: com.lop.budget.ui.theme.CategoryOrange
                         CircleIcon(
                             IconMapper.get(twr.category?.icon ?: "category"),
                             Color.White,
-                            catColor,
+                            c,
                             size = 24.dp
                         )
                         Spacer(Modifier.width(8.dp))
@@ -239,7 +224,6 @@ fun TransactionDetailScreen(
                     }
                 }
 
-                // Date
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -262,7 +246,6 @@ fun TransactionDetailScreen(
                     Text(Format.fullDate(tx.date), style = MaterialTheme.typography.bodyLarge)
                 }
 
-                // Type
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -288,7 +271,6 @@ fun TransactionDetailScreen(
                     )
                 }
 
-                // Account
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -330,7 +312,6 @@ fun TransactionDetailScreen(
             }
         }
 
-        // Tags
         if (twr.tags.isNotEmpty()) {
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -339,7 +320,6 @@ fun TransactionDetailScreen(
             }
         }
 
-        // Catégorie modifiable (même si payé) — suggestion utilisateur
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column {
@@ -444,7 +424,6 @@ fun TransactionDetailScreen(
             }
         }
 
-        // Action : marquer payé
         if (tx.status == TransactionStatus.PLANNED) {
             item {
                 FloatingCard(
@@ -475,44 +454,36 @@ fun TransactionDetailScreen(
     }
 
     if (showDeleteConfirm && tx != null) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text(stringResource(R.string.tx_detail_delete_title)) },
-            text = {
-                if (tx.seriesId != null) {
-                    Text(stringResource(R.string.tx_detail_delete_recurring_msg))
-                } else {
-                    Text(stringResource(R.string.tx_detail_delete_msg))
-                }
-            },
-            confirmButton = {
-                if (tx.seriesId != null) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        androidx.compose.material3.TextButton(onClick = {
-                            showDeleteConfirm = false
-                            vm.deleteOccurrence(onBack)
-                        }) { Text(stringResource(R.string.tx_detail_delete_occurrence), color = MaterialTheme.colorScheme.error) }
-                        androidx.compose.material3.TextButton(onClick = {
-                            showDeleteConfirm = false
-                            vm.deleteSeries(SeriesDeletionMode.FUTURE, tx.date, onBack)
-                        }) { Text(stringResource(R.string.tx_detail_delete_future), color = MaterialTheme.colorScheme.error) }
-                        androidx.compose.material3.TextButton(onClick = {
-                            showDeleteConfirm = false
-                            vm.deleteSeries(SeriesDeletionMode.ALL, null, onBack)
-                        }) { Text(stringResource(R.string.tx_detail_delete_series), color = MaterialTheme.colorScheme.error) }
-                    }
-                } else {
-                    androidx.compose.material3.TextButton(onClick = {
-                        showDeleteConfirm = false
-                        vm.delete(onBack)
-                    }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
-                }
-            },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = {
+        if (tx.seriesId != null) {
+            RecurringDeleteSheet(
+                onDismiss = { showDeleteConfirm = false },
+                showFutureOnly = true,
+                onChoose = { choice ->
                     showDeleteConfirm = false
-                }) { Text(stringResource(R.string.cancel)) }
-            }
-        )
+                    when (choice) {
+                        RecurringDeleteChoice.THIS_OCCURRENCE -> {
+                            vm.deleteOccurrence(onBack)
+                        }
+                        RecurringDeleteChoice.FUTURE_ONLY -> {
+                            vm.deleteSeries(SeriesDeletionMode.FUTURE, tx.date, onBack)
+                        }
+                        RecurringDeleteChoice.ALL_SERIES -> {
+                            vm.deleteSeries(SeriesDeletionMode.ALL, null, onBack)
+                        }
+                    }
+                },
+            )
+        } else {
+            ConfirmDeleteSheet(
+                title = stringResource(R.string.tx_detail_delete_title),
+                message = stringResource(R.string.tx_detail_delete_msg),
+                confirmLabel = stringResource(R.string.delete),
+                onDismiss = { showDeleteConfirm = false },
+                onConfirm = {
+                    showDeleteConfirm = false
+                    vm.delete(onBack)
+                },
+            )
+        }
     }
 }
