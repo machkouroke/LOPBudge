@@ -149,7 +149,6 @@ private fun YearHeaderPill(
 
     Surface(
         shape = shape,
-        color = Color.Transparent,
         border = BorderStroke(1.dp, borderColor),
         shadowElevation = 10.dp,
         tonalElevation = 0.dp,
@@ -269,7 +268,6 @@ private fun MonthPill(
 
     Surface(
         shape = shape,
-        color = Color.Transparent,
         border = BorderStroke(1.dp, border),
         tonalElevation = 0.dp,
         shadowElevation = if (isSelected) 8.dp else 2.dp,

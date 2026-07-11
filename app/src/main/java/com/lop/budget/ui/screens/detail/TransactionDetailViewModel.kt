@@ -40,7 +40,11 @@ class TransactionDetailViewModel @Inject constructor(
     val uiState: StateFlow<DetailUiState> =
         combine(txFlow, repo.observeCategories()) { tx, categories ->
             if (tx == null) return@combine DetailUiState(availableCategories = categories)
-            val upcoming = RecurrenceEngine.upcomingDates(tx.transaction, limit = 6)
+            
+            val seriesId = tx.transaction.seriesId?.toLongOrNull()
+            val series = if (seriesId != null) repo.getSeriesById(seriesId) else null
+            val upcoming = series?.let { RecurrenceEngine.upcomingDates(it, limit = 6) } ?: emptyList()
+
             DetailUiState(
                 transaction = tx,
                 upcomingDates = upcoming,

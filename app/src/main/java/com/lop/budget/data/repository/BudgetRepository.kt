@@ -72,9 +72,6 @@ class BudgetRepository @Inject constructor(
             isException = true,
             linkedGoalId = series.linkedGoalId,
             linkedDebtId = series.linkedDebtId,
-            recurrenceFrequency = series.frequency,
-            recurrenceInterval = series.interval,
-            recurrenceEndDate = series.endDate
         )
         return transactionDao.upsert(exception)
     }
@@ -205,6 +202,8 @@ class BudgetRepository @Inject constructor(
     suspend fun saveRecurringSeries(series: RecurringSeriesEntity): Long {
         return recurringSeriesDao.upsert(series)
     }
+
+    suspend fun getSeriesById(id: Long) = recurringSeriesDao.getSeriesById(id)
 
     suspend fun cancelSeries(seriesIdStr: String) {
         val seriesId = seriesIdStr.toLongOrNull() ?: return

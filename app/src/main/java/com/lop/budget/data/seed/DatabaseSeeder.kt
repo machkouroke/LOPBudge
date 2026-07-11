@@ -159,104 +159,107 @@ object DatabaseSeeder {
         val today = LocalDate.now()
         val first = today.withDayOfMonth(1)
 
-//        // --- Revenus ---
-//        txDao.upsert(
-//            TransactionEntity(
-//                title = "Salaire",
-//                amount = 2600.0,
-//                type = TransactionType.INCOME,
-//                status = TransactionStatus.PAID,
-//                date = first.plusDays(0).millis(),
-//                accountId = checking,
-//                categoryId = salary,
-//                recurrenceFrequency = RecurrenceFrequency.MONTHLY,
-//                seriesId = UUID.randomUUID().toString()
-//            )
-//        )
-//        txDao.upsert(
-//            TransactionEntity(
-//                title = "Mission freelance",
-//                amount = 480.0,
-//                type = TransactionType.INCOME,
-//                status = TransactionStatus.PLANNED,
-//                date = today.plusDays(9).millis(),
-//                accountId = checking,
-//                categoryId = freelance
-//            )
-//        )
+        val seriesDao = db.recurringSeriesDao()
 
-        // --- Dépenses payées ---
-//        val rentSeries = UUID.randomUUID().toString()
-//        val rentId = txDao.upsert(
-//            TransactionEntity(
-//                title = "Loyer",
-//                amount = 820.0,
-//                type = TransactionType.EXPENSE,
-//                status = TransactionStatus.PAID,
-//                date = first.plusDays(2).millis(),
-//                accountId = checking,
-//                categoryId = rent,
-//                recurrenceFrequency = RecurrenceFrequency.MONTHLY,
-//                seriesId = rentSeries
-//            )
-//        )
-//        txDao.addTagCrossRef(TransactionTagCrossRef(rentId, tagEssential))
-//        txDao.addTagCrossRef(TransactionTagCrossRef(rentId, tagFixed))
+        // --- Séries Récurrentes ---
+        seriesDao.upsert(
+            com.lop.budget.data.local.entity.RecurringSeriesEntity(
+                title = "Salaire",
+                amount = 2600.0,
+                type = TransactionType.INCOME,
+                categoryId = salary,
+                accountId = checking,
+                frequency = RecurrenceFrequency.MONTHLY,
+                startDate = first.millis()
+            )
+        )
 
-//        txDao.upsert(
-//            TransactionEntity(
-//                title = "Courses Carrefour",
-//                amount = 86.4,
-//                type = TransactionType.EXPENSE,
-//                status = TransactionStatus.PAID,
-//                date = today.minusDays(2).millis(),
-//                accountId = cash,
-//                categoryId = food
-//            )
-//        )
-//        txDao.upsert(
-//            TransactionEntity(
-//                title = "Pass Navigo",
-//                amount = 86.4,
-//                type = TransactionType.EXPENSE,
-//                status = TransactionStatus.PAID,
-//                date = today.minusDays(5).millis(),
-//                accountId = checking,
-//                categoryId = transport,
-//                recurrenceFrequency = RecurrenceFrequency.MONTHLY,
-//                seriesId = UUID.randomUUID().toString()
-//            )
-//        )
-//
-//        val netflixSeries = UUID.randomUUID().toString()
-//        val netflixId = txDao.upsert(
-//            TransactionEntity(
-//                title = "Netflix",
-//                amount = 13.49,
-//                type = TransactionType.EXPENSE,
-//                status = TransactionStatus.PLANNED,
-//                date = today.plusDays(3).millis(),
-//                accountId = checking,
-//                categoryId = subscriptions,
-//                recurrenceFrequency = RecurrenceFrequency.MONTHLY,
-//                seriesId = netflixSeries
-//            )
-//        )
-//        txDao.addTagCrossRef(TransactionTagCrossRef(netflixId, tagFun))
+        seriesDao.upsert(
+            com.lop.budget.data.local.entity.RecurringSeriesEntity(
+                title = "Loyer",
+                amount = 820.0,
+                type = TransactionType.EXPENSE,
+                categoryId = rent,
+                accountId = checking,
+                frequency = RecurrenceFrequency.MONTHLY,
+                startDate = first.plusDays(2).millis()
+            )
+        )
 
-//        txDao.upsert(
-//            TransactionEntity(
-//                title = "Cinéma",
-//                amount = 24.0,
-//                type = TransactionType.EXPENSE,
-//                status = TransactionStatus.PAID,
-//                date = today.minusDays(1).millis(),
-//                accountId = cash,
-//                categoryId = leisure
-//            )
-//        )
+        seriesDao.upsert(
+            com.lop.budget.data.local.entity.RecurringSeriesEntity(
+                title = "Pass Navigo",
+                amount = 86.4,
+                type = TransactionType.EXPENSE,
+                categoryId = transport,
+                accountId = checking,
+                frequency = RecurrenceFrequency.MONTHLY,
+                startDate = today.minusDays(5).millis()
+            )
+        )
 
-        // --- Contribution objectif & remboursement dette ---
+        seriesDao.upsert(
+            com.lop.budget.data.local.entity.RecurringSeriesEntity(
+                title = "Netflix",
+                amount = 13.49,
+                type = TransactionType.EXPENSE,
+                categoryId = subscriptions,
+                accountId = checking,
+                frequency = RecurrenceFrequency.MONTHLY,
+                startDate = today.plusDays(3).millis()
+            )
+        )
+
+        seriesDao.upsert(
+            com.lop.budget.data.local.entity.RecurringSeriesEntity(
+                title = "Mensualité prêt auto",
+                amount = 220.0,
+                type = TransactionType.EXPENSE,
+                categoryId = rent,
+                accountId = checking,
+                frequency = RecurrenceFrequency.MONTHLY,
+                startDate = today.plusDays(12).millis(),
+                linkedDebtId = debtCar
+            )
+        )
+
+        // --- Transactions ponctuelles ---
+        txDao.upsert(
+            TransactionEntity(
+                title = "Mission freelance",
+                amount = 480.0,
+                type = TransactionType.INCOME,
+                status = TransactionStatus.PLANNED,
+                date = today.plusDays(9).millis(),
+                accountId = checking,
+                categoryId = freelance
+            )
+        )
+
+        txDao.upsert(
+            TransactionEntity(
+                title = "Courses Carrefour",
+                amount = 86.4,
+                type = TransactionType.EXPENSE,
+                status = TransactionStatus.PAID,
+                date = today.minusDays(2).millis(),
+                accountId = cash,
+                categoryId = food
+            )
+        )
+
+        txDao.upsert(
+            TransactionEntity(
+                title = "Cinéma",
+                amount = 24.0,
+                type = TransactionType.EXPENSE,
+                status = TransactionStatus.PAID,
+                date = today.minusDays(1).millis(),
+                accountId = cash,
+                categoryId = leisure
+            )
+        )
+
         txDao.upsert(
             TransactionEntity(
                 title = "Épargne vacances",
@@ -267,20 +270,6 @@ object DatabaseSeeder {
                 accountId = checking,
                 categoryId = subscriptions,
                 linkedGoalId = goalVacation
-            )
-        )
-        txDao.upsert(
-            TransactionEntity(
-                title = "Mensualité prêt auto",
-                amount = 220.0,
-                type = TransactionType.EXPENSE,
-                status = TransactionStatus.PLANNED,
-                date = today.plusDays(12).millis(),
-                accountId = checking,
-                categoryId = rent,
-                recurrenceFrequency = RecurrenceFrequency.MONTHLY,
-                seriesId = UUID.randomUUID().toString(),
-                linkedDebtId = debtCar
             )
         )
     }

@@ -283,7 +283,7 @@ fun HomeScreen(
                         val isIncome = tx.transaction.type == TransactionType.INCOME
                         val amountColor = if (isIncome) ext.income else ext.expense
                         val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
-                        val recurring = tx.transaction.recurrenceFrequency != RecurrenceFrequency.NONE
+                        val recurring = tx.transaction.seriesId != null
 
                         val isPaid = tx.transaction.status == TransactionStatus.PAID
                         val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)

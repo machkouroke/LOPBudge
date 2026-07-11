@@ -398,7 +398,7 @@ fun TransactionDetailScreen(
             }
         }
 
-        if (tx.recurrenceFrequency != RecurrenceFrequency.NONE && state.upcomingDates.isNotEmpty()) {
+        if (tx.seriesId != null && state.upcomingDates.isNotEmpty()) {
             item {
                 FloatingCard(Modifier.fillMaxWidth()) {
                     Column {

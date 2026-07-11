@@ -10,14 +10,10 @@ import com.lop.budget.domain.model.TransactionType
 /**
  * Transaction (revenu ou dépense), planifiée ou payée.
  *
- * La récurrence est décrite "à plat" pour rester simple à interroger :
- * - [recurrenceFrequency] : NONE pour une transaction ponctuelle.
- * - [recurrenceInterval] : tous les N (ex. toutes les 2 semaines).
- * - [recurrenceDaysOfWeek] : pour WEEKLY, jours ciblés encodés "1,3,5" (1=lundi).
- * - [recurrenceEndDate] / [recurrenceMaxOccurrences] : conditions de fin (optionnelles).
- * - [seriesId] : identifiant commun à toutes les occurrences d'une même série.
- *
  * Liens optionnels :
+ * - [seriesId] : identifiant de la série récurrente parente (si applicable).
+ * - [seriesDate] : date d'origine prévue dans la série (pour identifier l'occurrence).
+ * - [isException] : true si cette transaction est une matérialisation modifiée d'une série.
  * - [linkedGoalId] : contribution à un objectif d'épargne.
  * - [linkedDebtId] : remboursement d'une dette.
  */
@@ -44,12 +40,7 @@ data class TransactionEntity(
     val categoryId: Long,
     val note: String? = null,
 
-    // --- Récurrence avancée ---
-    val recurrenceFrequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
-    val recurrenceInterval: Int = 1,
-    val recurrenceDaysOfWeek: String? = null,
-    val recurrenceEndDate: Long? = null,
-    val recurrenceMaxOccurrences: Int? = null,
+    // --- Lien vers série récurrente ---
     val seriesId: String? = null,
     val seriesDate: Long? = null,
     val isException: Boolean = false,

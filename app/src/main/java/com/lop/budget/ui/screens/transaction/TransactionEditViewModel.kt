@@ -85,11 +85,6 @@ class TransactionEditViewModel @Inject constructor(
                         accountId = tx.accountId,
                         tagIds = twr.tags.map { it.id }.toSet(),
                         note = tx.note ?: "",
-                        frequency = tx.recurrenceFrequency,
-                        interval = tx.recurrenceInterval,
-                        daysOfWeek = tx.recurrenceDaysOfWeek?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet(),
-                        endDate = tx.recurrenceEndDate,
-                        maxOccurrences = tx.recurrenceMaxOccurrences,
                         linkedGoalId = tx.linkedGoalId,
                         linkedDebtId = tx.linkedDebtId
                     )
