@@ -80,6 +80,8 @@ class HomeViewModel @Inject constructor(
     }
 
     private val pendingDeletes = MutableStateFlow<Set<Long>>(emptySet())
+    private val pendingSeriesDeletes = MutableStateFlow<Map<String, SeriesDeletionMode>>(emptyMap())
+    private val pendingSeriesFromDates = MutableStateFlow<Map<String, Long>>(emptyMap())
     private val txVersions = MutableStateFlow<Map<Long, Int>>(emptyMap())
 
     fun materializeAndOpen(seriesId: Long, seriesDate: Long, onOpen: (Long) -> Unit) {
@@ -134,6 +136,12 @@ class HomeViewModel @Inject constructor(
         message: String,
         actionLabel: String
     ) {
+        // Ajout immédiat à l'état pendante pour masquer sur l'UI
+        pendingSeriesDeletes.value = pendingSeriesDeletes.value + (seriesId to mode)
+        if (fromDate != null) {
+            pendingSeriesFromDates.value = pendingSeriesFromDates.value + (seriesId to fromDate)
+        }
+
         viewModelScope.launch {
             val result = snackbarHostState.showSnackbar(
                 message = message,
@@ -141,8 +149,15 @@ class HomeViewModel @Inject constructor(
                 duration = androidx.compose.material3.SnackbarDuration.Short
             )
 
-            if (result != androidx.compose.material3.SnackbarResult.ActionPerformed) {
+            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                // Restauration immédiate si Annuler
+                pendingSeriesDeletes.value = pendingSeriesDeletes.value - seriesId
+                pendingSeriesFromDates.value = pendingSeriesFromDates.value - seriesId
+            } else {
+                // Exécution réelle en base
                 repo.cancelSeries(seriesId, mode, fromDate)
+                pendingSeriesDeletes.value = pendingSeriesDeletes.value - seriesId
+                pendingSeriesFromDates.value = pendingSeriesFromDates.value - seriesId
             }
         }
     }
@@ -177,16 +192,38 @@ class HomeViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<HomeUiState> =
-        combine(monthData, settings.currency, month, pendingDeletes, txVersions) { args ->
+        combine(monthData, settings.currency, month, pendingDeletes, pendingSeriesDeletes, pendingSeriesFromDates, txVersions) { args ->
             val data = args[0] as List<*>
             val currency = args[1] as String
             val ym = args[2] as YearMonth
             val pending = args[3] as Set<Long>
-            val versions = args[4] as Map<Long, Int>
+            val pendingSeries = args[4] as Map<String, SeriesDeletionMode>
+            val pendingSeriesDates = args[5] as Map<String, Long>
+            val versions = args[6] as Map<Long, Int>
 
             @Suppress("UNCHECKED_CAST")
             val allTxs = data[0] as List<TransactionWithRelations>
-            val txs = allTxs.filter { it.transaction.id !in pending }
+            
+            // Filtrage instantané pour l'UI
+            val txs = allTxs.filter { twr ->
+                val tx = twr.transaction
+                val isSinglePending = tx.id in pending
+                
+                val seriesId = tx.seriesId
+                val seriesPendingMode = if (seriesId != null) pendingSeries[seriesId] else null
+                
+                val isSeriesPending = when (seriesPendingMode) {
+                    SeriesDeletionMode.ALL -> true
+                    SeriesDeletionMode.FUTURE -> {
+                        val fromDate = pendingSeriesDates[seriesId]
+                        fromDate != null && tx.date >= fromDate
+                    }
+                    null -> false
+                }
+                
+                !isSinglePending && !isSeriesPending
+            }
+
             val income = data[1] as Double
             val expense = data[2] as Double
             val prevExpense = data[3] as Double
