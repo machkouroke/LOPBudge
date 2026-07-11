@@ -11,3 +11,6 @@ enum class RecurrenceFrequency { NONE, DAILY, WEEKLY, MONTHLY, YEARLY }
 
 /** Type de compte. */
 enum class AccountType { CHECKING, CASH, SAVINGS, CARD, OTHER }
+
+/** Mode de suppression d'une série récurrente. */
+enum class SeriesDeletionMode { ALL, FUTURE }

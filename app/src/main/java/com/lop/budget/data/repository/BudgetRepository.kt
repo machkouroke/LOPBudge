@@ -16,6 +16,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.dao.RecurringSeriesDao
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.TransactionStatus
 import kotlinx.coroutines.Dispatchers
@@ -205,9 +206,31 @@ class BudgetRepository @Inject constructor(
 
     suspend fun getSeriesById(id: Long) = recurringSeriesDao.getSeriesById(id)
 
-    suspend fun cancelSeries(seriesIdStr: String) {
+    suspend fun cancelSeries(seriesIdStr: String, mode: SeriesDeletionMode, fromDate: Long? = null) {
         val seriesId = seriesIdStr.toLongOrNull() ?: return
-        recurringSeriesDao.updateStatus(seriesId, "CANCELLED")
+        
+        when (mode) {
+            SeriesDeletionMode.ALL -> {
+                // 1. Annuler la série
+                recurringSeriesDao.updateStatus(seriesId, "CANCELLED")
+                // 2. Supprimer TOUTES les transactions matérialisées
+                transactionDao.softDeleteSeries(seriesIdStr)
+            }
+            SeriesDeletionMode.FUTURE -> {
+                // 1. Mettre à jour la date de fin de la série pour arrêter la génération future
+                val series = recurringSeriesDao.getSeriesById(seriesId)
+                if (series != null && fromDate != null) {
+                    // On met une date de fin juste avant l'occurrence sélectionnée
+                    recurringSeriesDao.upsert(series.copy(endDate = fromDate - 1, status = "CANCELLED"))
+                } else {
+                    recurringSeriesDao.updateStatus(seriesId, "CANCELLED")
+                }
+                // 2. Supprimer les transactions matérialisées à partir de la date
+                if (fromDate != null) {
+                    transactionDao.softDeleteSeriesFrom(seriesIdStr, fromDate)
+                }
+            }
+        }
     }
 
     /** Modifie la catégorie même si la transaction est déjà payée. */

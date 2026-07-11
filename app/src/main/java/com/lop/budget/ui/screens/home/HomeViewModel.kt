@@ -6,6 +6,7 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -127,6 +128,8 @@ class HomeViewModel @Inject constructor(
 
     fun deleteSeriesWithUndo(
         seriesId: String,
+        mode: SeriesDeletionMode,
+        fromDate: Long? = null,
         snackbarHostState: androidx.compose.material3.SnackbarHostState,
         message: String,
         actionLabel: String
@@ -139,7 +142,7 @@ class HomeViewModel @Inject constructor(
             )
 
             if (result != androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                repo.cancelSeries(seriesId)
+                repo.cancelSeries(seriesId, mode, fromDate)
             }
         }
     }

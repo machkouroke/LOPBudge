@@ -53,6 +53,12 @@ interface TransactionDao {
     @Query("UPDATE transactions SET deleted = 1 WHERE id = :id")
     suspend fun softDelete(id: Long)
 
+    @Query("UPDATE transactions SET deleted = 1 WHERE seriesId = :seriesId")
+    suspend fun softDeleteSeries(seriesId: String)
+
+    @Query("UPDATE transactions SET deleted = 1 WHERE seriesId = :seriesId AND date >= :fromDate")
+    suspend fun softDeleteSeriesFrom(seriesId: String, fromDate: Long)
+
     @Query("UPDATE transactions SET deleted = 0 WHERE id = :id")
     suspend fun restore(id: Long)
 

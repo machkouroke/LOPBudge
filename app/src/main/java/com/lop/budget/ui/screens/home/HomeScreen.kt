@@ -60,6 +60,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
@@ -482,5 +483,64 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    if (showDeleteConfirmForTx != null) {
+        val tx = showDeleteConfirmForTx!!
+        val context = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteConfirmForTx = null },
+            title = { Text(stringResource(R.string.tx_detail_delete_title)) },
+            text = { Text(stringResource(R.string.tx_detail_delete_recurring_msg)) },
+            confirmButton = {
+                Column(horizontalAlignment = Alignment.End) {
+                    androidx.compose.material3.TextButton(onClick = {
+                        val toDelete = showDeleteConfirmForTx!!
+                        showDeleteConfirmForTx = null
+                        vm.deleteOccurrenceWithUndo(
+                            toDelete.transaction.id,
+                            snackbarHostState,
+                            context.getString(R.string.tx_deleted_snackbar),
+                            context.getString(R.string.undo)
+                        )
+                    }) { Text(stringResource(R.string.tx_detail_delete_occurrence), color = MaterialTheme.colorScheme.error) }
+
+                    androidx.compose.material3.TextButton(onClick = {
+                        val seriesId = showDeleteConfirmForTx?.transaction?.seriesId
+                        val fromDate = showDeleteConfirmForTx?.transaction?.date
+                        showDeleteConfirmForTx = null
+                        if (seriesId != null) {
+                            vm.deleteSeriesWithUndo(
+                                seriesId = seriesId,
+                                mode = SeriesDeletionMode.FUTURE,
+                                fromDate = fromDate,
+                                snackbarHostState = snackbarHostState,
+                                message = context.getString(R.string.tx_deleted_snackbar),
+                                actionLabel = context.getString(R.string.undo)
+                            )
+                        }
+                    }) { Text(stringResource(R.string.tx_detail_delete_future), color = MaterialTheme.colorScheme.error) }
+
+                    androidx.compose.material3.TextButton(onClick = {
+                        val seriesId = showDeleteConfirmForTx?.transaction?.seriesId
+                        showDeleteConfirmForTx = null
+                        if (seriesId != null) {
+                            vm.deleteSeriesWithUndo(
+                                seriesId = seriesId,
+                                mode = SeriesDeletionMode.ALL,
+                                snackbarHostState = snackbarHostState,
+                                message = context.getString(R.string.tx_deleted_snackbar),
+                                actionLabel = context.getString(R.string.undo)
+                            )
+                        }
+                    }) { Text(stringResource(R.string.tx_detail_delete_series), color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showDeleteConfirmForTx = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 }

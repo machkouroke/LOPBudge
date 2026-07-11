@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.recurrence.RecurrenceEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -76,13 +77,12 @@ class TransactionDetailViewModel @Inject constructor(
         }
     }
 
-    fun deleteSeries(onDone: () -> Unit) {
-        val id = txId.value ?: return
+    fun deleteSeries(mode: SeriesDeletionMode, fromDate: Long? = null, onDone: () -> Unit) {
         val tx = uiState.value.transaction?.transaction ?: return
         val seriesId = tx.seriesId ?: return
         
         viewModelScope.launch {
-            repo.cancelSeries(seriesId)
+            repo.cancelSeries(seriesId, mode, fromDate)
             onDone()
         }
     }

@@ -81,7 +81,8 @@
     <string name="tx_detail_delete_recurring_msg">Cette transaction fait partie d\'une série récurrente. Voulez-vous supprimer uniquement cette occurrence, ou toute la série ?</string>
     <string name="tx_detail_delete_msg">Cette action est irréversible.</string>
     <string name="tx_detail_delete_occurrence">Cette occurrence</string>
-    <string name="tx_detail_delete_series">Toute la série</string>
+    <string name="tx_detail_delete_series">Toute la série (passé et futur)</string>
+    <string name="tx_detail_delete_future">Les suivantes uniquement</string>
 
     <!-- Analytics Screen -->
     <string name="analytics_spent_period">Spent in budget period</string>

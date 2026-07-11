@@ -171,28 +171,23 @@ fun SwipeableTransactionRow(
                             }
                         },
                         onDragEnd = {
-                            if (actionFired) return@detectHorizontalDragGestures
-
                             val velocity = velocityTracker.calculateVelocity().x
                             val threshold = componentWidthPx * thresholdFraction
                             val currentOffset = offsetX.value
 
                             val triggeredByPosition = abs(currentOffset) >= threshold
                             val triggeredByFling = abs(velocity) >= flingVelocityThreshold &&
-                                    // Le fling doit aller dans la même direction que le drag
+                                    (abs(currentOffset) > 20f) && // Éviter les déclenchements accidentels sur micro-fling
                                     (velocity > 0f) == (currentOffset > 0f)
 
-                            if (triggeredByPosition || triggeredByFling) {
+                            if (!actionFired && (triggeredByPosition || triggeredByFling)) {
                                 actionFired = true
                                 if (currentOffset > 0f) {
-                                    // Swipe droite → toggle payé
                                     onTogglePaid()
                                 } else {
-                                    // Swipe gauche → supprimer
                                     onDelete()
                                 }
                             }
-                            // Dans tous les cas, on remet l'item à sa place
                             resetToSettled()
                         },
                         onDragCancel = { resetToSettled() },

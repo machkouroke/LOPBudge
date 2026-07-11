@@ -45,6 +45,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
@@ -486,7 +487,11 @@ fun TransactionDetailScreen(
                         }) { Text(stringResource(R.string.tx_detail_delete_occurrence), color = MaterialTheme.colorScheme.error) }
                         androidx.compose.material3.TextButton(onClick = {
                             showDeleteConfirm = false
-                            vm.deleteSeries(onBack)
+                            vm.deleteSeries(SeriesDeletionMode.FUTURE, tx.date, onBack)
+                        }) { Text(stringResource(R.string.tx_detail_delete_future), color = MaterialTheme.colorScheme.error) }
+                        androidx.compose.material3.TextButton(onClick = {
+                            showDeleteConfirm = false
+                            vm.deleteSeries(SeriesDeletionMode.ALL, null, onBack)
                         }) { Text(stringResource(R.string.tx_detail_delete_series), color = MaterialTheme.colorScheme.error) }
                     }
                 } else {
