@@ -42,7 +42,7 @@ fun ConfirmDeleteSheet(
     modifier: Modifier = Modifier,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val container = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+    val container = MaterialTheme.colorScheme.surface
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -61,7 +61,10 @@ fun ConfirmDeleteSheet(
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = MaterialTheme.colorScheme.error.copy(alpha = 0.14f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.25f)),
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.25f)
+                    ),
                     modifier = Modifier.size(44.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -75,7 +78,11 @@ fun ConfirmDeleteSheet(
                 }
                 Spacer(Modifier.size(12.dp))
                 Column {
-                    Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
                     Text(
                         message,
                         style = MaterialTheme.typography.bodyMedium,
@@ -107,7 +114,6 @@ fun ConfirmDeleteSheet(
     }
 }
 
-private enum class ActionTone { Neutral, Danger }
 
 @Composable
 private fun ActionRow(
@@ -135,14 +141,15 @@ private fun ActionRow(
 
     Surface(
         shape = shape,
-        color = Color.Transparent,
+
         border = BorderStroke(1.dp, border),
-        shadowElevation = 6.dp,
-        tonalElevation = 0.dp,
+
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(Brush.verticalGradient(listOf(top, bottom)))
+            .background(
+                color = if (tone == ActionTone.Danger) Color.Red else MaterialTheme.colorScheme.surface
+            )
             .pressScaleClickable(
                 intent = if (tone == ActionTone.Danger) HapticIntent.Confirm else HapticIntent.Tap,
                 pressedScale = 0.98f,

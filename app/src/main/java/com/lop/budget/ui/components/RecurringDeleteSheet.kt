@@ -146,7 +146,7 @@ fun RecurringDeleteSheet(
     }
 }
 
-private enum class ActionTone { Neutral, Danger }
+enum class ActionTone { Neutral, Danger }
 
 @Composable
 private fun ActionRow(
