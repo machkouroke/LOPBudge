@@ -7,6 +7,7 @@ import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.dao.AccountDao
 import com.lop.budget.data.local.dao.CategoryDao
 import com.lop.budget.data.local.dao.DebtDao
+import com.lop.budget.data.local.dao.DetectedTransactionProposalDao
 import com.lop.budget.data.local.dao.GoalDao
 import com.lop.budget.data.local.dao.TagDao
 import com.lop.budget.data.local.dao.TransactionDao
@@ -29,7 +30,6 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): LopDatabase {
-        // Référence différée vers la base pour pouvoir l'alimenter dans le callback.
         lateinit var dbRef: LopDatabase
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         dbRef = Room.databaseBuilder(context, LopDatabase::class.java, LopDatabase.NAME)
@@ -39,7 +39,11 @@ object AppModule {
                     scope.launch { DatabaseSeeder.seed(dbRef) }
                 }
             })
-            .addMigrations(LopDatabase.MIGRATION_1_2, LopDatabase.MIGRATION_2_3)
+            .addMigrations(
+                LopDatabase.MIGRATION_1_2,
+                LopDatabase.MIGRATION_2_3,
+                LopDatabase.MIGRATION_3_4,
+            )
             .fallbackToDestructiveMigration()
             .build()
         return dbRef
@@ -52,4 +56,5 @@ object AppModule {
     @Provides fun provideGoalDao(db: LopDatabase): GoalDao = db.goalDao()
     @Provides fun provideDebtDao(db: LopDatabase): DebtDao = db.debtDao()
     @Provides fun provideRecurringSeriesDao(db: LopDatabase): com.lop.budget.data.local.dao.RecurringSeriesDao = db.recurringSeriesDao()
+    @Provides fun provideDetectedProposalDao(db: LopDatabase): DetectedTransactionProposalDao = db.detectedTransactionProposalDao()
 }

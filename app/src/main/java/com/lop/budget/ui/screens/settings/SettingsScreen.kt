@@ -1,5 +1,7 @@
 package com.lop.budget.ui.screens.settings
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -27,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -41,6 +45,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
+    val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     var keyInput by remember(state.geminiKey) { mutableStateOf(state.geminiKey) }
     var currencyInput by remember(state.currency) { mutableStateOf(state.currency) }
@@ -118,6 +123,43 @@ fun SettingsScreen(
             }
         }
 
+        // Détection automatique via notifications
+        item {
+            FloatingCard(Modifier.fillMaxWidth()) {
+                Column {
+                    Text("Détection automatique", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "LOPBudge peut analyser localement certaines notifications de paiement pour vous proposer une transaction à ajouter.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(10.dp))
+
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Détecter via notifications", style = MaterialTheme.typography.bodyLarge)
+                        Switch(
+                            checked = state.notificationDetectionEnabled,
+                            onCheckedChange = vm::setNotificationDetectionEnabled,
+                        )
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        },
+                    ) {
+                        Text("Autoriser l'accès aux notifications")
+                    }
+                }
+            }
+        }
+
         // Devise
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
@@ -127,9 +169,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = currencyInput,
                         onValueChange = {
-                            currencyInput = it.uppercase().take(3); vm.setCurrency(
-                            currencyInput
-                        )
+                            currencyInput = it.uppercase().take(3); vm.setCurrency(currencyInput)
                         },
                         label = { Text("Code ISO (EUR, USD, GBP…)") },
                         singleLine = true,
