@@ -50,6 +50,13 @@
     <string name="tx_tags_label">Étiquettes (max 3)</string>
     <string name="tx_no_tags">Aucune étiquette</string>
     <string name="tx_notes_label">Notes (optionnel)</string>
+
+    <!-- New section headers (Material expressive layout) -->
+    <string name="tx_section_main">Informations</string>
+    <string name="tx_section_classification">Catégorie &amp; compte</string>
+    <string name="tx_section_optional">Détails</string>
+    <string name="tx_required_fields_hint">Renseigne un montant, une catégorie et un compte pour enregistrer.</string>
+
     <string name="tx_repeat_label">Répéter</string>
     <string name="tx_repeat_none">Ne se répète pas</string>
     <string name="tx_repeat_daily">Tous les jours</string>
@@ -160,16 +167,19 @@
     <string name="gemini_error_no_key">Clé API Gemini manquante. Ajoute-la dans Réglages.</string>
     <string name="gemini_error_api">Erreur API (%1$d). Vérifie ta clé Gemini.</string>
     <string name="gemini_error_empty">Réponse vide de l\'assistant.</string>
+
     <!-- Notifications Service -->
     <string name="notif_detected_title">Transaction détectée</string>
     <string name="notif_channel_name">Transactions détectées</string>
     <string name="notif_channel_desc">Notifications quand une transaction est détectée via Google Wallet/Samsung Wallet</string>
+
     <!-- Snackbar / Undo -->
     <string name="tx_deleted_snackbar">Transaction supprimée</string>
     <string name="series_deleted_snackbar">Série supprimée</string>
     <string name="undo">Annuler</string>
     <string name="tx_default_title">Transaction</string>
     <string name="payment_detected_default">Paiement détecté</string>
+
     <!-- Bottom Bar -->
     <string name="nav_home">Accueil</string>
     <string name="nav_analytics">Analyse</string>
