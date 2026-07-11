@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -73,7 +74,6 @@ import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.HapticIntent
-import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
@@ -108,7 +108,6 @@ fun TransactionEditScreen(
     val canSave = form.amount > 0.0 && form.categoryId != null && form.accountId != null
 
     LaunchedEffect(vm.isEditing, categories.size) {
-        // On veut d'abord sélectionner une catégorie pour la création
         if (!vm.isEditing && categories.isNotEmpty() && form.categoryId == null) {
             showCategorySheet = true
         }
@@ -140,10 +139,13 @@ fun TransactionEditScreen(
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
                     actionIconContentColor = Color.Unspecified
                 ),
+                // FIX: évite un "double inset" quand l'app est en edge-to-edge.
+                // Material met déjà un inset statusBar par défaut; si un parent applique aussi
+                // des insets, on obtient un grand espace vide.
+                windowInsets = WindowInsets(0, 0, 0, 0),
             )
         },
         bottomBar = {
-            // Bottom gradient like Home
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -203,7 +205,6 @@ fun TransactionEditScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // Segmented control
             item {
                 Row(
                     Modifier.fillMaxWidth(),
@@ -230,7 +231,6 @@ fun TransactionEditScreen(
             item {
                 ExpressiveCard {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        // Amount as filled field (more Revolut-like)
                         FilledField(
                             label = stringResource(R.string.tx_amount_label),
                             value = form.amountInput.takeIf { it != "0" } ?: "",
@@ -265,7 +265,6 @@ fun TransactionEditScreen(
                             ),
                         )
 
-                        // Date
                         var showDatePicker by remember { mutableStateOf(false) }
                         val dateFormatter = java.time.format.DateTimeFormatter.ofPattern(
                             "dd MMMM yyyy",
@@ -419,7 +418,6 @@ fun TransactionEditScreen(
                 }
             }
 
-            // Progressive disclosure recurrence
             item { SectionTitle(stringResource(R.string.tx_repeat_label)) }
 
             item {
@@ -659,7 +657,6 @@ private fun RecurrenceBlock(
 ) {
     var expandedAdvanced by remember { mutableStateOf(false) }
 
-    // Frequency selector
     var expandedFreq by remember { mutableStateOf(false) }
     val freqs = listOf(
         RecurrenceFrequency.NONE to stringResource(R.string.tx_repeat_none),
@@ -699,7 +696,6 @@ private fun RecurrenceBlock(
 
     Spacer(Modifier.height(8.dp))
 
-    // Interval always visible
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             stringResource(R.string.tx_repeat_every),
@@ -722,7 +718,6 @@ private fun RecurrenceBlock(
         )
     }
 
-    // Advanced progressive disclosure
     Spacer(Modifier.height(8.dp))
     Surface(
         shape = RoundedCornerShape(14.dp),
