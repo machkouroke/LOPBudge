@@ -44,6 +44,8 @@
     <string name="tx_name_label">Nom de la transaction</string>
     <string name="tx_category_label">Catégorie</string>
     <string name="tx_select_category">Sélectionner une catégorie</string>
+    <string name="tx_category_sheet_title">Choisir une catégorie</string>
+    <string name="tx_no_categories">Aucune catégorie disponible</string>
     <string name="tx_create_category">Créer une nouvelle catégorie</string>
     <string name="tx_account_label">Compte</string>
     <string name="tx_select_account">Sélectionner un compte</string>
@@ -65,6 +67,7 @@
     <string name="tx_repeat_yearly">Tous les ans</string>
     <string name="tx_repeat_every">Tous les </string>
     <string name="tx_repeat_intervals"> intervalle(s)</string>
+    <string name="tx_repeat_advanced">Options avancées</string>
     <string name="tx_repeat_days_of_week">Jours de la semaine</string>
     <string name="tx_repeat_ends">Finit</string>
     <string name="tx_repeat_ends_never">Jamais</string>
