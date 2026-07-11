@@ -5,6 +5,7 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.DebtEntity
 import com.lop.budget.data.local.entity.GoalEntity
+import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
@@ -163,7 +164,7 @@ object DatabaseSeeder {
 
         // --- Séries Récurrentes ---
         seriesDao.upsert(
-            com.lop.budget.data.local.entity.RecurringSeriesEntity(
+            RecurringSeriesEntity(
                 title = "Salaire",
                 amount = 2600.0,
                 type = TransactionType.INCOME,
@@ -175,7 +176,7 @@ object DatabaseSeeder {
         )
 
         seriesDao.upsert(
-            com.lop.budget.data.local.entity.RecurringSeriesEntity(
+            RecurringSeriesEntity(
                 title = "Loyer",
                 amount = 820.0,
                 type = TransactionType.EXPENSE,
@@ -183,43 +184,6 @@ object DatabaseSeeder {
                 accountId = checking,
                 frequency = RecurrenceFrequency.MONTHLY,
                 startDate = first.plusDays(2).millis()
-            )
-        )
-
-        seriesDao.upsert(
-            com.lop.budget.data.local.entity.RecurringSeriesEntity(
-                title = "Pass Navigo",
-                amount = 86.4,
-                type = TransactionType.EXPENSE,
-                categoryId = transport,
-                accountId = checking,
-                frequency = RecurrenceFrequency.MONTHLY,
-                startDate = today.minusDays(5).millis()
-            )
-        )
-
-        seriesDao.upsert(
-            com.lop.budget.data.local.entity.RecurringSeriesEntity(
-                title = "Netflix",
-                amount = 13.49,
-                type = TransactionType.EXPENSE,
-                categoryId = subscriptions,
-                accountId = checking,
-                frequency = RecurrenceFrequency.MONTHLY,
-                startDate = today.plusDays(3).millis()
-            )
-        )
-
-        seriesDao.upsert(
-            com.lop.budget.data.local.entity.RecurringSeriesEntity(
-                title = "Mensualité prêt auto",
-                amount = 220.0,
-                type = TransactionType.EXPENSE,
-                categoryId = rent,
-                accountId = checking,
-                frequency = RecurrenceFrequency.MONTHLY,
-                startDate = today.plusDays(12).millis(),
-                linkedDebtId = debtCar
             )
         )
 
@@ -233,43 +197,6 @@ object DatabaseSeeder {
                 date = today.plusDays(9).millis(),
                 accountId = checking,
                 categoryId = freelance
-            )
-        )
-
-        txDao.upsert(
-            TransactionEntity(
-                title = "Courses Carrefour",
-                amount = 86.4,
-                type = TransactionType.EXPENSE,
-                status = TransactionStatus.PAID,
-                date = today.minusDays(2).millis(),
-                accountId = cash,
-                categoryId = food
-            )
-        )
-
-        txDao.upsert(
-            TransactionEntity(
-                title = "Cinéma",
-                amount = 24.0,
-                type = TransactionType.EXPENSE,
-                status = TransactionStatus.PAID,
-                date = today.minusDays(1).millis(),
-                accountId = cash,
-                categoryId = leisure
-            )
-        )
-
-        txDao.upsert(
-            TransactionEntity(
-                title = "Épargne vacances",
-                amount = 150.0,
-                type = TransactionType.EXPENSE,
-                status = TransactionStatus.PLANNED,
-                date = today.plusDays(6).millis(),
-                accountId = checking,
-                categoryId = subscriptions,
-                linkedGoalId = goalVacation
             )
         )
     }
