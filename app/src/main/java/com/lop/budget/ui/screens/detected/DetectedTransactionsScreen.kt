@@ -7,10 +7,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,7 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.HapticIntent
-import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.util.Format
 
@@ -44,25 +42,11 @@ fun DetectedTransactionsScreen(
 ) {
     val pending = vm.pending.collectAsStateWithLifecycle().value
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 20.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp, bottom = 40.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    LopScreenScaffold(
+        title = stringResource(R.string.detected_title),
+        onBack = onBack,
+        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack
     ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.back),
-                    modifier = Modifier.size(26.dp).clickableNoRipple(onBack),
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.detected_title), style = MaterialTheme.typography.headlineMedium)
-            }
-        }
-
         if (pending.isEmpty()) {
             item {
                 FloatingCard(Modifier.fillMaxWidth()) {

@@ -91,10 +91,7 @@ fun LopScreenScaffold(
                             tint = MaterialTheme.colorScheme.onSurface,
                         )
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    ),
+
                     windowInsets = WindowInsets(0, 0, 0, 0),
                 )
 

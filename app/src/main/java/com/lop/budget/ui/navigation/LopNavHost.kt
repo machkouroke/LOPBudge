@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -101,7 +102,7 @@ fun LopNavHost(startRoute: String? = null) {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(
             modifier = Modifier
@@ -276,23 +277,23 @@ fun LopNavHost(startRoute: String? = null) {
             AnimatedVisibility(
                 visible = showBar,
                 enter = slideInVertically(
-                    animationSpec = androidx.compose.animation.core.tween(
+                    animationSpec = tween(
                         durationMillis = MotionSpec.SLOW_MS,
                         easing = MotionSpec.easeOut
                     ),
                 ) { it / 2 } + fadeIn(
-                    animationSpec = androidx.compose.animation.core.tween(
+                    animationSpec = tween(
                         durationMillis = MotionSpec.MEDIUM_MS,
                         easing = MotionSpec.easeOut
                     ),
                 ),
                 exit = slideOutVertically(
-                    animationSpec = androidx.compose.animation.core.tween(
+                    animationSpec = tween(
                         durationMillis = MotionSpec.MEDIUM_MS,
                         easing = MotionSpec.easeOut
                     ),
                 ) { it / 2 } + fadeOut(
-                    animationSpec = androidx.compose.animation.core.tween(
+                    animationSpec = tween(
                         durationMillis = MotionSpec.FAST_MS,
                         easing = MotionSpec.easeOut
                     ),

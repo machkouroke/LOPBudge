@@ -12,14 +12,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AutoGraph
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -39,12 +37,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.ui.components.DonutSlice
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 
 @Composable
-fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
+fun AnalyticsScreen(
+    vm: AnalyticsViewModel = hiltViewModel(),
+    onBack: () -> Unit = {}
+) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
 
@@ -56,31 +58,15 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
         if (othersTotal > 0) add(DonutSlice(othersTotal, Color(0xFF9E9E9E), stringResource(R.string.others)))
     }
 
-    LazyColumn(
-        Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 120.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    LopScreenScaffold(
+        title = stringResource(R.string.nav_analytics),
+        onBack = onBack,
+        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack
     ) {
-        // En-tête : Back + Title + Actions (Category Detail Style)
-        item {
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), modifier = Modifier.size(26.dp).clickableNoRipple { /* Back */ })
-                Text(stringResource(R.string.other), style = MaterialTheme.typography.titleLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.CalendarMonth, null, modifier = Modifier.size(24.dp))
-                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.MoreHoriz, null, modifier = Modifier.size(24.dp))
-                }
-            }
-        }
-
         // Section Spent in budget period
         item {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
@@ -91,12 +77,12 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
                     Text(Format.money(totalSpent, state.currency), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.ArrowUpward, null, tint = com.lop.budget.ui.theme.ExpenseCoral, modifier = Modifier.size(14.dp))
+                        androidx.compose.material3.Icon(Icons.Filled.ArrowUpward, null, tint = com.lop.budget.ui.theme.ExpenseCoral, modifier = Modifier.size(14.dp))
                         Text(stringResource(R.string.analytics_vs_last_period, Format.money(109.89, state.currency)), style = MaterialTheme.typography.bodyMedium, color = com.lop.budget.ui.theme.ExpenseCoral)
                     }
                 }
                 com.lop.budget.ui.components.CircleIcon(
-                    icon = androidx.compose.material.icons.Icons.Filled.Restaurant, // Placeholder
+                    icon = Icons.Filled.Restaurant, // Placeholder
                     tint = Color.Black,
                     background = com.lop.budget.ui.theme.CategoryOrange,
                     size = 64.dp
@@ -110,7 +96,7 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(180.dp)
-                    .padding(vertical = 24.dp)
+                    .padding(vertical = 12.dp)
             ) {
                 // Ligne de limite budget
                 androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
@@ -179,7 +165,7 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
 
         // Cartes Budget & Forecast
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 16.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
                 // Carte Budget
                 FloatingCard(
                     modifier = Modifier.weight(1f),
@@ -188,7 +174,7 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
                 ) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.AccountBalanceWallet, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                            androidx.compose.material3.Icon(Icons.Filled.AccountBalanceWallet, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.analytics_budget), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -219,7 +205,7 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
                 ) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.AutoGraph, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                            androidx.compose.material3.Icon(Icons.Filled.AutoGraph, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.analytics_forecast), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -234,7 +220,7 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
         
         // Today Transactions
         item {
-            Row(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.analytics_today), style = MaterialTheme.typography.titleMedium)
                 Text(Format.money(128.0, state.currency), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -248,7 +234,7 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     com.lop.budget.ui.components.CircleIcon(
-                        icon = androidx.compose.material.icons.Icons.Filled.Restaurant, // Placeholder
+                        icon = Icons.Filled.Restaurant, // Placeholder
                         tint = Color.Black,
                         background = com.lop.budget.ui.theme.CategoryOrange,
                         size = 48.dp
