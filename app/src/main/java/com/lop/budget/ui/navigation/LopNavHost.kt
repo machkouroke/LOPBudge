@@ -3,8 +3,12 @@ package com.lop.budget.ui.navigation
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -93,6 +97,7 @@ fun LopNavHost(startRoute: String? = null) {
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBar = currentRoute in Routes.rootRoutes
+    val animDuration = 400
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -112,7 +117,25 @@ fun LopNavHost(startRoute: String? = null) {
                 popEnterTransition = { createEnterTransition(initialState, targetState) },
                 popExitTransition = { createExitTransition(initialState, targetState) },
             ) {
-                composable(Routes.HOME) {
+                composable(
+                    Routes.HOME, exitTransition = {
+                        scaleOut(
+                            targetScale = 0.95f,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        ) + fadeOut(
+                            targetAlpha = 0.5f,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        scaleIn(
+                            initialScale = 0.95f,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        ) + fadeIn(
+                            initialAlpha = 0.5f,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }) {
                     HomeScreen(
                         snackbarHostState = snackbarHostState,
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
@@ -170,10 +193,30 @@ fun LopNavHost(startRoute: String? = null) {
 
                 composable(
                     Routes.SETTINGS,
-                    enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
-                    exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
-                    popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
-                    popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }
                 ) {
                     SettingsScreen(onBack = { navController.popBackStack() })
                 }
@@ -185,9 +228,9 @@ fun LopNavHost(startRoute: String? = null) {
                 // NEW: Add is a full screen (not a modal bottom sheet)
                 composable(
                     Routes.ADD,
-                    enterTransition = { slideInVertically (initialOffsetY = { it }) },
-                    exitTransition = { slideOutVertically (targetOffsetY = { -it }) },
-                    popEnterTransition = { slideInVertically (initialOffsetY = { -it }) },
+                    enterTransition = { slideInVertically(initialOffsetY = { it }) },
+                    exitTransition = { slideOutVertically(targetOffsetY = { -it }) },
+                    popEnterTransition = { slideInVertically(initialOffsetY = { -it }) },
                     popExitTransition = { slideOutVertically(targetOffsetY = { it }) },
                 ) {
                     TransactionEditScreen(

@@ -131,15 +131,7 @@ fun TransactionEditScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
-                                MaterialTheme.colorScheme.background,
-                            )
-                        )
-                    )
+
             ) {
                 CenterAlignedTopAppBar(
                     title = {
@@ -197,7 +189,9 @@ fun TransactionEditScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                        .padding(horizontal = 20.dp, vertical = 14.dp)
+                        .background(Color.Transparent)
+                    ,
                 ) {
                     Button(
                         onClick = { vm.save(onDone = onBack) },

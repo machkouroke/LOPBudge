@@ -6,19 +6,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -38,6 +32,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.ThemeMode
@@ -52,35 +47,19 @@ fun SettingsScreen(
     var keyInput by remember(state.geminiKey) { mutableStateOf(state.geminiKey) }
     var currencyInput by remember(state.currency) { mutableStateOf(state.currency) }
 
-    LazyColumn(
-        Modifier
-            .fillMaxSize()
-            .padding(horizontal = 20.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            top = 20.dp,
-            bottom = 60.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    LopScreenScaffold(
+        title = stringResource(R.string.settings_title),
+        onBack = onBack,
+        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack
     ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    stringResource(R.string.back),
-                    modifier = Modifier
-                        .size(26.dp)
-                        .clickableNoRipple(onBack)
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
-            }
-        }
-
         // Apparence
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column {
-                    Text(stringResource(R.string.settings_appearance), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.settings_appearance),
+                        style = MaterialTheme.typography.titleMedium
+                    )
                     Spacer(Modifier.height(12.dp))
                     Text(
                         stringResource(R.string.settings_theme),
@@ -129,7 +108,10 @@ fun SettingsScreen(
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column {
-                    Text(stringResource(R.string.settings_auto_detection), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.settings_auto_detection),
+                        style = MaterialTheme.typography.titleMedium
+                    )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         stringResource(R.string.settings_auto_detection_desc),
@@ -143,7 +125,10 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(stringResource(R.string.settings_detect_via_notif), style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            stringResource(R.string.settings_detect_via_notif),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                         Switch(
                             checked = state.notificationDetectionEnabled,
                             onCheckedChange = vm::setNotificationDetectionEnabled,
@@ -153,7 +138,11 @@ fun SettingsScreen(
                     Spacer(Modifier.height(10.dp))
                     Button(
                         onClick = {
-                            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            context.startActivity(
+                                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(
+                                    Intent.FLAG_ACTIVITY_NEW_TASK
+                                )
+                            )
                         },
                     ) {
                         Text(stringResource(R.string.settings_allow_notif_access))
@@ -166,7 +155,10 @@ fun SettingsScreen(
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column {
-                    Text(stringResource(R.string.settings_currency), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.settings_currency),
+                        style = MaterialTheme.typography.titleMedium
+                    )
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = currencyInput,
@@ -185,7 +177,10 @@ fun SettingsScreen(
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column {
-                    Text(stringResource(R.string.settings_ai_title), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.settings_ai_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         stringResource(R.string.settings_ai_desc),

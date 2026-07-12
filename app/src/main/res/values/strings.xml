@@ -49,6 +49,8 @@
     <string name="tx_create_category">Créer une nouvelle catégorie</string>
     <string name="tx_account_label">Compte</string>
     <string name="tx_select_account">Sélectionner un compte</string>
+    <string name="tx_account_sheet_title">Choisir un compte</string>
+    <string name="tx_no_accounts">Aucun compte disponible</string>
     <string name="tx_tags_label">Étiquettes (max 3)</string>
     <string name="tx_no_tags">Aucune étiquette</string>
     <string name="tx_notes_label">Notes (optionnel)</string>
