@@ -1,7 +1,6 @@
 package com.lop.budget.ui.screens.transaction
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,27 +8,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
@@ -37,7 +29,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,14 +36,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
@@ -76,16 +63,15 @@ import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.HapticIntent
-import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.IconMapper
 
 /**
  * Material expressive, lisible, ergonomique.
- * - proportions inspirées de Home (padding 20.dp + header léger)
- * - bottom gradient similaire à Home
- * - progressive disclosure pour la récurrence
+ * - Utilise LopScreenScaffold pour la cohérence visuelle.
+ * - Progressive disclosure pour la récurrence.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,7 +85,6 @@ fun TransactionEditScreen(
     val accounts by vm.accounts.collectAsStateWithLifecycle()
     val tags by vm.tags.collectAsStateWithLifecycle()
 
-    // creation flow: open category picker first
     var showCategorySheet by remember { mutableStateOf(false) }
     var showAccountSheet by remember { mutableStateOf(false) }
     var showTagsSheet by remember { mutableStateOf(false) }
@@ -116,332 +101,254 @@ fun TransactionEditScreen(
         }
     }
 
-    val listState = rememberLazyListState()
-    val showTopBarDivider by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
-        }
-    }
-
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            // OneUI-ish: gradient header instead of an opaque block.
-            // Opaque near the bottom (behind the appbar content), fading upwards.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-
-            ) {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            if (vm.isEditing) stringResource(R.string.tx_edit_title) else stringResource(R.string.tx_new_title),
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    },
-                    navigationIcon = {
-                        Icon(
-                            Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.close),
-                            modifier = Modifier
-                                .padding(start = 12.dp)
-                                .size(26.dp)
-                                .clickableNoRipple(onBack),
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    ),
-                    // FIX: avoid double inset in edge-to-edge.
-                    windowInsets = WindowInsets(0, 0, 0, 0),
-                )
-
-                // When scrolling, just show a subtle outline (no heavy blocks)
-                if (showTopBarDivider) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
-                    )
-                }
-            }
-        },
+    LopScreenScaffold(
+        title = if (vm.isEditing) stringResource(R.string.tx_edit_title) else stringResource(R.string.tx_new_title),
+        onBack = onBack,
+        navigationIcon = Icons.Default.Close,
         bottomBar = {
-            // Keep the background container transparent; only the button is solid.
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.55f),
-                                MaterialTheme.colorScheme.background,
-                            )
-                        )
-                    )
+                    .padding(horizontal = 20.dp, vertical = 14.dp)
             ) {
-                Column(
+                Button(
+                    onClick = { vm.save(onDone = onBack) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 14.dp)
-                        .background(Color.Transparent)
-                    ,
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    enabled = canSave,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = accent,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
                 ) {
-                    Button(
-                        onClick = { vm.save(onDone = onBack) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        enabled = canSave,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = accent,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                    ) {
-                        Text(
-                            if (vm.isEditing) stringResource(R.string.save) else stringResource(R.string.create),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
+                    Text(
+                        if (vm.isEditing) stringResource(R.string.save) else stringResource(R.string.create),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
 
-                    if (!canSave) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = stringResource(R.string.tx_required_fields_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                if (!canSave) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.tx_required_fields_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
-        },
-    ) { padding ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 20.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            item {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    TypeSegment(
-                        label = stringResource(R.string.tx_type_expense),
-                        selected = form.type == TransactionType.EXPENSE,
-                        color = ext.expense,
-                        modifier = Modifier.weight(1f),
-                    ) { vm.setType(TransactionType.EXPENSE) }
+        }
+    ) {
+        item {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                TypeSegment(
+                    label = stringResource(R.string.tx_type_expense),
+                    selected = form.type == TransactionType.EXPENSE,
+                    color = ext.expense,
+                    modifier = Modifier.weight(1f),
+                ) { vm.setType(TransactionType.EXPENSE) }
 
-                    TypeSegment(
-                        label = stringResource(R.string.tx_type_income),
-                        selected = form.type == TransactionType.INCOME,
-                        color = ext.income,
-                        modifier = Modifier.weight(1f),
-                    ) { vm.setType(TransactionType.INCOME) }
-                }
+                TypeSegment(
+                    label = stringResource(R.string.tx_type_income),
+                    selected = form.type == TransactionType.INCOME,
+                    color = ext.income,
+                    modifier = Modifier.weight(1f),
+                ) { vm.setType(TransactionType.INCOME) }
             }
+        }
 
-            item { SectionTitle(stringResource(R.string.tx_section_main)) }
+        item { SectionTitle(stringResource(R.string.tx_section_main)) }
 
-            item {
-                ExpressiveCard {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        FilledField(
-                            label = stringResource(R.string.tx_amount_label),
-                            value = form.amountInput.takeIf { it != "0" } ?: "",
-                            onValueChange = { newValue ->
-                                val filtered =
-                                    newValue.filter { it.isDigit() || it == ',' || it == '.' }
-                                val normalized = filtered.replace(',', '.')
-                                if (normalized.count { it == '.' } <= 1 && normalized.length <= 12) {
-                                    vm.setAmountRaw(normalized)
-                                }
-                            },
-                            leading = {
-                                Text(
-                                    text = if (form.type == TransactionType.INCOME) "+" else "−",
-                                    color = accent,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            },
-                            trailing = {
-                                Text(
-                                    text = "€",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            keyboardType = KeyboardType.Decimal,
-                            textStyle = MaterialTheme.typography.headlineMedium.copy(
-                                color = accent,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.End,
-                            ),
-                        )
-
-                        var showDatePicker by remember { mutableStateOf(false) }
-                        val dateFormatter = java.time.format.DateTimeFormatter.ofPattern(
-                            "dd MMMM yyyy",
-                            java.util.Locale.getDefault(),
-                        )
-                        val formattedDate = java.time.Instant.ofEpochMilli(form.date)
-                            .atZone(java.time.ZoneId.systemDefault())
-                            .toLocalDate()
-                            .format(dateFormatter)
-
-                        if (showDatePicker) {
-                            val state =
-                                rememberDatePickerState(initialSelectedDateMillis = form.date)
-                            androidx.compose.material3.DatePickerDialog(
-                                onDismissRequest = { showDatePicker = false },
-                                confirmButton = {
-                                    androidx.compose.material3.TextButton(onClick = {
-                                        state.selectedDateMillis?.let { vm.setDate(it) }
-                                        showDatePicker = false
-                                    }) { Text(stringResource(R.string.ok)) }
-                                },
-                                dismissButton = {
-                                    androidx.compose.material3.TextButton(onClick = {
-                                        showDatePicker = false
-                                    }) {
-                                        Text(stringResource(R.string.cancel))
-                                    }
-                                },
-                            ) {
-                                androidx.compose.material3.DatePicker(state = state)
-                            }
-                        }
-
-                        SelectorRow(
-                            label = stringResource(R.string.tx_date_label),
-                            value = formattedDate,
-                            icon = Icons.Filled.DateRange,
-                            onClick = { showDatePicker = true },
-                        )
-
-                        FilledField(
-                            label = stringResource(R.string.tx_name_label),
-                            value = form.title,
-                            onValueChange = vm::setTitle,
-                            keyboardType = KeyboardType.Text,
-                            textStyle = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
-                }
-            }
-
-            item { SectionTitle(stringResource(R.string.tx_section_classification)) }
-
-            item {
-                ExpressiveCard {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        val selectedCat = typeCategories.find { it.id == form.categoryId }
-                        SelectorRow(
-                            label = stringResource(R.string.tx_category_label),
-                            value = selectedCat?.name
-                                ?: stringResource(R.string.tx_select_category),
-                            icon = selectedCat?.let { IconMapper.get(it.icon) }
-                                ?: Icons.Filled.KeyboardArrowDown,
-                            iconTint = selectedCat?.let { Color(it.colorArgb) },
-                            onClick = { showCategorySheet = true },
-                        )
-
-                        val selectedAcc = accounts.find { it.id == form.accountId }
-                        SelectorRow(
-                            label = stringResource(R.string.tx_account_label),
-                            value = selectedAcc?.name ?: stringResource(R.string.tx_select_account),
-                            onClick = { showAccountSheet = true },
-                            trailingChevron = true,
-                        )
-
-                        val selectedTags = tags.filter { it.id in form.tagIds }
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .clickable { showTagsSheet = true },
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            border = BorderStroke(
-                                1.dp,
-                                MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
-                            ),
-                        ) {
-                            Column(Modifier.padding(16.dp)) {
-                                Text(
-                                    stringResource(R.string.tx_tags_label),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                if (selectedTags.isEmpty()) {
-                                    Text(
-                                        stringResource(R.string.tx_no_tags),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                } else {
-                                    androidx.compose.foundation.layout.FlowRow(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        selectedTags.forEach { tag ->
-                                            com.lop.budget.ui.components.PillTag(
-                                                text = tag.name,
-                                                color = Color(tag.colorArgb),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            item { SectionTitle(stringResource(R.string.tx_section_optional)) }
-
-            item {
-                ExpressiveCard {
+        item {
+            ExpressiveCard {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     FilledField(
-                        label = stringResource(R.string.tx_notes_label),
-                        value = form.note,
-                        onValueChange = vm::setNote,
+                        label = stringResource(R.string.tx_amount_label),
+                        value = form.amountInput.takeIf { it != "0" } ?: "",
+                        onValueChange = { newValue ->
+                            val filtered =
+                                newValue.filter { it.isDigit() || it == ',' || it == '.' }
+                            val normalized = filtered.replace(',', '.')
+                            if (normalized.count { it == '.' } <= 1 && normalized.length <= 12) {
+                                vm.setAmountRaw(normalized)
+                            }
+                        },
+                        leading = {
+                            Text(
+                                text = if (form.type == TransactionType.INCOME) "+" else "−",
+                                color = accent,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        },
+                        trailing = {
+                            Text(
+                                text = "€",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        keyboardType = KeyboardType.Decimal,
+                        textStyle = MaterialTheme.typography.headlineMedium.copy(
+                            color = accent,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.End,
+                        ),
+                    )
+
+                    var showDatePicker by remember { mutableStateOf(false) }
+                    val dateFormatter = java.time.format.DateTimeFormatter.ofPattern(
+                        "dd MMMM yyyy",
+                        java.util.Locale.getDefault(),
+                    )
+                    val formattedDate = java.time.Instant.ofEpochMilli(form.date)
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDate()
+                        .format(dateFormatter)
+
+                    if (showDatePicker) {
+                        val state =
+                            rememberDatePickerState(initialSelectedDateMillis = form.date)
+                        androidx.compose.material3.DatePickerDialog(
+                            onDismissRequest = { showDatePicker = false },
+                            confirmButton = {
+                                androidx.compose.material3.TextButton(onClick = {
+                                    state.selectedDateMillis?.let { vm.setDate(it) }
+                                    showDatePicker = false
+                                }) { Text(stringResource(R.string.ok)) }
+                            },
+                            dismissButton = {
+                                androidx.compose.material3.TextButton(onClick = {
+                                    showDatePicker = false
+                                }) {
+                                    Text(stringResource(R.string.cancel))
+                                }
+                            },
+                        ) {
+                            androidx.compose.material3.DatePicker(state = state)
+                        }
+                    }
+
+                    SelectorRow(
+                        label = stringResource(R.string.tx_date_label),
+                        value = formattedDate,
+                        icon = Icons.Filled.DateRange,
+                        onClick = { showDatePicker = true },
+                    )
+
+                    FilledField(
+                        label = stringResource(R.string.tx_name_label),
+                        value = form.title,
+                        onValueChange = vm::setTitle,
                         keyboardType = KeyboardType.Text,
                         textStyle = MaterialTheme.typography.bodyLarge,
-                        minLines = 3,
                     )
                 }
             }
+        }
 
-            item { SectionTitle(stringResource(R.string.tx_repeat_label)) }
+        item { SectionTitle(stringResource(R.string.tx_section_classification)) }
 
-            item {
-                ExpressiveCard {
-                    RecurrenceBlock(
-                        form = form,
-                        onSetFrequency = vm::setFrequency,
-                        onSetInterval = vm::setInterval,
-                        onToggleDow = vm::toggleDayOfWeek,
-                        onSetEndDate = vm::setEndDate,
-                        onSetMaxOccurrences = vm::setMaxOccurrences,
+        item {
+            ExpressiveCard {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val selectedCat = typeCategories.find { it.id == form.categoryId }
+                    SelectorRow(
+                        label = stringResource(R.string.tx_category_label),
+                        value = selectedCat?.name
+                            ?: stringResource(R.string.tx_select_category),
+                        icon = selectedCat?.let { IconMapper.get(it.icon) }
+                            ?: Icons.Filled.KeyboardArrowDown,
+                        iconTint = selectedCat?.let { Color(it.colorArgb) },
+                        onClick = { showCategorySheet = true },
                     )
+
+                    val selectedAcc = accounts.find { it.id == form.accountId }
+                    SelectorRow(
+                        label = stringResource(R.string.tx_account_label),
+                        value = selectedAcc?.name ?: stringResource(R.string.tx_select_account),
+                        onClick = { showAccountSheet = true },
+                        trailingChevron = true,
+                    )
+
+                    val selectedTags = tags.filter { it.id in form.tagIds }
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { showTagsSheet = true },
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                        ),
+                    ) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text(
+                                stringResource(R.string.tx_tags_label),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            if (selectedTags.isEmpty()) {
+                                Text(
+                                    stringResource(R.string.tx_no_tags),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            } else {
+                                androidx.compose.foundation.layout.FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    selectedTags.forEach { tag ->
+                                        com.lop.budget.ui.components.PillTag(
+                                            text = tag.name,
+                                            color = Color(tag.colorArgb),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+            }
+        }
+
+        item { SectionTitle(stringResource(R.string.tx_section_optional)) }
+
+        item {
+            ExpressiveCard {
+                FilledField(
+                    label = stringResource(R.string.tx_notes_label),
+                    value = form.note,
+                    onValueChange = vm::setNote,
+                    keyboardType = KeyboardType.Text,
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    minLines = 3,
+                )
+            }
+        }
+
+        item { SectionTitle(stringResource(R.string.tx_repeat_label)) }
+
+        item {
+            ExpressiveCard {
+                RecurrenceBlock(
+                    form = form,
+                    onSetFrequency = vm::setFrequency,
+                    onSetInterval = vm::setInterval,
+                    onToggleDow = vm::toggleDayOfWeek,
+                    onSetEndDate = vm::setEndDate,
+                    onSetMaxOccurrences = vm::setMaxOccurrences,
+                )
             }
         }
     }
