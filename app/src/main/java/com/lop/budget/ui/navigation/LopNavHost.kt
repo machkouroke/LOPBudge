@@ -53,29 +53,47 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
 private val screenOrder = listOf(Routes.HOME, Routes.ANALYTICS, Routes.GOALS, Routes.ACCOUNTS)
+private const val NAV_ANIM_DURATION = 500
 
 @OptIn(ExperimentalAnimationApi::class)
-private fun createEnterTransition(
-    initialState: NavBackStackEntry,
-    targetState: NavBackStackEntry
-): EnterTransition {
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.createEnterTransition(): EnterTransition {
     val initialIndex = screenOrder.indexOf(initialState.destination.route)
     val targetIndex = screenOrder.indexOf(targetState.destination.route)
-    return if (initialIndex == -1 || targetIndex == -1) fadeIn()
-    else if (initialIndex > targetIndex) slideInHorizontally(initialOffsetX = { -it })
-    else slideInHorizontally(initialOffsetX = { it })
+
+    // Fallback for non-root routes or same route
+    if (initialIndex == -1 || targetIndex == -1 || initialIndex == targetIndex) {
+        return fadeIn(animationSpec = tween(NAV_ANIM_DURATION))
+    }
+
+    val direction = if (initialIndex > targetIndex)
+        AnimatedContentTransitionScope.SlideDirection.Right
+    else
+        AnimatedContentTransitionScope.SlideDirection.Left
+
+    return slideIntoContainer(
+        towards = direction,
+        animationSpec = tween(NAV_ANIM_DURATION, easing = FastOutSlowInEasing)
+    ) + fadeIn(animationSpec = tween(NAV_ANIM_DURATION))
 }
 
 @OptIn(ExperimentalAnimationApi::class)
-private fun createExitTransition(
-    initialState: NavBackStackEntry,
-    targetState: NavBackStackEntry
-): ExitTransition {
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.createExitTransition(): ExitTransition {
     val initialIndex = screenOrder.indexOf(initialState.destination.route)
     val targetIndex = screenOrder.indexOf(targetState.destination.route)
-    return if (initialIndex == -1 || targetIndex == -1) fadeOut()
-    else if (initialIndex > targetIndex) slideOutHorizontally(targetOffsetX = { it })
-    else slideOutHorizontally(targetOffsetX = { -it })
+
+    if (initialIndex == -1 || targetIndex == -1 || initialIndex == targetIndex) {
+        return fadeOut(animationSpec = tween(NAV_ANIM_DURATION))
+    }
+
+    val direction = if (initialIndex > targetIndex)
+        AnimatedContentTransitionScope.SlideDirection.Right
+    else
+        AnimatedContentTransitionScope.SlideDirection.Left
+
+    return slideOutOfContainer(
+        towards = direction,
+        animationSpec = tween(NAV_ANIM_DURATION, easing = FastOutSlowInEasing)
+    ) + fadeOut(animationSpec = tween(NAV_ANIM_DURATION))
 }
 
 private typealias EnterTransition = androidx.compose.animation.EnterTransition
@@ -113,13 +131,14 @@ fun LopNavHost(startRoute: String? = null) {
             NavHost(
                 navController = navController,
                 startDestination = Routes.HOME,
-                enterTransition = { createEnterTransition(initialState, targetState) },
-                exitTransition = { createExitTransition(initialState, targetState) },
-                popEnterTransition = { createEnterTransition(initialState, targetState) },
-                popExitTransition = { createExitTransition(initialState, targetState) },
+                enterTransition = { createEnterTransition() },
+                exitTransition = { createExitTransition() },
+                popEnterTransition = { createEnterTransition() },
+                popExitTransition = { createExitTransition() },
             ) {
                 composable(
-                    Routes.HOME, exitTransition = {
+                    Routes.HOME,
+                    exitTransition = {
                         scaleOut(
                             targetScale = 0.95f,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
@@ -150,10 +169,30 @@ fun LopNavHost(startRoute: String? = null) {
 
                 composable(
                     Routes.DETECTED,
-                    enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
-                    exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) },
-                    popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) },
-                    popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }
                 ) {
                     DetectedTransactionsScreen(
                         onBack = { navController.popBackStack() },
@@ -161,8 +200,44 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(Routes.ANALYTICS) { AnalyticsScreen() }
-                composable(Routes.GOALS) { GoalsScreen() }
+                composable(
+                    Routes.ANALYTICS, exitTransition = {
+                        scaleOut(
+                            targetScale = 0.95f,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        ) + fadeOut(
+                            targetAlpha = 0.5f,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        scaleIn(
+                            initialScale = 0.95f,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        ) + fadeIn(
+                            initialAlpha = 0.5f,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }) { AnalyticsScreen() }
+                composable(
+                    Routes.GOALS, exitTransition = {
+                        scaleOut(
+                            targetScale = 0.95f,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        ) + fadeOut(
+                            targetAlpha = 0.5f,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        scaleIn(
+                            initialScale = 0.95f,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        ) + fadeIn(
+                            initialAlpha = 0.5f,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }) { GoalsScreen() }
                 composable(Routes.ACCOUNTS) { AccountsScreen() }
 
                 composable(
