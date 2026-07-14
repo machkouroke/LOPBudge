@@ -55,6 +55,12 @@
     <string name="tx_no_tags">Aucune étiquette</string>
     <string name="tx_notes_label">Notes (optionnel)</string>
 
+    <!-- Tags deletion -->
+    <string name="tag_delete_title">Supprimer l’étiquette ?</string>
+    <string name="tag_delete_msg">Cette étiquette sera supprimée.</string>
+    <string name="tag_delete_used_title">Étiquette utilisée</string>
+    <string name="tag_delete_used_msg">L’étiquette “%1$s” est utilisée par des transactions. Supprime d’abord l’étiquette des transactions concernées.</string>
+
     <!-- New section headers (Material expressive layout) -->
     <string name="tx_section_main">Informations</string>
     <string name="tx_section_classification">Catégorie &amp; compte</string>
@@ -120,6 +126,10 @@
 
     <!-- Settings Screen -->
     <string name="settings_title">Réglages</string>
+    <string name="settings_manage">Gestion</string>
+    <string name="settings_manage_tags">Étiquettes</string>
+    <string name="settings_manage_tags_desc">Créer, renommer et supprimer des étiquettes</string>
+
     <string name="settings_appearance">Apparence</string>
     <string name="settings_theme">Thème</string>
     <string name="settings_theme_system">Système</string>
@@ -136,6 +146,16 @@
     <string name="settings_ai_title">Assistant IA (Gemini)</string>
     <string name="settings_ai_desc">Colle ta clé API Gemini (gratuite via Google AI Studio). Elle reste stockée localement sur l\'appareil.</string>
     <string name="settings_ai_key_label">Clé API Gemini</string>
+
+    <!-- Tags Manage Screen -->
+    <string name="tags_manage_title">Étiquettes</string>
+    <string name="tags_manage_desc">Gère tes étiquettes réutilisables. Les changements sont visibles partout (formulaire, filtres, etc.).</string>
+    <string name="tags_manage_empty">Aucune étiquette. Crée-en une ci-dessous.</string>
+    <string name="tags_manage_create_title">Créer une étiquette</string>
+    <string name="tags_manage_edit_title">Modifier l’étiquette</string>
+    <string name="tags_manage_delete_title">Supprimer l’étiquette</string>
+    <string name="tags_manage_delete_msg">Supprimer “%1$s” ?</string>
+    <string name="tags_manage_name_label">Nom</string>
 
     <!-- Detected Transactions Screen -->
     <string name="detected_title">Transactions détectées</string>
