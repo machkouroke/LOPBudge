@@ -9,9 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -201,43 +199,9 @@ fun LopNavHost(startRoute: String? = null) {
                 }
 
                 composable(
-                    Routes.ANALYTICS, exitTransition = {
-                        scaleOut(
-                            targetScale = 0.95f,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        ) + fadeOut(
-                            targetAlpha = 0.5f,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        scaleIn(
-                            initialScale = 0.95f,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        ) + fadeIn(
-                            initialAlpha = 0.5f,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }) { AnalyticsScreen() }
+                    Routes.ANALYTICS) { AnalyticsScreen() }
                 composable(
-                    Routes.GOALS, exitTransition = {
-                        scaleOut(
-                            targetScale = 0.95f,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        ) + fadeOut(
-                            targetAlpha = 0.5f,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        scaleIn(
-                            initialScale = 0.95f,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        ) + fadeIn(
-                            initialAlpha = 0.5f,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }) { GoalsScreen() }
+                    Routes.GOALS) { GoalsScreen() }
                 composable(Routes.ACCOUNTS) { AccountsScreen() }
 
                 composable(
@@ -304,10 +268,30 @@ fun LopNavHost(startRoute: String? = null) {
                 // NEW: Add is a full screen (not a modal bottom sheet)
                 composable(
                     Routes.ADD,
-                    enterTransition = { slideInVertically(initialOffsetY = { it }) },
-                    exitTransition = { slideOutVertically(targetOffsetY = { -it }) },
-                    popEnterTransition = { slideInVertically(initialOffsetY = { -it }) },
-                    popExitTransition = { slideOutVertically(targetOffsetY = { it }) },
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }
                 ) {
                     TransactionEditScreen(
                         onBack = { navController.popBackStack() },
@@ -320,15 +304,27 @@ fun LopNavHost(startRoute: String? = null) {
                     arguments = listOf(navArgument("id") { type = NavType.LongType }),
                     enterTransition = {
                         slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = MotionSpec.mediumTween()
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
                     },
                     exitTransition = {
                         slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = MotionSpec.fastTween()
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
                     }
                 ) {
                     TransactionEditScreen(
@@ -340,6 +336,30 @@ fun LopNavHost(startRoute: String? = null) {
                 composable(
                     Routes.DETAIL,
                     arguments = listOf(navArgument("id") { type = NavType.LongType }),
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }
                 ) { entry ->
                     val id = entry.arguments?.getLong("id") ?: 0L
                     TransactionDetailScreen(
