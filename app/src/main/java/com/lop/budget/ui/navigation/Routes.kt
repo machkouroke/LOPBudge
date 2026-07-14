@@ -12,6 +12,10 @@ object Routes {
     const val ADD = "add"
     const val AI = "ai"
     const val SETTINGS = "settings"
+
+    // Manage screens
+    const val TAGS = "manage/tags"
+
     const val CATEGORY_CREATE = "category/create"
 
     // Notifications → propositions détectées

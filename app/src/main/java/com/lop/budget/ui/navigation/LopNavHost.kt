@@ -44,6 +44,7 @@ import com.lop.budget.ui.screens.detail.TransactionDetailScreen
 import com.lop.budget.ui.screens.detected.DetectedTransactionsScreen
 import com.lop.budget.ui.screens.goals.GoalsScreen
 import com.lop.budget.ui.screens.home.HomeScreen
+import com.lop.budget.ui.screens.manage.TagsManageScreen
 import com.lop.budget.ui.screens.monthly.MonthlyTransactionsScreen
 import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
@@ -198,10 +199,8 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(
-                    Routes.ANALYTICS) { AnalyticsScreen() }
-                composable(
-                    Routes.GOALS) { GoalsScreen() }
+                composable(Routes.ANALYTICS) { AnalyticsScreen() }
+                composable(Routes.GOALS) { GoalsScreen() }
                 composable(Routes.ACCOUNTS) { AccountsScreen() }
 
                 composable(
@@ -258,14 +257,46 @@ fun LopNavHost(startRoute: String? = null) {
                         )
                     }
                 ) {
-                    SettingsScreen(onBack = { navController.popBackStack() })
+                    SettingsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenTags = { navController.navigate(Routes.TAGS) },
+                    )
+                }
+
+                composable(
+                    Routes.TAGS,
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                ) {
+                    TagsManageScreen(onBack = { navController.popBackStack() })
                 }
 
                 composable(Routes.CATEGORY_CREATE) {
                     CategoryCreateScreen(onBack = { navController.popBackStack() })
                 }
 
-                // NEW: Add is a full screen (not a modal bottom sheet)
                 composable(
                     Routes.ADD,
                     enterTransition = {
