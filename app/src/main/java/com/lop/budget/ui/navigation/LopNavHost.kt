@@ -200,9 +200,11 @@ fun LopNavHost(startRoute: String? = null) {
                 }
 
                 composable(
-                    Routes.ANALYTICS) { AnalyticsScreen() }
+                    Routes.ANALYTICS
+                ) { AnalyticsScreen() }
                 composable(
-                    Routes.GOALS) { GoalsScreen() }
+                    Routes.GOALS
+                ) { GoalsScreen() }
                 composable(Routes.ACCOUNTS) { AccountsScreen() }
 
                 composable(
@@ -265,7 +267,31 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(Routes.TAGS_MANAGE) {
+                composable(
+                    Routes.TAGS_MANAGE, enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }) {
                     TagsManageScreen(onBack = { navController.popBackStack() })
                 }
 
