@@ -89,6 +89,7 @@
     <string name="tx_detail_edit_category">Modifier la catégorie</string>
     <string name="tx_detail_upcoming_occurrences">Prochaines occurrences</string>
     <string name="tx_detail_mark_as_paid">Marquer comme payé</string>
+    <string name="tx_detail_mark_as_unpaid">Marquer comme non payé</string>
     <string name="tx_detail_delete_title">Supprimer la transaction ?</string>
     <string name="tx_detail_delete_recurring_msg">Cette transaction fait partie d\'une série récurrente. Voulez-vous supprimer uniquement cette occurrence, ou toute la série ?</string>
     <string name="tx_detail_delete_msg">Cette action est irréversible.</string>

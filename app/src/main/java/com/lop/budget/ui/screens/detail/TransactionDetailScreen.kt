@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
@@ -362,27 +363,40 @@ fun TransactionDetailScreen(
                 }
             }
 
-            if (tx.status == TransactionStatus.PLANNED) {
+            val isPaid = tx.status == TransactionStatus.PAID
+            if (tx.status == TransactionStatus.PLANNED || isPaid) {
                 item {
+                    val buttonColor = if (isPaid) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    else ext.incomeContainer.copy(alpha = 0.4f)
+                    val tintColor = if (isPaid) MaterialTheme.colorScheme.onSurfaceVariant else ext.income
+
                     FloatingCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickableNoRipple {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                vm.markPaid()
+                                if (isPaid) {
+                                    vm.markUnpaid()
+                                } else {
+                                    vm.markPaid()
+                                }
                             },
-                        color = ext.incomeContainer.copy(alpha = 0.4f),
+                        color = buttonColor,
                     ) {
                         Row(
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Filled.Check, null, tint = ext.income)
+                            Icon(
+                                if (isPaid) Icons.AutoMirrored.Filled.Undo else Icons.Filled.Check,
+                                null,
+                                tint = tintColor
+                            )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                stringResource(R.string.tx_detail_mark_as_paid),
-                                color = ext.income,
+                                stringResource(if (isPaid) R.string.tx_detail_mark_as_unpaid else R.string.tx_detail_mark_as_paid),
+                                color = tintColor,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }

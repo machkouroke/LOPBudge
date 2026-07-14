@@ -121,6 +121,19 @@ class TransactionDetailViewModel @Inject constructor(
         }
     }
 
+    fun markUnpaid() {
+        val id = txId.value ?: return
+        if (updating.value) return
+        viewModelScope.launch {
+            updating.value = true
+            try {
+                repo.setStatus(id, TransactionStatus.PLANNED.name)
+            } finally {
+                updating.value = false
+            }
+        }
+    }
+
     fun delete(onDone: () -> Unit) {
         val id = txId.value ?: return
         if (updating.value) return

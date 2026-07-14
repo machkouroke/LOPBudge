@@ -399,7 +399,8 @@ fun LopNavHost(startRoute: String? = null) {
                     TransactionDetailScreen(
                         transactionId = id,
                         onBack = { navController.popBackStack() },
-                        onEdit = { txId -> navController.navigate(Routes.edit(txId)) })
+                        onEdit = { txId -> navController.navigate(Routes.edit(txId)) }
+                    )
                 }
             }
 
