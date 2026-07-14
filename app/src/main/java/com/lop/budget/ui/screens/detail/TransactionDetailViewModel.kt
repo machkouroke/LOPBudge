@@ -56,7 +56,13 @@ class TransactionDetailViewModel @Inject constructor(
 
             val seriesId = tx.transaction.seriesId?.toLongOrNull()
             val series = if (seriesId != null) repo.getSeriesById(seriesId) else null
-            val upcoming = series?.let { RecurrenceEngine.upcomingDates(it, limit = 6) } ?: emptyList()
+            val upcoming = series?.let {
+                RecurrenceEngine.upcomingDates(
+                    series = it,
+                    fromMillis = tx.transaction.date,
+                    limit = 6
+                )
+            } ?: emptyList()
 
             DetailUiState(
                 transaction = tx,
