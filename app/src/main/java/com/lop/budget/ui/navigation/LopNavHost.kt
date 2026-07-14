@@ -44,6 +44,7 @@ import com.lop.budget.ui.screens.detail.TransactionDetailScreen
 import com.lop.budget.ui.screens.detected.DetectedTransactionsScreen
 import com.lop.budget.ui.screens.goals.GoalsScreen
 import com.lop.budget.ui.screens.home.HomeScreen
+import com.lop.budget.ui.screens.manage.TagsManageScreen
 import com.lop.budget.ui.screens.monthly.MonthlyTransactionsScreen
 import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
@@ -258,7 +259,14 @@ fun LopNavHost(startRoute: String? = null) {
                         )
                     }
                 ) {
-                    SettingsScreen(onBack = { navController.popBackStack() })
+                    SettingsScreen(
+                        onBack = { navController.popBackStack() },
+                        onNavigateToTags = { navController.navigate(Routes.TAGS_MANAGE) }
+                    )
+                }
+
+                composable(Routes.TAGS_MANAGE) {
+                    TagsManageScreen(onBack = { navController.popBackStack() })
                 }
 
                 composable(Routes.CATEGORY_CREATE) {

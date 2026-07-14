@@ -13,6 +13,7 @@ object Routes {
     const val AI = "ai"
     const val SETTINGS = "settings"
     const val CATEGORY_CREATE = "category/create"
+    const val TAGS_MANAGE = "manage/tags"
 
     // Notifications → propositions détectées
     const val DETECTED = "detected"

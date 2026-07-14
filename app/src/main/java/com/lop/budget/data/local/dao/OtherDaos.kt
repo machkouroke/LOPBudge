@@ -32,6 +32,10 @@ interface CategoryDao {
 interface TagDao {
     @Query("SELECT * FROM tags ORDER BY name")
     fun observeAll(): Flow<List<TagEntity>>
+
+    @Query("SELECT COUNT(*) FROM transaction_tags WHERE tagId = :tagId")
+    suspend fun countUsages(tagId: Long): Int
+
     @Upsert suspend fun upsert(tag: TagEntity): Long
     @Query("DELETE FROM tags WHERE id = :id") suspend fun delete(id: Long)
 }

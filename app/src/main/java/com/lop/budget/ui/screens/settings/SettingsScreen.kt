@@ -12,7 +12,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -40,6 +42,7 @@ import com.lop.budget.ui.theme.ThemeMode
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onNavigateToTags: () -> Unit,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -195,6 +198,38 @@ fun SettingsScreen(
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+
+        // Gestion des données (Tags)
+        item {
+            FloatingCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickableNoRipple { onNavigateToTags() }
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            "Gestion des tags",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            "Renommer ou supprimer vos étiquettes",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

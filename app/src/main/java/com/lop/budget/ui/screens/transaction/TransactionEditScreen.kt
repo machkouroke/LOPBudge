@@ -393,6 +393,7 @@ fun TransactionEditScreen(
                 }
             },
             onCreateTag = { name, color -> vm.createTag(name, color) },
+            onDeleteTag = { id -> vm.deleteTag(id) },
             onDismiss = { showTagsSheet = false },
         )
     }
@@ -1017,11 +1018,13 @@ private fun TagsBottomSheet(
     selectedTagIds: Set<Long>,
     onToggleTag: (Long) -> Unit,
     onCreateTag: (String, Int) -> Unit,
+    onDeleteTag: (Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState =
         androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var newTagName by remember { mutableStateOf("") }
+    var tagToDelete by remember { mutableStateOf<com.lop.budget.data.local.entity.TagEntity?>(null) }
 
     val colors = listOf(
         Color(0xFFE53935), Color(0xFFD81B60), Color(0xFF8E24AA), Color(0xFF5E35B1),
@@ -1065,7 +1068,7 @@ private fun TagsBottomSheet(
                         val isSelected = selectedTagIds.contains(tag.id)
                         val color = Color(tag.colorArgb)
                         Surface(
-                            modifier = Modifier.clickable { onToggleTag(tag.id) },
+                            modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) { onToggleTag(tag.id) },
                             shape = CircleShape,
                             color = if (isSelected) color.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(
                                 alpha = 0.5f
@@ -1077,7 +1080,7 @@ private fun TagsBottomSheet(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                                modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 8.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -1090,6 +1093,15 @@ private fun TagsBottomSheet(
                                     tag.name,
                                     style = MaterialTheme.typography.labelMedium,
                                     color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Icon(
+                                    androidx.compose.material.icons.Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.delete),
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clickable { tagToDelete = tag },
+                                    tint = if (isSelected) color.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                                 )
                             }
                         }
@@ -1158,5 +1170,18 @@ private fun TagsBottomSheet(
             }
             Spacer(Modifier.height(32.dp))
         }
+    }
+
+    if (tagToDelete != null) {
+        com.lop.budget.ui.components.ConfirmDeleteSheet(
+            title = "Supprimer le tag ?",
+            message = "Le tag \"${tagToDelete?.name}\" sera définitivement supprimé et retiré de toutes les transactions.",
+            confirmLabel = stringResource(R.string.delete),
+            onDismiss = { tagToDelete = null },
+            onConfirm = {
+                tagToDelete?.id?.let { onDeleteTag(it) }
+                tagToDelete = null
+            }
+        )
     }
 }

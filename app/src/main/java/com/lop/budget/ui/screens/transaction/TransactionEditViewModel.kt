@@ -188,6 +188,16 @@ class TransactionEditViewModel @Inject constructor(
         }
     }
 
+    fun deleteTag(id: Long) {
+        viewModelScope.launch {
+            repo.deleteTag(id)
+            // Retirer de la sélection en cours si présent
+            if (id in _form.value.tagIds) {
+                toggleTag(id)
+            }
+        }
+    }
+
     fun save(onDone: () -> Unit) {
         val f = _form.value
         if (f.amount <= 0.0 || f.categoryId == null || f.accountId == null) return
