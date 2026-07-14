@@ -12,7 +12,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.PillTag
@@ -40,6 +41,7 @@ import com.lop.budget.ui.theme.ThemeMode
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onOpenTags: () -> Unit,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -104,6 +106,41 @@ fun SettingsScreen(
             }
         }
 
+        // Gestion
+        item {
+            FloatingCard(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        stringResource(R.string.settings_manage),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    FloatingCard(
+                        modifier = Modifier.fillMaxWidth().clickableNoRipple(onOpenTags),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircleIcon(
+                                icon = Icons.Filled.Label,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                background = MaterialTheme.colorScheme.surface,
+                                size = 40.dp,
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(R.string.settings_manage_tags), style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    stringResource(R.string.settings_manage_tags_desc),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Détection automatique via notifications
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
@@ -136,7 +173,7 @@ fun SettingsScreen(
                     }
 
                     Spacer(Modifier.height(10.dp))
-                    Button(
+                    androidx.compose.material3.Button(
                         onClick = {
                             context.startActivity(
                                 Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(

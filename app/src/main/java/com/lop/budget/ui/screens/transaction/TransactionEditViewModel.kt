@@ -25,28 +25,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 
-data class TransactionForm(
-    val type: TransactionType = TransactionType.EXPENSE,
-    val amountInput: String = "0",
-    val title: String = "",
-    val date: Long = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
-    val categoryId: Long? = null,
-    val accountId: Long? = null,
-    val tagIds: Set<Long> = emptySet(),
-    val note: String = "",
-
-    // recurrence (series)
-    val frequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
-    val interval: Int = 1,
-    val daysOfWeek: Set<Int> = emptySet(),
-    /** null = never */
-    val endDate: Long? = null,
-    /** null = unlimited */
-    val maxOccurrences: Int? = null,
-) {
-    val amount: Double get() = amountInput.replace(',', '.').toDoubleOrNull() ?: 0.0
-}
-
 @HiltViewModel
 class TransactionEditViewModel @Inject constructor(
     private val repo: BudgetRepository,
@@ -125,7 +103,6 @@ class TransactionEditViewModel @Inject constructor(
 
     // --- mutations du formulaire ---
     fun setType(t: TransactionType) {
-        // si on change le type, on reset la catégorie (car type catégories dépendant)
         _form.value = _form.value.copy(type = t, categoryId = null)
     }
 
@@ -135,12 +112,10 @@ class TransactionEditViewModel @Inject constructor(
     }
 
     fun setTitle(v: String) { _form.value = _form.value.copy(title = v) }
-
     fun setCategory(id: Long) { _form.value = _form.value.copy(categoryId = id) }
 
     fun setAccount(id: Long) {
         _form.value = _form.value.copy(accountId = id)
-        // mémoriser le dernier compte utilisé
         viewModelScope.launch { settings.setLastAccountId(id) }
     }
 
@@ -149,11 +124,15 @@ class TransactionEditViewModel @Inject constructor(
         _form.value = _form.value.copy(tagIds = s)
     }
 
+    fun removeTagFromSelection(id: Long) {
+        if (!_form.value.tagIds.contains(id)) return
+        _form.value = _form.value.copy(tagIds = _form.value.tagIds - id)
+    }
+
     fun setNote(v: String) { _form.value = _form.value.copy(note = v) }
     fun setDate(d: Long) { _form.value = _form.value.copy(date = d) }
 
     fun setFrequency(f: RecurrenceFrequency) {
-        // si on passe à NONE, on reset les politiques de fin (propre)
         _form.value = if (f == RecurrenceFrequency.NONE) {
             _form.value.copy(frequency = f, endDate = null, maxOccurrences = null, daysOfWeek = emptySet(), interval = 1)
         } else {
@@ -168,13 +147,8 @@ class TransactionEditViewModel @Inject constructor(
         _form.value = _form.value.copy(daysOfWeek = s)
     }
 
-    fun setEndDate(d: Long?) {
-        _form.value = _form.value.copy(endDate = d, maxOccurrences = null)
-    }
-
-    fun setMaxOccurrences(n: Int?) {
-        _form.value = _form.value.copy(maxOccurrences = n, endDate = null)
-    }
+    fun setEndDate(d: Long?) { _form.value = _form.value.copy(endDate = d, maxOccurrences = null) }
+    fun setMaxOccurrences(n: Int?) { _form.value = _form.value.copy(maxOccurrences = n, endDate = null) }
 
     fun createTag(name: String, colorArgb: Int) {
         if (name.isBlank()) return
@@ -185,6 +159,17 @@ class TransactionEditViewModel @Inject constructor(
             if (currentTags.size < 3) {
                 toggleTag(newId)
             }
+        }
+    }
+
+    suspend fun canDeleteTag(tagId: Long): Boolean {
+        return repo.countTagUsage(tagId) == 0
+    }
+
+    fun deleteTag(tagId: Long) {
+        viewModelScope.launch {
+            repo.deleteTag(tagId)
+            removeTagFromSelection(tagId)
         }
     }
 

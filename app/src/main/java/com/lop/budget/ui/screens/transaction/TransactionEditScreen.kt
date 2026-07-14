@@ -3,7 +3,6 @@ package com.lop.budget.ui.screens.transaction
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,9 +23,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -44,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,6 +69,7 @@ import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.IconMapper
+import kotlinx.coroutines.launch
 
 /**
  * Material expressive, lisible, ergonomique.
@@ -393,6 +396,8 @@ fun TransactionEditScreen(
                 }
             },
             onCreateTag = { name, color -> vm.createTag(name, color) },
+            onDeleteTag = { id -> vm.deleteTag(id) },
+            canDeleteTag = { id -> vm.canDeleteTag(id) },
             onDismiss = { showTagsSheet = false },
         )
     }
@@ -699,9 +704,7 @@ private fun RecurrenceBlock(
                             modifier = Modifier
                                 .size(40.dp)
                                 .pressScaleClickable(intent = HapticIntent.Selection) {
-                                    onToggleDow(
-                                        num
-                                    )
+                                    onToggleDow(num)
                                 },
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -980,7 +983,6 @@ private fun AccountBottomSheet(
                         modifier = Modifier.padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // Simple avatar (first letter) to keep it clean
                         val letter = acc.name.firstOrNull()?.uppercase() ?: "A"
                         Surface(
                             shape = CircleShape,
@@ -1006,7 +1008,6 @@ private fun AccountBottomSheet(
     }
 }
 
-// Tags sheet kept as-is (existing UI).
 @OptIn(
     ExperimentalMaterial3Api::class,
     androidx.compose.foundation.layout.ExperimentalLayoutApi::class
@@ -1017,11 +1018,18 @@ private fun TagsBottomSheet(
     selectedTagIds: Set<Long>,
     onToggleTag: (Long) -> Unit,
     onCreateTag: (String, Int) -> Unit,
+    onDeleteTag: (Long) -> Unit,
+    canDeleteTag: suspend (Long) -> Boolean,
     onDismiss: () -> Unit,
 ) {
     val sheetState =
         androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+
     var newTagName by remember { mutableStateOf("") }
+
+    var pendingDeleteTagId by remember { mutableStateOf<Long?>(null) }
+    var usedDeleteTagName by remember { mutableStateOf<String?>(null) }
 
     val colors = listOf(
         Color(0xFFE53935), Color(0xFFD81B60), Color(0xFF8E24AA), Color(0xFF5E35B1),
@@ -1031,6 +1039,35 @@ private fun TagsBottomSheet(
         Color(0xFFFB8C00), Color(0xFFF4511E), Color(0xFF6D4C41), Color(0xFF546E7A)
     )
     var selectedColor by remember { mutableStateOf(colors[0]) }
+
+    if (pendingDeleteTagId != null) {
+        val id = pendingDeleteTagId
+        AlertDialog(
+            onDismissRequest = { pendingDeleteTagId = null },
+            title = { Text(stringResource(R.string.tag_delete_title)) },
+            text = { Text(stringResource(R.string.tag_delete_msg)) },
+            confirmButton = {
+                Button(onClick = {
+                    id?.let(onDeleteTag)
+                    pendingDeleteTagId = null
+                }) { Text(stringResource(R.string.delete)) }
+            },
+            dismissButton = {
+                Button(onClick = { pendingDeleteTagId = null }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
+    }
+
+    if (usedDeleteTagName != null) {
+        AlertDialog(
+            onDismissRequest = { usedDeleteTagName = null },
+            title = { Text(stringResource(R.string.tag_delete_used_title)) },
+            text = { Text(stringResource(R.string.tag_delete_used_msg, usedDeleteTagName ?: "")) },
+            confirmButton = {
+                Button(onClick = { usedDeleteTagName = null }) { Text(stringResource(R.string.ok)) }
+            }
+        )
+    }
 
     androidx.compose.material3.ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1065,32 +1102,61 @@ private fun TagsBottomSheet(
                         val isSelected = selectedTagIds.contains(tag.id)
                         val color = Color(tag.colorArgb)
                         Surface(
-                            modifier = Modifier.clickable { onToggleTag(tag.id) },
+                            modifier = Modifier.clip(CircleShape),
                             shape = CircleShape,
                             color = if (isSelected) color.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(
                                 alpha = 0.5f
                             ),
-                            border = if (isSelected) BorderStroke(
-                                1.dp,
-                                color
-                            ) else BorderStroke(1.dp, Color.Transparent)
+                            border = if (isSelected) BorderStroke(1.dp, color) else BorderStroke(1.dp, Color.Transparent)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .clip(CircleShape)
-                                        .background(color)
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { onToggleTag(tag.id) }
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .clip(CircleShape)
+                                            .background(color)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        tag.name,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+
                                 Spacer(Modifier.width(8.dp))
-                                Text(
-                                    tag.name,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
-                                )
+                                Surface(
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .clip(CircleShape)
+                                        .clickable {
+                                            scope.launch {
+                                                val allowed = canDeleteTag(tag.id)
+                                                if (allowed) {
+                                                    pendingDeleteTagId = tag.id
+                                                } else {
+                                                    usedDeleteTagName = tag.name
+                                                }
+                                            }
+                                        },
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Filled.Delete,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
