@@ -1,5 +1,6 @@
 package com.lop.budget.ui.screens.detail
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,18 +14,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SyncAlt
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -42,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
@@ -57,6 +66,7 @@ import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionDetailScreen(
     transactionId: Long,
@@ -75,13 +85,17 @@ fun TransactionDetailScreen(
         }
     }
     var editingCategory by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showAccountSheet by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val twr = state.transaction
     val tx = twr?.transaction
+    val scaffoldTitle = tx?.title ?: stringResource(R.string.tx_default_title)
+    val isBusy = state.isUpdating
 
     LopScreenScaffold(
-        title = stringResource(R.string.tx_default_title),
+        title = scaffoldTitle,
         onBack = onBack,
         navigationIcon = Icons.Filled.Close
     ) {
@@ -109,7 +123,7 @@ fun TransactionDetailScreen(
                                 MaterialTheme.colorScheme.surfaceVariant,
                                 androidx.compose.foundation.shape.CircleShape
                             )
-                            .clickableNoRipple { onEdit(transactionId) },
+                            .clickableNoRipple { if (!isBusy) onEdit(transactionId) },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -126,7 +140,7 @@ fun TransactionDetailScreen(
                                 MaterialTheme.colorScheme.surfaceVariant,
                                 androidx.compose.foundation.shape.CircleShape
                             )
-                            .clickableNoRipple { showDeleteConfirm = true },
+                            .clickableNoRipple { if (!isBusy) showDeleteConfirm = true },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -153,6 +167,13 @@ fun TransactionDetailScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
+                        tx.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
                         Format.money(tx.amount),
                         style = MaterialTheme.typography.displayMedium,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -162,183 +183,33 @@ fun TransactionDetailScreen(
             }
 
             item {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.Category,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                stringResource(R.string.tx_detail_category),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            val c = twr.category?.colorArgb?.let { Color(it) }
-                                ?: com.lop.budget.ui.theme.CategoryOrange
-                            CircleIcon(
-                                IconMapper.get(twr.category?.icon ?: "category"),
-                                Color.White,
-                                c,
-                                size = 24.dp
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                twr.category?.name ?: stringResource(R.string.other),
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                    }
-
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.CalendarMonth,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                stringResource(R.string.tx_detail_date),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Text(Format.fullDate(tx.date), style = MaterialTheme.typography.bodyLarge)
-                    }
-
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.SyncAlt,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                stringResource(R.string.tx_detail_type),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Text(
-                            if (isIncome) stringResource(R.string.tx_type_income) else stringResource(
-                                R.string.tx_type_expense
-                            ),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.AccountBalance,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                stringResource(R.string.tx_detail_account),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                "R",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier
-                                    .background(
-                                        Color.DarkGray,
-                                        androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
-                                    )
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                twr.account?.name ?: stringResource(R.string.other),
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (twr.tags.isNotEmpty()) {
-                item {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(twr.tags, key = { it.id }) {
-                            PillTag(
-                                "#${it.name}",
-                                Color(it.colorArgb)
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
                 FloatingCard(Modifier.fillMaxWidth()) {
-                    Column {
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                stringResource(R.string.tx_category_label),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickableNoRipple {
-                                    editingCategory = !editingCategory
-                                },
-                            ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        DetailFieldRow(
+                            label = stringResource(R.string.tx_detail_category),
+                            value = twr.category?.name ?: stringResource(R.string.other),
+                            leading = {
+                                val c = twr.category?.colorArgb?.let { Color(it) }
+                                    ?: com.lop.budget.ui.theme.CategoryOrange
+                                CircleIcon(
+                                    IconMapper.get(twr.category?.icon ?: "category"),
+                                    Color.White,
+                                    c,
+                                    size = 34.dp
+                                )
+                            },
+                            onClick = { if (!isBusy) editingCategory = !editingCategory },
+                            trailing = {
                                 Icon(
                                     Icons.Filled.Edit,
-                                    stringResource(R.string.tx_detail_edit_category),
+                                    null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp)
                                 )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    stringResource(R.string.edit),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    style = MaterialTheme.typography.labelLarge
-                                )
                             }
-                        }
+                        )
+
                         if (editingCategory) {
-                            Spacer(Modifier.height(10.dp))
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 items(state.availableCategories, key = { it.id }) { cat ->
                                     val c = Color(cat.colorArgb)
@@ -346,6 +217,7 @@ fun TransactionDetailScreen(
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         modifier = Modifier.clickableNoRipple {
+                                            if (isBusy) return@clickableNoRipple
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             vm.changeCategory(cat.id)
                                             editingCategory = false
@@ -362,12 +234,90 @@ fun TransactionDetailScreen(
                                     }
                                 }
                             }
-                        } else {
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                twr.category?.name ?: "—",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+
+                        DetailFieldRow(
+                            label = stringResource(R.string.tx_detail_date),
+                            value = Format.fullDate(tx.date),
+                            leading = {
+                                Icon(
+                                    Icons.Filled.CalendarMonth,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
+                            onClick = { if (!isBusy) showDatePicker = true },
+                            trailing = {
+                                Icon(
+                                    Icons.Filled.Edit,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        )
+
+                        DetailFieldRow(
+                            label = stringResource(R.string.tx_detail_account),
+                            value = twr.account?.name ?: stringResource(R.string.other),
+                            leading = {
+                                val account = twr.account
+                                if (account != null) {
+                                    val color = Color(account.colorArgb)
+                                    CircleIcon(
+                                        IconMapper.get(account.icon),
+                                        Color.White,
+                                        color,
+                                        size = 34.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        Icons.Filled.AccountBalance,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            },
+                            onClick = { if (!isBusy) showAccountSheet = true },
+                            trailing = {
+                                Icon(
+                                    Icons.Filled.Edit,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        )
+
+                        DetailFieldRow(
+                            label = stringResource(R.string.tx_detail_type),
+                            value = if (isIncome) stringResource(R.string.tx_type_income) else stringResource(
+                                R.string.tx_type_expense
+                            ),
+                            leading = {
+                                Icon(
+                                    Icons.Filled.SyncAlt,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
+                            onClick = null,
+                            trailing = null
+                        )
+                    }
+                }
+            }
+
+            if (twr.tags.isNotEmpty()) {
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(twr.tags, key = { it.id }) {
+                            PillTag(
+                                "#${it.name}",
+                                Color(it.colorArgb)
                             )
                         }
                     }
@@ -442,6 +392,40 @@ fun TransactionDetailScreen(
         }
     }
 
+    if (showDatePicker && tx != null) {
+        val pickerState = androidx.compose.material3.rememberDatePickerState(initialSelectedDateMillis = tx.date)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { vm.changeDate(it) }
+                    showDatePicker = false
+                }) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
+
+    if (showAccountSheet) {
+        AccountBottomSheet(
+            accounts = state.availableAccounts,
+            selectedId = twr?.account?.id,
+            onSelect = { accountId ->
+                vm.changeAccount(accountId)
+                showAccountSheet = false
+            },
+            onDismiss = { showAccountSheet = false },
+        )
+    }
+
     if (showDeleteConfirm && tx != null) {
         if (tx.seriesId != null) {
             RecurringDeleteSheet(
@@ -478,3 +462,130 @@ fun TransactionDetailScreen(
         }
     }
 }
+
+@Composable
+private fun DetailFieldRow(
+    label: String,
+    value: String,
+    leading: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    val shape = RoundedCornerShape(16.dp)
+    val background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = shape,
+        color = background,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (onClick != null) Modifier.clickableNoRipple(onClick = onClick) else Modifier)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (leading != null) {
+                leading()
+                Spacer(Modifier.width(12.dp))
+            }
+
+            Column(Modifier.weight(1f)) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    value,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+
+            if (trailing != null) {
+                Spacer(Modifier.width(12.dp))
+                trailing()
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountBottomSheet(
+    accounts: List<AccountEntity>,
+    selectedId: Long?,
+    onSelect: (Long) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        scrimColor = Color.Black.copy(alpha = 0.55f),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                stringResource(R.string.tx_detail_account),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            if (accounts.isEmpty()) {
+                Text(
+                    stringResource(R.string.tx_no_accounts),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            accounts.forEach { account ->
+                val selected = account.id == selectedId
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickableNoRipple { onSelect(account.id) },
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val color = Color(account.colorArgb)
+                        CircleIcon(
+                            icon = IconMapper.get(account.icon),
+                            tint = Color.White,
+                            background = color,
+                            size = 38.dp,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            account.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (selected) {
+                            Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+        }
+    }
+}
+

@@ -184,8 +184,6 @@ class BudgetRepository @Inject constructor(
         return occurrences
     }
     fun observeTransaction(id: Long) = transactionDao.observeById(id)
-    suspend fun getTxById(id: Long) = transactionDao.getById(id)
-    fun observeSeries(seriesId: String) = transactionDao.observeSeries(seriesId)
     // observePaidSum est supprimé car le calcul se fait désormais en mémoire dans le ViewModel
     // à partir de observeTransactionsBetween() qui inclut les occurrences virtuelles.
 
@@ -353,6 +351,12 @@ class BudgetRepository @Inject constructor(
     /** Modifie la catégorie même si la transaction est déjà payée. */
     suspend fun changeCategory(transactionId: Long, categoryId: Long) =
         transactionDao.updateCategory(transactionId, categoryId)
+
+    suspend fun changeDate(transactionId: Long, date: Long) =
+        transactionDao.updateDate(transactionId, date)
+
+    suspend fun changeAccount(transactionId: Long, accountId: Long) =
+        transactionDao.updateAccount(transactionId, accountId)
 
     suspend fun setStatus(transactionId: Long, status: String) =
         transactionDao.updateStatus(transactionId, status)

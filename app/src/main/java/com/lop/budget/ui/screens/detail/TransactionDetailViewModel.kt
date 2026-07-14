@@ -2,6 +2,7 @@ package com.lop.budget.ui.screens.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
@@ -25,7 +26,9 @@ data class DetailUiState(
     val upcomingDates: List<Long> = emptyList(),
     val seriesOccurrences: List<TransactionWithRelations> = emptyList(),
     val availableCategories: List<CategoryEntity> = emptyList(),
+    val availableAccounts: List<AccountEntity> = emptyList(),
     val isLoaded: Boolean = false,
+    val isUpdating: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -35,14 +38,22 @@ class TransactionDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val txId = MutableStateFlow<Long?>(null)
+    private val updating = MutableStateFlow(false)
     fun load(id: Long) { txId.value = id }
 
     private val txFlow = txId.filterNotNull().flatMapLatest { repo.observeTransaction(it) }
 
     val uiState: StateFlow<DetailUiState> =
-        combine(txFlow, repo.observeCategories()) { tx, categories ->
-            if (tx == null) return@combine DetailUiState(availableCategories = categories, isLoaded = txId.value != null)
-            
+        combine(txFlow, repo.observeCategories(), repo.observeAccounts(), updating) { tx, categories, accounts, isBusy ->
+            if (tx == null) {
+                return@combine DetailUiState(
+                    availableCategories = categories,
+                    availableAccounts = accounts,
+                    isLoaded = txId.value != null,
+                    isUpdating = isBusy,
+                )
+            }
+
             val seriesId = tx.transaction.seriesId?.toLongOrNull()
             val series = if (seriesId != null) repo.getSeriesById(seriesId) else null
             val upcoming = series?.let { RecurrenceEngine.upcomingDates(it, limit = 6) } ?: emptyList()
@@ -51,41 +62,106 @@ class TransactionDetailViewModel @Inject constructor(
                 transaction = tx,
                 upcomingDates = upcoming,
                 availableCategories = categories.filter { it.type == tx.transaction.type },
-                isLoaded = true
+                availableAccounts = accounts,
+                isLoaded = true,
+                isUpdating = isBusy,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DetailUiState())
 
     /** Modifier la catégorie même si la transaction est payée (suggestion utilisateur). */
     fun changeCategory(categoryId: Long) {
         val id = txId.value ?: return
-        viewModelScope.launch { repo.changeCategory(id, categoryId) }
+        if (updating.value) return
+        viewModelScope.launch {
+            updating.value = true
+            try {
+                repo.changeCategory(id, categoryId)
+            } finally {
+                updating.value = false
+            }
+        }
+    }
+
+    fun changeDate(date: Long) {
+        val id = txId.value ?: return
+        if (updating.value) return
+        viewModelScope.launch {
+            updating.value = true
+            try {
+                repo.changeDate(id, date)
+            } finally {
+                updating.value = false
+            }
+        }
+    }
+
+    fun changeAccount(accountId: Long) {
+        val id = txId.value ?: return
+        if (updating.value) return
+        viewModelScope.launch {
+            updating.value = true
+            try {
+                repo.changeAccount(id, accountId)
+            } finally {
+                updating.value = false
+            }
+        }
     }
 
     fun markPaid() {
         val id = txId.value ?: return
-        viewModelScope.launch { repo.setStatus(id, TransactionStatus.PAID.name) }
+        if (updating.value) return
+        viewModelScope.launch {
+            updating.value = true
+            try {
+                repo.setStatus(id, TransactionStatus.PAID.name)
+            } finally {
+                updating.value = false
+            }
+        }
     }
 
     fun delete(onDone: () -> Unit) {
         val id = txId.value ?: return
-        viewModelScope.launch { repo.softDeleteTransaction(id); onDone() }
+        if (updating.value) return
+        viewModelScope.launch {
+            updating.value = true
+            try {
+                repo.softDeleteTransaction(id)
+                onDone()
+            } finally {
+                updating.value = false
+            }
+        }
     }
 
     fun deleteOccurrence(onDone: () -> Unit) {
         val id = txId.value ?: return
-        viewModelScope.launch { 
-            repo.softDeleteTransaction(id)
-            onDone() 
+        if (updating.value) return
+        viewModelScope.launch {
+            updating.value = true
+            try {
+                repo.softDeleteTransaction(id)
+                onDone()
+            } finally {
+                updating.value = false
+            }
         }
     }
 
     fun deleteSeries(mode: SeriesDeletionMode, fromDate: Long? = null, onDone: () -> Unit) {
         val tx = uiState.value.transaction?.transaction ?: return
         val seriesId = tx.seriesId ?: return
-        
+        if (updating.value) return
+
         viewModelScope.launch {
-            repo.cancelSeries(seriesId, mode, fromDate)
-            onDone()
+            updating.value = true
+            try {
+                repo.cancelSeries(seriesId, mode, fromDate)
+                onDone()
+            } finally {
+                updating.value = false
+            }
         }
     }
 }
