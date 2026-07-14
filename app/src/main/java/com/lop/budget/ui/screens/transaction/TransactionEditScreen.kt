@@ -516,7 +516,7 @@ private fun FilledField(
 private fun SelectorRow(
     label: String,
     value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    icon: Any? = null, // ImageVector or URL String
     iconTint: Color? = null,
     trailingChevron: Boolean = true,
     onClick: () -> Unit,

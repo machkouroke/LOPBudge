@@ -52,7 +52,11 @@ fun AccountsScreen(vm: AccountsViewModel = hiltViewModel()) {
         items(state.accounts, key = { it.account.id }) { ab ->
             FloatingCard(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircleIcon(IconMapper.get(ab.account.icon), Color(ab.account.colorArgb), Color(ab.account.colorArgb).copy(alpha = 0.18f))
+                    CircleIcon(
+                        icon = IconMapper.get(ab.account.icon),
+                        tint = Color(ab.account.colorArgb),
+                        background = Color(ab.account.colorArgb).copy(alpha = 0.18f)
+                    )
                     Spacer(Modifier.width(12.dp))
                     Text(ab.account.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                     Text(Format.money(ab.balance, state.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)

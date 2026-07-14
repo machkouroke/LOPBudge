@@ -32,6 +32,8 @@ data class AccountFormUiState(
     val iconResults: List<IconResult> = emptyList(),
     val isSaving: Boolean = false,
     val isLoaded: Boolean = false,
+    val searchQuery: String = "",
+    val knownBanks: List<IconSearchRepository.BankInfo> = emptyList(),
 )
 
 @HiltViewModel
@@ -81,6 +83,7 @@ class AccountFormViewModel @Inject constructor(
         name, type, initialBalance, colorArgb, iconName, bankName, comment, 
         includeInTotal, archived, isSaving, isLoaded, searchQuery
     ) { args ->
+        val query = args[11] as String
         AccountFormUiState(
             id = accountId,
             name = args[0] as String,
@@ -94,8 +97,10 @@ class AccountFormViewModel @Inject constructor(
             archived = args[8] as Boolean,
             isSaving = args[9] as Boolean,
             isLoaded = args[10] as Boolean,
+            searchQuery = query,
             isEdit = isEdit,
-            iconResults = iconSearch.searchIcons(args[11] as String)
+            iconResults = iconSearch.searchIcons(query),
+            knownBanks = iconSearch.getKnownBanks()
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountFormUiState())
 
@@ -113,13 +118,19 @@ class AccountFormViewModel @Inject constructor(
     fun onInitialBalanceChange(v: String) { initialBalance.value = v }
     fun onColorChange(v: Int) { colorArgb.value = v }
     fun onIconChange(v: String) { iconName.value = v }
-    fun onBankNameChange(v: String) { 
-        bankName.value = v 
-        // Recherche automatique d'icône pour les banques
-        if (type.value == AccountType.CHECKING) {
-            iconSearch.searchBankIcon(v)?.let { iconName.value = it.iconName }
+    
+    fun onBankSelected(bank: IconSearchRepository.BankInfo?) {
+        if (bank == null) {
+            bankName.value = ""
+            return
+        }
+        bankName.value = bank.name
+        // Recherche automatique d'icône pour la banque sélectionnée
+        iconSearch.searchBankIcon(bank.name)?.let {
+            iconName.value = it.iconName
         }
     }
+
     fun onCommentChange(v: String) { comment.value = v }
     fun onIncludeInTotalChange(v: Boolean) { includeInTotal.value = v }
     fun onSearchQueryChange(v: String) { searchQuery.value = v }

@@ -40,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.lop.budget.R
 
 /**
@@ -164,7 +165,7 @@ fun FloatingCard(
 /** Pastille ronde colorée contenant une icône de catégorie/compte. */
 @Composable
 fun CircleIcon(
-    icon: ImageVector,
+    icon: Any, // ImageVector or String (URL)
     tint: Color,
     background: Color,
     size: Dp = 44.dp,
@@ -177,7 +178,29 @@ fun CircleIcon(
             .background(background),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(size * 0.5f))
+        when (icon) {
+            is ImageVector -> {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier.size(size * 0.5f)
+                )
+            }
+
+            is String -> {
+                if (icon.startsWith("http")) {
+                    coil.compose.AsyncImage(
+                        model = icon,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(size * 0.7f)
+                            .clip(CircleShape),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                    )
+                }
+            }
+        }
     }
 }
 
