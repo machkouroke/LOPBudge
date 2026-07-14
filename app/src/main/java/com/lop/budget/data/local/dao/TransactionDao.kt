@@ -75,4 +75,7 @@ interface TransactionDao {
 
     @Query("DELETE FROM transaction_tags WHERE transactionId = :transactionId")
     suspend fun clearTags(transactionId: Long)
+
+    @Query("SELECT COUNT(*) FROM transaction_tags WHERE tagId = :tagId")
+    suspend fun countTagUsage(tagId: Long): Int
 }

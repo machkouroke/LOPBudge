@@ -6,19 +6,19 @@ import com.lop.budget.data.local.dao.DebtDao
 import com.lop.budget.data.local.dao.GoalDao
 import com.lop.budget.data.local.dao.TagDao
 import com.lop.budget.data.local.dao.TransactionDao
+import com.lop.budget.data.local.dao.RecurringSeriesDao
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.DebtEntity
 import com.lop.budget.data.local.entity.GoalEntity
+import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
-import com.lop.budget.data.local.dao.RecurringSeriesDao
-import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.SeriesDeletionMode
-import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.TransactionStatus
+import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -51,14 +51,11 @@ class BudgetRepository @Inject constructor(
      * Si l'exception existe déjà, retourne son ID.
      */
     suspend fun materializeOccurrence(seriesId: Long, seriesDate: Long): Long {
-        // 1. Vérifier si l'exception existe déjà
         val existing = transactionDao.getException(seriesId.toString(), seriesDate)
         if (existing != null) return existing.id
 
-        // 2. Récupérer la série
         val series = recurringSeriesDao.getSeriesById(seriesId) ?: return -1L
 
-        // 3. Créer l'exception
         val exception = TransactionEntity(
             title = series.title,
             amount = series.amount,
@@ -76,6 +73,7 @@ class BudgetRepository @Inject constructor(
         )
         return transactionDao.upsert(exception)
     }
+
     /**
      * Retourne toutes les transactions d'un mois : les transactions ponctuelles, les exceptions,
      * et les occurrences virtuelles générées à la volée à partir des séries actives.
@@ -93,22 +91,17 @@ class BudgetRepository @Inject constructor(
             val endLocalDate = Instant.ofEpochMilli(end).atZone(zone).toLocalDate()
 
             for (series in seriesList) {
-                // 1. Calculer les occurrences virtuelles de cette série qui tombent dans ce mois
                 val occurrences = generateOccurrencesForMonth(series, startLocalDate, endLocalDate, zone)
-                
-                // 2. Pour chaque occurrence, vérifier s'il existe déjà une exception
+
                 for (occDate in occurrences) {
                     val occEpoch = occDate.atStartOfDay(zone).toInstant().toEpochMilli()
-                    val hasException = exceptions.any { 
-                        it.transaction.seriesId == series.id.toString() && it.transaction.seriesDate == occEpoch 
+                    val hasException = exceptions.any {
+                        it.transaction.seriesId == series.id.toString() && it.transaction.seriesDate == occEpoch
                     }
-                    
+
                     if (!hasException) {
-                        // Créer une TransactionWithRelations virtuelle
-                        // ID virtuel unique déterministe (négatif pour éviter collision avec DB)
-                        // hashCode() de seriesId + seriesDate donne un Int, on le passe en Long négatif
                         val virtualId = -Math.abs("${series.id}_$occEpoch".hashCode().toLong()) - 1L
-                        
+
                         val virtualTx = TransactionEntity(
                             id = virtualId,
                             title = series.title,
@@ -125,52 +118,45 @@ class BudgetRepository @Inject constructor(
                             linkedGoalId = series.linkedGoalId,
                             linkedDebtId = series.linkedDebtId
                         )
-                        // Résoudre les relations en mémoire
+
                         val account = accounts.find { it.id == series.accountId }
                         val category = categories.find { it.id == series.categoryId }
-                        
-                        // Note: Les tags nécessiteraient une table de liaison series_tags, 
-                        // pour l'instant on laisse vide
+
                         result.add(TransactionWithRelations(virtualTx, category, account, emptyList()))
                     }
                 }
             }
-            
-            // Trier par date
+
             result.sortedBy { it.transaction.date }
         }.flowOn(Dispatchers.Default)
     }
 
     private fun generateOccurrencesForMonth(
-        series: RecurringSeriesEntity, 
-        monthStart: LocalDate, 
-        monthEnd: LocalDate, 
+        series: RecurringSeriesEntity,
+        monthStart: LocalDate,
+        monthEnd: LocalDate,
         zone: ZoneId
     ): List<LocalDate> {
         val occurrences = mutableListOf<LocalDate>()
         val seriesStart = Instant.ofEpochMilli(series.startDate).atZone(zone).toLocalDate()
         val seriesEnd = series.endDate?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
-        
-        // Si la série se termine avant le début du mois, ou commence après la fin du mois
+
         if (seriesEnd != null && seriesEnd.isBefore(monthStart)) return occurrences
         if (seriesStart.isAfter(monthEnd)) return occurrences
-        
+
         var current = seriesStart
         var count = 0
         val max = series.maxOccurrences ?: Int.MAX_VALUE
-        
+
         while (count < max) {
             if (seriesEnd != null && current.isAfter(seriesEnd)) break
-            
-            // Si l'occurrence est dans le mois ciblé, on l'ajoute
+
             if (!current.isBefore(monthStart) && !current.isAfter(monthEnd)) {
                 occurrences.add(current)
             }
-            
-            // Si on a dépassé le mois, on peut s'arrêter (optimisation)
+
             if (current.isAfter(monthEnd)) break
-            
-            // Prochaine occurrence
+
             current = when (series.frequency) {
                 com.lop.budget.domain.model.RecurrenceFrequency.DAILY -> current.plusDays(series.interval.toLong())
                 com.lop.budget.domain.model.RecurrenceFrequency.WEEKLY -> current.plusWeeks(series.interval.toLong())
@@ -180,17 +166,15 @@ class BudgetRepository @Inject constructor(
             }
             count++
         }
-        
+
         return occurrences
     }
+
     fun observeTransaction(id: Long) = transactionDao.observeById(id)
     suspend fun getTxById(id: Long) = transactionDao.getById(id)
     fun observeSeries(seriesId: String) = transactionDao.observeSeries(seriesId)
-    // observePaidSum est supprimé car le calcul se fait désormais en mémoire dans le ViewModel
-    // à partir de observeTransactionsBetween() qui inclut les occurrences virtuelles.
 
     suspend fun saveTransaction(tx: TransactionEntity, tagIds: List<Long> = emptyList()): Long {
-        // 1. Sauvegarder la transaction initiale (ou mettre à jour si tx.id != 0L)
         val id = transactionDao.upsert(tx)
         val txId = if (tx.id == 0L) id else tx.id
         transactionDao.clearTags(txId)
@@ -198,13 +182,8 @@ class BudgetRepository @Inject constructor(
         return txId
     }
 
-    /**
-     * Gère la sauvegarde d'une transaction avec transition de type intelligente.
-     * Cette fonction orchestre le passage de ponctuel à série, de série à ponctuel,
-     * ou la mise à jour d'une série existante.
-     */
     suspend fun saveWithTransition(
-        editingId: Long?, // ID de la transaction physique éditée (si existe)
+        editingId: Long?,
         title: String,
         amount: Double,
         type: TransactionType,
@@ -225,13 +204,9 @@ class BudgetRepository @Inject constructor(
         val currentSeriesId = currentTwr?.transaction?.seriesId?.toLongOrNull()
 
         if (frequency == com.lop.budget.domain.model.RecurrenceFrequency.NONE) {
-            // --- CAS 1 : VERS PONCTUEL ---
             if (currentSeriesId != null) {
-                // On passe de série à ponctuel : 
-                // 1. On arrête la série parente pour le futur (conserve le passé)
-                cancelSeries(currentSeriesId.toString(), com.lop.budget.domain.model.SeriesDeletionMode.FUTURE, date)
-                
-                // 2. On transforme l'occurrence éditée en transaction isolée
+                cancelSeries(currentSeriesId.toString(), SeriesDeletionMode.FUTURE, date)
+
                 val singleTx = TransactionEntity(
                     id = editingId ?: 0L,
                     title = title,
@@ -242,7 +217,7 @@ class BudgetRepository @Inject constructor(
                     accountId = accountId,
                     categoryId = categoryId,
                     note = note,
-                    seriesId = null, // Débranchée
+                    seriesId = null,
                     seriesDate = null,
                     isException = false,
                     linkedGoalId = linkedGoalId,
@@ -250,7 +225,6 @@ class BudgetRepository @Inject constructor(
                 )
                 saveTransaction(singleTx, tagIds)
             } else {
-                // Simple mise à jour ou création de transaction ponctuelle
                 val tx = TransactionEntity(
                     id = editingId ?: 0L,
                     title = title,
@@ -267,9 +241,7 @@ class BudgetRepository @Inject constructor(
                 saveTransaction(tx, tagIds)
             }
         } else {
-            // --- CAS 2 : VERS SÉRIE ---
             if (currentSeriesId != null) {
-                // Mise à jour d'une série existante
                 val series = RecurringSeriesEntity(
                     id = currentSeriesId,
                     title = title,
@@ -279,7 +251,7 @@ class BudgetRepository @Inject constructor(
                     accountId = accountId,
                     frequency = frequency,
                     interval = interval,
-                    startDate = date, // Repart de la date éditée
+                    startDate = date,
                     endDate = endDate,
                     maxOccurrences = maxOccurrences,
                     daysOfWeek = daysOfWeek,
@@ -290,11 +262,8 @@ class BudgetRepository @Inject constructor(
                 )
                 saveRecurringSeries(series)
             } else {
-                // Conversion ponctuel -> série
-                // 1. Supprimer l'ancienne transaction isolée
                 editingId?.let { hardDeleteTransaction(it) }
-                
-                // 2. Créer la nouvelle série
+
                 val series = RecurringSeriesEntity(
                     title = title,
                     amount = amount,
@@ -325,24 +294,19 @@ class BudgetRepository @Inject constructor(
 
     suspend fun cancelSeries(seriesIdStr: String, mode: SeriesDeletionMode, fromDate: Long? = null) {
         val seriesId = seriesIdStr.toLongOrNull() ?: return
-        
+
         when (mode) {
             SeriesDeletionMode.ALL -> {
-                // 1. Annuler la série
                 recurringSeriesDao.updateStatus(seriesId, "CANCELLED")
-                // 2. Supprimer TOUTES les transactions matérialisées
                 transactionDao.softDeleteSeries(seriesIdStr)
             }
             SeriesDeletionMode.FUTURE -> {
-                // 1. Mettre à jour la date de fin de la série pour arrêter la génération future
                 val series = recurringSeriesDao.getSeriesById(seriesId)
                 if (series != null && fromDate != null) {
-                    // On met une date de fin juste avant l'occurrence sélectionnée
                     recurringSeriesDao.upsert(series.copy(endDate = fromDate - 1, status = "CANCELLED"))
                 } else {
                     recurringSeriesDao.updateStatus(seriesId, "CANCELLED")
                 }
-                // 2. Supprimer les transactions matérialisées à partir de la date
                 if (fromDate != null) {
                     transactionDao.softDeleteSeriesFrom(seriesIdStr, fromDate)
                 }
@@ -350,12 +314,8 @@ class BudgetRepository @Inject constructor(
         }
     }
 
-    /** Modifie la catégorie même si la transaction est déjà payée. */
-    suspend fun changeCategory(transactionId: Long, categoryId: Long) =
-        transactionDao.updateCategory(transactionId, categoryId)
-
-    suspend fun setStatus(transactionId: Long, status: String) =
-        transactionDao.updateStatus(transactionId, status)
+    suspend fun changeCategory(transactionId: Long, categoryId: Long) = transactionDao.updateCategory(transactionId, categoryId)
+    suspend fun setStatus(transactionId: Long, status: String) = transactionDao.updateStatus(transactionId, status)
 
     suspend fun softDeleteTransaction(id: Long) = transactionDao.softDelete(id)
     suspend fun restoreTransaction(id: Long) = transactionDao.restore(id)
@@ -374,4 +334,7 @@ class BudgetRepository @Inject constructor(
     suspend fun saveTag(t: TagEntity) = tagDao.upsert(t)
     suspend fun saveGoal(g: GoalEntity) = goalDao.upsert(g)
     suspend fun saveDebt(d: DebtEntity) = debtDao.upsert(d)
+
+    suspend fun countTagUsage(tagId: Long): Int = transactionDao.countTagUsage(tagId)
+    suspend fun deleteTag(tagId: Long) = tagDao.delete(tagId)
 }
