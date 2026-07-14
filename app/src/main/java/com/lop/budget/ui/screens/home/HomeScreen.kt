@@ -156,6 +156,7 @@ fun HomeScreen(
                 state = monthState,
                 statusBarPadding = statusBarPadding,
                 onOpenTransaction = onOpenTransaction,
+                onOpenMonthly = onOpenMonthly,
                 onDeleteRequest = { showDeleteConfirmForTx = it },
                 snackbarHostState = snackbarHostState,
                 vm = vm
@@ -208,6 +209,7 @@ fun HomeContent(
     state: HomeUiState,
     statusBarPadding: androidx.compose.ui.unit.Dp,
     onOpenTransaction: (Long) -> Unit,
+    onOpenMonthly: (TransactionType, YearMonth) -> Unit,
     onDeleteRequest: (TransactionWithRelations) -> Unit,
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
     vm: HomeViewModel
@@ -243,8 +245,27 @@ fun HomeContent(
                 Text(Format.money(animatedSolde.toDouble(), state.currency), style = MaterialTheme.typography.displayLarge, fontWeight = FontWeight.Bold, color = soldeColor)
                 Spacer(Modifier.height(32.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StatCard(stringResource(R.string.expense), state.monthExpense, state.currency, Icons.Filled.ArrowDownward, ExpenseCoral, Modifier.weight(1f))
-                    StatCard(stringResource(R.string.income), state.monthIncome, state.currency, Icons.Filled.ArrowUpward, com.lop.budget.ui.theme.IncomeGreen, Modifier.weight(1f))
+                    StatCard(
+                        label = stringResource(R.string.expense),
+                        amount = state.monthExpense,
+                        currency = state.currency,
+                        icon = Icons.Filled.ArrowDownward,
+                        color = ExpenseCoral,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickableNoRipple { onOpenMonthly(TransactionType.EXPENSE, state.month) }
+                    )
+
+                    StatCard(
+                        label = stringResource(R.string.income),
+                        amount = state.monthIncome,
+                        currency = state.currency,
+                        icon = Icons.Filled.ArrowUpward,
+                        color = com.lop.budget.ui.theme.IncomeGreen,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickableNoRipple { onOpenMonthly(TransactionType.INCOME, state.month) }
+                    )
                 }
             }
         }
