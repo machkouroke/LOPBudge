@@ -1,6 +1,5 @@
 package com.lop.budget.ui.screens.home
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -41,16 +38,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -63,25 +57,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.SeriesDeletionMode
-import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import com.lop.budget.ui.components.RecurringDeleteSheet
-import com.lop.budget.ui.components.SwipeableTransactionRow
 import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.transactionDayGroups
 import com.lop.budget.ui.navigation.Routes
 import com.lop.budget.ui.theme.ExpenseCoral
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
-import com.lop.budget.util.IconMapper
-import kotlinx.coroutines.launch
 import java.time.YearMonth
-import java.time.format.TextStyle
-import java.util.Locale
-import kotlin.math.abs
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -131,7 +119,7 @@ fun HomeScreen(
         val diff = (state.month.year - now.year) * 12 + (state.month.monthValue - now.monthValue)
         val targetPage = initialPage + diff
         if (pagerState.currentPage != targetPage) {
-            val distance = abs(pagerState.currentPage - targetPage)
+            val distance = kotlin.math.abs(pagerState.currentPage - targetPage)
             if (distance > 1) {
                 pagerState.scrollToPage(targetPage)
             } else {
@@ -171,7 +159,6 @@ fun HomeScreen(
             onTodayClick = { vm.goToCurrentMonth() },
             onDetectedClick = { navController.navigate(Routes.DETECTED) },
             onSettingsClick = { navController.navigate(Routes.SETTINGS) },
-            onScrollTop = { /* Handled in HomeContent if needed, or via global state */ },
             modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)
         )
     }
@@ -215,7 +202,9 @@ fun HomeContent(
     vm: HomeViewModel
 ) {
     val listState = rememberLazyListState()
-    val ext = LopTheme.extended
+
+    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
+    val undoMsg = stringResource(R.string.undo)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -251,20 +240,15 @@ fun HomeContent(
                         currency = state.currency,
                         icon = Icons.Filled.ArrowDownward,
                         color = ExpenseCoral,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickableNoRipple { onOpenMonthly(TransactionType.EXPENSE, state.month) }
+                        modifier = Modifier.weight(1f).clickableNoRipple { onOpenMonthly(TransactionType.EXPENSE, state.month) }
                     )
-
                     StatCard(
                         label = stringResource(R.string.income),
                         amount = state.monthIncome,
                         currency = state.currency,
                         icon = Icons.Filled.ArrowUpward,
                         color = com.lop.budget.ui.theme.IncomeGreen,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickableNoRipple { onOpenMonthly(TransactionType.INCOME, state.month) }
+                        modifier = Modifier.weight(1f).clickableNoRipple { onOpenMonthly(TransactionType.INCOME, state.month) }
                     )
                 }
             }
@@ -296,71 +280,17 @@ fun HomeContent(
             Text(stringResource(R.string.home_recent_transactions), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
         }
 
-        state.dayGroups.forEach { day ->
-            item(key = "day_header_${day.date}", contentType = "day_header") {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "${day.date.dayOfMonth} ${day.date.month.getDisplayName(TextStyle.SHORT, Locale.FRANCE)}", style = MaterialTheme.typography.titleLarge)
-                    Text(text = Format.money(day.total, state.currency), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
-                }
-            }
+        transactionDayGroups(
+            dayGroups = state.dayGroups,
+            currency = state.currency,
+            txVersions = state.txVersions,
+            onOpenTransaction = onOpenTransaction,
+            onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
+            onTogglePaid = vm::togglePaid,
+            onDeleteRequest = onDeleteRequest,
+            onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) }
+        )
 
-            items(items = day.transactions, key = { tx -> 
-                val id = tx.transaction.id
-                if (id < 0L) "tx_virtual_${tx.transaction.seriesId}_${tx.transaction.seriesDate}" else "tx_${id}_v${state.txVersions[id] ?: 0}"
-            }, contentType = { "transaction" }) { tx ->
-                Box(modifier = Modifier.animateItem()) {
-                    val isIncome = tx.transaction.type == TransactionType.INCOME
-                    val amountColor = if (isIncome) ext.income else ext.expense
-                    val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
-                    val isPaid = tx.transaction.status == TransactionStatus.PAID
-                    
-                    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
-                    val undoMsg = stringResource(R.string.undo)
-                    
-                    SwipeableTransactionRow(
-                        isPaid = isPaid,
-                        onTogglePaid = { vm.togglePaid(tx.transaction.id, tx.transaction.status) },
-                        onDelete = {
-                            if (tx.transaction.seriesId != null) {
-                                onDeleteRequest(tx)
-                            } else {
-                                vm.deleteWithUndo(
-                                    tx.transaction.id,
-                                    snackbarHostState,
-                                    txDeletedMsg,
-                                    undoMsg
-                                )
-                            }
-                        }
-                    ) {
-                        FloatingCard(
-                            modifier = Modifier.fillMaxWidth().clickableNoRipple {
-                                if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
-                                else tx.transaction.seriesId?.let { vm.materializeAndOpen(it.toLong(), tx.transaction.seriesDate!!, onOpenTransaction) }
-                            }.alpha(if (isPaid) 0.5f else 1f),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            contentPadding = PaddingValues(14.dp),
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircleIcon(icon = IconMapper.get(tx.category?.icon ?: "category"), tint = catColor, background = catColor.copy(alpha = 0.18f))
-                                Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(tx.transaction.title, style = MaterialTheme.typography.titleMedium)
-                                        if (tx.transaction.seriesId != null) {
-                                            Spacer(Modifier.width(6.dp))
-                                            Icon(Icons.Filled.Repeat, stringResource(R.string.home_recurring_tag), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
-                                        }
-                                    }
-                                    Text(tx.account?.name ?: "", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                Text((if (isIncome) "+" else "−") + Format.money(tx.transaction.amount, state.currency), style = MaterialTheme.typography.titleMedium, color = amountColor, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                    }
-                }
-            }
-        }
         if (state.dayGroups.isEmpty()) {
             item(contentType = "empty_state") {
                 Text(stringResource(R.string.home_no_transactions_month), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -390,7 +320,6 @@ fun HomeOverlay(
     onTodayClick: () -> Unit,
     onDetectedClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    onScrollTop: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(

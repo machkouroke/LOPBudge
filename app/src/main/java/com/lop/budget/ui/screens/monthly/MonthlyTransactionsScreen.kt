@@ -1,66 +1,36 @@
 package com.lop.budget.ui.screens.monthly
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.SeriesDeletionMode
-import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.ui.components.CircleIcon
-import com.lop.budget.ui.components.DonutChart
-import com.lop.budget.ui.components.DonutSlice
-import com.lop.budget.ui.components.FloatingCard
-import com.lop.budget.ui.components.RecurringDeleteChoice
-import com.lop.budget.ui.components.RecurringDeleteSheet
-import com.lop.budget.ui.components.SwipeableTransactionRow
-import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.*
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
-import com.lop.budget.util.IconMapper
 import java.time.format.TextStyle
 import java.util.Locale
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MonthlyTransactionsScreen(
     onBack: () -> Unit,
@@ -75,32 +45,21 @@ fun MonthlyTransactionsScreen(
     val title = if (state.type == TransactionType.EXPENSE) stringResource(R.string.expense) else stringResource(R.string.income)
     val accent = if (state.type == TransactionType.EXPENSE) ext.expense else ext.income
 
-    val top = state.breakdown.take(6)
-    val othersTotal = state.breakdown.drop(6).sumOf { it.total }
+    val top = state.breakdown
     val slices = buildList {
-        top.forEach { add(DonutSlice(it.total, Color(it.colorArgb), it.name)) }
-        if (othersTotal > 0) add(DonutSlice(othersTotal, Color(0xFF9E9E9E), stringResource(R.string.others)))
+        top.take(8).forEach { add(DonutSlice(it.total, Color(it.colorArgb), it.name)) }
     }
 
     var showDeleteConfirmForTx by remember { mutableStateOf<TransactionWithRelations?>(null) }
+    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
+    val undoMsg = stringResource(R.string.undo)
 
-    LazyColumn(
-        Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 40.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    LopScreenScaffold(
+        title = title,
+        onBack = onBack,
+        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back), modifier = Modifier.size(26.dp).clickableNoRipple(onBack))
-                Text(title, style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.size(26.dp))
-            }
-        }
-
         item {
             Text(
                 "${state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }} ${state.month.year}",
@@ -118,7 +77,7 @@ fun MonthlyTransactionsScreen(
             }
         }
 
-        // Insights + Toggle Mode
+        // Insights + Chart
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -126,22 +85,12 @@ fun MonthlyTransactionsScreen(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        InsightToggle(
-                            label = "Catégories",
-                            selected = state.insightMode == InsightMode.CATEGORY,
-                            accent = accent,
-                            onClick = { vm.setInsightMode(InsightMode.CATEGORY) }
-                        )
+                        InsightToggle("Catégories", state.insightMode == InsightMode.CATEGORY, accent) { vm.setInsightMode(InsightMode.CATEGORY) }
                         Spacer(Modifier.width(8.dp))
-                        InsightToggle(
-                            label = "Étiquettes",
-                            selected = state.insightMode == InsightMode.TAG,
-                            accent = accent,
-                            onClick = { vm.setInsightMode(InsightMode.TAG) }
-                        )
+                        InsightToggle("Étiquettes", state.insightMode == InsightMode.TAG, accent) { vm.setInsightMode(InsightMode.TAG) }
                     }
 
-                    if (slices.isEmpty()) {
+                    if (state.transactions.isEmpty()) {
                         Text(stringResource(R.string.monthly_no_data), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(40.dp))
                     } else {
                         DonutChart(slices = slices) {
@@ -160,104 +109,45 @@ fun MonthlyTransactionsScreen(
             }
         }
 
-        // Breakdown
-        items(state.breakdown, key = { it.name }) { b ->
-            FloatingCard(
-                Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+        // Breakdown en Grille (3 colonnes)
+        item {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                maxItemsInEachRow = 3
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(14.dp).clip(CircleShape).background(Color(b.colorArgb)))
-                    Spacer(Modifier.width(12.dp))
-                    Text(b.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                    Text("${(b.share * 100).toInt()} %", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(12.dp))
-                    Text(Format.money(b.total, state.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                state.breakdown.forEach { item ->
+                    BreakdownChip(
+                        name = item.name,
+                        amount = item.total,
+                        percentage = (item.share * 100).toInt(),
+                        color = Color(item.colorArgb),
+                        currency = state.currency,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
 
         item {
+            Spacer(Modifier.height(8.dp))
             Text(stringResource(R.string.monthly_transactions_title), style = MaterialTheme.typography.titleLarge)
         }
 
-        items(state.transactions, key = { tx -> 
-            val id = tx.transaction.id
-            if (id < 0L) "tx_virtual_${tx.transaction.seriesId}_${tx.transaction.seriesDate}" 
-            else "tx_${id}_v${state.txVersions[id] ?: 0}"
-        }) { tx ->
-            val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
-            val isPaid = tx.transaction.status == TransactionStatus.PAID
-            
-            val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
-            val undoMsg = stringResource(R.string.undo)
+        // Liste centralisée
+        transactionDayGroups(
+            dayGroups = state.dayGroups,
+            currency = state.currency,
+            txVersions = state.txVersions,
+            onOpenTransaction = onOpenTransaction,
+            onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
+            onTogglePaid = vm::togglePaid,
+            onDeleteRequest = { showDeleteConfirmForTx = it },
+            onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) }
+        )
 
-            SwipeableTransactionRow(
-                isPaid = isPaid,
-                onTogglePaid = { vm.togglePaid(tx.transaction.id, tx.transaction.status) },
-                onDelete = {
-                    if (tx.transaction.seriesId != null) {
-                        showDeleteConfirmForTx = tx
-                    } else {
-                        vm.deleteWithUndo(tx.transaction.id, snackbarHostState, txDeletedMsg, undoMsg)
-                    }
-                }
-            ) {
-                FloatingCard(
-                    modifier = Modifier.fillMaxWidth().clickableNoRipple { 
-                        if (tx.transaction.id >= 0L) {
-                            onOpenTransaction(tx.transaction.id) 
-                        } else if (tx.transaction.seriesId != null) {
-                            vm.materializeAndOpen(tx.transaction.seriesId!!.toLong(), tx.transaction.seriesDate!!, onOpenTransaction)
-                        }
-                    }.alpha(if (isPaid) 0.5f else 1f),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircleIcon(
-                            icon = IconMapper.get(tx.category?.icon ?: "category"),
-                            tint = catColor,
-                            background = catColor.copy(alpha = 0.18f),
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(tx.transaction.title, style = MaterialTheme.typography.titleMedium)
-                                if (tx.transaction.seriesId != null) {
-                                    Spacer(Modifier.width(6.dp))
-                                    Icon(Icons.Filled.Repeat, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
-                                }
-                            }
-                            Text(Format.dayMonth(tx.transaction.date), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (tx.tags.isNotEmpty()) {
-                                Spacer(Modifier.height(4.dp))
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    tx.tags.take(3).forEach { tag ->
-                                        com.lop.budget.ui.components.PillTag(
-                                            text = tag.name,
-                                            color = Color(tag.colorArgb)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        Text(
-                            (if (state.type == TransactionType.INCOME) "+" else "−") + Format.money(tx.transaction.amount, state.currency),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = accent,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-            }
-        }
-
-        if (state.transactions.isEmpty()) {
+        if (state.dayGroups.isEmpty()) {
             item {
                 Text(
                     stringResource(R.string.monthly_no_transactions),
@@ -292,6 +182,58 @@ fun MonthlyTransactionsScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+fun BreakdownChip(
+    name: String,
+    amount: Double,
+    percentage: Int,
+    color: Color,
+    currency: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.height(54.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                // Petit cercle de pourcentage
+                Text(
+                    text = "$percentage%",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                    color = color,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(verticalArrangement = Arrangement.Center) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = Format.money(amount, currency),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
     }
 }
 

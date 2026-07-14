@@ -53,6 +53,7 @@ fun LopScreenScaffold(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     navigationIcon: ImageVector = Icons.Default.Close,
+    snackbarHost: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     content: LazyListScope.() -> Unit,
 ) {
@@ -66,6 +67,7 @@ fun LopScreenScaffold(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = snackbarHost,
         topBar = {
             Box(
                 modifier = Modifier

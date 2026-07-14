@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
@@ -39,6 +41,7 @@ data class MonthlyTransactionsUiState(
     val currency: String = "EUR",
     val total: Double = 0.0,
     val breakdown: List<MonthlyCategoryBreakdown> = emptyList(),
+    val dayGroups: List<DayGroup> = emptyList(),
     val transactions: List<TransactionWithRelations> = emptyList(),
     /** Version par transaction pour forcer la recréation après Undo. */
     val txVersions: Map<Long, Int> = emptyMap(),
@@ -182,6 +185,19 @@ class MonthlyTransactionsViewModel @Inject constructor(
 
             val total = filtered.sumOf { it.transaction.amount }
 
+            val zone = ZoneId.systemDefault()
+            val dayGroups = filtered
+                .sortedByDescending { it.transaction.date }
+                .groupBy { Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate() }
+                .toSortedMap(compareByDescending { it })
+                .map { (date, list) ->
+                    DayGroup(
+                        date = date,
+                        total = list.sumOf { tx -> if (tx.transaction.type == TransactionType.INCOME) tx.transaction.amount else -tx.transaction.amount },
+                        transactions = list.sortedByDescending { it.transaction.date },
+                    )
+                }
+
             val breakdown = if (mode == InsightMode.CATEGORY) {
                 filtered.groupBy { it.category }
                     .map { (cat, list) ->
@@ -218,6 +234,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 currency = currency,
                 total = total,
                 breakdown = breakdown,
+                dayGroups = dayGroups,
                 transactions = filtered,
                 txVersions = versions
             )

@@ -6,6 +6,7 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
@@ -26,12 +27,6 @@ import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
 
-
-data class DayGroup(
-    val date: LocalDate,
-    val total: Double,
-    val transactions: List<TransactionWithRelations>,
-)
 
 data class HomeUiState(
     val month: YearMonth = YearMonth.now(),
