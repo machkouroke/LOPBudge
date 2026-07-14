@@ -33,6 +33,8 @@ enum class HapticIntent {
     Selection,
     /** Action principale / validation. */
     Confirm,
+    /** Changement de période (swipe accueil). */
+    PeriodChanged,
     /** Erreur ou action destructive (à utiliser avec parcimonie). */
     Destructive,
 }
@@ -44,6 +46,7 @@ private fun rememberHapticMapper(): (HapticIntent) -> HapticFeedbackType {
             HapticIntent.Tap -> HapticFeedbackType.TextHandleMove
             HapticIntent.Selection -> HapticFeedbackType.TextHandleMove
             HapticIntent.Confirm -> HapticFeedbackType.LongPress
+            HapticIntent.PeriodChanged -> HapticFeedbackType.LongPress
             HapticIntent.Destructive -> HapticFeedbackType.LongPress
         }
     }

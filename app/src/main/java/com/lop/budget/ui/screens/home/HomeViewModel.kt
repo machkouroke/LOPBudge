@@ -61,8 +61,8 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repo: BudgetRepository,
-    detectionRepo: NotificationDetectionRepository,
-    settings: SettingsRepository,
+    private val detectionRepo: NotificationDetectionRepository,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
 
     private val month = MutableStateFlow(YearMonth.now())
@@ -165,6 +165,92 @@ class HomeViewModel @Inject constructor(
     fun goToCurrentMonth() { month.value = YearMonth.now() }
     fun nextMonth() { month.value = month.value.plusMonths(1) }
     fun prevMonth() { month.value = month.value.minusMonths(1) }
+
+    /**
+     * Retourne un Flow de données pour un mois spécifique.
+     * Utilisé par le Pager pour afficher le contenu des mois adjacents pendant le swipe.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun observeMonthState(ym: YearMonth): kotlinx.coroutines.flow.Flow<HomeUiState> {
+        val (start, end) = ym.range()
+        val (prevStart, prevEnd) = ym.minusMonths(1).range()
+
+        return combine(
+            repo.observeTransactionsBetween(start, end),
+            repo.observeTransactionsBetween(prevStart, prevEnd),
+            settings.currency,
+            pendingDeletes,
+            pendingSeriesDeletes,
+            pendingSeriesFromDates,
+            txVersions
+        ) { args ->
+            @Suppress("UNCHECKED_CAST")
+            val txsBetween = args[0] as List<TransactionWithRelations>
+            @Suppress("UNCHECKED_CAST")
+            val prevTxsBetween = args[1] as List<TransactionWithRelations>
+            val currency = args[2] as String
+            @Suppress("UNCHECKED_CAST")
+            val pending = args[3] as Set<Long>
+            @Suppress("UNCHECKED_CAST")
+            val pendingSeries = args[4] as Map<String, SeriesDeletionMode>
+            @Suppress("UNCHECKED_CAST")
+            val pendingSeriesDates = args[5] as Map<String, Long>
+            @Suppress("UNCHECKED_CAST")
+            val versions = args[6] as Map<Long, Int>
+            
+            // Même logique de filtrage que l'UI State principal
+            val txs = txsBetween.filter { twr ->
+                val tx = twr.transaction
+                val isSinglePending = tx.id in pending
+                val seriesId = tx.seriesId
+                val seriesPendingMode = if (seriesId != null) pendingSeries[seriesId] else null
+                val isSeriesPending = when (seriesPendingMode) {
+                    SeriesDeletionMode.ALL -> true
+                    SeriesDeletionMode.FUTURE -> {
+                        val fromDate = pendingSeriesDates[seriesId]
+                        fromDate != null && tx.date >= fromDate
+                    }
+                    null -> false
+                }
+                !isSinglePending && !isSeriesPending
+            }
+
+            val income = txs.filter { it.transaction.type == TransactionType.INCOME }.sumOf { it.transaction.amount }
+            val expense = txs.filter { it.transaction.type == TransactionType.EXPENSE }.sumOf { it.transaction.amount }
+            val prevExpense = prevTxsBetween.filter { it.transaction.type == TransactionType.EXPENSE }.sumOf { it.transaction.amount }
+
+            val plannedExpense = txs
+                .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.type == TransactionType.EXPENSE }
+                .sumOf { it.transaction.amount }
+            val projected = income - expense - plannedExpense
+
+            val zone = ZoneId.systemDefault()
+            val dayGroups = txs
+                .sortedByDescending { it.transaction.date }
+                .groupBy { Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate() }
+                .toSortedMap(compareByDescending { it })
+                .map { (date, list) ->
+                    DayGroup(
+                        date = date,
+                        total = list.sumOf { tx -> if (tx.transaction.type == TransactionType.INCOME) tx.transaction.amount else -tx.transaction.amount },
+                        transactions = list.sortedByDescending { it.transaction.date },
+                    )
+                }
+
+            HomeUiState(
+                month = ym,
+                isCurrentMonth = ym == YearMonth.now(),
+                currency = currency,
+                monthIncome = income,
+                monthExpense = expense,
+                previousPeriodExpense = prevExpense,
+                projectedBalance = projected,
+                dayGroups = dayGroups,
+                txVersions = versions,
+                // On omet les données globales comme detectedCount qui sont gérées par l'Overlay
+            )
+        }.flowOn(Dispatchers.Default)
+    }
 
     private fun YearMonth.range(): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()
