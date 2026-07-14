@@ -10,7 +10,7 @@ enum class TransactionStatus { PLANNED, PAID }
 enum class RecurrenceFrequency { NONE, DAILY, WEEKLY, MONTHLY, YEARLY }
 
 /** Type de compte. */
-enum class AccountType { CHECKING, CASH, SAVINGS, CARD, OTHER }
+enum class AccountType { CHECKING, CASH, SAVINGS, CARD, CRYPTO, INVESTMENT, OTHER }
 
 /** Mode de suppression d'une série récurrente. */
 enum class SeriesDeletionMode { ALL, FUTURE }

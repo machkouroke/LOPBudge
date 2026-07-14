@@ -1,6 +1,7 @@
 package com.lop.budget.util
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.BeachAccess
@@ -35,6 +36,7 @@ object IconMapper {
         "beach_access" -> Icons.Filled.BeachAccess
         "shield" -> Icons.Filled.Shield
         "wallet" -> Icons.Filled.AccountBalanceWallet
+        "trending_up" -> Icons.AutoMirrored.Filled.TrendingUp
         else -> Icons.Filled.Category
     }
 }

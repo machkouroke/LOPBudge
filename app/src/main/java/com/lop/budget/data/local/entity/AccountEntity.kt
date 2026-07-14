@@ -12,4 +12,8 @@ data class AccountEntity(
     val initialBalance: Double,
     val colorArgb: Int,
     val icon: String,
+    val bankName: String? = null,
+    val comment: String? = null,
+    val includeInTotal: Boolean = true,
+    val archived: Boolean = false,
 )

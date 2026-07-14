@@ -14,6 +14,10 @@ object Routes {
     const val SETTINGS = "settings"
     const val CATEGORY_CREATE = "category/create"
     const val TAGS_MANAGE = "manage/tags"
+    const val ACCOUNTS_MANAGE = "manage/accounts"
+    const val ACCOUNT_ADD = "account/add"
+    const val ACCOUNT_EDIT = "account/edit/{id}"
+    fun accountEdit(id: Long) = "account/edit/$id"
 
     // Notifications → propositions détectées
     const val DETECTED = "detected"

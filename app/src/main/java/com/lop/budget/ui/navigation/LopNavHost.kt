@@ -44,6 +44,8 @@ import com.lop.budget.ui.screens.detail.TransactionDetailScreen
 import com.lop.budget.ui.screens.detected.DetectedTransactionsScreen
 import com.lop.budget.ui.screens.goals.GoalsScreen
 import com.lop.budget.ui.screens.home.HomeScreen
+import com.lop.budget.ui.screens.manage.AccountEditScreen
+import com.lop.budget.ui.screens.manage.AccountsManageScreen
 import com.lop.budget.ui.screens.manage.TagsManageScreen
 import com.lop.budget.ui.screens.monthly.MonthlyTransactionsScreen
 import com.lop.budget.ui.screens.settings.SettingsScreen
@@ -263,8 +265,28 @@ fun LopNavHost(startRoute: String? = null) {
                 ) {
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
-                        onNavigateToTags = { navController.navigate(Routes.TAGS_MANAGE) }
+                        onNavigateToTags = { navController.navigate(Routes.TAGS_MANAGE) },
+                        onNavigateToAccounts = { navController.navigate(Routes.ACCOUNTS_MANAGE) }
                     )
+                }
+
+                composable(Routes.ACCOUNTS_MANAGE) {
+                    AccountsManageScreen(
+                        onBack = { navController.popBackStack() },
+                        onAddAccount = { navController.navigate(Routes.ACCOUNT_ADD) },
+                        onEditAccount = { id: Long -> navController.navigate(Routes.accountEdit(id)) }
+                    )
+                }
+
+                composable(Routes.ACCOUNT_ADD) {
+                    AccountEditScreen(onBack = { navController.popBackStack() })
+                }
+
+                composable(
+                    Routes.ACCOUNT_EDIT,
+                    arguments = listOf(navArgument("id") { type = NavType.LongType })
+                ) {
+                    AccountEditScreen(onBack = { navController.popBackStack() })
                 }
 
                 composable(

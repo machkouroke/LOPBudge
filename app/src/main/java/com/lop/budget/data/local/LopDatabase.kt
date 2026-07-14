@@ -32,7 +32,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         DebtEntity::class,
         DetectedTransactionProposalEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -102,6 +102,15 @@ abstract class LopDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_detected_transaction_proposals_dedupeKey` ON `detected_transaction_proposals` (`dedupeKey`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_detected_transaction_proposals_status` ON `detected_transaction_proposals` (`status`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_detected_transaction_proposals_detectedAt` ON `detected_transaction_proposals` (`detectedAt`)")
+            }
+        }
+
+        val MIGRATION_4_5 = object : androidx.room.migration.Migration(4, 5) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE accounts ADD COLUMN bankName TEXT")
+                db.execSQL("ALTER TABLE accounts ADD COLUMN comment TEXT")
+                db.execSQL("ALTER TABLE accounts ADD COLUMN includeInTotal INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE accounts ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

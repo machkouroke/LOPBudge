@@ -2,72 +2,49 @@ package com.lop.budget.ui.screens.settings
 
 import android.content.Intent
 import android.provider.Settings
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
-import com.lop.budget.ui.components.FloatingCard
-import com.lop.budget.ui.components.LopScreenScaffold
-import com.lop.budget.ui.components.PillTag
-import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.*
 import com.lop.budget.ui.theme.ThemeMode
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateToTags: () -> Unit,
+    onNavigateToAccounts: () -> Unit,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
-    val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
-    var keyInput by remember(state.geminiKey) { mutableStateOf(state.geminiKey) }
-    var currencyInput by remember(state.currency) { mutableStateOf(state.currency) }
+    val context = LocalContext.current
 
     LopScreenScaffold(
         title = stringResource(R.string.settings_title),
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack
     ) {
-        // Apparence
+        // Apparence et Thème
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column {
                     Text(
-                        stringResource(R.string.settings_appearance),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
                         stringResource(R.string.settings_theme),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(Modifier.height(8.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -102,6 +79,37 @@ fun SettingsScreen(
                             )
                         }
                         Switch(checked = state.dynamicColor, onCheckedChange = vm::setDynamicColor)
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+                    HorizontalDivider(modifier = Modifier.alpha(0.1f))
+                    Spacer(Modifier.height(14.dp))
+
+                    Text("Données et référentiels", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        Modifier.fillMaxWidth().clickableNoRipple(onNavigateToAccounts),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Gestion des comptes", style = MaterialTheme.typography.bodyLarge)
+                            Text("Ajouter, modifier ou archiver vos comptes", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row(
+                        Modifier.fillMaxWidth().clickableNoRipple(onNavigateToTags),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Gestion des étiquettes", style = MaterialTheme.typography.bodyLarge)
+                            Text("Organisez vos transactions par tags", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -154,84 +162,46 @@ fun SettingsScreen(
             }
         }
 
-        // Devise
+        // Devise et IA
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
-                Column {
-                    Text(
-                        stringResource(R.string.settings_currency),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(Modifier.height(10.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     OutlinedTextField(
-                        value = currencyInput,
-                        onValueChange = {
-                            currencyInput = it.uppercase().take(3); vm.setCurrency(currencyInput)
-                        },
+                        value = state.currency,
+                        onValueChange = vm::setCurrency,
                         label = { Text(stringResource(R.string.settings_currency_label)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth()
                     )
-                }
-            }
-        }
 
-        // Assistant IA
-        item {
-            FloatingCard(Modifier.fillMaxWidth()) {
-                Column {
-                    Text(
-                        stringResource(R.string.settings_ai_title),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        stringResource(R.string.settings_ai_desc),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = keyInput,
-                        onValueChange = { keyInput = it; vm.setGeminiKey(it.trim()) },
-                        label = { Text(stringResource(R.string.settings_ai_key_label)) },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
-        }
-
-        // Gestion des données (Tags)
-        item {
-            FloatingCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickableNoRipple { onNavigateToTags() }
-            ) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
                     Column {
                         Text(
-                            "Gestion des tags",
+                            stringResource(R.string.settings_ai_title),
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            "Renommer ou supprimer vos étiquettes",
+                            stringResource(R.string.settings_ai_desc),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = state.geminiKey,
+                            onValueChange = vm::setGeminiKey,
+                            label = { Text(stringResource(R.string.settings_ai_key_label)) },
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
-                    Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
+            }
+        }
+
+        item {
+            Box(Modifier.fillMaxWidth().padding(vertical = 20.dp), contentAlignment = Alignment.Center) {
+                Text(
+                    "LOPBudge v1.0.0",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
             }
         }
     }

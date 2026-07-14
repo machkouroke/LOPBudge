@@ -374,6 +374,8 @@ class BudgetRepository @Inject constructor(
     fun observeDebts() = debtDao.observeAll()
 
     suspend fun saveAccount(a: AccountEntity) = accountDao.upsert(a)
+    suspend fun getAccountById(id: Long) = accountDao.getById(id)
+    suspend fun deleteAccount(id: Long) = accountDao.delete(id)
     suspend fun saveCategory(c: CategoryEntity) = categoryDao.upsert(c)
     suspend fun saveTag(t: TagEntity) = tagDao.upsert(t)
     suspend fun deleteTag(id: Long) = tagDao.delete(id)
