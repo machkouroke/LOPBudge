@@ -293,10 +293,24 @@ fun HomeContent(
                     val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
                     val isPaid = tx.transaction.status == TransactionStatus.PAID
                     
+                    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
+                    val undoMsg = stringResource(R.string.undo)
+                    
                     SwipeableTransactionRow(
                         isPaid = isPaid,
                         onTogglePaid = { vm.togglePaid(tx.transaction.id, tx.transaction.status) },
-                        onDelete = { onDeleteRequest(tx) }
+                        onDelete = {
+                            if (tx.transaction.seriesId != null) {
+                                onDeleteRequest(tx)
+                            } else {
+                                vm.deleteWithUndo(
+                                    tx.transaction.id,
+                                    snackbarHostState,
+                                    txDeletedMsg,
+                                    undoMsg
+                                )
+                            }
+                        }
                     ) {
                         FloatingCard(
                             modifier = Modifier.fillMaxWidth().clickableNoRipple {
