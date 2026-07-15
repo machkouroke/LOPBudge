@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.lop.budget.R
+import com.lop.budget.util.IconMapper
 
 /**
  * Un scaffold réutilisable pour les écrans de second niveau (Settings, Edit, etc.).
@@ -175,7 +176,7 @@ fun CircleIcon(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(background),
+            .background(if (icon is String && icon.startsWith("http")) Color.White else background),
         contentAlignment = Alignment.Center,
     ) {
         when (icon) {
@@ -190,14 +191,32 @@ fun CircleIcon(
 
             is String -> {
                 if (icon.startsWith("http")) {
-                    coil.compose.AsyncImage(
+                    AsyncImage(
                         model = icon,
                         contentDescription = null,
                         modifier = Modifier
-                            .size(size * 0.7f)
+                            .size(size * 0.85f)
                             .clip(CircleShape),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                        onError = { state ->
+                            android.util.Log.e("LOPBudge", "❌ CircleIcon: Failed to load $icon. Error: ${state.result.throwable.message}")
+                        },
+                        onSuccess = {
+                            android.util.Log.d("LOPBudge", "✅ CircleIcon: Successfully loaded $icon")
+                        },
+                        error = androidx.compose.ui.graphics.painter.ColorPainter(Color.Gray.copy(alpha = 0.1f)),
+                        placeholder = androidx.compose.ui.graphics.painter.ColorPainter(Color.LightGray.copy(alpha = 0.05f))
                     )
+                } else {
+                    val vector = IconMapper.get(icon)
+                    if (vector is ImageVector) {
+                        Icon(
+                            vector,
+                            contentDescription = null,
+                            tint = tint,
+                            modifier = Modifier.size(size * 0.5f)
+                        )
+                    }
                 }
             }
         }

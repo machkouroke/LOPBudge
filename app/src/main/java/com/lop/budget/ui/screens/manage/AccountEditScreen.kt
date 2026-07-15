@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -19,15 +18,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.data.repository.IconResult
+import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
@@ -291,8 +289,8 @@ fun AccountTypeBottomSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BankSelectorBottomSheet(
-    banks: List<com.lop.budget.data.repository.IconSearchRepository.BankInfo>,
-    onSelect: (com.lop.budget.data.repository.IconSearchRepository.BankInfo?) -> Unit,
+    banks: List<IconSearchRepository.BankInfo>,
+    onSelect: (IconSearchRepository.BankInfo?) -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -306,8 +304,8 @@ fun BankSelectorBottomSheet(
                     leadingContent = {
                         CircleIcon(
                             icon = "https://logo.clearbit.com/${bank.domain}",
-                            tint = MaterialTheme.colorScheme.primary,
-                            background = MaterialTheme.colorScheme.surfaceVariant,
+                            tint = Color.Unspecified,
+                            background = Color.White,
                             size = 32.dp
                         )
                     },
@@ -328,7 +326,7 @@ fun BankSelectorBottomSheet(
 @Composable
 fun IconSelectorBottomSheet(
     query: String,
-    results: List<com.lop.budget.data.repository.IconResult>,
+    results: List<IconResult>,
     currentIcon: String,
     onQueryChange: (String) -> Unit,
     onSelect: (String) -> Unit,
@@ -380,6 +378,28 @@ fun IconSelectorBottomSheet(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                if (query.length >= 2 && results.none { it.isWeb }) {
+                    item {
+                        ListItem(
+                            headlineContent = { Text("Rechercher sur Internet...") },
+                            leadingContent = { Icon(Icons.Default.Search, null) },
+                            modifier = Modifier.clickable { /* Already real-time */ }
+                        )
+                    }
+                }
+
+                if (results.isEmpty() && query.length >= 2) {
+                    item {
+                        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                "Aucun logo trouvé pour \"$query\"",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
                 items(results) { res ->
                     Row(
                         modifier = Modifier
@@ -392,7 +412,7 @@ fun IconSelectorBottomSheet(
                         CircleIcon(
                             icon = IconMapper.get(res.iconName),
                             tint = MaterialTheme.colorScheme.primary,
-                            background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            background = Color.White,
                             size = 48.dp
                         )
                         Spacer(Modifier.width(16.dp))
@@ -430,11 +450,11 @@ fun IconSelectorBottomSheet(
                     Text("Abandonner")
                 }
                 Button(
-                    onClick = onDismiss, // Just close, search is real-time
+                    onClick = onDismiss,
                     modifier = Modifier.weight(1.2f),
                     shape = MaterialTheme.shapes.medium
                 ) {
-                    Text("Chercher")
+                    Text("Terminer")
                 }
             }
         }

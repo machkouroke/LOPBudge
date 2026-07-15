@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,6 +36,7 @@ data class AccountFormUiState(
     val isLoaded: Boolean = false,
     val searchQuery: String = "",
     val knownBanks: List<IconSearchRepository.BankInfo> = emptyList(),
+    val isSearching: Boolean = false,
 )
 
 @HiltViewModel
@@ -79,29 +82,33 @@ class AccountFormViewModel @Inject constructor(
         }
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<AccountFormUiState> = combine(
         name, type, initialBalance, colorArgb, iconName, bankName, comment, 
         includeInTotal, archived, isSaving, isLoaded, searchQuery
-    ) { args ->
+    ) { args -> args }.flatMapLatest { args ->
         val query = args[11] as String
-        AccountFormUiState(
-            id = accountId,
-            name = args[0] as String,
-            type = args[1] as AccountType,
-            initialBalance = args[2] as String,
-            colorArgb = args[3] as Int,
-            iconName = args[4] as String,
-            bankName = args[5] as String,
-            comment = args[6] as String,
-            includeInTotal = args[7] as Boolean,
-            archived = args[8] as Boolean,
-            isSaving = args[9] as Boolean,
-            isLoaded = args[10] as Boolean,
-            searchQuery = query,
-            isEdit = isEdit,
-            iconResults = iconSearch.searchIcons(query),
-            knownBanks = iconSearch.getKnownBanks()
-        )
+        flow {
+            val icons = iconSearch.searchIcons(query)
+            emit(AccountFormUiState(
+                id = accountId,
+                name = args[0] as String,
+                type = args[1] as AccountType,
+                initialBalance = args[2] as String,
+                colorArgb = args[3] as Int,
+                iconName = args[4] as String,
+                bankName = args[5] as String,
+                comment = args[6] as String,
+                includeInTotal = args[7] as Boolean,
+                archived = args[8] as Boolean,
+                isSaving = args[9] as Boolean,
+                isLoaded = args[10] as Boolean,
+                searchQuery = query,
+                isEdit = isEdit,
+                iconResults = icons,
+                knownBanks = iconSearch.getKnownBanks()
+            ))
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountFormUiState())
 
     fun onNameChange(v: String) { name.value = v }
@@ -126,8 +133,10 @@ class AccountFormViewModel @Inject constructor(
         }
         bankName.value = bank.name
         // Recherche automatique d'icône pour la banque sélectionnée
-        iconSearch.searchBankIcon(bank.name)?.let {
-            iconName.value = it.iconName
+        viewModelScope.launch {
+            iconSearch.searchBankIcon(bank.name)?.let {
+                iconName.value = it.iconName
+            }
         }
     }
 

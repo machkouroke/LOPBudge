@@ -1,7 +1,20 @@
 package com.lop.budget.data.repository
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import javax.inject.Inject
 import javax.inject.Singleton
+
+@Serializable
+data class ClearbitCompany(
+    val name: String,
+    val domain: String,
+    val logo: String? = null
+)
 
 data class IconResult(
     val label: String,
@@ -15,6 +28,9 @@ enum class IconType { BANK, CASH, CRYPTO, SAVINGS, OTHER }
 
 @Singleton
 class IconSearchRepository @Inject constructor() {
+
+    private val client = OkHttpClient()
+    private val json = Json { ignoreUnknownKeys = true }
 
     private val localIcons = listOf(
         IconResult("Banque", "account_balance", type = IconType.BANK),
@@ -42,8 +58,8 @@ class IconSearchRepository @Inject constructor() {
         BankInfo("Revolut", "revolut.com"),
         BankInfo("Crédit Mutuel", "creditmutuel.fr"),
         BankInfo("Crédit Agricole", "credit-agricole.fr"),
-        BankInfo("BNP Paribas", "mabanque.bnpparibas"),
-        BankInfo("Société Générale", "particuliers.societegenerale.fr"),
+        BankInfo("BNP Paribas", "bnpparibas.com"),
+        BankInfo("Société Générale", "societegenerale.fr"),
         BankInfo("N26", "n26.com"),
         BankInfo("Binance", "binance.com"),
         BankInfo("Coinbase", "coinbase.com"),
@@ -64,42 +80,52 @@ class IconSearchRepository @Inject constructor() {
 
     fun getKnownBanks(): List<BankInfo> = bankList
 
-    fun searchIcons(query: String): List<IconResult> {
+    /**
+     * Recherche REELLE sur Internet via l'API Autocomplete de Clearbit.
+     * Cette API est publique et gratuite (pour l'instant) et renvoie des logos de qualité.
+     */
+    suspend fun searchIcons(query: String): List<IconResult> = withContext(Dispatchers.IO) {
         val results = mutableListOf<IconResult>()
-        if (query.isBlank()) return localIcons.distinctBy { it.iconName }
+        
+        // 1. Recherche locale (rapide)
+        if (query.isNotBlank()) {
+            val normalized = query.lowercase().trim()
+            localIcons.forEach {
+                if (it.label.lowercase().contains(normalized)) results.add(it)
+            }
+        } else {
+            results.addAll(localIcons)
+        }
 
-        val normalized = query.lowercase().trim()
-
-        // 1. Search in bank list
-        bankList.forEach { bank ->
-            if (bank.name.lowercase().contains(normalized) || bank.domain.contains(normalized)) {
-                results.add(IconResult(
-                    label = bank.name,
-                    iconName = "https://logo.clearbit.com/${bank.domain}",
-                    source = "web",
-                    type = IconType.BANK
-                ))
+        // 2. Recherche Web (si query >= 3 caractères)
+        if (query.trim().length >= 3) {
+            try {
+                val url = "https://autocomplete.clearbit.com/v1/companies/suggest?query=${query.trim()}"
+                val request = Request.Builder().url(url).build()
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val body = response.body?.string()
+                        if (!body.isNullOrBlank()) {
+                            val companies = json.decodeFromString<List<ClearbitCompany>>(body)
+                            companies.forEach { company ->
+                                if (!company.logo.isNullOrBlank()) {
+                                    results.add(0, IconResult(
+                                        label = company.name,
+                                        iconName = company.logo,
+                                        source = "web",
+                                        type = IconType.OTHER
+                                    ))
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("LOPBudge", "Web search failed", e)
             }
         }
 
-        // 2. Search in local list
-        localIcons.forEach {
-            if (it.label.lowercase().contains(normalized)) {
-                results.add(it)
-            }
-        }
-
-        // 3. Generic web lookup
-        if (results.none { it.source == "web" } && normalized.length >= 3) {
-            results.add(0, IconResult(
-                label = "Logo $normalized",
-                iconName = "https://logo.clearbit.com/$normalized.com",
-                source = "web",
-                type = IconType.OTHER
-            ))
-        }
-
-        return results.distinctBy { it.iconName }
+        results.distinctBy { it.iconName }
     }
 
     fun searchBankIcon(bankName: String): IconResult? {
