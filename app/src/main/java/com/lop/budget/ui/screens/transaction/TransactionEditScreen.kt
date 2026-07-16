@@ -17,6 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,17 +33,21 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -61,6 +69,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -854,8 +863,17 @@ private fun CategoryBottomSheet(
     onCreate: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val parents = remember(categories) { categories.filter { it.parentCategoryId == null } }
-    val subs = remember(categories) { categories.filter { it.parentCategoryId != null } }
+    var searchQuery by remember { mutableStateOf("") }
+    var currentParent by remember { mutableStateOf<CategoryEntity?>(null) }
+    
+    // Reset navigation when sheet is dismissed or categories change significantly
+    val filteredCategories = remember(categories, searchQuery, currentParent) {
+        if (searchQuery.isNotBlank()) {
+            categories.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        } else {
+            categories.filter { it.parentCategoryId == currentParent?.id }
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -863,60 +881,103 @@ private fun CategoryBottomSheet(
         containerColor = MaterialTheme.colorScheme.surface,
         scrimColor = Color.Black.copy(alpha = 0.55f),
     ) {
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp)
         ) {
-            item {
-                Text(
-                    title,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            if (categories.isEmpty()) {
-                item {
+            // Header with Back button if in sub-category
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (currentParent != null && searchQuery.isBlank()) {
+                        IconButton(onClick = { currentParent = null }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+                        }
+                    }
                     Text(
-                        stringResource(R.string.tx_no_categories),
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = if (searchQuery.isNotBlank()) "Résultats" else currentParent?.name ?: title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
-            }
-
-            parents.forEach { parent ->
-                item {
-                    val isSelected = parent.id == selectedId
-                    CategoryItem(parent, isSelected, onSelect)
-                }
-
-                val children = subs.filter { it.parentCategoryId == parent.id }
-                items(children) { sub ->
-                    val isSelected = sub.id == selectedId
-                    CategoryItem(sub, isSelected, onSelect, isSub = true)
+                
+                IconButton(onClick = onCreate) {
+                    Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
 
-            item {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp)
-                        .clickable { onCreate() }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.Add, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Spacer(Modifier.width(12.dp))
-                        Text(stringResource(R.string.tx_create_category), color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(16.dp))
+
+            // One UI style search bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Chercher une catégorie...") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Close, null)
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                )
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.weight(1f, fill = false),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Recent Section (Static mock for now or top 3)
+                if (searchQuery.isBlank() && currentParent == null && categories.isNotEmpty()) {
+                    item(span = { GridItemSpan(3) }) {
+                        Text("Récente", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    }
+                    items(categories.take(3)) { cat ->
+                        CategoryGridItem(cat, selectedId == cat.id) {
+                            val hasChildren = categories.any { it.parentCategoryId == cat.id }
+                            if (hasChildren) currentParent = cat
+                            else onSelect(cat.id)
+                        }
+                    }
+                    item(span = { GridItemSpan(3) }) {
+                        Spacer(Modifier.height(8.dp))
+                        Text("Toute", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+
+                if (filteredCategories.isEmpty()) {
+                    item(span = { GridItemSpan(3) }) {
+                        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Text("Aucune catégorie trouvée", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+
+                items(filteredCategories) { cat ->
+                    CategoryGridItem(cat, selectedId == cat.id) {
+                        val hasChildren = categories.any { it.parentCategoryId == cat.id }
+                        if (hasChildren && searchQuery.isBlank()) {
+                            currentParent = cat
+                        } else {
+                            onSelect(cat.id)
+                        }
                     }
                 }
             }
@@ -925,45 +986,36 @@ private fun CategoryBottomSheet(
 }
 
 @Composable
-private fun CategoryItem(
+private fun CategoryGridItem(
     cat: CategoryEntity,
     isSelected: Boolean,
-    onSelect: (Long) -> Unit,
-    isSub: Boolean = false
+    onClick: () -> Unit
 ) {
-    Surface(
+    val color = Color(cat.colorArgb)
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .clickable { onSelect(cat.id) },
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f))
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            modifier = Modifier.padding(if (isSub) 10.dp else 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (isSub) Spacer(Modifier.width(24.dp))
-            val c = Color(cat.colorArgb)
-            CircleIcon(
-                icon = IconMapper.get(cat.icon),
-                tint = c,
-                background = c.copy(alpha = 0.14f),
-                size = if (isSub) 32.dp else 38.dp,
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    cat.name,
-                    style = if (isSub) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.titleMedium,
-                    fontWeight = if (isSub) FontWeight.Normal else FontWeight.SemiBold
-                )
-            }
-            if (isSelected) {
-                Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary)
-            }
-        }
+        CircleIcon(
+            icon = IconMapper.get(cat.icon),
+            tint = color,
+            background = color.copy(alpha = 0.15f),
+            size = 56.dp
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = cat.name,
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 

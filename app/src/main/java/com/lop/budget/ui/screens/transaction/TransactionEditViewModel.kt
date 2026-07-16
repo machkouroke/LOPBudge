@@ -214,6 +214,7 @@ class TransactionEditViewModel @Inject constructor(
                 date = f.date,
                 accountId = f.accountId,
                 categoryId = f.categoryId,
+                subCategoryId = f.subCategoryId,
                 note = f.note.ifBlank { null },
                 frequency = f.frequency,
                 interval = f.interval,
