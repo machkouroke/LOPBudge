@@ -270,7 +270,31 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(Routes.ACCOUNTS_MANAGE) {
+                composable(
+                    Routes.ACCOUNTS_MANAGE, enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }) {
                     AccountsManageScreen(
                         onBack = { navController.popBackStack() },
                         onAddAccount = { navController.navigate(Routes.ACCOUNT_ADD) },
@@ -278,12 +302,60 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(Routes.ACCOUNT_ADD) {
+                composable(Routes.ACCOUNT_ADD,
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }) {
                     AccountEditScreen(onBack = { navController.popBackStack() })
                 }
 
                 composable(
                     Routes.ACCOUNT_EDIT,
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
                     arguments = listOf(navArgument("id") { type = NavType.LongType })
                 ) {
                     AccountEditScreen(onBack = { navController.popBackStack() })
