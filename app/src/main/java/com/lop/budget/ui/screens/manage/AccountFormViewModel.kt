@@ -13,8 +13,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -60,9 +58,18 @@ class AccountFormViewModel @Inject constructor(
     private val archived = MutableStateFlow(false)
     private val isSaving = MutableStateFlow(false)
     private val isLoaded = MutableStateFlow(!isEdit)
+    
+    // UI Local state for search
     private val searchQuery = MutableStateFlow("")
+    private val iconResults = MutableStateFlow<List<IconResult>>(emptyList())
+    private val isSearching = MutableStateFlow(false)
 
     init {
+        // Load initial icons
+        viewModelScope.launch {
+            iconResults.value = iconSearch.searchIcons("")
+        }
+
         if (isEdit) {
             viewModelScope.launch {
                 val account = repo.getAccountById(accountId)
@@ -82,57 +89,29 @@ class AccountFormViewModel @Inject constructor(
         }
     }
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<AccountFormUiState> = combine(
         name, type, initialBalance, colorArgb, iconName, bankName, comment, 
-        includeInTotal, archived, isSaving, isLoaded, searchQuery
-    ) { args -> args }.flatMapLatest { args ->
-        val query = args[11] as String
-        flow {
-            // Émettre d'abord l'état actuel pour que la saisie soit réactive
-            emit(AccountFormUiState(
-                id = accountId,
-                name = args[0] as String,
-                type = args[1] as AccountType,
-                initialBalance = args[2] as String,
-                colorArgb = args[3] as Int,
-                iconName = args[4] as String,
-                bankName = args[5] as String,
-                comment = args[6] as String,
-                includeInTotal = args[7] as Boolean,
-                archived = args[8] as Boolean,
-                isSaving = args[9] as Boolean,
-                isLoaded = args[10] as Boolean,
-                searchQuery = query,
-                isEdit = isEdit,
-                iconResults = emptyList(), // On videra ou gardera les anciens selon l'UX
-                knownBanks = iconSearch.getKnownBanks(),
-                isSearching = query.length >= 2
-            ))
-            
-            // Puis effectuer la recherche asynchrone
-            val icons = iconSearch.searchIcons(query)
-            
-            emit(AccountFormUiState(
-                id = accountId,
-                name = args[0] as String,
-                type = args[1] as AccountType,
-                initialBalance = args[2] as String,
-                colorArgb = args[3] as Int,
-                iconName = args[4] as String,
-                bankName = args[5] as String,
-                comment = args[6] as String,
-                includeInTotal = args[7] as Boolean,
-                archived = args[8] as Boolean,
-                isSaving = args[9] as Boolean,
-                isLoaded = args[10] as Boolean,
-                searchQuery = query,
-                isEdit = isEdit,
-                iconResults = icons,
-                knownBanks = iconSearch.getKnownBanks(),
-                isSearching = false
-            ))
-        }
+        includeInTotal, archived, isSaving, isLoaded, searchQuery, iconResults, isSearching
+    ) { args ->
+        AccountFormUiState(
+            id = accountId,
+            name = args[0] as String,
+            type = args[1] as AccountType,
+            initialBalance = args[2] as String,
+            colorArgb = args[3] as Int,
+            iconName = args[4] as String,
+            bankName = args[5] as String,
+            comment = args[6] as String,
+            includeInTotal = args[7] as Boolean,
+            archived = args[8] as Boolean,
+            isSaving = args[9] as Boolean,
+            isLoaded = args[10] as Boolean,
+            searchQuery = args[11] as String,
+            iconResults = args[12] as List<IconResult>,
+            isSearching = args[13] as Boolean,
+            isEdit = isEdit,
+            knownBanks = iconSearch.getKnownBanks()
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountFormUiState())
 
     fun onNameChange(v: String) { name.value = v }
@@ -167,6 +146,15 @@ class AccountFormViewModel @Inject constructor(
     fun onCommentChange(v: String) { comment.value = v }
     fun onIncludeInTotalChange(v: Boolean) { includeInTotal.value = v }
     fun onSearchQueryChange(v: String) { searchQuery.value = v }
+
+    fun triggerSearch() {
+        val query = searchQuery.value
+        viewModelScope.launch {
+            isSearching.value = true
+            iconResults.value = iconSearch.searchIcons(query)
+            isSearching.value = false
+        }
+    }
 
     fun save(onDone: () -> Unit) {
         if (name.value.isBlank()) return

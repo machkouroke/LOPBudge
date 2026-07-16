@@ -78,6 +78,7 @@ fun AccountEditScreen(
                 showIconSheet = false
             },
             onReset = { vm.onIconChange("account_balance") },
+            onSearch = { vm.triggerSearch() },
             onDismiss = { showIconSheet = false }
         )
     }
@@ -412,6 +413,7 @@ fun IconSelectorBottomSheet(
     onQueryChange: (String) -> Unit,
     onSelect: (String) -> Unit,
     onReset: () -> Unit,
+    onSearch: () -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -450,6 +452,8 @@ fun IconSelectorBottomSheet(
                         }
                     }
                 },
+                keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch() }),
                 singleLine = true,
                 shape = MaterialTheme.shapes.medium
             )
@@ -471,7 +475,7 @@ fun IconSelectorBottomSheet(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "Aucun logo trouvé pour \"$query\"",
+                                "Appuyez sur 'Chercher' pour trouver \"$query\"",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -533,11 +537,11 @@ fun IconSelectorBottomSheet(
                     Text("Abandonner")
                 }
                 Button(
-                    onClick = onDismiss,
+                    onClick = onSearch,
                     modifier = Modifier.weight(1.2f),
                     shape = MaterialTheme.shapes.medium
                 ) {
-                    Text("Terminer")
+                    Text("Chercher")
                 }
             }
         }
