@@ -71,6 +71,7 @@ fun AccountEditScreen(
             query = state.searchQuery,
             results = state.iconResults,
             currentIcon = state.iconName,
+            isSearching = state.isSearching,
             onQueryChange = vm::onSearchQueryChange,
             onSelect = {
                 vm.onIconChange(it)
@@ -86,15 +87,22 @@ fun AccountEditScreen(
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
         bottomBar = {
-            Box(Modifier.fillMaxWidth().padding(20.dp)) {
+            Box(Modifier
+                .fillMaxWidth()
+                .padding(20.dp)) {
                 Button(
                     onClick = { vm.save(onBack) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
                     shape = MaterialTheme.shapes.medium,
                     enabled = state.name.isNotBlank() && !state.isSaving
                 ) {
                     if (state.isSaving) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
                     } else {
                         Text("Enregistrer")
                     }
@@ -103,7 +111,12 @@ fun AccountEditScreen(
         }
     ) {
         if (!state.isLoaded) {
-            item { Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+            item {
+                Box(
+                    Modifier.fillParentMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator() }
+            }
         } else {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -121,7 +134,7 @@ fun AccountEditScreen(
                             // Type de compte
                             SelectorField(
                                 label = "Type de compte",
-                                value = when(state.type) {
+                                value = when (state.type) {
                                     AccountType.CHECKING -> "Bancaire / Courant"
                                     AccountType.CASH -> "Espèces / Cash"
                                     AccountType.SAVINGS -> "Épargne"
@@ -157,10 +170,20 @@ fun AccountEditScreen(
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
-                                    Text("Inclure dans le solde total", style = MaterialTheme.typography.bodyLarge)
-                                    Text("Impacte le solde global de l'application", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        "Inclure dans le solde total",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        "Impacte le solde global de l'application",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
-                                Switch(checked = state.includeInTotal, onCheckedChange = vm::onIncludeInTotalChange)
+                                Switch(
+                                    checked = state.includeInTotal,
+                                    onCheckedChange = vm::onIncludeInTotalChange
+                                )
                             }
                         }
                     }
@@ -169,10 +192,20 @@ fun AccountEditScreen(
                     FloatingCard(Modifier.fillMaxWidth()) {
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             Text("Apparence", style = MaterialTheme.typography.titleMedium)
-                            
+
                             // Couleur
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                val colors = listOf(0xFF9C27B0, 0xFF2196F3, 0xFF4CAF50, 0xFFFFC107, 0xFFF44336, 0xFF607D8B)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                val colors = listOf(
+                                    0xFF9C27B0,
+                                    0xFF2196F3,
+                                    0xFF4CAF50,
+                                    0xFFFFC107,
+                                    0xFFF44336,
+                                    0xFF607D8B
+                                )
                                 colors.forEach { c ->
                                     val color = Color(c.toInt())
                                     Box(
@@ -180,17 +213,28 @@ fun AccountEditScreen(
                                             .size(40.dp)
                                             .clip(CircleShape)
                                             .background(color)
-                                            .border(2.dp, if (state.colorArgb == c.toInt()) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
+                                            .border(
+                                                2.dp,
+                                                if (state.colorArgb == c.toInt()) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                                CircleShape
+                                            )
                                             .clickableNoRipple { vm.onColorChange(c.toInt()) },
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        if (state.colorArgb == c.toInt()) Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                        if (state.colorArgb == c.toInt()) Icon(
+                                            Icons.Default.Check,
+                                            null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
                                     }
                                 }
                             }
 
                             // Icône (Clickable preview)
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickableNoRipple { showIconSheet = true }) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickableNoRipple { showIconSheet = true }) {
                                 CircleIcon(
                                     icon = IconMapper.get(state.iconName),
                                     tint = Color(state.colorArgb),
@@ -199,11 +243,22 @@ fun AccountEditScreen(
                                 )
                                 Spacer(Modifier.width(16.dp))
                                 Column {
-                                    Text("Icône du compte", style = MaterialTheme.typography.bodyLarge)
-                                    Text("Cliquer pour modifier", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        "Icône du compte",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        "Cliquer pour modifier",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                                 Spacer(Modifier.weight(1f))
-                                Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Icon(
+                                    Icons.Default.ChevronRight,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
@@ -226,12 +281,21 @@ fun AccountEditScreen(
 @Composable
 fun SelectorField(label: String, value: String, onClick: () -> Unit) {
     Column {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(Modifier.height(8.dp))
         Surface(
-            modifier = Modifier.fillMaxWidth().clickableNoRipple(onClick),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickableNoRipple(onClick),
             shape = MaterialTheme.shapes.small,
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+            ),
             color = Color.Transparent
         ) {
             Row(
@@ -240,7 +304,11 @@ fun SelectorField(label: String, value: String, onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(value, style = MaterialTheme.typography.bodyLarge)
-                Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(
+                    Icons.Default.ChevronRight,
+                    null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -255,7 +323,9 @@ fun AccountTypeBottomSheet(
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp)
         ) {
             item {
                 Text(
@@ -265,7 +335,7 @@ fun AccountTypeBottomSheet(
                 )
             }
             items(AccountType.entries) { type ->
-                val label = when(type) {
+                val label = when (type) {
                     AccountType.CHECKING -> "Bancaire / Courant"
                     AccountType.CASH -> "Espèces / Cash"
                     AccountType.SAVINGS -> "Épargne"
@@ -278,7 +348,11 @@ fun AccountTypeBottomSheet(
                     headlineContent = { Text(label) },
                     modifier = Modifier.clickable { onSelect(type) },
                     trailingContent = {
-                        if (type == selected) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
+                        if (type == selected) Icon(
+                            Icons.Default.Check,
+                            null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 )
             }
@@ -294,16 +368,22 @@ fun BankSelectorBottomSheet(
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        LazyColumn(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
+        LazyColumn(modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 32.dp)) {
             item {
-                Text("Choisir une banque", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Choisir une banque",
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.titleLarge
+                )
             }
             items(banks) { bank ->
                 ListItem(
                     headlineContent = { Text(bank.name) },
                     leadingContent = {
                         CircleIcon(
-                            icon = "https://logo.clearbit.com/${bank.domain}",
+                            icon = "https://logos.hunter.io/${bank.domain}",
                             tint = Color.Unspecified,
                             background = Color.White,
                             size = 32.dp
@@ -328,6 +408,7 @@ fun IconSelectorBottomSheet(
     query: String,
     results: List<IconResult>,
     currentIcon: String,
+    isSearching: Boolean,
     onQueryChange: (String) -> Unit,
     onSelect: (String) -> Unit,
     onReset: () -> Unit,
@@ -358,7 +439,10 @@ fun IconSelectorBottomSheet(
                 onValueChange = onQueryChange,
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("Rechercher (ex: Revolut, Amazon...)") },
-                leadingIcon = { Icon(Icons.Default.Search, null) },
+                leadingIcon = { 
+                    if (isSearching) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    else Icon(Icons.Default.Search, null)
+                },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { onQueryChange("") }) {
@@ -378,19 +462,14 @@ fun IconSelectorBottomSheet(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (query.length >= 2 && results.none { it.isWeb }) {
+                if (results.isEmpty() && query.length >= 2 && !isSearching) {
                     item {
-                        ListItem(
-                            headlineContent = { Text("Rechercher sur Internet...") },
-                            leadingContent = { Icon(Icons.Default.Search, null) },
-                            modifier = Modifier.clickable { /* Already real-time */ }
-                        )
-                    }
-                }
-
-                if (results.isEmpty() && query.length >= 2) {
-                    item {
-                        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
                                 "Aucun logo trouvé pour \"$query\"",
                                 style = MaterialTheme.typography.bodyMedium,
@@ -422,7 +501,11 @@ fun IconSelectorBottomSheet(
                             modifier = Modifier.weight(1f)
                         )
                         if (currentIcon == res.iconName) {
-                            Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(
+                                Icons.Default.Check,
+                                null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
                 }

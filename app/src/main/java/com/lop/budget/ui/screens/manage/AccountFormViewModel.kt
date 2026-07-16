@@ -89,7 +89,30 @@ class AccountFormViewModel @Inject constructor(
     ) { args -> args }.flatMapLatest { args ->
         val query = args[11] as String
         flow {
+            // Émettre d'abord l'état actuel pour que la saisie soit réactive
+            emit(AccountFormUiState(
+                id = accountId,
+                name = args[0] as String,
+                type = args[1] as AccountType,
+                initialBalance = args[2] as String,
+                colorArgb = args[3] as Int,
+                iconName = args[4] as String,
+                bankName = args[5] as String,
+                comment = args[6] as String,
+                includeInTotal = args[7] as Boolean,
+                archived = args[8] as Boolean,
+                isSaving = args[9] as Boolean,
+                isLoaded = args[10] as Boolean,
+                searchQuery = query,
+                isEdit = isEdit,
+                iconResults = emptyList(), // On videra ou gardera les anciens selon l'UX
+                knownBanks = iconSearch.getKnownBanks(),
+                isSearching = query.length >= 2
+            ))
+            
+            // Puis effectuer la recherche asynchrone
             val icons = iconSearch.searchIcons(query)
+            
             emit(AccountFormUiState(
                 id = accountId,
                 name = args[0] as String,
@@ -106,7 +129,8 @@ class AccountFormViewModel @Inject constructor(
                 searchQuery = query,
                 isEdit = isEdit,
                 iconResults = icons,
-                knownBanks = iconSearch.getKnownBanks()
+                knownBanks = iconSearch.getKnownBanks(),
+                isSearching = false
             ))
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountFormUiState())

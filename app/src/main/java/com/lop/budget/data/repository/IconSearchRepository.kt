@@ -10,10 +10,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Serializable
-data class ClearbitCompany(
+data class ClearoutCompany(
     val name: String,
     val domain: String,
-    val logo: String? = null
+    val logo_url: String? = null
+)
+
+@Serializable
+data class ClearoutResponse(
+    val status: String,
+    val data: List<ClearoutCompany> = emptyList()
 )
 
 data class IconResult(
@@ -74,20 +80,29 @@ class IconSearchRepository @Inject constructor() {
         BankInfo("LCL", "lcl.fr"),
         BankInfo("American Express", "americanexpress.com"),
         BankInfo("Wise", "wise.com"),
+        BankInfo("Amazon", "amazon.com"),
+        BankInfo("Google", "google.com"),
+        BankInfo("Apple", "apple.com"),
+        BankInfo("Netflix", "netflix.com"),
+        BankInfo("Spotify", "spotify.com"),
     ).sortedBy { it.name }
 
     data class BankInfo(val name: String, val domain: String)
 
     fun getKnownBanks(): List<BankInfo> = bankList
 
+    private fun getLogoUrl(domain: String): String {
+        // Hunter.io is a reliable replacement for Clearbit Logo API
+        return "https://logos.hunter.io/$domain"
+    }
+
     /**
-     * Recherche REELLE sur Internet via l'API Autocomplete de Clearbit.
-     * Cette API est publique et gratuite (pour l'instant) et renvoie des logos de qualité.
+     * Recherche REELLE sur Internet via Clearout Autocomplete + Hunter.io pour les images.
      */
     suspend fun searchIcons(query: String): List<IconResult> = withContext(Dispatchers.IO) {
         val results = mutableListOf<IconResult>()
         
-        // 1. Recherche locale (rapide)
+        // 1. Recherche locale
         if (query.isNotBlank()) {
             val normalized = query.lowercase().trim()
             localIcons.forEach {
@@ -97,21 +112,21 @@ class IconSearchRepository @Inject constructor() {
             results.addAll(localIcons)
         }
 
-        // 2. Recherche Web (si query >= 3 caractères)
-        if (query.trim().length >= 3) {
+        // 2. Recherche Web (Clearout Autocomplete)
+        if (query.trim().length >= 2) {
             try {
-                val url = "https://autocomplete.clearbit.com/v1/companies/suggest?query=${query.trim()}"
+                val url = "https://api.clearout.io/public/companies/autocomplete?query=${query.trim()}"
                 val request = Request.Builder().url(url).build()
                 client.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         val body = response.body?.string()
                         if (!body.isNullOrBlank()) {
-                            val companies = json.decodeFromString<List<ClearbitCompany>>(body)
-                            companies.forEach { company ->
-                                if (!company.logo.isNullOrBlank()) {
+                            val parsed = json.decodeFromString<ClearoutResponse>(body)
+                            parsed.data.forEach { company ->
+                                if (company.domain.isNotBlank()) {
                                     results.add(0, IconResult(
                                         label = company.name,
-                                        iconName = company.logo,
+                                        iconName = getLogoUrl(company.domain),
                                         source = "web",
                                         type = IconType.OTHER
                                     ))
@@ -121,7 +136,7 @@ class IconSearchRepository @Inject constructor() {
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("LOPBudge", "Web search failed", e)
+                android.util.Log.e("LOPBudge", "Clearout search failed", e)
             }
         }
 
@@ -134,7 +149,7 @@ class IconSearchRepository @Inject constructor() {
             if (normalized == bank.name.lowercase() || normalized.contains(bank.name.lowercase())) {
                 return IconResult(
                     label = bank.name,
-                    iconName = "https://logo.clearbit.com/${bank.domain}",
+                    iconName = getLogoUrl(bank.domain),
                     source = "web",
                     type = IconType.BANK
                 )
