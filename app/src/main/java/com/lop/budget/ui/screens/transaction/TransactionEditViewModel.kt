@@ -31,6 +31,7 @@ data class TransactionForm(
     val title: String = "",
     val date: Long = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
     val categoryId: Long? = null,
+    val subCategoryId: Long? = null,
     val accountId: Long? = null,
     val tagIds: Set<Long> = emptySet(),
     val note: String = "",
@@ -95,6 +96,7 @@ class TransactionEditViewModel @Inject constructor(
                         title = tx.title,
                         date = tx.date,
                         categoryId = tx.categoryId,
+                        subCategoryId = tx.subCategoryId,
                         accountId = tx.accountId,
                         tagIds = twr.tags.map { it.id }.toSet(),
                         note = tx.note ?: "",
@@ -136,7 +138,8 @@ class TransactionEditViewModel @Inject constructor(
 
     fun setTitle(v: String) { _form.value = _form.value.copy(title = v) }
 
-    fun setCategory(id: Long) { _form.value = _form.value.copy(categoryId = id) }
+    fun setCategory(id: Long) { _form.value = _form.value.copy(categoryId = id, subCategoryId = null) }
+    fun setSubCategory(id: Long?) { _form.value = _form.value.copy(subCategoryId = id) }
 
     fun setAccount(id: Long) {
         _form.value = _form.value.copy(accountId = id)

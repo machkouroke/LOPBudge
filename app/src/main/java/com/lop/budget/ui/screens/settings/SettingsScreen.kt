@@ -28,6 +28,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateToTags: () -> Unit,
     onNavigateToAccounts: () -> Unit,
+    onNavigateToCategories: () -> Unit,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -85,7 +86,7 @@ fun SettingsScreen(
                     HorizontalDivider(modifier = Modifier.alpha(0.1f))
                     Spacer(Modifier.height(14.dp))
 
-                    Text("Données et référentiels", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text("Données et organisation", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(12.dp))
 
                     Row(
@@ -95,6 +96,19 @@ fun SettingsScreen(
                         Column(Modifier.weight(1f)) {
                             Text("Gestion des comptes", style = MaterialTheme.typography.bodyLarge)
                             Text("Ajouter, modifier ou archiver vos comptes", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row(
+                        Modifier.fillMaxWidth().clickableNoRipple(onNavigateToCategories),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Gestion des catégories", style = MaterialTheme.typography.bodyLarge)
+                            Text("Organisez vos types de dépenses et revenus", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

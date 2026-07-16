@@ -209,6 +209,7 @@ class BudgetRepository @Inject constructor(
         date: Long,
         accountId: Long,
         categoryId: Long,
+        subCategoryId: Long? = null,
         note: String?,
         frequency: com.lop.budget.domain.model.RecurrenceFrequency,
         interval: Int,
@@ -239,6 +240,7 @@ class BudgetRepository @Inject constructor(
                     date = date,
                     accountId = accountId,
                     categoryId = categoryId,
+                    subCategoryId = subCategoryId,
                     note = note,
                     seriesId = null, // Débranchée
                     seriesDate = null,
@@ -258,6 +260,7 @@ class BudgetRepository @Inject constructor(
                     date = date,
                     accountId = accountId,
                     categoryId = categoryId,
+                    subCategoryId = subCategoryId,
                     note = note,
                     linkedGoalId = linkedGoalId,
                     linkedDebtId = linkedDebtId
@@ -274,6 +277,7 @@ class BudgetRepository @Inject constructor(
                     amount = amount,
                     type = type,
                     categoryId = categoryId,
+                    subCategoryId = subCategoryId,
                     accountId = accountId,
                     frequency = frequency,
                     interval = interval,
@@ -287,6 +291,28 @@ class BudgetRepository @Inject constructor(
                     linkedDebtId = linkedDebtId
                 )
                 saveRecurringSeries(series)
+                
+                // On met à jour l'exception si on en éditait une
+                if (editingId != null) {
+                    val tx = TransactionEntity(
+                        id = editingId,
+                        title = title,
+                        amount = amount,
+                        type = type,
+                        status = currentTwr?.transaction?.status ?: TransactionStatus.PLANNED,
+                        date = date,
+                        accountId = accountId,
+                        categoryId = categoryId,
+                        subCategoryId = subCategoryId,
+                        note = note,
+                        seriesId = currentSeriesId.toString(),
+                        seriesDate = date,
+                        isException = true,
+                        linkedGoalId = linkedGoalId,
+                        linkedDebtId = linkedDebtId
+                    )
+                    saveTransaction(tx, tagIds)
+                }
             } else {
                 // Conversion ponctuel -> série
                 // 1. Supprimer l'ancienne transaction isolée
@@ -298,6 +324,7 @@ class BudgetRepository @Inject constructor(
                     amount = amount,
                     type = type,
                     categoryId = categoryId,
+                    subCategoryId = subCategoryId,
                     accountId = accountId,
                     frequency = frequency,
                     interval = interval,
@@ -377,6 +404,8 @@ class BudgetRepository @Inject constructor(
     suspend fun getAccountById(id: Long) = accountDao.getById(id)
     suspend fun deleteAccount(id: Long) = accountDao.delete(id)
     suspend fun saveCategory(c: CategoryEntity) = categoryDao.upsert(c)
+    suspend fun getCategoryById(id: Long) = categoryDao.getById(id)
+    suspend fun deleteCategory(id: Long) = categoryDao.delete(id)
     suspend fun saveTag(t: TagEntity) = tagDao.upsert(t)
     suspend fun deleteTag(id: Long) = tagDao.delete(id)
     suspend fun getTagUsageCount(id: Long) = tagDao.countUsages(id)

@@ -13,8 +13,12 @@ object Routes {
     const val AI = "ai"
     const val SETTINGS = "settings"
     const val CATEGORY_CREATE = "category/create"
+    const val CATEGORY_EDIT = "category/edit/{id}"
+    fun categoryEdit(id: Long) = "category/edit/$id"
+
     const val TAGS_MANAGE = "manage/tags"
     const val ACCOUNTS_MANAGE = "manage/accounts"
+    const val CATEGORIES_MANAGE = "manage/categories"
     const val ACCOUNT_ADD = "account/add"
     const val ACCOUNT_EDIT = "account/edit/{id}"
     fun accountEdit(id: Long) = "account/edit/$id"

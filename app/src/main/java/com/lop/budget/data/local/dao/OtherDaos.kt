@@ -24,6 +24,8 @@ interface AccountDao {
 interface CategoryDao {
     @Query("SELECT * FROM categories ORDER BY name")
     fun observeAll(): Flow<List<CategoryEntity>>
+    @Query("SELECT * FROM categories WHERE id = :id")
+    suspend fun getById(id: Long): CategoryEntity?
     @Query("SELECT * FROM categories WHERE type = :type ORDER BY name")
     fun observeByType(type: String): Flow<List<CategoryEntity>>
     @Upsert suspend fun upsert(category: CategoryEntity): Long

@@ -11,4 +11,5 @@ data class CategoryEntity(
     val type: TransactionType,
     val colorArgb: Int,
     val icon: String,
+    val parentCategoryId: Long? = null,
 )

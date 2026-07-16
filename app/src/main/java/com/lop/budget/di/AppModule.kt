@@ -44,6 +44,7 @@ object AppModule {
                 LopDatabase.MIGRATION_2_3,
                 LopDatabase.MIGRATION_3_4,
                 LopDatabase.MIGRATION_4_5,
+                LopDatabase.MIGRATION_5_6,
             )
             .fallbackToDestructiveMigration()
             .build()

@@ -13,6 +13,7 @@ data class RecurringSeriesEntity(
     val type: TransactionType,
     val categoryId: Long,
     val accountId: Long,
+    val subCategoryId: Long? = null,
     val frequency: RecurrenceFrequency,
     val interval: Int = 1,
     val startDate: Long,

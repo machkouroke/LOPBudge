@@ -46,6 +46,7 @@ import com.lop.budget.ui.screens.goals.GoalsScreen
 import com.lop.budget.ui.screens.home.HomeScreen
 import com.lop.budget.ui.screens.manage.AccountEditScreen
 import com.lop.budget.ui.screens.manage.AccountsManageScreen
+import com.lop.budget.ui.screens.manage.CategoriesManageScreen
 import com.lop.budget.ui.screens.manage.TagsManageScreen
 import com.lop.budget.ui.screens.monthly.MonthlyTransactionsScreen
 import com.lop.budget.ui.screens.settings.SettingsScreen
@@ -266,8 +267,28 @@ fun LopNavHost(startRoute: String? = null) {
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
                         onNavigateToTags = { navController.navigate(Routes.TAGS_MANAGE) },
-                        onNavigateToAccounts = { navController.navigate(Routes.ACCOUNTS_MANAGE) }
+                        onNavigateToAccounts = { navController.navigate(Routes.ACCOUNTS_MANAGE) },
+                        onNavigateToCategories = { navController.navigate(Routes.CATEGORIES_MANAGE) }
                     )
+                }
+
+                composable(Routes.CATEGORIES_MANAGE) {
+                    CategoriesManageScreen(
+                        onBack = { navController.popBackStack() },
+                        onAddCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
+                        onEditCategory = { id -> navController.navigate(Routes.categoryEdit(id)) }
+                    )
+                }
+
+                composable(Routes.CATEGORY_CREATE) {
+                    CategoryCreateScreen(onBack = { navController.popBackStack() })
+                }
+
+                composable(
+                    Routes.CATEGORY_EDIT,
+                    arguments = listOf(navArgument("id") { type = NavType.LongType })
+                ) {
+                    CategoryCreateScreen(onBack = { navController.popBackStack() })
                 }
 
                 composable(

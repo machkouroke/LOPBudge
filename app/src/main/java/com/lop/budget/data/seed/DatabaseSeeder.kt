@@ -8,18 +8,16 @@ import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
-import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import java.time.LocalDate
 import java.time.ZoneId
-import java.util.UUID
 
 /**
  * Insère un jeu de données réaliste au premier lancement, pour que l'app
- * soit immédiatement démontrable (accueil, analyses, objectifs, dettes).
+ * soit immédiatement démontrable avec des catégories hiérarchiques.
  */
 object DatabaseSeeder {
 
@@ -31,7 +29,6 @@ object DatabaseSeeder {
         val categoryDao = db.categoryDao()
         val tagDao = db.tagDao()
         val goalDao = db.goalDao()
-        val debtDao = db.debtDao()
         val txDao = db.transactionDao()
 
         // --- Comptes ---
@@ -44,7 +41,7 @@ object DatabaseSeeder {
                 icon = "account_balance"
             )
         )
-        val cash = accountDao.upsert(
+        accountDao.upsert(
             AccountEntity(
                 name = "Espèces",
                 type = AccountType.CASH,
@@ -53,113 +50,60 @@ object DatabaseSeeder {
                 icon = "payments"
             )
         )
-        val savings = accountDao.upsert(
-            AccountEntity(
-                name = "Épargne",
-                type = AccountType.SAVINGS,
-                initialBalance = 5400.0,
-                colorArgb = 0xFF64B5F6.toInt(),
-                icon = "savings"
-            )
+
+        // --- Catégories de Revenus ---
+        val incomeCat = categoryDao.upsert(
+            CategoryEntity(name = "Revenus", type = TransactionType.INCOME, colorArgb = 0xFF4ADE80.toInt(), icon = "trending_up")
+        )
+        val salary = categoryDao.upsert(
+            CategoryEntity(name = "Salaire", type = TransactionType.INCOME, colorArgb = 0xFF4ADE80.toInt(), icon = "work", parentCategoryId = incomeCat)
+        )
+        categoryDao.upsert(
+            CategoryEntity(name = "Freelance", type = TransactionType.INCOME, colorArgb = 0xFF26A69A.toInt(), icon = "laptop", parentCategoryId = incomeCat)
         )
 
-        // --- Catégories ---
-        val salary = categoryDao.upsert(
-            CategoryEntity(
-                name = "Salaire",
-                type = TransactionType.INCOME,
-                colorArgb = 0xFF4ADE80.toInt(),
-                icon = "work"
-            )
-        )
-        val freelance = categoryDao.upsert(
-            CategoryEntity(
-                name = "Freelance",
-                type = TransactionType.INCOME,
-                colorArgb = 0xFF26A69A.toInt(),
-                icon = "laptop"
-            )
+        // --- Catégories de Dépenses ---
+        val house = categoryDao.upsert(
+            CategoryEntity(name = "Logement", type = TransactionType.EXPENSE, colorArgb = 0xFFFF6B6B.toInt(), icon = "home")
         )
         val rent = categoryDao.upsert(
-            CategoryEntity(
-                name = "Loyer",
-                type = TransactionType.EXPENSE,
-                colorArgb = 0xFFFF6B6B.toInt(),
-                icon = "home"
-            )
+            CategoryEntity(name = "Loyer", type = TransactionType.EXPENSE, colorArgb = 0xFFFF6B6B.toInt(), icon = "home", parentCategoryId = house)
         )
+        categoryDao.upsert(
+            CategoryEntity(name = "Électricité", type = TransactionType.EXPENSE, colorArgb = 0xFF64B5F6.toInt(), icon = "bolt", parentCategoryId = house)
+        )
+
         val food = categoryDao.upsert(
-            CategoryEntity(
-                name = "Alimentation",
-                type = TransactionType.EXPENSE,
-                colorArgb = 0xFFFFB74D.toInt(),
-                icon = "restaurant"
-            )
+            CategoryEntity(name = "Alimentation", type = TransactionType.EXPENSE, colorArgb = 0xFFFFB74D.toInt(), icon = "restaurant")
         )
-        val transport = categoryDao.upsert(
-            CategoryEntity(
-                name = "Transport",
-                type = TransactionType.EXPENSE,
-                colorArgb = 0xFF64B5F6.toInt(),
-                icon = "directions_bus"
-            )
+        val grocery = categoryDao.upsert(
+            CategoryEntity(name = "Courses", type = TransactionType.EXPENSE, colorArgb = 0xFFFFB74D.toInt(), icon = "shopping_cart", parentCategoryId = food)
         )
-        val subscriptions = categoryDao.upsert(
-            CategoryEntity(
-                name = "Abonnements",
-                type = TransactionType.EXPENSE,
-                colorArgb = 0xFFBA68C8.toInt(),
-                icon = "subscriptions"
-            )
+        categoryDao.upsert(
+            CategoryEntity(name = "Resto / Sorties", type = TransactionType.EXPENSE, colorArgb = 0xFFF06292.toInt(), icon = "restaurant", parentCategoryId = food)
         )
-        val leisure = categoryDao.upsert(
-            CategoryEntity(
-                name = "Loisirs",
-                type = TransactionType.EXPENSE,
-                colorArgb = 0xFFF06292.toInt(),
-                icon = "sports_esports"
-            )
+
+        categoryDao.upsert(
+            CategoryEntity(name = "Transport", type = TransactionType.EXPENSE, colorArgb = 0xFF64B5F6.toInt(), icon = "directions_bus")
         )
 
         // --- Tags ---
-        val tagEssential =
-            tagDao.upsert(TagEntity(name = "Essentiel", colorArgb = 0xFF4ADE80.toInt()))
-        val tagFun = tagDao.upsert(TagEntity(name = "Plaisir", colorArgb = 0xFFF06292.toInt()))
-        val tagFixed = tagDao.upsert(TagEntity(name = "Fixe", colorArgb = 0xFF64B5F6.toInt()))
+        tagDao.upsert(TagEntity(name = "Essentiel", colorArgb = 0xFF4ADE80.toInt()))
+        tagDao.upsert(TagEntity(name = "Plaisir", colorArgb = 0xFFF06292.toInt()))
 
         // --- Objectifs & dettes ---
-        val goalVacation = goalDao.upsert(
-            GoalEntity(
-                name = "Vacances été",
-                targetAmount = 2000.0,
-                savedAmount = 750.0,
-                colorArgb = 0xFFFFB74D.toInt(),
-                icon = "beach_access"
-            )
-        )
         goalDao.upsert(
             GoalEntity(
                 name = "Fonds d'urgence",
                 targetAmount = 6000.0,
-                savedAmount = 5400.0,
+                savedAmount = 1500.0,
                 colorArgb = 0xFF4ADE80.toInt(),
                 icon = "shield"
-            )
-        )
-        val debtCar = debtDao.upsert(
-            DebtEntity(
-                name = "Prêt auto",
-                totalAmount = 9000.0,
-                repaidAmount = 3600.0,
-                interestRate = 3.5,
-                colorArgb = 0xFFFF6B6B.toInt(),
-                icon = "directions_car"
             )
         )
 
         val today = LocalDate.now()
         val first = today.withDayOfMonth(1)
-
         val seriesDao = db.recurringSeriesDao()
 
         // --- Séries Récurrentes ---
@@ -190,13 +134,14 @@ object DatabaseSeeder {
         // --- Transactions ponctuelles ---
         txDao.upsert(
             TransactionEntity(
-                title = "Mission freelance",
-                amount = 480.0,
-                type = TransactionType.INCOME,
-                status = TransactionStatus.PLANNED,
-                date = today.plusDays(9).millis(),
+                title = "Courses Lidl",
+                amount = 64.50,
+                type = TransactionType.EXPENSE,
+                status = TransactionStatus.PAID,
+                date = today.minusDays(2).millis(),
                 accountId = checking,
-                categoryId = freelance
+                categoryId = food,
+                subCategoryId = grocery
             )
         )
     }

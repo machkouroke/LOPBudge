@@ -15,29 +15,35 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -59,11 +65,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.LopScreenScaffold
+import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.IconMapper
@@ -269,6 +277,20 @@ fun TransactionEditScreen(
                         iconTint = selectedCat?.let { Color(it.colorArgb) },
                         onClick = { showCategorySheet = true },
                     )
+
+                    if (selectedCat != null) {
+                        val subCats = categories.filter { it.parentCategoryId == selectedCat.id }
+                        if (subCats.isNotEmpty()) {
+                            val selectedSub = subCats.find { it.id == form.subCategoryId }
+                            SelectorRow(
+                                label = "Sous-catégorie",
+                                value = selectedSub?.name ?: "Choisir une sous-catégorie...",
+                                icon = selectedSub?.let { IconMapper.get(it.icon) } ?: Icons.Filled.KeyboardArrowDown,
+                                iconTint = selectedSub?.let { Color(it.colorArgb) },
+                                onClick = { showCategorySheet = true }
+                            )
+                        }
+                    }
 
                     val selectedAcc = accounts.find { it.id == form.accountId }
                     SelectorRow(
@@ -826,114 +848,121 @@ private fun RecurrenceBlock(
 @Composable
 private fun CategoryBottomSheet(
     title: String,
-    categories: List<com.lop.budget.data.local.entity.CategoryEntity>,
+    categories: List<CategoryEntity>,
     selectedId: Long?,
     onSelect: (Long) -> Unit,
     onCreate: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState =
-        androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val parents = remember(categories) { categories.filter { it.parentCategoryId == null } }
+    val subs = remember(categories) { categories.filter { it.parentCategoryId != null } }
 
-    androidx.compose.material3.ModalBottomSheet(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
         containerColor = MaterialTheme.colorScheme.surface,
         scrimColor = Color.Black.copy(alpha = 0.55f),
     ) {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-            if (categories.isEmpty()) {
+            item {
                 Text(
-                    stringResource(R.string.tx_no_categories),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    title,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
-            categories.forEach { cat ->
-                val selected = cat.id == selectedId
+            if (categories.isEmpty()) {
+                item {
+                    Text(
+                        stringResource(R.string.tx_no_categories),
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            parents.forEach { parent ->
+                item {
+                    val isSelected = parent.id == selectedId
+                    CategoryItem(parent, isSelected, onSelect)
+                }
+
+                val children = subs.filter { it.parentCategoryId == parent.id }
+                items(children) { sub ->
+                    val isSelected = sub.id == selectedId
+                    CategoryItem(sub, isSelected, onSelect, isSub = true)
+                }
+            }
+
+            item {
                 Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .pressScaleClickable(
-                            intent = HapticIntent.Selection,
-                            pressedScale = 0.98f
-                        ) { onSelect(cat.id) },
-                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(
-                        1.dp,
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
-                    )
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                        .clickable { onCreate() }
                 ) {
                     Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val c = Color(cat.colorArgb)
-                        CircleIcon(
-                            icon = IconMapper.get(cat.icon),
-                            tint = c,
-                            background = c.copy(alpha = 0.14f),
-                            size = 38.dp,
-                        )
+                        Icon(Icons.Filled.Add, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                         Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                cat.name,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                if (cat.type == TransactionType.INCOME) stringResource(R.string.tx_type_income) else stringResource(
-                                    R.string.tx_type_expense
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        if (selected) {
-                            Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary)
-                        }
+                        Text(stringResource(R.string.tx_create_category), color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
+        }
+    }
+}
 
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onCreate() }
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        stringResource(R.string.tx_create_category),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+@Composable
+private fun CategoryItem(
+    cat: CategoryEntity,
+    isSelected: Boolean,
+    onSelect: (Long) -> Unit,
+    isSub: Boolean = false
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onSelect(cat.id) },
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f))
+    ) {
+        Row(
+            modifier = Modifier.padding(if (isSub) 10.dp else 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (isSub) Spacer(Modifier.width(24.dp))
+            val c = Color(cat.colorArgb)
+            CircleIcon(
+                icon = IconMapper.get(cat.icon),
+                tint = c,
+                background = c.copy(alpha = 0.14f),
+                size = if (isSub) 32.dp else 38.dp,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    cat.name,
+                    style = if (isSub) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.titleMedium,
+                    fontWeight = if (isSub) FontWeight.Normal else FontWeight.SemiBold
+                )
             }
-
-            Spacer(Modifier.height(18.dp))
+            if (isSelected) {
+                Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }
