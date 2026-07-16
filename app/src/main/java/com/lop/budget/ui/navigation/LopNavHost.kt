@@ -208,7 +208,38 @@ fun LopNavHost(startRoute: String? = null) {
                 composable(
                     Routes.GOALS
                 ) { GoalsScreen() }
-                composable(Routes.ACCOUNTS) { AccountsScreen() }
+                composable(
+                    Routes.ACCOUNTS,
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }
+                ) {
+                    AccountsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenDetail = { id -> navController.navigate(Routes.accountDetail(id)) }
+                    )
+                }
 
                 composable(
                     Routes.MONTHLY,
@@ -218,16 +249,28 @@ fun LopNavHost(startRoute: String? = null) {
                     ),
                     enterTransition = {
                         slideIntoContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = MotionSpec.mediumTween()
-                        ) + fadeIn(animationSpec = MotionSpec.mediumTween())
+                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
                     },
                     exitTransition = {
                         slideOutOfContainer(
-                            AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = MotionSpec.fastTween()
-                        ) + fadeOut(animationSpec = MotionSpec.fastTween())
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
                     },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }
                 ) {
                     MonthlyTransactionsScreen(
                         onBack = { navController.popBackStack() },
@@ -289,6 +332,28 @@ fun LopNavHost(startRoute: String? = null) {
                     arguments = listOf(navArgument("id") { type = NavType.LongType })
                 ) {
                     CategoryCreateScreen(onBack = { navController.popBackStack() })
+                }
+
+                composable(
+                    Routes.ACCOUNT_DETAIL,
+                    arguments = listOf(navArgument("id") { type = NavType.LongType }),
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }
+                ) {
+                    com.lop.budget.ui.screens.accounts.AccountDetailScreen(
+                        onBack = { navController.popBackStack() },
+                        onEdit = { id -> navController.navigate(Routes.accountEdit(id)) }
+                    )
                 }
 
                 composable(

@@ -107,6 +107,9 @@
     <string name="analytics_spend_forecast">Spend %1$s / day\nto stay within the limit</string>
     <string name="analytics_today">Today</string>
 
+    <string name="see_all">Voir tout</string>
+    <string name="no_accounts_to_show">Aucun compte à afficher</string>
+
     <!-- Category Create Screen -->
     <string name="cat_new_title">Nouvelle catégorie</string>
     <string name="cat_create_placeholder">Écran de création de catégorie\n(à implémenter)</string>

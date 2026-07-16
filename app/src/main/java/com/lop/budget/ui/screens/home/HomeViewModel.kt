@@ -180,7 +180,9 @@ class HomeViewModel @Inject constructor(
             pendingDeletes,
             pendingSeriesDeletes,
             pendingSeriesFromDates,
-            txVersions
+            txVersions,
+            repo.observeAccounts(),
+            repo.observeAccountBalances()
         ) { args ->
             @Suppress("UNCHECKED_CAST")
             val txsBetween = args[0] as List<TransactionWithRelations>
@@ -195,6 +197,10 @@ class HomeViewModel @Inject constructor(
             val pendingSeriesDates = args[5] as Map<String, Long>
             @Suppress("UNCHECKED_CAST")
             val versions = args[6] as Map<Long, Int>
+            @Suppress("UNCHECKED_CAST")
+            val allAccounts = args[7] as List<AccountEntity>
+            @Suppress("UNCHECKED_CAST")
+            val balances = args[8] as Map<Long, Double>
             
             // Même logique de filtrage que l'UI State principal
             val txs = txsBetween.filter { twr ->
@@ -234,6 +240,10 @@ class HomeViewModel @Inject constructor(
                         transactions = list.sortedByDescending { it.transaction.date },
                     )
                 }
+            
+            val accountBalances = allAccounts.map { acc ->
+                AccountBalance(acc, balances[acc.id] ?: acc.initialBalance)
+            }
 
             HomeUiState(
                 month = ym,
@@ -244,6 +254,7 @@ class HomeViewModel @Inject constructor(
                 previousPeriodExpense = prevExpense,
                 projectedBalance = projected,
                 dayGroups = dayGroups,
+                accounts = accountBalances.sortedByDescending { it.balance }.take(3),
                 txVersions = versions,
                 // On omet les données globales comme detectedCount qui sont gérées par l'Overlay
             )
@@ -285,7 +296,8 @@ class HomeViewModel @Inject constructor(
             pendingSeriesFromDates,
             txVersions,
             repo.observeAccounts(),
-            repo.observeAccountBalances()
+            repo.observeAccountBalances(),
+            detectedCount
         ) { args ->
             val data = args[0] as List<*>
             val currency = args[1] as String
@@ -296,6 +308,7 @@ class HomeViewModel @Inject constructor(
             val versions = args[6] as Map<Long, Int>
             val accounts = args[7] as List<AccountEntity>
             val balances = args[8] as Map<Long, Double>
+            val detected = args[9] as Int
 
             @Suppress("UNCHECKED_CAST")
             val allTxs = data[0] as List<TransactionWithRelations>
@@ -370,12 +383,11 @@ class HomeViewModel @Inject constructor(
                 upcoming = upcoming,
                 subscriptions = subscriptions,
                 dayGroups = dayGroups,
-                accounts = accountBalances,
+                accounts = accountBalances.sortedByDescending { it.balance }.take(3),
                 txVersions = versions,
-                detectedCount = 0, // Sera combiné après
+                detectedCount = args[9] as Int
             )
         }
-            .combine(detectedCount) { state, count -> state.copy(detectedCount = count) }
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 

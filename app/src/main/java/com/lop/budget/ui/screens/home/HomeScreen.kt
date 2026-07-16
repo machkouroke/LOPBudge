@@ -154,6 +154,7 @@ fun HomeScreen(
                 onOpenTransaction = onOpenTransaction,
                 onOpenMonthly = onOpenMonthly,
                 onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
+                onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },
                 onDeleteRequest = { showDeleteConfirmForTx = it },
                 snackbarHostState = snackbarHostState,
                 vm = vm
@@ -207,6 +208,7 @@ fun HomeContent(
     onOpenTransaction: (Long) -> Unit,
     onOpenMonthly: (TransactionType, YearMonth) -> Unit,
     onOpenAccounts: () -> Unit,
+    onOpenAccountDetail: (Long) -> Unit,
     onDeleteRequest: (TransactionWithRelations) -> Unit,
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
     vm: HomeViewModel
@@ -277,18 +279,29 @@ fun HomeContent(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     TextButton(onClick = onOpenAccounts) {
-                        Text("Voir tout")
+                        Text(stringResource(R.string.see_all))
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, modifier = Modifier.size(16.dp))
                     }
                 }
                 
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 0.dp)
-                ) {
-                    items(state.accounts, key = { it.account.id }) { balance ->
-                        AccountWidgetCard(balance, state.currency, onOpenAccounts)
+                if (state.accounts.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 0.dp)
+                    ) {
+                        items(state.accounts, key = { it.account.id }) { balance ->
+                            AccountWidgetCard(balance, state.currency) {
+                                onOpenAccountDetail(balance.account.id)
+                            }
+                        }
                     }
+                } else {
+                    Text(
+                        stringResource(R.string.no_accounts_to_show),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
                 }
             }
         }

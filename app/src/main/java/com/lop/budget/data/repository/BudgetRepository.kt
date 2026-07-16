@@ -46,6 +46,8 @@ class BudgetRepository @Inject constructor(
 ) {
     // Transactions
     fun observeTransactions(): Flow<List<TransactionWithRelations>> = transactionDao.observeAll()
+    fun observeTransactionsByAccount(accountId: Long) = transactionDao.observeByAccount(accountId)
+    fun observePlannedTransactionsByAccount(accountId: Long) = transactionDao.observePlannedByAccount(accountId)
 
     /**
      * Matérialise une occurrence virtuelle d'une série récurrente en une véritable exception persistée en DB.

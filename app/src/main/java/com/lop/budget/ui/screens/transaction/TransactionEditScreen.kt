@@ -93,7 +93,7 @@ fun TransactionEditScreen(
     val accounts by vm.accounts.collectAsStateWithLifecycle()
     val tags by vm.tags.collectAsStateWithLifecycle()
 
-    var showCategorySheet by remember { mutableStateOf(false) }
+    var showCategorySheet by remember { mutableStateOf(!vm.isEditing) }
     var showAccountSheet by remember { mutableStateOf(false) }
     var showTagsSheet by remember { mutableStateOf(false) }
 

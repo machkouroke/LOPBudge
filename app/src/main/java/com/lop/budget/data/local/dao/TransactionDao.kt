@@ -42,6 +42,12 @@ interface TransactionDao {
     @Query("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE type = :type AND status = 'PAID' AND deleted = 0 AND date BETWEEN :start AND :end")
     fun observePaidSum(type: String, start: Long, end: Long): Flow<Double>
 
+    @Query("SELECT * FROM transactions WHERE accountId = :accountId AND deleted = 0 ORDER BY date DESC")
+    fun observeByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
+
+    @Query("SELECT * FROM transactions WHERE accountId = :accountId AND status = 'PLANNED' AND deleted = 0 ORDER BY date ASC")
+    fun observePlannedByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
+
     @Upsert
     suspend fun upsert(transaction: TransactionEntity): Long
 

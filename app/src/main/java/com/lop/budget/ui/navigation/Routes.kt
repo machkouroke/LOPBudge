@@ -22,6 +22,8 @@ object Routes {
     const val ACCOUNT_ADD = "account/add"
     const val ACCOUNT_EDIT = "account/edit/{id}"
     fun accountEdit(id: Long) = "account/edit/$id"
+    const val ACCOUNT_DETAIL = "account/detail/{id}"
+    fun accountDetail(id: Long) = "account/detail/$id"
 
     // Notifications → propositions détectées
     const val DETECTED = "detected"
