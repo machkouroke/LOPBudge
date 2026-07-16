@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -41,6 +44,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -74,10 +79,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
+import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.CircleIcon
+import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.clickableNoRipple
@@ -106,160 +115,65 @@ fun TransactionEditScreen(
     var showAccountSheet by remember { mutableStateOf(false) }
     var showTagsSheet by remember { mutableStateOf(false) }
 
-    val ext = LopTheme.extended
-    val accent = if (form.type == TransactionType.INCOME) ext.income else ext.expense
     val typeCategories = categories.filter { it.type == form.type }
-
-    val canSave = form.amount > 0.0 && form.categoryId != null && form.accountId != null
-
-    LaunchedEffect(vm.isEditing, categories.size) {
-        if (!vm.isEditing && categories.isNotEmpty() && form.categoryId == null) {
-            showCategorySheet = true
-        }
-    }
 
     LopScreenScaffold(
         title = if (vm.isEditing) stringResource(R.string.tx_edit_title) else stringResource(R.string.tx_new_title),
         onBack = onBack,
-        navigationIcon = Icons.Default.Close,
+        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
         bottomBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp)
-            ) {
+            Box(Modifier.fillMaxWidth().padding(20.dp)) {
                 Button(
-                    onClick = { vm.save(onDone = onBack) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    enabled = canSave,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = accent,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
+                    onClick = { vm.save(onBack) },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    enabled = form.amount > 0.0 && form.categoryId != null && form.accountId != null
                 ) {
-                    Text(
-                        if (vm.isEditing) stringResource(R.string.save) else stringResource(R.string.create),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-
-                if (!canSave) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.tx_required_fields_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Text(stringResource(R.string.save))
                 }
             }
         }
     ) {
-        item {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                TypeSegment(
-                    label = stringResource(R.string.tx_type_expense),
-                    selected = form.type == TransactionType.EXPENSE,
-                    color = ext.expense,
-                    modifier = Modifier.weight(1f),
-                ) { vm.setType(TransactionType.EXPENSE) }
-
-                TypeSegment(
-                    label = stringResource(R.string.tx_type_income),
-                    selected = form.type == TransactionType.INCOME,
-                    color = ext.income,
-                    modifier = Modifier.weight(1f),
-                ) { vm.setType(TransactionType.INCOME) }
-            }
-        }
-
         item { SectionTitle(stringResource(R.string.tx_section_main)) }
 
         item {
-            ExpressiveCard {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FilledField(
-                        label = stringResource(R.string.tx_amount_label),
-                        value = form.amountInput.takeIf { it != "0" } ?: "",
-                        onValueChange = { newValue ->
-                            val filtered =
-                                newValue.filter { it.isDigit() || it == ',' || it == '.' }
-                            val normalized = filtered.replace(',', '.')
-                            if (normalized.count { it == '.' } <= 1 && normalized.length <= 12) {
-                                vm.setAmountRaw(normalized)
-                            }
-                        },
-                        leading = {
-                            Text(
-                                text = if (form.type == TransactionType.INCOME) "+" else "−",
-                                color = accent,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        },
-                        trailing = {
-                            Text(
-                                text = "€",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        },
-                        keyboardType = KeyboardType.Decimal,
-                        textStyle = MaterialTheme.typography.headlineMedium.copy(
-                            color = accent,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.End,
-                        ),
-                    )
+            FloatingCard {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Type Toggle
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surface),
+                    ) {
+                        TypeSegment(
+                            label = stringResource(R.string.tx_type_expense),
+                            selected = form.type == TransactionType.EXPENSE,
+                            color = LopTheme.extended.expense,
+                            modifier = Modifier.weight(1f)
+                        ) { vm.setType(TransactionType.EXPENSE) }
 
-                    var showDatePicker by remember { mutableStateOf(false) }
-                    val dateFormatter = java.time.format.DateTimeFormatter.ofPattern(
-                        "dd MMMM yyyy",
-                        java.util.Locale.getDefault(),
-                    )
-                    val formattedDate = java.time.Instant.ofEpochMilli(form.date)
-                        .atZone(java.time.ZoneId.systemDefault())
-                        .toLocalDate()
-                        .format(dateFormatter)
-
-                    if (showDatePicker) {
-                        val state =
-                            rememberDatePickerState(initialSelectedDateMillis = form.date)
-                        androidx.compose.material3.DatePickerDialog(
-                            onDismissRequest = { showDatePicker = false },
-                            confirmButton = {
-                                androidx.compose.material3.TextButton(onClick = {
-                                    state.selectedDateMillis?.let { vm.setDate(it) }
-                                    showDatePicker = false
-                                }) { Text(stringResource(R.string.ok)) }
-                            },
-                            dismissButton = {
-                                androidx.compose.material3.TextButton(onClick = {
-                                    showDatePicker = false
-                                }) {
-                                    Text(stringResource(R.string.cancel))
-                                }
-                            },
-                        ) {
-                            androidx.compose.material3.DatePicker(state = state)
-                        }
+                        TypeSegment(
+                            label = stringResource(R.string.tx_type_income),
+                            selected = form.type == TransactionType.INCOME,
+                            color = LopTheme.extended.income,
+                            modifier = Modifier.weight(1f)
+                        ) { vm.setType(TransactionType.INCOME) }
                     }
 
-                    SelectorRow(
-                        label = stringResource(R.string.tx_date_label),
-                        value = formattedDate,
-                        icon = Icons.Filled.DateRange,
-                        onClick = { showDatePicker = true },
+                    // Amount
+                    FilledField(
+                        label = stringResource(R.string.tx_amount_label),
+                        value = form.amountInput,
+                        onValueChange = vm::setAmountRaw,
+                        keyboardType = KeyboardType.Decimal,
+                        textStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                        leading = { Text(if (form.type == TransactionType.EXPENSE) "−" else "+", style = MaterialTheme.typography.displaySmall) },
+                        trailing = { Text("€", style = MaterialTheme.typography.titleLarge) }
                     )
 
+                    // Title
                     FilledField(
                         label = stringResource(R.string.tx_name_label),
                         value = form.title,
@@ -274,7 +188,7 @@ fun TransactionEditScreen(
         item { SectionTitle(stringResource(R.string.tx_section_classification)) }
 
         item {
-            ExpressiveCard {
+            FloatingCard {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     val selectedCat = typeCategories.find { it.id == form.categoryId }
                     SelectorRow(
@@ -332,17 +246,14 @@ fun TransactionEditScreen(
                                 Text(
                                     stringResource(R.string.tx_no_tags),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             } else {
-                                androidx.compose.foundation.layout.FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    selectedTags.forEach { tag ->
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    items(selectedTags) { tag ->
                                         com.lop.budget.ui.components.PillTag(
                                             text = tag.name,
-                                            color = Color(tag.colorArgb),
+                                            color = Color(tag.colorArgb)
                                         )
                                     }
                                 }
@@ -356,22 +267,46 @@ fun TransactionEditScreen(
         item { SectionTitle(stringResource(R.string.tx_section_optional)) }
 
         item {
-            ExpressiveCard {
-                FilledField(
-                    label = stringResource(R.string.tx_notes_label),
-                    value = form.note,
-                    onValueChange = vm::setNote,
-                    keyboardType = KeyboardType.Text,
-                    textStyle = MaterialTheme.typography.bodyLarge,
-                    minLines = 3,
-                )
+            FloatingCard {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    FilledField(
+                        label = stringResource(R.string.tx_notes_label),
+                        value = form.note,
+                        onValueChange = vm::setNote,
+                        keyboardType = KeyboardType.Text,
+                        textStyle = MaterialTheme.typography.bodyLarge,
+                        minLines = 2
+                    )
+
+                    val dateState = rememberDatePickerState(initialSelectedDateMillis = form.date)
+                    var showDatePicker by remember { mutableStateOf(false) }
+
+                    if (showDatePicker) {
+                        androidx.compose.material3.DatePickerDialog(
+                            onDismissRequest = { showDatePicker = false },
+                            confirmButton = {
+                                androidx.compose.material3.TextButton(onClick = {
+                                    dateState.selectedDateMillis?.let { vm.setDate(it) }
+                                    showDatePicker = false
+                                }) { Text(stringResource(R.string.ok)) }
+                            }
+                        ) { androidx.compose.material3.DatePicker(state = dateState) }
+                    }
+
+                    SelectorRow(
+                        label = stringResource(R.string.tx_date_label),
+                        value = com.lop.budget.util.Format.fullDate(form.date),
+                        icon = Icons.Default.DateRange,
+                        onClick = { showDatePicker = true }
+                    )
+                }
             }
         }
 
         item { SectionTitle(stringResource(R.string.tx_repeat_label)) }
 
         item {
-            ExpressiveCard {
+            FloatingCard {
                 RecurrenceBlock(
                     form = form,
                     onSetFrequency = vm::setFrequency,
@@ -387,10 +322,16 @@ fun TransactionEditScreen(
     if (showCategorySheet) {
         CategoryBottomSheet(
             title = stringResource(R.string.tx_category_sheet_title),
-            categories = typeCategories,
+            categories = categories.filter { it.type == form.type },
             selectedId = form.categoryId,
             onSelect = { id ->
-                vm.setCategory(id)
+                val selected = categories.find { it.id == id }
+                if (selected?.parentCategoryId != null) {
+                    vm.setCategory(selected.parentCategoryId)
+                    vm.setSubCategory(id)
+                } else {
+                    vm.setCategory(id)
+                }
                 showCategorySheet = false
             },
             onCreate = {
@@ -410,7 +351,7 @@ fun TransactionEditScreen(
                 vm.setAccount(id)
                 showAccountSheet = false
             },
-            onDismiss = { showAccountSheet = false },
+            onDismiss = { showAccountSheet = false }
         )
     }
 
@@ -434,27 +375,12 @@ fun TransactionEditScreen(
 private fun SectionTitle(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.padding(top = 6.dp),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp, top = 8.dp, bottom = 4.dp)
     )
-}
-
-@Composable
-private fun ExpressiveCard(content: @Composable () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(20.dp),
-        tonalElevation = 2.dp,
-        shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            content()
-        }
-    }
 }
 
 @Composable
@@ -466,23 +392,20 @@ private fun TypeSegment(
     onClick: () -> Unit,
 ) {
     Surface(
-        modifier = modifier.pressScaleClickable(intent = HapticIntent.Selection, onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = if (selected) color.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
-        border = BorderStroke(
-            1.dp,
-            if (selected) color.copy(alpha = 0.35f) else MaterialTheme.colorScheme.outline.copy(
-                alpha = 0.14f
-            )
-        ),
+        modifier = modifier
+            .fillMaxHeight()
+            .clickable(onClick = onClick),
+        color = if (selected) color.copy(alpha = 0.15f) else Color.Transparent,
+        shape = RoundedCornerShape(10.dp)
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) color else MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(vertical = 12.dp),
-        )
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (selected) color else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+            )
+        }
     }
 }
 
@@ -493,53 +416,34 @@ private fun FilledField(
     onValueChange: (String) -> Unit,
     keyboardType: KeyboardType,
     textStyle: androidx.compose.ui.text.TextStyle,
-    leading: (@Composable () -> Unit)? = null,
-    trailing: (@Composable () -> Unit)? = null,
+    leading: @Composable (() -> Unit)? = null,
+    trailing: @Composable (() -> Unit)? = null,
     minLines: Int = 1,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 6.dp)
         )
-
-        Surface(
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            textStyle = textStyle,
+            leadingIcon = leading,
+            trailingIcon = trailing,
+            minLines = minLines,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (leading != null) {
-                    Box(Modifier.padding(end = 10.dp)) { leading() }
-                }
-
-                OutlinedTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    modifier = Modifier.weight(1f),
-                    textStyle = textStyle,
-                    keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-                    singleLine = minLines == 1,
-                    minLines = minLines,
-                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                    ),
-                )
-
-                if (trailing != null) {
-                    Box(Modifier.padding(start = 10.dp)) { trailing() }
-                }
-            }
-        }
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            )
+        )
     }
 }
 
@@ -553,59 +457,50 @@ private fun SelectorRow(
     onClick: () -> Unit,
     dropdown: (@Composable () -> Unit)? = null,
 ) {
-    Box {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .clickable(onClick = onClick)
-                .border(
-                    1.dp,
-                    MaterialTheme.colorScheme.outline.copy(alpha = 0.10f),
-                    RoundedCornerShape(16.dp)
-                ),
-            color = MaterialTheme.colorScheme.surfaceVariant,
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (icon != null) {
-                    CircleIcon(
-                        icon = icon,
-                        tint = iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant,
-                        background = (iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant).copy(
-                            alpha = 0.12f
-                        ),
-                        size = 34.dp,
-                    )
-                    Spacer(Modifier.width(12.dp))
-                }
+            if (icon != null) {
+                CircleIcon(
+                    icon = icon,
+                    tint = iconTint ?: MaterialTheme.colorScheme.primary,
+                    background = (iconTint ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.12f),
+                    size = 36.dp
+                )
+                Spacer(Modifier.width(12.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
 
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        label,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        value,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                if (trailingChevron) {
-                    Icon(
-                        Icons.Filled.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            if (dropdown != null) {
+                Box { dropdown() }
+            } else if (trailingChevron) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
             }
         }
-        dropdown?.invoke()
     }
 }
 
@@ -618,227 +513,125 @@ private fun RecurrenceBlock(
     onSetEndDate: (Long?) -> Unit,
     onSetMaxOccurrences: (Int?) -> Unit,
 ) {
-    var expandedAdvanced by remember { mutableStateOf(false) }
+    var showAdvanced by remember { mutableStateOf(false) }
 
-    var expandedFreq by remember { mutableStateOf(false) }
-    val freqs = listOf(
-        RecurrenceFrequency.NONE to stringResource(R.string.tx_repeat_none),
-        RecurrenceFrequency.DAILY to stringResource(R.string.tx_repeat_daily),
-        RecurrenceFrequency.WEEKLY to stringResource(R.string.tx_repeat_weekly),
-        RecurrenceFrequency.MONTHLY to stringResource(R.string.tx_repeat_monthly),
-        RecurrenceFrequency.YEARLY to stringResource(R.string.tx_repeat_yearly),
-    )
-    val selectedFreqLabel = freqs.find { it.first == form.frequency }?.second
-        ?: stringResource(R.string.tx_repeat_none)
-
-    SelectorRow(
-        label = stringResource(R.string.tx_repeat_label),
-        value = selectedFreqLabel,
-        icon = Icons.Filled.Repeat,
-        onClick = { expandedFreq = true },
-        dropdown = {
-            DropdownMenu(
-                expanded = expandedFreq,
-                onDismissRequest = { expandedFreq = false },
-                modifier = Modifier.fillMaxWidth(0.92f)
-            ) {
-                freqs.forEach { (freq, label) ->
-                    DropdownMenuItem(
-                        text = { Text(label) },
-                        onClick = {
-                            onSetFrequency(freq)
-                            expandedFreq = false
-                        }
-                    )
-                }
-            }
-        },
-    )
-
-    if (form.frequency == RecurrenceFrequency.NONE) return
-
-    Spacer(Modifier.height(8.dp))
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            stringResource(R.string.tx_repeat_every),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.width(10.dp))
-        OutlinedTextField(
-            value = form.interval.toString(),
-            onValueChange = { onSetInterval(it.filter { c -> c.isDigit() }.toIntOrNull() ?: 1) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.width(90.dp),
-            shape = RoundedCornerShape(12.dp),
-        )
-        Spacer(Modifier.width(10.dp))
-        Text(
-            stringResource(R.string.tx_repeat_intervals),
-            style = MaterialTheme.typography.bodyMedium
-        )
-    }
-
-    Spacer(Modifier.height(8.dp))
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier
-            .fillMaxWidth()
-            .pressScaleClickable(intent = HapticIntent.Tap, pressedScale = 0.99f) {
-                expandedAdvanced = !expandedAdvanced
-            },
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = stringResource(R.string.tx_repeat_advanced),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
+                stringResource(R.string.tx_repeat_label),
+                style = MaterialTheme.typography.titleMedium
             )
-            Icon(
-                Icons.Filled.KeyboardArrowDown,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.rotate(if (expandedAdvanced) 180f else 0f),
-            )
-        }
-    }
-
-    AnimatedVisibility(visible = expandedAdvanced) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.padding(top = 10.dp)
-        ) {
-            if (form.frequency == RecurrenceFrequency.WEEKLY) {
-                Text(
-                    stringResource(R.string.tx_repeat_days_of_week),
-                    style = MaterialTheme.typography.labelLarge
+            TextButton(onClick = { showAdvanced = !showAdvanced }) {
+                Text(if (showAdvanced) "Moins" else stringResource(R.string.tx_repeat_advanced))
+                Icon(
+                    if (showAdvanced) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    null,
+                    modifier = Modifier.rotate(if (showAdvanced) 0f else 0f)
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val days =
-                        listOf("L" to 1, "M" to 2, "M" to 3, "J" to 4, "V" to 5, "S" to 6, "D" to 7)
-                    days.forEach { (lbl, num) ->
-                        val sel = num in form.daysOfWeek
-                        Surface(
-                            shape = CircleShape,
-                            color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .pressScaleClickable(intent = HapticIntent.Selection) {
-                                    onToggleDow(
-                                        num
+            }
+        }
+
+        // Quick frequencies
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val frequencies = listOf(
+                RecurrenceFrequency.NONE to R.string.tx_repeat_none,
+                RecurrenceFrequency.DAILY to R.string.tx_repeat_daily,
+                RecurrenceFrequency.WEEKLY to R.string.tx_repeat_weekly,
+                RecurrenceFrequency.MONTHLY to R.string.tx_repeat_monthly,
+                RecurrenceFrequency.YEARLY to R.string.tx_repeat_yearly
+            )
+            items(frequencies) { (freq, labelRes) ->
+                FilterChip(
+                    selected = form.frequency == freq,
+                    onClick = { onSetFrequency(freq) },
+                    label = { Text(stringResource(labelRes)) }
+                )
+            }
+        }
+
+        AnimatedVisibility(visible = showAdvanced && form.frequency != RecurrenceFrequency.NONE) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Interval
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.tx_repeat_every))
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedTextField(
+                        value = form.interval.toString(),
+                        onValueChange = { it.toIntOrNull()?.let { v -> onSetInterval(v) } },
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(50.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        textStyle = androidx.compose.ui.text.TextStyle(textAlign = TextAlign.Center)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.tx_repeat_intervals))
+                }
+
+                // Days of week for weekly
+                if (form.frequency == RecurrenceFrequency.WEEKLY) {
+                    Text(
+                        stringResource(R.string.tx_repeat_days_of_week),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        (1..7).forEach { day ->
+                            val selected = form.daysOfWeek.contains(day)
+                            Surface(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .clickable { onToggleDow(day) },
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = when (day) {
+                                            1 -> "L"; 2 -> "M"; 3 -> "M"; 4 -> "J"; 5 -> "V"; 6 -> "S"; else -> "D"
+                                        },
+                                        color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                },
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    lbl,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = if (sel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            Text(
-                stringResource(R.string.tx_repeat_ends),
-                style = MaterialTheme.typography.labelLarge
-            )
-
-            val endPolicy = when {
-                form.endDate != null -> "date"
-                form.maxOccurrences != null -> "occ"
-                else -> "never"
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = endPolicy == "never",
-                    onClick = { onSetEndDate(null); onSetMaxOccurrences(null) })
+                // End condition
+                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                 Text(
-                    stringResource(R.string.tx_repeat_ends_never),
-                    modifier = Modifier.clickable { onSetEndDate(null); onSetMaxOccurrences(null) })
-            }
+                    stringResource(R.string.tx_repeat_ends),
+                    style = MaterialTheme.typography.labelLarge
+                )
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = endPolicy == "date",
-                    onClick = { onSetEndDate(form.date + 86400000L * 30); })
-                Text(stringResource(R.string.tx_repeat_ends_on), modifier = Modifier.clickable {
-                    if (endPolicy != "date") onSetEndDate(form.date + 86400000L * 30)
-                })
-                Spacer(Modifier.width(8.dp))
-                if (endPolicy == "date") {
-                    var showEndDatePicker by remember { mutableStateOf(false) }
-                    if (showEndDatePicker) {
-                        val endState = rememberDatePickerState(
-                            initialSelectedDateMillis = form.endDate ?: System.currentTimeMillis()
-                        )
-                        androidx.compose.material3.DatePickerDialog(
-                            onDismissRequest = { showEndDatePicker = false },
-                            confirmButton = {
-                                androidx.compose.material3.TextButton(onClick = {
-                                    endState.selectedDateMillis?.let { onSetEndDate(it) }
-                                    showEndDatePicker = false
-                                }) { Text(stringResource(R.string.ok)) }
-                            },
-                            dismissButton = {
-                                androidx.compose.material3.TextButton(onClick = {
-                                    showEndDatePicker = false
-                                }) { Text(stringResource(R.string.cancel)) }
-                            },
-                        ) {
-                            androidx.compose.material3.DatePicker(state = endState)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = form.endDate == null && form.maxOccurrences == null,
+                        onClick = {
+                            onSetEndDate(null)
+                            onSetMaxOccurrences(null)
                         }
-                    }
-
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.clickable { showEndDatePicker = true }
-                    ) {
-                        val endFormatted = java.time.Instant.ofEpochMilli(
-                            form.endDate ?: System.currentTimeMillis()
-                        )
-                            .atZone(java.time.ZoneId.systemDefault())
-                            .toLocalDate()
-                            .format(
-                                java.time.format.DateTimeFormatter.ofPattern(
-                                    "dd MMM yyyy",
-                                    java.util.Locale.getDefault()
-                                )
-                            )
-                        Text(
-                            endFormatted,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
+                    )
+                    Text(stringResource(R.string.tx_repeat_ends_never))
                 }
-            }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = endPolicy == "occ", onClick = { onSetMaxOccurrences(10) })
-                Text(stringResource(R.string.tx_repeat_ends_after), modifier = Modifier.clickable {
-                    if (endPolicy != "occ") onSetMaxOccurrences(10)
-                })
-                Spacer(Modifier.width(8.dp))
-                if (endPolicy == "occ") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = form.maxOccurrences != null,
+                        onClick = { onSetMaxOccurrences(12) }
+                    )
+                    Text(stringResource(R.string.tx_repeat_ends_after))
+                    Spacer(Modifier.width(8.dp))
                     OutlinedTextField(
                         value = form.maxOccurrences?.toString() ?: "",
-                        onValueChange = {
-                            val n = it.filter { c -> c.isDigit() }.toIntOrNull()
-                            if (n != null && n > 0) onSetMaxOccurrences(n)
-                        },
+                        onValueChange = { it.toIntOrNull()?.let { v -> onSetMaxOccurrences(v) } },
                         modifier = Modifier
                             .width(80.dp)
                             .height(50.dp),
@@ -855,180 +648,15 @@ private fun RecurrenceBlock(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CategoryBottomSheet(
-    title: String,
-    categories: List<CategoryEntity>,
-    selectedId: Long?,
-    onSelect: (Long) -> Unit,
-    onCreate: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var searchQuery by remember { mutableStateOf("") }
-    var currentParent by remember { mutableStateOf<CategoryEntity?>(null) }
-    
-    // Reset navigation when sheet is dismissed or categories change significantly
-    val filteredCategories = remember(categories, searchQuery, currentParent) {
-        if (searchQuery.isNotBlank()) {
-            categories.filter { it.name.contains(searchQuery, ignoreCase = true) }
-        } else {
-            categories.filter { it.parentCategoryId == currentParent?.id }
-        }
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        dragHandle = { BottomSheetDefaults.DragHandle() },
-        containerColor = MaterialTheme.colorScheme.surface,
-        scrimColor = Color.Black.copy(alpha = 0.55f),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp)
-        ) {
-            // Header with Back button if in sub-category
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (currentParent != null && searchQuery.isBlank()) {
-                        IconButton(onClick = { currentParent = null }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                        }
-                    }
-                    Text(
-                        text = if (searchQuery.isNotBlank()) "Résultats" else currentParent?.name ?: title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                
-                IconButton(onClick = onCreate) {
-                    Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // One UI style search bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Chercher une catégorie...") },
-                leadingIcon = { Icon(Icons.Default.Search, null) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, null)
-                        }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                )
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                modifier = Modifier.weight(1f, fill = false),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Recent Section (Static mock for now or top 3)
-                if (searchQuery.isBlank() && currentParent == null && categories.isNotEmpty()) {
-                    item(span = { GridItemSpan(3) }) {
-                        Text("Récente", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                    }
-                    items(categories.take(3)) { cat ->
-                        CategoryGridItem(cat, selectedId == cat.id) {
-                            val hasChildren = categories.any { it.parentCategoryId == cat.id }
-                            if (hasChildren) currentParent = cat
-                            else onSelect(cat.id)
-                        }
-                    }
-                    item(span = { GridItemSpan(3) }) {
-                        Spacer(Modifier.height(8.dp))
-                        Text("Toute", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-
-                if (filteredCategories.isEmpty()) {
-                    item(span = { GridItemSpan(3) }) {
-                        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                            Text("Aucune catégorie trouvée", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-
-                items(filteredCategories) { cat ->
-                    CategoryGridItem(cat, selectedId == cat.id) {
-                        val hasChildren = categories.any { it.parentCategoryId == cat.id }
-                        if (hasChildren && searchQuery.isBlank()) {
-                            currentParent = cat
-                        } else {
-                            onSelect(cat.id)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CategoryGridItem(
-    cat: CategoryEntity,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val color = Color(cat.colorArgb)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() }
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        CircleIcon(
-            icon = IconMapper.get(cat.icon),
-            tint = color,
-            background = color.copy(alpha = 0.15f),
-            size = 56.dp
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = cat.name,
-            style = MaterialTheme.typography.labelMedium,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 private fun AccountBottomSheet(
     title: String,
-    accounts: List<com.lop.budget.data.local.entity.AccountEntity>,
+    accounts: List<AccountEntity>,
     selectedId: Long?,
     onSelect: (Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState =
+        androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     androidx.compose.material3.ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1042,227 +670,152 @@ private fun AccountBottomSheet(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
 
             if (accounts.isEmpty()) {
-                Text(stringResource(R.string.tx_no_accounts), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.tx_no_accounts),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
-            accounts.forEach { acc ->
-                val selected = acc.id == selectedId
+            accounts.forEach { account ->
+                val selected = account.id == selectedId
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .pressScaleClickable(intent = HapticIntent.Selection, pressedScale = 0.98f) { onSelect(acc.id) },
+                        .pressScaleClickable(
+                            intent = HapticIntent.Selection,
+                            pressedScale = 0.98f
+                        ) { onSelect(account.id) },
                     color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f))
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+                    )
                 ) {
                     Row(
                         modifier = Modifier.padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // Simple avatar (first letter) to keep it clean
-                        val letter = acc.name.firstOrNull()?.uppercase() ?: "A"
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surface,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
-                            modifier = Modifier.size(38.dp),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(letter, fontWeight = FontWeight.Bold)
-                            }
-                        }
+                        val c = Color(account.colorArgb)
+                        CircleIcon(
+                            icon = IconMapper.get(account.icon),
+                            tint = c,
+                            background = c.copy(alpha = 0.14f),
+                            size = 38.dp,
+                        )
                         Spacer(Modifier.width(12.dp))
-                        Text(acc.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        Text(
+                            account.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
                         if (selected) {
                             Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
             }
-
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(20.dp))
         }
     }
 }
 
-// Tags sheet kept as-is (existing UI).
-@OptIn(
-    ExperimentalMaterial3Api::class,
-    androidx.compose.foundation.layout.ExperimentalLayoutApi::class
-)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TagsBottomSheet(
-    tags: List<com.lop.budget.data.local.entity.TagEntity>,
+    tags: List<TagEntity>,
     selectedTagIds: Set<Long>,
     onToggleTag: (Long) -> Unit,
     onCreateTag: (String, Int) -> Unit,
     onDeleteTag: (Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState =
-        androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var newTagName by remember { mutableStateOf("") }
-    var tagToDelete by remember { mutableStateOf<com.lop.budget.data.local.entity.TagEntity?>(null) }
-
-    val colors = listOf(
-        Color(0xFFE53935), Color(0xFFD81B60), Color(0xFF8E24AA), Color(0xFF5E35B1),
-        Color(0xFF3949AB), Color(0xFF1E88E5), Color(0xFF039BE5), Color(0xFF00ACC1),
-        Color(0xFF00897B), Color(0xFF00838F), Color(0xFF43A047), Color(0xFF2E7D32),
-        Color(0xFF7CB342), Color(0xFFC0CA33), Color(0xFFFDD835), Color(0xFFFFB300),
-        Color(0xFFFB8C00), Color(0xFFF4511E), Color(0xFF6D4C41), Color(0xFF546E7A)
-    )
-    var selectedColor by remember { mutableStateOf(colors[0]) }
-
-    androidx.compose.material3.ModalBottomSheet(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        scrimColor = Color.Black.copy(alpha = 0.55f),
+        dragHandle = { BottomSheetDefaults.DragHandle() },
     ) {
         Column(
-            Modifier
-                .padding(horizontal = 24.dp, vertical = 8.dp)
+            modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp)
         ) {
             Text(
                 stringResource(R.string.tx_tags_sheet_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleLarge
             )
             Text(
                 stringResource(R.string.tx_tags_sheet_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(24.dp))
 
-            if (tags.isNotEmpty()) {
-                androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    tags.forEach { tag ->
-                        val isSelected = selectedTagIds.contains(tag.id)
-                        val color = Color(tag.colorArgb)
-                        Surface(
-                            modifier = Modifier.pressScaleClickable(intent = HapticIntent.Selection) { onToggleTag(tag.id) },
-                            shape = CircleShape,
-                            color = if (isSelected) color.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(
-                                alpha = 0.5f
-                            ),
-                            border = if (isSelected) BorderStroke(
-                                1.dp,
-                                color
-                            ) else BorderStroke(1.dp, Color.Transparent)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 8.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .clip(CircleShape)
-                                        .background(color)
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    tag.name,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Icon(
-                                    androidx.compose.material.icons.Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.delete),
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clickable { tagToDelete = tag },
-                                    tint = if (isSelected) color.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                                )
-                            }
-                        }
-                    }
-                }
-                Spacer(Modifier.height(24.dp))
-            }
-
-            Text(
-                stringResource(R.string.tx_tags_create_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = newTagName,
-                onValueChange = { newTagName = it },
-                label = { Text(stringResource(R.string.tx_tags_name_label)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
             Spacer(Modifier.height(16.dp))
 
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(colors) { color ->
-                    val isSelected = selectedColor == color
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(color)
-                            .clickable { selectedColor = color }
-                            .border(
-                                if (isSelected) 3.dp else 0.dp,
-                                MaterialTheme.colorScheme.onSurface,
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isSelected) {
-                            Icon(
-                                Icons.Filled.Check,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+            // Liste des tags existants
+            com.lop.budget.ui.components.PressScale(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {}
+            ) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    tags.forEach { tag ->
+                        val selected = selectedTagIds.contains(tag.id)
+                        FilterChip(
+                            selected = selected,
+                            onClick = { onToggleTag(tag.id) },
+                            label = { Text(tag.name) },
+                            leadingIcon = if (selected) {
+                                { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
+                            } else null
+                        )
                     }
                 }
             }
-            Spacer(Modifier.height(24.dp))
 
-            Button(
-                onClick = {
-                    onCreateTag(newTagName, selectedColor.toArgb())
-                    newTagName = ""
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                enabled = newTagName.isNotBlank() && (selectedTagIds.size < 3),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(stringResource(R.string.add), fontWeight = FontWeight.Bold)
-            }
             Spacer(Modifier.height(32.dp))
-        }
-    }
 
-    if (tagToDelete != null) {
-        com.lop.budget.ui.components.ConfirmDeleteSheet(
-            title = "Supprimer le tag ?",
-            message = "Le tag \"${tagToDelete?.name}\" sera définitivement supprimé et retiré de toutes les transactions.",
-            confirmLabel = stringResource(R.string.delete),
-            onDismiss = { tagToDelete = null },
-            onConfirm = {
-                tagToDelete?.id?.let { onDeleteTag(it) }
-                tagToDelete = null
+            // Création d'un tag
+            Text(
+                stringResource(R.string.tx_tags_create_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+            var newTagName by remember { mutableStateOf("") }
+            Row(
+                modifier = Modifier.padding(top = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = newTagName,
+                    onValueChange = { newTagName = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text(stringResource(R.string.tx_tags_name_label)) },
+                    singleLine = true
+                )
+                Spacer(Modifier.width(12.dp))
+                IconButton(
+                    onClick = {
+                        if (newTagName.isNotBlank()) {
+                            onCreateTag(newTagName, 0xFF9C27B0.toInt())
+                            newTagName = ""
+                        }
+                    },
+                    enabled = newTagName.isNotBlank()
+                ) {
+                    Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
+                }
             }
-        )
+        }
     }
 }

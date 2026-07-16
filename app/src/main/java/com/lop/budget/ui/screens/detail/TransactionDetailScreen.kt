@@ -55,6 +55,7 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.ConfirmDeleteSheet
 import com.lop.budget.ui.components.FloatingCard
@@ -85,7 +86,7 @@ fun TransactionDetailScreen(
             onBack()
         }
     }
-    var editingCategory by remember { mutableStateOf(false) }
+    var showCategorySheet by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showAccountSheet by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -199,7 +200,7 @@ fun TransactionDetailScreen(
                                     size = 34.dp
                                 )
                             },
-                            onClick = { if (!isBusy) editingCategory = !editingCategory },
+                            onClick = { if (!isBusy) showCategorySheet = true },
                             trailing = {
                                 Icon(
                                     Icons.Filled.Edit,
@@ -209,33 +210,6 @@ fun TransactionDetailScreen(
                                 )
                             }
                         )
-
-                        if (editingCategory) {
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                items(state.availableCategories, key = { it.id }) { cat ->
-                                    val c = Color(cat.colorArgb)
-                                    val selected = cat.id == tx.categoryId
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.clickableNoRipple {
-                                            if (isBusy) return@clickableNoRipple
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            vm.changeCategory(cat.id)
-                                            editingCategory = false
-                                        },
-                                    ) {
-                                        CircleIcon(
-                                            IconMapper.get(cat.icon),
-                                            c,
-                                            if (selected) c.copy(alpha = 0.32f) else c.copy(alpha = 0.14f),
-                                            size = 48.dp
-                                        )
-                                        Spacer(Modifier.height(4.dp))
-                                        Text(cat.name, style = MaterialTheme.typography.labelSmall)
-                                    }
-                                }
-                            }
-                        }
 
                         DetailFieldRow(
                             label = stringResource(R.string.tx_detail_date),
@@ -426,6 +400,19 @@ fun TransactionDetailScreen(
         ) {
             DatePicker(state = pickerState)
         }
+    }
+
+    if (showCategorySheet && tx != null) {
+        CategoryBottomSheet(
+            title = stringResource(R.string.tx_category_sheet_title),
+            categories = state.availableCategories,
+            selectedId = tx.categoryId,
+            onSelect = { categoryId ->
+                vm.changeCategory(categoryId)
+                showCategorySheet = false
+            },
+            onDismiss = { showCategorySheet = false }
+        )
     }
 
     if (showAccountSheet) {
