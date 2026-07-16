@@ -38,6 +38,10 @@ object AppModule {
                     super.onCreate(db)
                     scope.launch { DatabaseSeeder.seed(dbRef) }
                 }
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    super.onOpen(db)
+                    scope.launch { DatabaseSeeder.seed(dbRef) }
+                }
             })
             .addMigrations(
                 LopDatabase.MIGRATION_1_2,

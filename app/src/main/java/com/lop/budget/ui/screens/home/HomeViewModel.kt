@@ -2,10 +2,12 @@ package com.lop.budget.ui.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionStatus
@@ -41,6 +43,7 @@ data class HomeUiState(
     val upcoming: List<TransactionWithRelations> = emptyList(),
     val subscriptions: List<TransactionWithRelations> = emptyList(),
     val dayGroups: List<DayGroup> = emptyList(),
+    val accounts: List<AccountBalance> = emptyList(),
     /** Version par transaction : incrémenté à chaque Undo pour forcer la recréation du composant Compose */
     val txVersions: Map<Long, Int> = emptyMap(),
 
@@ -273,7 +276,17 @@ class HomeViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<HomeUiState> =
-        combine(monthData, settings.currency, month, pendingDeletes, pendingSeriesDeletes, pendingSeriesFromDates, txVersions) { args ->
+        combine(
+            monthData,
+            settings.currency,
+            month,
+            pendingDeletes,
+            pendingSeriesDeletes,
+            pendingSeriesFromDates,
+            txVersions,
+            repo.observeAccounts(),
+            repo.observeAccountBalances()
+        ) { args ->
             val data = args[0] as List<*>
             val currency = args[1] as String
             val ym = args[2] as YearMonth
@@ -281,6 +294,8 @@ class HomeViewModel @Inject constructor(
             val pendingSeries = args[4] as Map<String, SeriesDeletionMode>
             val pendingSeriesDates = args[5] as Map<String, Long>
             val versions = args[6] as Map<Long, Int>
+            val accounts = args[7] as List<AccountEntity>
+            val balances = args[8] as Map<Long, Double>
 
             @Suppress("UNCHECKED_CAST")
             val allTxs = data[0] as List<TransactionWithRelations>
@@ -338,6 +353,10 @@ class HomeViewModel @Inject constructor(
                         transactions = list.sortedByDescending { it.transaction.date },
                     )
                 }
+            
+            val accountBalances = accounts.map { acc ->
+                AccountBalance(acc, balances[acc.id] ?: acc.initialBalance)
+            }
 
             HomeUiState(
                 month = ym,
@@ -351,6 +370,7 @@ class HomeViewModel @Inject constructor(
                 upcoming = upcoming,
                 subscriptions = subscriptions,
                 dayGroups = dayGroups,
+                accounts = accountBalances,
                 txVersions = versions,
                 detectedCount = 0, // Sera combiné après
             )

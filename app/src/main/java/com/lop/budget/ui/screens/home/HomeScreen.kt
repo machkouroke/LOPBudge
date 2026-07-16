@@ -21,10 +21,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -36,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,11 +55,14 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CircleIcon
@@ -69,6 +76,7 @@ import com.lop.budget.ui.navigation.Routes
 import com.lop.budget.ui.theme.ExpenseCoral
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
+import com.lop.budget.util.IconMapper
 import java.time.YearMonth
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -78,7 +86,7 @@ fun HomeScreen(
     onOpenTransaction: (Long) -> Unit,
     onOpenAi: () -> Unit,
     onOpenMonthly: (TransactionType, YearMonth) -> Unit,
-    navController: androidx.navigation.NavController,
+    navController: NavController,
     vm: HomeViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -145,6 +153,7 @@ fun HomeScreen(
                 statusBarPadding = statusBarPadding,
                 onOpenTransaction = onOpenTransaction,
                 onOpenMonthly = onOpenMonthly,
+                onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
                 onDeleteRequest = { showDeleteConfirmForTx = it },
                 snackbarHostState = snackbarHostState,
                 vm = vm
@@ -197,6 +206,7 @@ fun HomeContent(
     statusBarPadding: androidx.compose.ui.unit.Dp,
     onOpenTransaction: (Long) -> Unit,
     onOpenMonthly: (TransactionType, YearMonth) -> Unit,
+    onOpenAccounts: () -> Unit,
     onDeleteRequest: (TransactionWithRelations) -> Unit,
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
     vm: HomeViewModel
@@ -250,6 +260,35 @@ fun HomeContent(
                         color = com.lop.budget.ui.theme.IncomeGreen,
                         modifier = Modifier.weight(1f).clickableNoRipple { onOpenMonthly(TransactionType.INCOME, state.month) }
                     )
+                }
+            }
+        }
+
+        item(key = "accounts_widget", contentType = "accounts") {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        stringResource(R.string.accounts_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    TextButton(onClick = onOpenAccounts) {
+                        Text("Voir tout")
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, modifier = Modifier.size(16.dp))
+                    }
+                }
+                
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(horizontal = 0.dp)
+                ) {
+                    items(state.accounts, key = { it.account.id }) { balance ->
+                        AccountWidgetCard(balance, state.currency, onOpenAccounts)
+                    }
                 }
             }
         }
@@ -308,6 +347,46 @@ fun StatCard(label: String, amount: Double, currency: String, icon: androidx.com
             Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
             Text(Format.money(amount, currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+        }
+    }
+}
+
+@Composable
+fun AccountWidgetCard(
+    balance: AccountBalance,
+    currency: String,
+    onClick: () -> Unit
+) {
+    val color = Color(balance.account.colorArgb)
+    FloatingCard(
+        modifier = Modifier.width(160.dp).clickableNoRipple(onClick),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        contentPadding = PaddingValues(12.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircleIcon(
+                    icon = IconMapper.get(balance.account.icon),
+                    tint = color,
+                    background = color.copy(alpha = 0.15f),
+                    size = 32.dp
+                )
+            }
+            Column {
+                Text(
+                    balance.account.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    Format.money(balance.balance, currency),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
         }
     }
 }

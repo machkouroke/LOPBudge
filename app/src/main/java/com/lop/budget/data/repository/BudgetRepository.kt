@@ -16,6 +16,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.dao.RecurringSeriesDao
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.domain.BalanceEngine
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.TransactionStatus
@@ -399,6 +400,27 @@ class BudgetRepository @Inject constructor(
     fun observeTags() = tagDao.observeAll()
     fun observeGoals() = goalDao.observeAll()
     fun observeDebts() = debtDao.observeAll()
+
+    /**
+     * Observe les soldes de tous les comptes en temps réel.
+     * @return Map<AccountId, Balance>
+     */
+    fun observeAccountBalances(): Flow<Map<Long, Double>> = combine(
+        accountDao.observeAll(),
+        transactionDao.observeAll()
+    ) { accounts, transactions ->
+        BalanceEngine.calculateBalances(accounts, transactions.map { it.transaction })
+    }.flowOn(Dispatchers.IO)
+
+    /**
+     * Observe le solde total consolidé.
+     */
+    fun observeTotalBalance(): Flow<Double> = combine(
+        accountDao.observeAll(),
+        observeAccountBalances()
+    ) { accounts, balances ->
+        BalanceEngine.calculateTotalBalance(accounts, balances)
+    }.flowOn(Dispatchers.IO)
 
     suspend fun saveAccount(a: AccountEntity) = accountDao.upsert(a)
     suspend fun getAccountById(id: Long) = accountDao.getById(id)

@@ -3,13 +3,13 @@ package com.lop.budget.ui.screens.transaction
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,38 +17,28 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -58,8 +48,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,20 +57,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
-import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
@@ -89,17 +75,13 @@ import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.LopScreenScaffold
-import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.PillTag
+import com.lop.budget.ui.components.PressScale
 import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.IconMapper
 
-/**
- * Material expressive, lisible, ergonomique.
- * - Utilise LopScreenScaffold pour la cohérence visuelle.
- * - Progressive disclosure pour la récurrence.
- */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TransactionEditScreen(
     onBack: () -> Unit,
@@ -190,13 +172,11 @@ fun TransactionEditScreen(
         item {
             FloatingCard {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    val selectedCat = typeCategories.find { it.id == form.categoryId }
+                    val selectedCat = categories.find { it.id == form.categoryId }
                     SelectorRow(
                         label = stringResource(R.string.tx_category_label),
-                        value = selectedCat?.name
-                            ?: stringResource(R.string.tx_select_category),
-                        icon = selectedCat?.let { IconMapper.get(it.icon) }
-                            ?: Icons.Filled.KeyboardArrowDown,
+                        value = selectedCat?.name ?: stringResource(R.string.tx_select_category),
+                        icon = selectedCat?.let { IconMapper.get(it.icon) } ?: Icons.Filled.Category,
                         iconTint = selectedCat?.let { Color(it.colorArgb) },
                         onClick = { showCategorySheet = true },
                     )
@@ -204,7 +184,7 @@ fun TransactionEditScreen(
                     if (selectedCat != null) {
                         val subCats = categories.filter { it.parentCategoryId == selectedCat.id }
                         if (subCats.isNotEmpty()) {
-                            val selectedSub = subCats.find { it.id == form.subCategoryId }
+                            val selectedSub = categories.find { it.id == form.subCategoryId }
                             SelectorRow(
                                 label = "Sous-catégorie",
                                 value = selectedSub?.name ?: "Choisir une sous-catégorie...",
@@ -229,11 +209,8 @@ fun TransactionEditScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
                             .clickable { showTagsSheet = true },
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        border = BorderStroke(
-                            1.dp,
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
-                        ),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
                     ) {
                         Column(Modifier.padding(16.dp)) {
                             Text(
@@ -251,10 +228,7 @@ fun TransactionEditScreen(
                             } else {
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     items(selectedTags) { tag ->
-                                        com.lop.budget.ui.components.PillTag(
-                                            text = tag.name,
-                                            color = Color(tag.colorArgb)
-                                        )
+                                        PillTag(text = tag.name, color = Color(tag.colorArgb))
                                     }
                                 }
                             }
@@ -279,25 +253,25 @@ fun TransactionEditScreen(
                     )
 
                     val dateState = rememberDatePickerState(initialSelectedDateMillis = form.date)
-                    var showDatePicker by remember { mutableStateOf(false) }
+                    var showDatePickerInternal by remember { mutableStateOf(false) }
 
-                    if (showDatePicker) {
-                        androidx.compose.material3.DatePickerDialog(
-                            onDismissRequest = { showDatePicker = false },
+                    if (showDatePickerInternal) {
+                        DatePickerDialog(
+                            onDismissRequest = { showDatePickerInternal = false },
                             confirmButton = {
-                                androidx.compose.material3.TextButton(onClick = {
+                                TextButton(onClick = {
                                     dateState.selectedDateMillis?.let { vm.setDate(it) }
-                                    showDatePicker = false
+                                    showDatePickerInternal = false
                                 }) { Text(stringResource(R.string.ok)) }
                             }
-                        ) { androidx.compose.material3.DatePicker(state = dateState) }
+                        ) { DatePicker(state = dateState) }
                     }
 
                     SelectorRow(
                         label = stringResource(R.string.tx_date_label),
                         value = com.lop.budget.util.Format.fullDate(form.date),
                         icon = Icons.Default.DateRange,
-                        onClick = { showDatePicker = true }
+                        onClick = { showDatePickerInternal = true }
                     )
                 }
             }
@@ -322,7 +296,7 @@ fun TransactionEditScreen(
     if (showCategorySheet) {
         CategoryBottomSheet(
             title = stringResource(R.string.tx_category_sheet_title),
-            categories = categories.filter { it.type == form.type },
+            categories = typeCategories,
             selectedId = form.categoryId,
             onSelect = { id ->
                 val selected = categories.find { it.id == id }
@@ -451,18 +425,17 @@ private fun FilledField(
 private fun SelectorRow(
     label: String,
     value: String,
-    icon: Any? = null, // ImageVector or URL String
+    icon: Any? = null,
     iconTint: Color? = null,
     trailingChevron: Boolean = true,
     onClick: () -> Unit,
-    dropdown: (@Composable () -> Unit)? = null,
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
     ) {
         Row(
@@ -491,11 +464,9 @@ private fun SelectorRow(
                 )
             }
 
-            if (dropdown != null) {
-                Box { dropdown() }
-            } else if (trailingChevron) {
+            if (trailingChevron) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
@@ -528,9 +499,8 @@ private fun RecurrenceBlock(
             TextButton(onClick = { showAdvanced = !showAdvanced }) {
                 Text(if (showAdvanced) "Moins" else stringResource(R.string.tx_repeat_advanced))
                 Icon(
-                    if (showAdvanced) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    null,
-                    modifier = Modifier.rotate(if (showAdvanced) 0f else 0f)
+                    if (showAdvanced) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
+                    null
                 )
             }
         }
@@ -655,10 +625,9 @@ private fun AccountBottomSheet(
     onSelect: (Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState =
-        androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    androidx.compose.material3.ModalBottomSheet(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -761,7 +730,7 @@ private fun TagsBottomSheet(
             Spacer(Modifier.height(16.dp))
 
             // Liste des tags existants
-            com.lop.budget.ui.components.PressScale(
+            PressScale(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {}
             ) {
