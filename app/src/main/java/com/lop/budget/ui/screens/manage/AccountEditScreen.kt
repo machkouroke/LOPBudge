@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,6 +44,31 @@ fun AccountEditScreen(
     var showTypeSheet by remember { mutableStateOf(false) }
     var showBankSheet by remember { mutableStateOf(false) }
     var showIconSheet by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Supprimer le compte ?") },
+            text = { Text("Toutes les transactions liées à ce compte seront orphelines. Cette action est irréversible.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vm.deleteAccount(onBack)
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Supprimer")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Annuler")
+                }
+            }
+        )
+    }
 
     if (showTypeSheet) {
         AccountTypeBottomSheet(
@@ -272,6 +298,22 @@ fun AccountEditScreen(
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 3
                         )
+
+                        Spacer(Modifier.height(8.dp))
+                        
+                        Button(
+                            onClick = { showDeleteDialog = true },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            ),
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Icon(Icons.Default.Delete, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Supprimer le compte")
+                        }
                     }
                 }
             }

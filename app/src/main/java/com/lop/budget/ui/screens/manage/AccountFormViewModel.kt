@@ -156,6 +156,14 @@ class AccountFormViewModel @Inject constructor(
         }
     }
 
+    fun deleteAccount(onDone: () -> Unit) {
+        if (!isEdit) return
+        viewModelScope.launch {
+            repo.deleteAccount(accountId)
+            onDone()
+        }
+    }
+
     fun save(onDone: () -> Unit) {
         if (name.value.isBlank()) return
         

@@ -8,10 +8,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,6 +42,31 @@ fun AccountsManageScreen(
     vm: AccountsManageViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    var accountToDelete by remember { mutableStateOf<AccountEntity?>(null) }
+
+    if (accountToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { accountToDelete = null },
+            title = { Text("Supprimer le compte ?") },
+            text = { Text("Cette action est irréversible. Toutes les transactions liées seront orphelines.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vm.deleteAccount(accountToDelete!!.id)
+                        accountToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Supprimer")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { accountToDelete = null }) {
+                    Text("Annuler")
+                }
+            }
+        )
+    }
 
     LopScreenScaffold(
         title = "Gérer les comptes",
@@ -73,7 +102,8 @@ fun AccountsManageScreen(
                     account = account,
                     currency = state.currency,
                     onEdit = { onEditAccount(account.id) },
-                    onArchive = { vm.toggleArchive(account) }
+                    onArchive = { vm.toggleArchive(account) },
+                    onDelete = { accountToDelete = account }
                 )
             }
         }
@@ -94,6 +124,7 @@ fun AccountsManageScreen(
                     currency = state.currency,
                     onEdit = { onEditAccount(account.id) },
                     onArchive = { vm.toggleArchive(account) },
+                    onDelete = { accountToDelete = account },
                     isArchived = true
                 )
             }
@@ -119,6 +150,7 @@ fun AccountManageRow(
     currency: String,
     onEdit: () -> Unit,
     onArchive: () -> Unit,
+    onDelete: () -> Unit,
     isArchived: Boolean = false
 ) {
     val color = Color(account.colorArgb)
@@ -149,12 +181,21 @@ fun AccountManageRow(
                     )
                 }
             }
-            
+
             IconButton(onClick = onArchive) {
                 Icon(
                     imageVector = if (isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
                     contentDescription = if (isArchived) "Désarchiver" else "Archiver",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Supprimer",
+                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
                     modifier = Modifier.size(20.dp)
                 )
             }

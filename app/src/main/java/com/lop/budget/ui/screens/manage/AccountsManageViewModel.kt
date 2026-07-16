@@ -44,9 +44,7 @@ class AccountsManageViewModel @Inject constructor(
 
     fun deleteAccount(accountId: Long) {
         viewModelScope.launch {
-            // Dans un vrai cas, on devrait vérifier si des transactions sont liées
-            // Pour l'US, on privilégie l'archivage si utilisé, mais ici on expose la suppression simple
-            // repo.deleteAccount(accountId) // À ajouter au repository si besoin
+            repo.deleteAccount(accountId)
         }
     }
 }
