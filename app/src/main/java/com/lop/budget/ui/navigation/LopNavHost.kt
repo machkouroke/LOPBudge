@@ -116,8 +116,8 @@ fun LopNavHost(startRoute: String? = null) {
     }
 
     val backStack by navController.currentBackStackEntryAsState()
-    val currentRoute = backStack?.destination?.route
-    val showBar = currentRoute in Routes.rootRoutes
+    val currentRoute = backStack?.destination?.route?.substringBefore("/") ?: Routes.HOME
+    val showBar = currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts"
     val animDuration = 400
 
     Scaffold(
