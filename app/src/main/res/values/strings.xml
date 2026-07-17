@@ -26,7 +26,7 @@
     <string name="home_subscriptions">Abonnements</string>
     <string name="home_no_pending_subscriptions">Aucun abonnement en attente</string>
     <string name="home_pending_subscriptions_count">%1$d transaction(s) en attente</string>
-    <string name="home_recent_transactions">Recent transactions</string>
+    <string name="home_recent_transactions">Transactions récentes</string>
     <string name="home_recurring_tag">Récurrent</string>
     <string name="home_no_transactions_month">Aucune transaction ce mois-ci.</string>
     <string name="home_scroll_to_top">Retour en haut</string>
@@ -82,10 +82,10 @@
     <string name="tx_tags_name_label">Nom de l\'étiquette</string>
 
     <!-- Transaction Detail Screen -->
-    <string name="tx_detail_category">Category</string>
+    <string name="tx_detail_category">Catégorie</string>
     <string name="tx_detail_date">Date</string>
     <string name="tx_detail_type">Type</string>
-    <string name="tx_detail_account">Account</string>
+    <string name="tx_detail_account">Compte</string>
     <string name="tx_detail_edit_category">Modifier la catégorie</string>
     <string name="tx_detail_upcoming_occurrences">Prochaines occurrences</string>
     <string name="tx_detail_mark_as_paid">Marquer comme payé</string>
@@ -98,14 +98,14 @@
     <string name="tx_detail_delete_future">Les suivantes uniquement</string>
 
     <!-- Analytics Screen -->
-    <string name="analytics_spent_period">Spent in budget period</string>
-    <string name="analytics_vs_last_period">%1$s vs last period</string>
-    <string name="analytics_actual">Actual</string>
-    <string name="analytics_forecast">Forecast</string>
+    <string name="analytics_spent_period">Dépensé sur la période</string>
+    <string name="analytics_vs_last_period">%1$s vs période précédente</string>
+    <string name="analytics_actual">Réel</string>
+    <string name="analytics_forecast">Prévision</string>
     <string name="analytics_budget">Budget</string>
-    <string name="analytics_left">Left</string>
-    <string name="analytics_spend_forecast">Spend %1$s / day\nto stay within the limit</string>
-    <string name="analytics_today">Today</string>
+    <string name="analytics_left">Restant</string>
+    <string name="analytics_spend_forecast">Dépense %1$s / jour\npour rester dans la limite</string>
+    <string name="analytics_today">Aujourd\'hui</string>
 
     <string name="see_all">Voir tout</string>
     <string name="no_accounts_to_show">Aucun compte à afficher</string>

@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.SimpleLineChart
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.TransactionRow
 import com.lop.budget.ui.navigation.Routes
@@ -78,9 +79,16 @@ fun AccountDetailScreen(
                     Column {
                         Text("Chronologie de l'équilibre", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(24.dp))
-                        // Placeholder pour le graphique (on simulera une hauteur pour l'instant)
-                        Box(Modifier.fillMaxWidth().height(150.dp).background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium), contentAlignment = Alignment.Center) {
-                            Text("Graphique en attente", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (state.history.isNotEmpty()) {
+                            SimpleLineChart(
+                                points = state.history,
+                                modifier = Modifier.fillMaxWidth().height(150.dp),
+                                lineColor = color
+                            )
+                        } else {
+                            Box(Modifier.fillMaxWidth().height(150.dp).background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium), contentAlignment = Alignment.Center) {
+                                Text("Pas assez de données", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }

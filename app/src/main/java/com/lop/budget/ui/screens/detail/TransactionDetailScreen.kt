@@ -63,6 +63,7 @@ import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import com.lop.budget.ui.components.RecurringDeleteSheet
+import com.lop.budget.ui.components.SwipeDownDismissWrapper
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
@@ -96,283 +97,285 @@ fun TransactionDetailScreen(
     val scaffoldTitle = tx?.title ?: stringResource(R.string.tx_default_title)
     val isBusy = state.isUpdating
 
-    LopScreenScaffold(
-        title = scaffoldTitle,
-        onBack = onBack,
-        navigationIcon = Icons.Filled.Close
-    ) {
-        if (tx == null) {
-            item {
-                Text(
-                    stringResource(R.string.loading),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            val isIncome = tx.type == TransactionType.INCOME
-            val accent = if (isIncome) ext.income else ext.expense
+    SwipeDownDismissWrapper(onDismiss = onBack) {
+        LopScreenScaffold(
+            title = scaffoldTitle,
+            onBack = onBack,
+            navigationIcon = Icons.Filled.Close
+        ) {
+            if (tx == null) {
+                item {
+                    Text(
+                        stringResource(R.string.loading),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                val isIncome = tx.type == TransactionType.INCOME
+                val accent = if (isIncome) ext.income else ext.expense
 
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant,
-                                androidx.compose.foundation.shape.CircleShape
-                            )
-                            .clickableNoRipple { if (!isBusy) onEdit(transactionId) },
-                        contentAlignment = Alignment.Center
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.Filled.Edit,
-                            stringResource(R.string.edit),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    androidx.compose.foundation.shape.CircleShape
+                                )
+                                .clickableNoRipple { if (!isBusy) onEdit(transactionId) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Filled.Edit,
+                                stringResource(R.string.edit),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    androidx.compose.foundation.shape.CircleShape
+                                )
+                                .clickableNoRipple { if (!isBusy) showDeleteConfirm = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Filled.Delete,
+                                stringResource(R.string.delete),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                    Spacer(Modifier.width(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant,
-                                androidx.compose.foundation.shape.CircleShape
-                            )
-                            .clickableNoRipple { if (!isBusy) showDeleteConfirm = true },
-                        contentAlignment = Alignment.Center
+                }
+
+                item {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            Icons.Filled.Delete,
-                            stringResource(R.string.delete),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        val catColor = twr.category?.colorArgb?.let { Color(it) }
+                            ?: com.lop.budget.ui.theme.CategoryOrange
+                        CircleIcon(
+                            IconMapper.get(twr.category?.icon ?: "category"),
+                            Color.White,
+                            catColor,
+                            size = 80.dp
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            tx.title,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            Format.money(tx.amount),
+                            style = MaterialTheme.typography.displayMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }
-            }
 
-            item {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val catColor = twr.category?.colorArgb?.let { Color(it) }
-                        ?: com.lop.budget.ui.theme.CategoryOrange
-                    CircleIcon(
-                        IconMapper.get(twr.category?.icon ?: "category"),
-                        Color.White,
-                        catColor,
-                        size = 80.dp
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        tx.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        Format.money(tx.amount),
-                        style = MaterialTheme.typography.displayMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-
-            item {
-                FloatingCard(Modifier.fillMaxWidth()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        DetailFieldRow(
-                            label = stringResource(R.string.tx_detail_category),
-                            value = twr.category?.name ?: stringResource(R.string.other),
-                            leading = {
-                                val c = twr.category?.colorArgb?.let { Color(it) }
-                                    ?: com.lop.budget.ui.theme.CategoryOrange
-                                CircleIcon(
-                                    IconMapper.get(twr.category?.icon ?: "category"),
-                                    Color.White,
-                                    c,
-                                    size = 34.dp
-                                )
-                            },
-                            onClick = { if (!isBusy) showCategorySheet = true },
-                            trailing = {
-                                Icon(
-                                    Icons.Filled.Edit,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        )
-
-                        DetailFieldRow(
-                            label = stringResource(R.string.tx_detail_date),
-                            value = Format.fullDate(tx.date),
-                            leading = {
-                                Icon(
-                                    Icons.Filled.CalendarMonth,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            },
-                            onClick = { if (!isBusy) showDatePicker = true },
-                            trailing = {
-                                Icon(
-                                    Icons.Filled.Edit,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        )
-
-                        DetailFieldRow(
-                            label = stringResource(R.string.tx_detail_account),
-                            value = twr.account?.name ?: stringResource(R.string.other),
-                            leading = {
-                                val account = twr.account
-                                if (account != null) {
-                                    val color = Color(account.colorArgb)
+                item {
+                    FloatingCard(Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            DetailFieldRow(
+                                label = stringResource(R.string.tx_detail_category),
+                                value = twr.category?.name ?: stringResource(R.string.other),
+                                leading = {
+                                    val c = twr.category?.colorArgb?.let { Color(it) }
+                                        ?: com.lop.budget.ui.theme.CategoryOrange
                                     CircleIcon(
-                                        IconMapper.get(account.icon),
+                                        IconMapper.get(twr.category?.icon ?: "category"),
                                         Color.White,
-                                        color,
+                                        c,
                                         size = 34.dp
                                     )
-                                } else {
+                                },
+                                onClick = { if (!isBusy) showCategorySheet = true },
+                                trailing = {
                                     Icon(
-                                        Icons.Filled.AccountBalance,
+                                        Icons.Filled.Edit,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            )
+
+                            DetailFieldRow(
+                                label = stringResource(R.string.tx_detail_date),
+                                value = Format.fullDate(tx.date),
+                                leading = {
+                                    Icon(
+                                        Icons.Filled.CalendarMonth,
                                         null,
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(22.dp)
                                     )
+                                },
+                                onClick = { if (!isBusy) showDatePicker = true },
+                                trailing = {
+                                    Icon(
+                                        Icons.Filled.Edit,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                 }
-                            },
-                            onClick = { if (!isBusy) showAccountSheet = true },
-                            trailing = {
-                                Icon(
-                                    Icons.Filled.Edit,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        )
+                            )
 
-                        DetailFieldRow(
-                            label = stringResource(R.string.tx_detail_type),
-                            value = if (isIncome) stringResource(R.string.tx_type_income) else stringResource(
-                                R.string.tx_type_expense
-                            ),
-                            leading = {
-                                Icon(
-                                    Icons.Filled.SyncAlt,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            },
-                            onClick = null,
-                            trailing = null
-                        )
-                    }
-                }
-            }
+                            DetailFieldRow(
+                                label = stringResource(R.string.tx_detail_account),
+                                value = twr.account?.name ?: stringResource(R.string.other),
+                                leading = {
+                                    val account = twr.account
+                                    if (account != null) {
+                                        val color = Color(account.colorArgb)
+                                        CircleIcon(
+                                            IconMapper.get(account.icon),
+                                            Color.White,
+                                            color,
+                                            size = 34.dp
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.Filled.AccountBalance,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                },
+                                onClick = { if (!isBusy) showAccountSheet = true },
+                                trailing = {
+                                    Icon(
+                                        Icons.Filled.Edit,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            )
 
-            if (twr.tags.isNotEmpty()) {
-                item {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(twr.tags, key = { it.id }) {
-                            PillTag(
-                                "#${it.name}",
-                                Color(it.colorArgb)
+                            DetailFieldRow(
+                                label = stringResource(R.string.tx_detail_type),
+                                value = if (isIncome) stringResource(R.string.tx_type_income) else stringResource(
+                                    R.string.tx_type_expense
+                                ),
+                                leading = {
+                                    Icon(
+                                        Icons.Filled.SyncAlt,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                },
+                                onClick = null,
+                                trailing = null
                             )
                         }
                     }
                 }
-            }
 
-            if (tx.seriesId != null && state.upcomingDates.isNotEmpty()) {
-                item {
-                    FloatingCard(Modifier.fillMaxWidth()) {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (twr.tags.isNotEmpty()) {
+                    item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(twr.tags, key = { it.id }) {
+                                PillTag(
+                                    "#${it.name}",
+                                    Color(it.colorArgb)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (tx.seriesId != null && state.upcomingDates.isNotEmpty()) {
+                    item {
+                        FloatingCard(Modifier.fillMaxWidth()) {
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Filled.CalendarMonth,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        stringResource(R.string.tx_detail_upcoming_occurrences),
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                }
+                                Spacer(Modifier.height(10.dp))
+                                state.upcomingDates.forEach { d ->
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(Format.fullDate(d), style = MaterialTheme.typography.bodyLarge)
+                                        Text(
+                                            (if (isIncome) "+" else "−") + Format.money(tx.amount),
+                                            color = accent,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                val isPaid = tx.status == TransactionStatus.PAID
+                if (tx.status == TransactionStatus.PLANNED || isPaid) {
+                    item {
+                        val buttonColor = if (isPaid) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                        else ext.incomeContainer.copy(alpha = 0.4f)
+                        val tintColor = if (isPaid) MaterialTheme.colorScheme.onSurfaceVariant else ext.income
+
+                        FloatingCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickableNoRipple {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    if (isPaid) {
+                                        vm.markUnpaid()
+                                    } else {
+                                        vm.markPaid()
+                                    }
+                                },
+                            color = buttonColor,
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Icon(
-                                    Icons.Filled.CalendarMonth,
+                                    if (isPaid) Icons.AutoMirrored.Filled.Undo else Icons.Filled.Check,
                                     null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
+                                    tint = tintColor
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    stringResource(R.string.tx_detail_upcoming_occurrences),
-                                    style = MaterialTheme.typography.titleMedium
+                                    stringResource(if (isPaid) R.string.tx_detail_mark_as_unpaid else R.string.tx_detail_mark_as_paid),
+                                    color = tintColor,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
-                            Spacer(Modifier.height(10.dp))
-                            state.upcomingDates.forEach { d ->
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 6.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                ) {
-                                    Text(Format.fullDate(d), style = MaterialTheme.typography.bodyLarge)
-                                    Text(
-                                        (if (isIncome) "+" else "−") + Format.money(tx.amount),
-                                        color = accent,
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            val isPaid = tx.status == TransactionStatus.PAID
-            if (tx.status == TransactionStatus.PLANNED || isPaid) {
-                item {
-                    val buttonColor = if (isPaid) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                    else ext.incomeContainer.copy(alpha = 0.4f)
-                    val tintColor = if (isPaid) MaterialTheme.colorScheme.onSurfaceVariant else ext.income
-
-                    FloatingCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickableNoRipple {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                if (isPaid) {
-                                    vm.markUnpaid()
-                                } else {
-                                    vm.markPaid()
-                                }
-                            },
-                        color = buttonColor,
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                if (isPaid) Icons.AutoMirrored.Filled.Undo else Icons.Filled.Check,
-                                null,
-                                tint = tintColor
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                stringResource(if (isPaid) R.string.tx_detail_mark_as_unpaid else R.string.tx_detail_mark_as_paid),
-                                color = tintColor,
-                                fontWeight = FontWeight.SemiBold
-                            )
                         }
                     }
                 }
