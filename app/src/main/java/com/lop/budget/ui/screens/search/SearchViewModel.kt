@@ -17,7 +17,13 @@ data class SearchUiState(
     val dayGroups: List<DayGroup> = emptyList(),
     val currency: String = "EUR",
     val isLoading: Boolean = false,
-    val txVersions: Map<Long, Int> = emptyMap()
+    val txVersions: Map<Long, Int> = emptyMap(),
+    val selectedAccountId: Long? = null,
+    val selectedCategoryId: Long? = null,
+    val startDate: Long? = null,
+    val endDate: Long? = null,
+    val availableAccounts: List<com.lop.budget.data.local.entity.AccountEntity> = emptyList(),
+    val availableCategories: List<com.lop.budget.data.local.entity.CategoryEntity> = emptyList()
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -30,28 +36,72 @@ class SearchViewModel @Inject constructor(
     private val _query = MutableStateFlow("")
     val query = _query.asStateFlow()
 
+    private val _selectedAccountId = MutableStateFlow<Long?>(null)
+    private val _selectedCategoryId = MutableStateFlow<Long?>(null)
+    private val _startDate = MutableStateFlow<Long?>(null)
+    private val _endDate = MutableStateFlow<Long?>(null)
+
     private val _txVersions = MutableStateFlow<Map<Long, Int>>(emptyMap())
 
     val uiState: StateFlow<SearchUiState> = combine(
-        _query.debounce(300).flatMapLatest { q ->
-            if (q.isBlank()) flowOf(emptyList())
-            else repo.searchTransactions(q)
+        combine(_query, _selectedAccountId, _selectedCategoryId, _startDate, _endDate) { q, acc, cat, start, end ->
+            Triple(q, acc, cat) to (start to end)
+        }.debounce(300).flatMapLatest { (triple, range) ->
+            val (q, acc, cat) = triple
+            val (start, end) = range
+            if (q.isBlank() && acc == null && cat == null && start == null && end == null) {
+                flowOf(emptyList())
+            } else {
+                repo.searchTransactionsAdvanced(q, acc, cat, start, end)
+            }
         },
         settings.currency,
         _query,
-        _txVersions
-    ) { txs, currency, currentQuery, versions ->
+        _txVersions,
+        _selectedAccountId,
+        _selectedCategoryId,
+        _startDate,
+        _endDate,
+        repo.observeAccounts(),
+        repo.observeCategories()
+    ) { args ->
+        @Suppress("UNCHECKED_CAST")
+        val txs = args[0] as List<com.lop.budget.data.local.entity.TransactionWithRelations>
+        val currency = args[1] as String
+        val currentQuery = args[2] as String
+        @Suppress("UNCHECKED_CAST")
+        val versions = args[3] as Map<Long, Int>
+        
         SearchUiState(
             query = currentQuery,
             dayGroups = DayGroup.fromTransactions(txs),
             currency = currency,
             txVersions = versions,
-            isLoading = false
+            isLoading = false,
+            selectedAccountId = args[4] as Long?,
+            selectedCategoryId = args[5] as Long?,
+            startDate = args[6] as Long?,
+            endDate = args[7] as Long?,
+            availableAccounts = args[8] as List<com.lop.budget.data.local.entity.AccountEntity>,
+            availableCategories = args[9] as List<com.lop.budget.data.local.entity.CategoryEntity>
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SearchUiState())
 
     fun onQueryChange(newQuery: String) {
         _query.value = newQuery
+    }
+
+    fun onAccountFilterChange(id: Long?) {
+        _selectedAccountId.value = id
+    }
+
+    fun onCategoryFilterChange(id: Long?) {
+        _selectedCategoryId.value = id
+    }
+
+    fun onDateRangeChange(start: Long?, end: Long?) {
+        _startDate.value = start
+        _endDate.value = end
     }
 
     fun togglePaid(id: Long, currentStatus: TransactionStatus) {

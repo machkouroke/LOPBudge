@@ -52,6 +52,25 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE deleted = 0 AND (title LIKE '%' || :query || '%' OR note LIKE '%' || :query || '%') ORDER BY date DESC")
     fun search(query: String): Flow<List<TransactionWithRelations>>
 
+    @Transaction
+    @Query("""
+        SELECT * FROM transactions 
+        WHERE deleted = 0 
+        AND (:query = '' OR title LIKE '%' || :query || '%' OR note LIKE '%' || :query || '%')
+        AND (:accountId IS NULL OR accountId = :accountId)
+        AND (:categoryId IS NULL OR categoryId = :categoryId)
+        AND (:startDate IS NULL OR date >= :startDate)
+        AND (:endDate IS NULL OR date <= :endDate)
+        ORDER BY date DESC
+    """)
+    fun searchAdvanced(
+        query: String,
+        accountId: Long?,
+        categoryId: Long?,
+        startDate: Long?,
+        endDate: Long?
+    ): Flow<List<TransactionWithRelations>>
+
     @Query("SELECT * FROM transactions WHERE title = :title AND date = :date LIMIT 1")
     suspend fun getByTitleAndDate(title: String, date: Long): TransactionWithRelations?
 

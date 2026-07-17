@@ -31,4 +31,7 @@ object Format {
     /** Exécute : "juin 2026" → "Juin 2026" */
     fun monthYear(ym: YearMonth): String =
         ym.format(monthYear).replaceFirstChar { it.uppercase() }
+
+    fun shortDate(millis: Long): String =
+        Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).format(dayMonth)
 }

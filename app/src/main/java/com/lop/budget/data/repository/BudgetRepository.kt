@@ -51,6 +51,14 @@ class BudgetRepository @Inject constructor(
     
     fun searchTransactions(query: String) = transactionDao.search(query)
 
+    fun searchTransactionsAdvanced(
+        query: String,
+        accountId: Long?,
+        categoryId: Long?,
+        startDate: Long?,
+        endDate: Long?
+    ) = transactionDao.searchAdvanced(query, accountId, categoryId, startDate, endDate)
+
     /**
      * Matérialise une occurrence virtuelle d'une série récurrente en une véritable exception persistée en DB.
      * Si l'exception existe déjà, retourne son ID.
