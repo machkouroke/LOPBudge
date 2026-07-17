@@ -173,13 +173,13 @@ fun LopNavHost(startRoute: String? = null) {
                     Routes.DETECTED,
                     enterTransition = {
                         slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     },
                     exitTransition = {
                         slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     },
@@ -191,7 +191,7 @@ fun LopNavHost(startRoute: String? = null) {
                     },
                     popExitTransition = {
                         slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     }
@@ -212,13 +212,13 @@ fun LopNavHost(startRoute: String? = null) {
                     Routes.ACCOUNTS,
                     enterTransition = {
                         slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     },
                     exitTransition = {
                         slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     },
@@ -230,7 +230,7 @@ fun LopNavHost(startRoute: String? = null) {
                     },
                     popExitTransition = {
                         slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     }
@@ -249,13 +249,13 @@ fun LopNavHost(startRoute: String? = null) {
                     ),
                     enterTransition = {
                         slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     },
                     exitTransition = {
                         slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     },
@@ -267,7 +267,7 @@ fun LopNavHost(startRoute: String? = null) {
                     },
                     popExitTransition = {
                         slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     }
@@ -480,18 +480,17 @@ fun LopNavHost(startRoute: String? = null) {
                     CategoryCreateScreen(onBack = { navController.popBackStack() })
                 }
 
-                // NEW: Add is a full screen (not a modal bottom sheet)
                 composable(
                     Routes.ADD,
                     enterTransition = {
                         slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     },
                     exitTransition = {
                         slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     },
@@ -503,7 +502,7 @@ fun LopNavHost(startRoute: String? = null) {
                     },
                     popExitTransition = {
                         slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     }

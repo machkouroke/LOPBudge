@@ -241,7 +241,11 @@ fun HomeContent(
             }
 
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(R.string.home_balance_title, monthName), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = if (state.isCurrentMonth) "Solde de $monthName" else "Solde en $monthName",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(Modifier.height(8.dp))
                 Text(Format.money(animatedSolde.toDouble(), state.currency), style = MaterialTheme.typography.displayLarge, fontWeight = FontWeight.Bold, color = soldeColor)
                 Spacer(Modifier.height(32.dp))

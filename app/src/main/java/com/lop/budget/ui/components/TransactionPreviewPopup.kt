@@ -1,16 +1,21 @@
 package com.lop.budget.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -40,6 +45,18 @@ fun TransactionPreviewPopup(
     val status = transaction.status
     val color = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
 
+    // Animation state
+    val transitionState = remember {
+        MutableTransitionState(false).apply { targetState = true }
+    }
+    val transition = updateTransition(transitionState, label = "previewPop")
+    val scale by transition.animateFloat(
+        transitionSpec = {
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+        },
+        label = "scale"
+    ) { if (it) 1f else 0.8f }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -47,12 +64,14 @@ fun TransactionPreviewPopup(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.4f)) // Semi-transparent dark background
                 .clickableNoRipple(onDismiss),
             contentAlignment = Alignment.Center
         ) {
             FloatingCard(
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
+                    .scale(scale)
                     .clickableNoRipple { /* stop propagation */ },
                 color = MaterialTheme.colorScheme.surface,
             ) {
@@ -133,6 +152,7 @@ fun TransactionPreviewPopup(
         }
     }
 }
+
 
 @Composable
 private fun PreviewActionButton(

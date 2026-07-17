@@ -25,29 +25,18 @@ fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier = composed {
 }
 
 /**
- * Clickable combiné (clic + long clic) sans ripple + haptique.
+ * Clickable combiné (clic + long clic) sans ripple.
  */
 @Composable
 fun Modifier.combinedClickableHaptic(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    clickIntent: HapticIntent = HapticIntent.Tap,
-    longClickIntent: HapticIntent = HapticIntent.Confirm,
 ): Modifier {
-    val haptic = LocalHapticFeedback.current
-    val map = rememberHapticMapper()
-    
     return this.combinedClickable(
         interactionSource = remember { MutableInteractionSource() },
         indication = null,
-        onClick = {
-            haptic.performHapticFeedback(map(clickIntent))
-            onClick()
-        },
-        onLongClick = {
-            haptic.performHapticFeedback(map(longClickIntent))
-            onLongClick()
-        }
+        onClick = onClick,
+        onLongClick = onLongClick
     )
 }
 
