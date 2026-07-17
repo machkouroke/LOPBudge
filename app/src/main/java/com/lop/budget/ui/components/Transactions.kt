@@ -9,6 +9,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -104,6 +108,25 @@ fun TransactionRow(
     val amountColor = if (isIncome) ext.income else ext.expense
     val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
     val isPaid = tx.transaction.status == TransactionStatus.PAID
+    
+    var showPreview by remember { mutableStateOf(false) }
+
+    if (showPreview) {
+        TransactionPreviewPopup(
+            tx = tx,
+            currency = currency,
+            onDismiss = { showPreview = false },
+            onEdit = {
+                if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
+                else tx.transaction.seriesId?.let { onMaterializeAndOpen(it.toLong(), tx.transaction.seriesDate!!) }
+            },
+            onDelete = {
+                if (tx.transaction.seriesId != null) onDeleteRequest(tx)
+                else onDeleteSimple(tx.transaction.id)
+            },
+            onTogglePaid = { onTogglePaid(tx.transaction.id, tx.transaction.status) }
+        )
+    }
 
     SwipeableTransactionRow(
         isPaid = isPaid,
@@ -119,10 +142,13 @@ fun TransactionRow(
         FloatingCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickableNoRipple {
-                    if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
-                    else tx.transaction.seriesId?.let { onMaterializeAndOpen(it.toLong(), tx.transaction.seriesDate!!) }
-                }
+                .combinedClickableHaptic(
+                    onClick = {
+                        if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
+                        else tx.transaction.seriesId?.let { onMaterializeAndOpen(it.toLong(), tx.transaction.seriesDate!!) }
+                    },
+                    onLongClick = { showPreview = true }
+                )
                 .alpha(if (isPaid) 0.5f else 1f),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
             contentPadding = PaddingValues(14.dp),

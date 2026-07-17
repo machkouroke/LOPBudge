@@ -17,6 +17,9 @@ interface RecurringSeriesDao {
     @Query("SELECT * FROM recurring_series WHERE id = :id")
     suspend fun getSeriesById(id: Long): RecurringSeriesEntity?
 
+    @Query("SELECT * FROM recurring_series WHERE title = :title LIMIT 1")
+    suspend fun getByTitle(title: String): RecurringSeriesEntity?
+
     @Upsert
     suspend fun upsert(series: RecurringSeriesEntity): Long
 

@@ -2,6 +2,7 @@ package com.lop.budget.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
@@ -20,6 +21,33 @@ fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier = composed {
         interactionSource = remember { MutableInteractionSource() },
         indication = null,
         onClick = onClick,
+    )
+}
+
+/**
+ * Clickable combiné (clic + long clic) sans ripple + haptique.
+ */
+@Composable
+fun Modifier.combinedClickableHaptic(
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    clickIntent: HapticIntent = HapticIntent.Tap,
+    longClickIntent: HapticIntent = HapticIntent.Confirm,
+): Modifier {
+    val haptic = LocalHapticFeedback.current
+    val map = rememberHapticMapper()
+    
+    return this.combinedClickable(
+        interactionSource = remember { MutableInteractionSource() },
+        indication = null,
+        onClick = {
+            haptic.performHapticFeedback(map(clickIntent))
+            onClick()
+        },
+        onLongClick = {
+            haptic.performHapticFeedback(map(longClickIntent))
+            onLongClick()
+        }
     )
 }
 

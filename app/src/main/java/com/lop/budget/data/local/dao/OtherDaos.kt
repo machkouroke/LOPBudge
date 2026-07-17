@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.Flow
 interface AccountDao {
     @Query("SELECT * FROM accounts ORDER BY id")
     fun observeAll(): Flow<List<AccountEntity>>
+    @Query("SELECT * FROM accounts WHERE name = :name LIMIT 1")
+    suspend fun getByName(name: String): AccountEntity?
     @Query("SELECT * FROM accounts WHERE id = :id")
     suspend fun getById(id: Long): AccountEntity?
     @Upsert suspend fun upsert(account: AccountEntity): Long
@@ -24,6 +26,8 @@ interface AccountDao {
 interface CategoryDao {
     @Query("SELECT * FROM categories ORDER BY name")
     fun observeAll(): Flow<List<CategoryEntity>>
+    @Query("SELECT * FROM categories WHERE name = :name AND parentCategoryId IS :parentId LIMIT 1")
+    suspend fun getByNameAndParent(name: String, parentId: Long?): CategoryEntity?
     @Query("SELECT * FROM categories WHERE id = :id")
     suspend fun getById(id: Long): CategoryEntity?
     @Query("SELECT * FROM categories WHERE type = :type ORDER BY name")
@@ -36,6 +40,8 @@ interface CategoryDao {
 interface TagDao {
     @Query("SELECT * FROM tags ORDER BY name")
     fun observeAll(): Flow<List<TagEntity>>
+    @Query("SELECT * FROM tags WHERE name = :name LIMIT 1")
+    suspend fun getByName(name: String): TagEntity?
 
     @Query("SELECT COUNT(*) FROM transaction_tags WHERE tagId = :tagId")
     suspend fun countUsages(tagId: Long): Int
@@ -48,6 +54,8 @@ interface TagDao {
 interface GoalDao {
     @Query("SELECT * FROM goals ORDER BY id")
     fun observeAll(): Flow<List<GoalEntity>>
+    @Query("SELECT * FROM goals WHERE name = :name LIMIT 1")
+    suspend fun getByName(name: String): GoalEntity?
     @Upsert suspend fun upsert(goal: GoalEntity): Long
     @Query("DELETE FROM goals WHERE id = :id") suspend fun delete(id: Long)
 }
