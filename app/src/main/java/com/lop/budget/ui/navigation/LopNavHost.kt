@@ -284,13 +284,13 @@ fun LopNavHost(startRoute: String? = null) {
                     Routes.SETTINGS,
                     enterTransition = {
                         slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     },
                     exitTransition = {
                         slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     },
@@ -302,7 +302,7 @@ fun LopNavHost(startRoute: String? = null) {
                     },
                     popExitTransition = {
                         slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
                             animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
                         )
                     }
@@ -312,6 +312,27 @@ fun LopNavHost(startRoute: String? = null) {
                         onNavigateToTags = { navController.navigate(Routes.TAGS_MANAGE) },
                         onNavigateToAccounts = { navController.navigate(Routes.ACCOUNTS_MANAGE) },
                         onNavigateToCategories = { navController.navigate(Routes.CATEGORIES_MANAGE) }
+                    )
+                }
+
+                composable(
+                    Routes.SEARCH,
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
+                        )
+                    }
+                ) {
+                    com.lop.budget.ui.screens.search.SearchScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) }
                     )
                 }
 

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Icon
@@ -167,6 +168,7 @@ fun HomeScreen(
             isCurrentMonth = state.isCurrentMonth,
             onMonthClick = { isMonthPickerOpen = true },
             onTodayClick = { vm.goToCurrentMonth() },
+            onSearchClick = { navController.navigate(Routes.SEARCH) },
             onDetectedClick = { navController.navigate(Routes.DETECTED) },
             onSettingsClick = { navController.navigate(Routes.SETTINGS) },
             modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)
@@ -414,6 +416,7 @@ fun HomeOverlay(
     isCurrentMonth: Boolean,
     onMonthClick: () -> Unit,
     onTodayClick: () -> Unit,
+    onSearchClick: () -> Unit,
     onDetectedClick: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -431,6 +434,7 @@ fun HomeOverlay(
                 if (!isCurrentMonth) {
                     IconButton(Icons.Filled.Today, onTodayClick)
                 }
+                IconButton(Icons.Default.Search, onSearchClick)
                 DetectedIcon(state.detectedCount, onDetectedClick)
                 IconButton(Icons.Filled.Settings, onSettingsClick)
             }

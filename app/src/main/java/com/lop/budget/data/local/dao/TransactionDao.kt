@@ -48,6 +48,10 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE accountId = :accountId AND status = 'PLANNED' AND deleted = 0 ORDER BY date ASC")
     fun observePlannedByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
 
+    @Transaction
+    @Query("SELECT * FROM transactions WHERE deleted = 0 AND (title LIKE '%' || :query || '%' OR note LIKE '%' || :query || '%') ORDER BY date DESC")
+    fun search(query: String): Flow<List<TransactionWithRelations>>
+
     @Query("SELECT * FROM transactions WHERE title = :title AND date = :date LIMIT 1")
     suspend fun getByTitleAndDate(title: String, date: Long): TransactionWithRelations?
 
