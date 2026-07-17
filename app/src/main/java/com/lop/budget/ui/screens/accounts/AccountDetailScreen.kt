@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,6 +23,8 @@ import com.lop.budget.R
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
+import com.lop.budget.ui.components.TransactionRow
+import com.lop.budget.ui.navigation.Routes
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
 
@@ -29,15 +32,21 @@ import com.lop.budget.util.IconMapper
 fun AccountDetailScreen(
     onBack: () -> Unit,
     onEdit: (Long) -> Unit,
+    onOpenTransaction: (Long) -> Unit,
     vm: AccountDetailViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val account = state.account
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
+    val undoMsg = stringResource(R.string.undo)
 
     LopScreenScaffold(
         title = "Compte",
         onBack = onBack,
-        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack
+        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) {
         if (account == null) {
             item { Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
@@ -79,15 +88,31 @@ fun AccountDetailScreen(
 
             if (state.upcomingTransactions.isNotEmpty()) {
                 item { SectionHeader("Transactions à venir") }
-                items(state.upcomingTransactions) { twr ->
-                    TransactionSimpleRow(twr, state.currency)
+                items(state.upcomingTransactions, key = { it.transaction.id }) { twr ->
+                    TransactionRow(
+                        tx = twr,
+                        currency = state.currency,
+                        onOpenTransaction = onOpenTransaction,
+                        onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
+                        onTogglePaid = vm::togglePaid,
+                        onDeleteRequest = { vm.deleteWithUndo(it.transaction.id, snackbarHostState, txDeletedMsg, undoMsg) },
+                        onDeleteSimple = { vm.deleteWithUndo(it, snackbarHostState, txDeletedMsg, undoMsg) }
+                    )
                 }
             }
 
             if (state.recentTransactions.isNotEmpty()) {
                 item { SectionHeader("Transactions récentes") }
-                items(state.recentTransactions) { twr ->
-                    TransactionSimpleRow(twr, state.currency)
+                items(state.recentTransactions, key = { it.transaction.id }) { twr ->
+                    TransactionRow(
+                        tx = twr,
+                        currency = state.currency,
+                        onOpenTransaction = onOpenTransaction,
+                        onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
+                        onTogglePaid = vm::togglePaid,
+                        onDeleteRequest = { vm.deleteWithUndo(it.transaction.id, snackbarHostState, txDeletedMsg, undoMsg) },
+                        onDeleteSimple = { vm.deleteWithUndo(it, snackbarHostState, txDeletedMsg, undoMsg) }
+                    )
                 }
             }
             
@@ -130,34 +155,5 @@ fun SectionHeader(title: String) {
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         TextButton(onClick = { /* Show all */ }) { Text("Tout montrer >") }
-    }
-}
-
-@Composable
-fun TransactionSimpleRow(twr: com.lop.budget.data.local.entity.TransactionWithRelations, currency: String) {
-    val tx = twr.transaction
-    val color = twr.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
-    
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        CircleIcon(
-            icon = IconMapper.get(twr.category?.icon ?: "category"),
-            tint = color,
-            background = color.copy(alpha = 0.12f),
-            size = 40.dp
-        )
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(tx.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-            Text(Format.fullDate(tx.date), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Text(
-            Format.money(tx.amount, currency),
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            color = if (tx.type == com.lop.budget.domain.model.TransactionType.INCOME) com.lop.budget.ui.theme.IncomeGreen else MaterialTheme.colorScheme.onSurface
-        )
     }
 }

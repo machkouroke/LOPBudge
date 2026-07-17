@@ -352,7 +352,8 @@ fun LopNavHost(startRoute: String? = null) {
                 ) {
                     com.lop.budget.ui.screens.accounts.AccountDetailScreen(
                         onBack = { navController.popBackStack() },
-                        onEdit = { id -> navController.navigate(Routes.accountEdit(id)) }
+                        onEdit = { id -> navController.navigate(Routes.accountEdit(id)) },
+                        onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) }
                     )
                 }
 

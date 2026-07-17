@@ -25,6 +25,7 @@ data class AccountDetailUiState(
     val history: List<BalancePoint> = emptyList(),
     val recentTransactions: List<TransactionWithRelations> = emptyList(),
     val upcomingTransactions: List<TransactionWithRelations> = emptyList(),
+    val txVersions: Map<Long, Int> = emptyMap(),
     val isLoaded: Boolean = false
 )
 
@@ -36,17 +37,18 @@ class AccountDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val accountId: Long = savedStateHandle.get<Long>("id") ?: 0L
+    private val _txVersions = MutableStateFlow<Map<Long, Int>>(emptyMap())
 
     val uiState: StateFlow<AccountDetailUiState> = combine(
         repo.observeAccountBalances(),
         repo.observeTransactionsByAccount(accountId),
         repo.observePlannedTransactionsByAccount(accountId),
-        settings.currency
-    ) { balances, txs, planned, currency ->
+        settings.currency,
+        _txVersions
+    ) { balances, txs, planned, currency, versions ->
         val account = repo.getAccountById(accountId)
         
         // Calcul de l'historique (simplifié pour le prototype)
-        // On remonte 3 mois en arrière
         val history = calculateHistory(account?.initialBalance ?: 0.0, txs)
 
         AccountDetailUiState(
@@ -56,9 +58,49 @@ class AccountDetailViewModel @Inject constructor(
             history = history,
             recentTransactions = txs.take(10),
             upcomingTransactions = planned.take(5),
+            txVersions = versions,
             isLoaded = true
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountDetailUiState())
+
+    fun togglePaid(id: Long, currentStatus: com.lop.budget.domain.model.TransactionStatus) {
+        viewModelScope.launch {
+            val next = if (currentStatus == com.lop.budget.domain.model.TransactionStatus.PAID) 
+                com.lop.budget.domain.model.TransactionStatus.PLANNED.name 
+            else 
+                com.lop.budget.domain.model.TransactionStatus.PAID.name
+            repo.setStatus(id, next)
+        }
+    }
+
+    fun deleteWithUndo(
+        id: Long,
+        snackbarHostState: androidx.compose.material3.SnackbarHostState,
+        message: String,
+        undoLabel: String
+    ) {
+        viewModelScope.launch {
+            repo.softDeleteTransaction(id)
+            val result = snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = undoLabel,
+                duration = androidx.compose.material3.SnackbarDuration.Short
+            )
+            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                repo.restoreTransaction(id)
+                _txVersions.value = _txVersions.value.toMutableMap().apply {
+                    put(id, (get(id) ?: 0) + 1)
+                }
+            }
+        }
+    }
+
+    fun materializeAndOpen(seriesId: Long, date: Long, onOpen: (Long) -> Unit) {
+        viewModelScope.launch {
+            val id = repo.materializeOccurrence(seriesId, date)
+            onOpen(id)
+        }
+    }
 
     private fun calculateHistory(initial: Double, txs: List<TransactionWithRelations>): List<BalancePoint> {
         val zone = ZoneId.systemDefault()
