@@ -32,7 +32,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         DebtEntity::class,
         DetectedTransactionProposalEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -119,6 +119,20 @@ abstract class LopDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE categories ADD COLUMN parentCategoryId INTEGER")
                 db.execSQL("ALTER TABLE transactions ADD COLUMN subCategoryId INTEGER")
                 db.execSQL("ALTER TABLE recurring_series ADD COLUMN subCategoryId INTEGER")
+            }
+        }
+
+        val MIGRATION_6_7 = object : androidx.room.migration.Migration(6, 7) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Goals
+                db.execSQL("ALTER TABLE goals ADD COLUMN startingBalance REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE goals ADD COLUMN isCompleted INTEGER NOT NULL DEFAULT 0")
+                
+                // Debts
+                db.execSQL("ALTER TABLE debts ADD COLUMN creditorName TEXT")
+                db.execSQL("ALTER TABLE debts ADD COLUMN debtType TEXT NOT NULL DEFAULT 'OTHER'")
+                db.execSQL("ALTER TABLE debts ADD COLUMN startingBalance REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE debts ADD COLUMN isFullyRepaid INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

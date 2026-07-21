@@ -14,6 +14,7 @@ import javax.inject.Inject
 data class GoalForm(
     val name: String = "",
     val targetAmount: Double = 0.0,
+    val startingBalance: Double = 0.0,
     val savedAmount: Double = 0.0,
     val colorArgb: Int = 0xFF4CAF50.toInt(),
     val icon: String = "savings",
@@ -38,6 +39,7 @@ class GoalEditViewModel @Inject constructor(
                     _form.value = GoalForm(
                         name = goal.name,
                         targetAmount = goal.targetAmount,
+                        startingBalance = goal.startingBalance,
                         savedAmount = goal.savedAmount,
                         colorArgb = goal.colorArgb,
                         icon = goal.icon,
@@ -50,6 +52,7 @@ class GoalEditViewModel @Inject constructor(
 
     fun updateName(name: String) { _form.value = _form.value.copy(name = name) }
     fun updateTargetAmount(amount: Double) { _form.value = _form.value.copy(targetAmount = amount) }
+    fun updateStartingBalance(amount: Double) { _form.value = _form.value.copy(startingBalance = amount) }
     fun updateColor(color: Int) { _form.value = _form.value.copy(colorArgb = color) }
     fun updateIcon(icon: String) { _form.value = _form.value.copy(icon = icon) }
     fun updateDueDate(date: Long?) { _form.value = _form.value.copy(dueDate = date) }
@@ -63,12 +66,14 @@ class GoalEditViewModel @Inject constructor(
                 id = goalId ?: 0L,
                 name = f.name,
                 targetAmount = f.targetAmount,
-                savedAmount = f.savedAmount,
+                startingBalance = f.startingBalance,
+                savedAmount = f.savedAmount, // Sera recalculé juste après par le repo
                 colorArgb = f.colorArgb,
                 icon = f.icon,
                 dueDate = f.dueDate
             )
-            repo.saveGoal(goal)
+            val newId = repo.saveGoal(goal)
+            repo.recalculateGoalProgress(goalId ?: newId)
             onDone()
         }
     }

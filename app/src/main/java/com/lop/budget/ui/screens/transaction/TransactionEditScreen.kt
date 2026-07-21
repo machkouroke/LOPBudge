@@ -468,7 +468,7 @@ private fun FilledField(
 }
 
 @Composable
-private fun SelectorRow(
+fun SelectorRow(
     label: String,
     value: String,
     icon: Any? = null,

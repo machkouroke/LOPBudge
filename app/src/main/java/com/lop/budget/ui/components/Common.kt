@@ -243,6 +243,7 @@ fun LopTextField(
     trailing: @Composable (() -> Unit)? = null,
     minLines: Int = 1,
     placeholder: String? = null,
+    readOnly: Boolean = false,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -259,6 +260,7 @@ fun LopTextField(
             leadingIcon = leading,
             trailingIcon = trailing,
             minLines = minLines,
+            readOnly = readOnly,
             placeholder = placeholder?.let { { Text(it) } },
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             shape = RoundedCornerShape(16.dp),

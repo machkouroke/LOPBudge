@@ -166,6 +166,14 @@
     <string name="select_icon">Choisir une icône</string>
     <string name="select_color">Choisir une couleur</string>
 
+    <string name="starting_balance_label">Solde initial</string>
+    <string name="creditor_name_label">Nom du créancier</string>
+    <string name="debt_type_label">Type de dette</string>
+    <string name="debt_type_loan">Prêt</string>
+    <string name="debt_type_credit_card">Carte de crédit</string>
+    <string name="debt_type_personal">Personnel (Famille/Ami)</string>
+    <string name="debt_type_other">Autre</string>
+
     <string name="tx_linked_goal_label">Objectif lié</string>
     <string name="tx_linked_debt_label">Dette liée</string>
     <string name="tx_no_goal_linked">Aucun objectif lié</string>

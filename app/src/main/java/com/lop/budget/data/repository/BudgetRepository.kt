@@ -215,13 +215,19 @@ class BudgetRepository @Inject constructor(
     }
 
     suspend fun recalculateGoalProgress(goalId: Long) {
+        val goal = goalDao.getById(goalId) ?: return
         val sum = transactionDao.getSumForGoal(goalId)
-        goalDao.updateSavedAmount(goalId, sum)
+        val totalSaved = goal.startingBalance + sum
+        goalDao.updateSavedAmount(goalId, totalSaved)
+        // Optionnel : Mettre à jour isCompleted si totalSaved >= targetAmount
     }
 
     suspend fun recalculateDebtProgress(debtId: Long) {
+        val debt = debtDao.getById(debtId) ?: return
         val sum = transactionDao.getSumForDebt(debtId)
-        debtDao.updateRepaidAmount(debtId, sum)
+        val totalRepaid = debt.startingBalance + sum
+        debtDao.updateRepaidAmount(debtId, totalRepaid)
+        // Optionnel : Mettre à jour isFullyRepaid si totalRepaid >= totalAmount
     }
 
     /**

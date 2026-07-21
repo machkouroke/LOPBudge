@@ -11,9 +11,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.lop.budget.domain.model.DebtType
+
 data class DebtForm(
     val name: String = "",
+    val creditorName: String = "",
+    val debtType: DebtType = DebtType.OTHER,
     val totalAmount: Double = 0.0,
+    val startingBalance: Double = 0.0,
     val repaidAmount: Double = 0.0,
     val interestRate: Double = 0.0,
     val colorArgb: Int = 0xFFF44336.toInt(),
@@ -38,7 +43,10 @@ class DebtEditViewModel @Inject constructor(
                 repo.getDebtById(id)?.let { debt ->
                     _form.value = DebtForm(
                         name = debt.name,
+                        creditorName = debt.creditorName ?: "",
+                        debtType = debt.debtType,
                         totalAmount = debt.totalAmount,
+                        startingBalance = debt.startingBalance,
                         repaidAmount = debt.repaidAmount,
                         interestRate = debt.interestRate,
                         colorArgb = debt.colorArgb,
@@ -51,7 +59,10 @@ class DebtEditViewModel @Inject constructor(
     }
 
     fun updateName(name: String) { _form.value = _form.value.copy(name = name) }
+    fun updateCreditor(name: String) { _form.value = _form.value.copy(creditorName = name) }
+    fun updateDebtType(type: DebtType) { _form.value = _form.value.copy(debtType = type) }
     fun updateTotalAmount(amount: Double) { _form.value = _form.value.copy(totalAmount = amount) }
+    fun updateStartingBalance(amount: Double) { _form.value = _form.value.copy(startingBalance = amount) }
     fun updateInterestRate(rate: Double) { _form.value = _form.value.copy(interestRate = rate) }
     fun updateColor(color: Int) { _form.value = _form.value.copy(colorArgb = color) }
     fun updateIcon(icon: String) { _form.value = _form.value.copy(icon = icon) }
@@ -65,14 +76,18 @@ class DebtEditViewModel @Inject constructor(
             val debt = DebtEntity(
                 id = debtId ?: 0L,
                 name = f.name,
+                creditorName = f.creditorName.ifBlank { null },
+                debtType = f.debtType,
                 totalAmount = f.totalAmount,
-                repaidAmount = f.repaidAmount,
+                startingBalance = f.startingBalance,
+                repaidAmount = f.repaidAmount, // Sera recalculé
                 interestRate = f.interestRate,
                 colorArgb = f.colorArgb,
                 icon = f.icon,
                 dueDate = f.dueDate
             )
-            repo.saveDebt(debt)
+            val newId = repo.saveDebt(debt)
+            repo.recalculateDebtProgress(debtId ?: newId)
             onDone()
         }
     }

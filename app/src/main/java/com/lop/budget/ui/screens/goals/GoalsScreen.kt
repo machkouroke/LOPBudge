@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,9 +20,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,48 +57,109 @@ fun GoalsScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Goals, 1: Debts
 
     LopScreenScaffold(
-        title = stringResource(R.string.goals_title),
+        title = stringResource(R.string.nav_goals),
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
-        bottomBar = {
-            // Optionnel : Un bouton flottant ou dans la bar pour ajouter ?
-        }
     ) {
         item {
             Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .padding(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(stringResource(R.string.goals_title), style = MaterialTheme.typography.titleLarge)
-                IconButton(onClick = onAddGoal) {
-                    Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
-                }
+                TabItem(
+                    text = stringResource(R.string.goals_title),
+                    selected = selectedTab == 0,
+                    modifier = Modifier.weight(1f)
+                ) { selectedTab = 0 }
+                
+                TabItem(
+                    text = stringResource(R.string.debts_title),
+                    selected = selectedTab == 1,
+                    modifier = Modifier.weight(1f)
+                ) { selectedTab = 1 }
             }
-        }
-
-        items(state.goals, key = { "g${it.id}" }) { goal ->
-            GoalCard(goal, state.currency, ext.income, onClick = { onEditGoal(goal.id) })
         }
 
         item {
             Row(
-                Modifier.fillMaxWidth().padding(top = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(stringResource(R.string.debts_title), style = MaterialTheme.typography.titleLarge)
-                IconButton(onClick = onAddDebt) {
+                Text(
+                    text = if (selectedTab == 0) stringResource(R.string.goals_title) else stringResource(R.string.debts_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                IconButton(onClick = { if (selectedTab == 0) onAddGoal() else onAddDebt() }) {
                     Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }
 
-        items(state.debts, key = { "d${it.id}" }) { debt ->
-            DebtCard(debt, state.currency, ext.expense, onClick = { onEditDebt(debt.id) })
+        if (selectedTab == 0) {
+            if (state.goals.isEmpty()) {
+                item {
+                    EmptyState(stringResource(R.string.tx_no_categories)) // TODO: Better string
+                }
+            } else {
+                items(state.goals, key = { "g${it.id}" }) { goal ->
+                    GoalCard(goal, state.currency, ext.income, onClick = { onEditGoal(goal.id) })
+                }
+            }
+        } else {
+            if (state.debts.isEmpty()) {
+                item {
+                    EmptyState(stringResource(R.string.no_accounts_to_show)) // TODO: Better string
+                }
+            } else {
+                items(state.debts, key = { "d${it.id}" }) { debt ->
+                    DebtCard(debt, state.currency, ext.expense, onClick = { onEditDebt(debt.id) })
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun TabItem(
+    text: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        color = if (selected) MaterialTheme.colorScheme.surface else Color.Transparent,
+        tonalElevation = if (selected) 2.dp else 0.dp
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(text: String) {
+    Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+        Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
