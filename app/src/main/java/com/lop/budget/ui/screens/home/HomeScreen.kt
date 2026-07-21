@@ -46,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -233,7 +234,7 @@ fun HomeContent(
         item(key = "budget_summary", contentType = "summary") {
             val monthName = Format.monthYear(state.month).split(" ").first()
             val solde = state.monthIncome - state.monthExpense
-            var targetSolde by remember(state.month) { mutableStateOf(0f) }
+            var targetSolde by rememberSaveable(state.month) { mutableStateOf(0f) }
             LaunchedEffect(state.month, solde) { targetSolde = solde.toFloat() }
             val animatedSolde by animateFloatAsState(targetValue = targetSolde, animationSpec = tween(1000), label = "soldeAnimation")
             val soldeColor = when {

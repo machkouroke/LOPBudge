@@ -112,7 +112,7 @@ fun FloatingBottomBar(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(56.dp),
-            shadowElevation = 6.dp
+            shadowElevation = 8.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
