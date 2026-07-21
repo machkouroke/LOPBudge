@@ -54,9 +54,13 @@ interface TagDao {
 interface GoalDao {
     @Query("SELECT * FROM goals ORDER BY id")
     fun observeAll(): Flow<List<GoalEntity>>
+    @Query("SELECT * FROM goals WHERE id = :id")
+    suspend fun getById(id: Long): GoalEntity?
     @Query("SELECT * FROM goals WHERE name = :name LIMIT 1")
     suspend fun getByName(name: String): GoalEntity?
     @Upsert suspend fun upsert(goal: GoalEntity): Long
+    @Query("UPDATE goals SET savedAmount = :amount WHERE id = :id")
+    suspend fun updateSavedAmount(id: Long, amount: Double)
     @Query("DELETE FROM goals WHERE id = :id") suspend fun delete(id: Long)
 }
 
@@ -64,6 +68,10 @@ interface GoalDao {
 interface DebtDao {
     @Query("SELECT * FROM debts ORDER BY id")
     fun observeAll(): Flow<List<DebtEntity>>
+    @Query("SELECT * FROM debts WHERE id = :id")
+    suspend fun getById(id: Long): DebtEntity?
     @Upsert suspend fun upsert(debt: DebtEntity): Long
+    @Query("UPDATE debts SET repaidAmount = :amount WHERE id = :id")
+    suspend fun updateRepaidAmount(id: Long, amount: Double)
     @Query("DELETE FROM debts WHERE id = :id") suspend fun delete(id: Long)
 }

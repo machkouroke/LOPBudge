@@ -36,6 +36,9 @@ data class TransactionForm(
     val tagIds: Set<Long> = emptySet(),
     val note: String = "",
 
+    val linkedGoalId: Long? = null,
+    val linkedDebtId: Long? = null,
+
     // recurrence (series)
     val frequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
     val interval: Int = 1,
@@ -100,6 +103,8 @@ class TransactionEditViewModel @Inject constructor(
                         accountId = tx.accountId,
                         tagIds = twr.tags.map { it.id }.toSet(),
                         note = tx.note ?: "",
+                        linkedGoalId = tx.linkedGoalId,
+                        linkedDebtId = tx.linkedDebtId,
                         frequency = series?.frequency ?: RecurrenceFrequency.NONE,
                         interval = series?.interval ?: 1,
                         daysOfWeek = series?.daysOfWeek?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet(),
@@ -154,6 +159,9 @@ class TransactionEditViewModel @Inject constructor(
 
     fun setNote(v: String) { _form.value = _form.value.copy(note = v) }
     fun setDate(d: Long) { _form.value = _form.value.copy(date = d) }
+
+    fun setGoal(id: Long?) { _form.value = _form.value.copy(linkedGoalId = id, linkedDebtId = null) }
+    fun setDebt(id: Long?) { _form.value = _form.value.copy(linkedDebtId = id, linkedGoalId = null) }
 
     fun setFrequency(f: RecurrenceFrequency) {
         // si on passe à NONE, on reset les politiques de fin (propre)
@@ -221,8 +229,8 @@ class TransactionEditViewModel @Inject constructor(
                 daysOfWeek = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(","),
                 endDate = f.endDate,
                 maxOccurrences = f.maxOccurrences,
-                linkedGoalId = null,
-                linkedDebtId = null,
+                linkedGoalId = f.linkedGoalId,
+                linkedDebtId = f.linkedDebtId,
                 tagIds = f.tagIds.toList(),
             )
             onDone()

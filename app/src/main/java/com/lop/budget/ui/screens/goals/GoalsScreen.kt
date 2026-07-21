@@ -1,6 +1,7 @@
 package com.lop.budget.ui.screens.goals
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,7 +44,11 @@ import com.lop.budget.util.IconMapper
 @Composable
 fun GoalsScreen(
     vm: GoalsViewModel = hiltViewModel(),
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    onAddGoal: () -> Unit = {},
+    onEditGoal: (Long) -> Unit = {},
+    onAddDebt: () -> Unit = {},
+    onEditDebt: (Long) -> Unit = {}
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
@@ -48,24 +56,51 @@ fun GoalsScreen(
     LopScreenScaffold(
         title = stringResource(R.string.goals_title),
         onBack = onBack,
-        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack
+        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        bottomBar = {
+            // Optionnel : Un bouton flottant ou dans la bar pour ajouter ?
+        }
     ) {
-        items(state.goals, key = { "g${it.id}" }) { goal ->
-            GoalCard(goal, state.currency, ext.income)
+        item {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(stringResource(R.string.goals_title), style = MaterialTheme.typography.titleLarge)
+                IconButton(onClick = onAddGoal) {
+                    Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
+                }
+            }
         }
 
-        item { Text(stringResource(R.string.debts_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp)) }
+        items(state.goals, key = { "g${it.id}" }) { goal ->
+            GoalCard(goal, state.currency, ext.income, onClick = { onEditGoal(goal.id) })
+        }
+
+        item {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(stringResource(R.string.debts_title), style = MaterialTheme.typography.titleLarge)
+                IconButton(onClick = onAddDebt) {
+                    Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
 
         items(state.debts, key = { "d${it.id}" }) { debt ->
-            DebtCard(debt, state.currency, ext.expense)
+            DebtCard(debt, state.currency, ext.expense, onClick = { onEditDebt(debt.id) })
         }
     }
 }
 
 @Composable
-private fun GoalCard(goal: GoalEntity, currency: String, color: Color) {
+private fun GoalCard(goal: GoalEntity, currency: String, color: Color, onClick: () -> Unit) {
     val progress = (goal.savedAmount / goal.targetAmount).coerceIn(0.0, 1.0)
-    FloatingCard(Modifier.fillMaxWidth()) {
+    FloatingCard(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).clickable { onClick() }) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CircleIcon(IconMapper.get(goal.icon), Color(goal.colorArgb), Color(goal.colorArgb).copy(alpha = 0.18f))
@@ -83,9 +118,9 @@ private fun GoalCard(goal: GoalEntity, currency: String, color: Color) {
 }
 
 @Composable
-private fun DebtCard(debt: DebtEntity, currency: String, color: Color) {
+private fun DebtCard(debt: DebtEntity, currency: String, color: Color, onClick: () -> Unit) {
     val progress = (debt.repaidAmount / debt.totalAmount).coerceIn(0.0, 1.0)
-    FloatingCard(Modifier.fillMaxWidth()) {
+    FloatingCard(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).clickable { onClick() }) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CircleIcon(IconMapper.get(debt.icon), Color(debt.colorArgb), Color(debt.colorArgb).copy(alpha = 0.18f))

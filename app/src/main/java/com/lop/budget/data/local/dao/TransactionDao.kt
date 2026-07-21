@@ -113,4 +113,10 @@ interface TransactionDao {
 
     @Query("DELETE FROM transaction_tags WHERE transactionId = :transactionId")
     suspend fun clearTags(transactionId: Long)
+
+    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM transactions WHERE linkedGoalId = :goalId AND deleted = 0 AND status = 'PAID'")
+    suspend fun getSumForGoal(goalId: Long): Double
+
+    @Query("SELECT COALESCE(SUM(amount), 0.0) FROM transactions WHERE linkedDebtId = :debtId AND deleted = 0 AND status = 'PAID'")
+    suspend fun getSumForDebt(debtId: Long): Double
 }

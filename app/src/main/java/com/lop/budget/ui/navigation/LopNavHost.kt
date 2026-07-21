@@ -42,6 +42,8 @@ import com.lop.budget.ui.screens.analytics.AnalyticsScreen
 import com.lop.budget.ui.screens.category.CategoryCreateScreen
 import com.lop.budget.ui.screens.detail.TransactionDetailScreen
 import com.lop.budget.ui.screens.detected.DetectedTransactionsScreen
+import com.lop.budget.ui.screens.goals.DebtEditScreen
+import com.lop.budget.ui.screens.goals.GoalEditScreen
 import com.lop.budget.ui.screens.goals.GoalsScreen
 import com.lop.budget.ui.screens.home.HomeScreen
 import com.lop.budget.ui.screens.manage.AccountEditScreen
@@ -207,7 +209,35 @@ fun LopNavHost(startRoute: String? = null) {
                 ) { AnalyticsScreen() }
                 composable(
                     Routes.GOALS
-                ) { GoalsScreen() }
+                ) { 
+                    GoalsScreen(
+                        onBack = { navController.popBackStack() },
+                        onAddGoal = { navController.navigate(Routes.GOAL_ADD) },
+                        onEditGoal = { id -> navController.navigate(Routes.goalEdit(id)) },
+                        onAddDebt = { navController.navigate(Routes.DEBT_ADD) },
+                        onEditDebt = { id -> navController.navigate(Routes.debtEdit(id)) }
+                    )
+                }
+
+                composable(Routes.GOAL_ADD) {
+                    GoalEditScreen(onBack = { navController.popBackStack() })
+                }
+                composable(
+                    Routes.GOAL_EDIT,
+                    arguments = listOf(navArgument("id") { type = NavType.LongType })
+                ) {
+                    GoalEditScreen(onBack = { navController.popBackStack() })
+                }
+
+                composable(Routes.DEBT_ADD) {
+                    DebtEditScreen(onBack = { navController.popBackStack() })
+                }
+                composable(
+                    Routes.DEBT_EDIT,
+                    arguments = listOf(navArgument("id") { type = NavType.LongType })
+                ) {
+                    DebtEditScreen(onBack = { navController.popBackStack() })
+                }
                 composable(
                     Routes.ACCOUNTS,
                     enterTransition = {

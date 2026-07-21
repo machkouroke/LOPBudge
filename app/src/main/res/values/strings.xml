@@ -153,6 +153,23 @@
     <string name="goals_title">Objectifs</string>
     <string name="debts_title">Dettes</string>
     <string name="debt_repaid_amount">Remboursé %1$s / %2$s</string>
+    <string name="goal_edit_title">Modifier l\'objectif</string>
+    <string name="goal_new_title">Nouvel objectif</string>
+    <string name="goal_name_label">Nom de l\'objectif</string>
+    <string name="goal_target_amount_label">Montant cible</string>
+    <string name="debt_edit_title">Modifier la dette</string>
+    <string name="debt_new_title">Nouvelle dette</string>
+    <string name="debt_name_label">Nom de la dette</string>
+    <string name="debt_total_amount_label">Montant total</string>
+    <string name="debt_interest_rate_label">Taux d\'intérêt (%%)</string>
+    <string name="due_date_label">Date d\'échéance</string>
+    <string name="select_icon">Choisir une icône</string>
+    <string name="select_color">Choisir une couleur</string>
+
+    <string name="tx_linked_goal_label">Objectif lié</string>
+    <string name="tx_linked_debt_label">Dette liée</string>
+    <string name="tx_no_goal_linked">Aucun objectif lié</string>
+    <string name="tx_no_debt_linked">Aucune dette liée</string>
 
     <!-- Accounts -->
     <string name="accounts_title">Comptes</string>

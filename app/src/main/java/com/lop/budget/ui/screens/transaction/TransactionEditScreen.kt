@@ -92,10 +92,14 @@ fun TransactionEditScreen(
     val categories by vm.categories.collectAsStateWithLifecycle()
     val accounts by vm.accounts.collectAsStateWithLifecycle()
     val tags by vm.tags.collectAsStateWithLifecycle()
+    val goals by vm.goals.collectAsStateWithLifecycle()
+    val debts by vm.debts.collectAsStateWithLifecycle()
 
     var showCategorySheet by remember { mutableStateOf(!vm.isEditing) }
     var showAccountSheet by remember { mutableStateOf(false) }
     var showTagsSheet by remember { mutableStateOf(false) }
+    var showGoalSheet by remember { mutableStateOf(false) }
+    var showDebtSheet by remember { mutableStateOf(false) }
 
     val typeCategories = categories.filter { it.type == form.type }
 
@@ -202,6 +206,24 @@ fun TransactionEditScreen(
                         onClick = { showAccountSheet = true },
                         trailingChevron = true,
                     )
+
+                    if (form.type == TransactionType.EXPENSE) {
+                        val selectedGoal = goals.find { it.id == form.linkedGoalId }
+                        SelectorRow(
+                            label = stringResource(R.string.tx_linked_goal_label),
+                            value = selectedGoal?.name ?: stringResource(R.string.tx_no_goal_linked),
+                            icon = selectedGoal?.let { IconMapper.get(it.icon) } ?: Icons.Default.Add,
+                            onClick = { showGoalSheet = true }
+                        )
+
+                        val selectedDebt = debts.find { it.id == form.linkedDebtId }
+                        SelectorRow(
+                            label = stringResource(R.string.tx_linked_debt_label),
+                            value = selectedDebt?.name ?: stringResource(R.string.tx_no_debt_linked),
+                            icon = selectedDebt?.let { IconMapper.get(it.icon) } ?: Icons.Default.Add,
+                            onClick = { showDebtSheet = true }
+                        )
+                    }
 
                     val selectedTags = tags.filter { it.id in form.tagIds }
                     Surface(
@@ -341,6 +363,30 @@ fun TransactionEditScreen(
             onCreateTag = { name, color -> vm.createTag(name, color) },
             onDeleteTag = { id -> vm.deleteTag(id) },
             onDismiss = { showTagsSheet = false },
+        )
+    }
+
+    if (showGoalSheet) {
+        GoalBottomSheet(
+            goals = goals,
+            selectedId = form.linkedGoalId,
+            onSelect = { id ->
+                vm.setGoal(id)
+                showGoalSheet = false
+            },
+            onDismiss = { showGoalSheet = false }
+        )
+    }
+
+    if (showDebtSheet) {
+        DebtBottomSheet(
+            debts = debts,
+            selectedId = form.linkedDebtId,
+            onSelect = { id ->
+                vm.setDebt(id)
+                showDebtSheet = false
+            },
+            onDismiss = { showDebtSheet = false }
         )
     }
 }
@@ -783,6 +829,84 @@ private fun TagsBottomSheet(
                     enabled = newTagName.isNotBlank()
                 ) {
                     Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GoalBottomSheet(
+    goals: List<com.lop.budget.data.local.entity.GoalEntity>,
+    selectedId: Long?,
+    onSelect: (Long?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(20.dp).padding(bottom = 32.dp)) {
+            Text(stringResource(R.string.tx_linked_goal_label), style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(16.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { onSelect(null) },
+                color = if (selectedId == null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Text(stringResource(R.string.none), Modifier.padding(16.dp))
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            goals.forEach { goal ->
+                val selected = goal.id == selectedId
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(16.dp)).clickable { onSelect(goal.id) },
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CircleIcon(IconMapper.get(goal.icon), Color(goal.colorArgb), Color(goal.colorArgb).copy(alpha = 0.15f), size = 32.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Text(goal.name, style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DebtBottomSheet(
+    debts: List<com.lop.budget.data.local.entity.DebtEntity>,
+    selectedId: Long?,
+    onSelect: (Long?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(20.dp).padding(bottom = 32.dp)) {
+            Text(stringResource(R.string.tx_linked_debt_label), style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(16.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { onSelect(null) },
+                color = if (selectedId == null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Text(stringResource(R.string.none), Modifier.padding(16.dp))
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            debts.forEach { debt ->
+                val selected = debt.id == selectedId
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(16.dp)).clickable { onSelect(debt.id) },
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CircleIcon(IconMapper.get(debt.icon), Color(debt.colorArgb), Color(debt.colorArgb).copy(alpha = 0.15f), size = 32.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Text(debt.name, style = MaterialTheme.typography.titleMedium)
+                    }
                 }
             }
         }

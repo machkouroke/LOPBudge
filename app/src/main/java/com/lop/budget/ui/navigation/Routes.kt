@@ -26,6 +26,14 @@ object Routes {
     const val ACCOUNT_DETAIL = "account/detail/{id}"
     fun accountDetail(id: Long) = "account/detail/$id"
 
+    const val GOAL_ADD = "goal/add"
+    const val GOAL_EDIT = "goal/edit/{id}"
+    fun goalEdit(id: Long) = "goal/edit/$id"
+
+    const val DEBT_ADD = "debt/add"
+    const val DEBT_EDIT = "debt/edit/{id}"
+    fun debtEdit(id: Long) = "debt/edit/$id"
+
     // Notifications → propositions détectées
     const val DETECTED = "detected"
 

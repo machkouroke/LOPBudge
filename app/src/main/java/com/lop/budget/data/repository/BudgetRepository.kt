@@ -206,7 +206,22 @@ class BudgetRepository @Inject constructor(
         val txId = if (tx.id == 0L) id else tx.id
         transactionDao.clearTags(txId)
         tagIds.forEach { transactionDao.addTagCrossRef(TransactionTagCrossRef(txId, it)) }
+
+        // 2. Recalculer les progrès si lié à un objectif ou une dette
+        tx.linkedGoalId?.let { recalculateGoalProgress(it) }
+        tx.linkedDebtId?.let { recalculateDebtProgress(it) }
+
         return txId
+    }
+
+    suspend fun recalculateGoalProgress(goalId: Long) {
+        val sum = transactionDao.getSumForGoal(goalId)
+        goalDao.updateSavedAmount(goalId, sum)
+    }
+
+    suspend fun recalculateDebtProgress(debtId: Long) {
+        val sum = transactionDao.getSumForDebt(debtId)
+        debtDao.updateRepaidAmount(debtId, sum)
     }
 
     /**
@@ -398,12 +413,34 @@ class BudgetRepository @Inject constructor(
     suspend fun changeAccount(transactionId: Long, accountId: Long) =
         transactionDao.updateAccount(transactionId, accountId)
 
-    suspend fun setStatus(transactionId: Long, status: String) =
+    suspend fun setStatus(transactionId: Long, status: String) {
         transactionDao.updateStatus(transactionId, status)
+        // Recalculer le progrès si la transaction est liée à un objectif ou une dette
+        val twr = transactionDao.getById(transactionId)
+        twr?.transaction?.linkedGoalId?.let { recalculateGoalProgress(it) }
+        twr?.transaction?.linkedDebtId?.let { recalculateDebtProgress(it) }
+    }
 
-    suspend fun softDeleteTransaction(id: Long) = transactionDao.softDelete(id)
-    suspend fun restoreTransaction(id: Long) = transactionDao.restore(id)
-    suspend fun hardDeleteTransaction(id: Long) = transactionDao.hardDelete(id)
+    suspend fun softDeleteTransaction(id: Long) {
+        val twr = transactionDao.getById(id)
+        transactionDao.softDelete(id)
+        twr?.transaction?.linkedGoalId?.let { recalculateGoalProgress(it) }
+        twr?.transaction?.linkedDebtId?.let { recalculateDebtProgress(it) }
+    }
+
+    suspend fun restoreTransaction(id: Long) {
+        transactionDao.restore(id)
+        val twr = transactionDao.getById(id)
+        twr?.transaction?.linkedGoalId?.let { recalculateGoalProgress(it) }
+        twr?.transaction?.linkedDebtId?.let { recalculateDebtProgress(it) }
+    }
+
+    suspend fun hardDeleteTransaction(id: Long) {
+        val twr = transactionDao.getById(id)
+        transactionDao.hardDelete(id)
+        twr?.transaction?.linkedGoalId?.let { recalculateGoalProgress(it) }
+        twr?.transaction?.linkedDebtId?.let { recalculateDebtProgress(it) }
+    }
 
     // Référentiels
     fun observeAccounts() = accountDao.observeAll()
@@ -444,5 +481,9 @@ class BudgetRepository @Inject constructor(
     suspend fun deleteTag(id: Long) = tagDao.delete(id)
     suspend fun getTagUsageCount(id: Long) = tagDao.countUsages(id)
     suspend fun saveGoal(g: GoalEntity) = goalDao.upsert(g)
+    suspend fun getGoalById(id: Long) = goalDao.getById(id)
+    suspend fun deleteGoal(id: Long) = goalDao.delete(id)
     suspend fun saveDebt(d: DebtEntity) = debtDao.upsert(d)
+    suspend fun getDebtById(id: Long) = debtDao.getById(id)
+    suspend fun deleteDebt(id: Long) = debtDao.delete(id)
 }
