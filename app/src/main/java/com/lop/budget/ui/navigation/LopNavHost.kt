@@ -119,7 +119,8 @@ fun LopNavHost(startRoute: String? = null) {
 
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route?.substringBefore("/") ?: Routes.HOME
-    val showBar = currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts"
+    val showBar =
+        currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts"
     val animDuration = 400
 
     Scaffold(
@@ -171,45 +172,16 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(
-                    Routes.DETECTED,
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }
-                ) {
+                composableAnimated(Routes.DETECTED, NavAnimationType.MAIN) {
                     DetectedTransactionsScreen(
                         onBack = { navController.popBackStack() },
                         onOpenEdit = { id -> navController.navigate(Routes.edit(id)) },
                     )
                 }
 
-                composable(
-                    Routes.ANALYTICS
-                ) { AnalyticsScreen() }
-                composable(
-                    Routes.GOALS
-                ) { 
+                composable(Routes.ANALYTICS) { AnalyticsScreen() }
+
+                composable(Routes.GOALS) {
                     GoalsScreen(
                         onBack = { navController.popBackStack() },
                         onAddGoal = { navController.navigate(Routes.GOAL_ADD) },
@@ -219,88 +191,44 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(Routes.GOAL_ADD) {
+                composableAnimated(Routes.GOAL_ADD, NavAnimationType.MAIN) {
                     GoalEditScreen(onBack = { navController.popBackStack() })
                 }
-                composable(
+
+                composableAnimated(
                     Routes.GOAL_EDIT,
+                    NavAnimationType.MAIN,
                     arguments = listOf(navArgument("id") { type = NavType.LongType })
                 ) {
                     GoalEditScreen(onBack = { navController.popBackStack() })
                 }
 
-                composable(Routes.DEBT_ADD) {
+                composableAnimated(Routes.DEBT_ADD, NavAnimationType.MAIN) {
                     DebtEditScreen(onBack = { navController.popBackStack() })
                 }
-                composable(
+
+                composableAnimated(
                     Routes.DEBT_EDIT,
+                    NavAnimationType.MAIN,
                     arguments = listOf(navArgument("id") { type = NavType.LongType })
                 ) {
                     DebtEditScreen(onBack = { navController.popBackStack() })
                 }
-                composable(
-                    Routes.ACCOUNTS,
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }
-                ) {
+
+                composableAnimated(Routes.ACCOUNTS, NavAnimationType.ROOT) {
                     AccountsScreen(
                         onBack = { navController.popBackStack() },
                         onOpenDetail = { id -> navController.navigate(Routes.accountDetail(id)) }
                     )
                 }
 
-                composable(
+                composableAnimated(
                     Routes.MONTHLY,
+                    NavAnimationType.SECONDARY,
                     arguments = listOf(
                         navArgument("type") { type = NavType.StringType },
                         navArgument("ym") { type = NavType.StringType },
-                    ),
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }
+                    )
                 ) {
                     MonthlyTransactionsScreen(
                         onBack = { navController.popBackStack() },
@@ -308,35 +236,11 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(Routes.AI) { AiScreen(onBack = { navController.popBackStack() }) }
+                composableAnimated(Routes.AI, NavAnimationType.SECONDARY) {
+                    AiScreen(onBack = { navController.popBackStack() })
+                }
 
-                composable(
-                    Routes.SETTINGS,
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }
-                ) {
+                composableAnimated(Routes.SETTINGS, NavAnimationType.MAIN) {
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
                         onNavigateToTags = { navController.navigate(Routes.TAGS_MANAGE) },
@@ -345,40 +249,14 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(
-                    Routes.SEARCH,
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }
-                ) {
+                composableAnimated(Routes.SEARCH, NavAnimationType.MAIN) {
                     com.lop.budget.ui.screens.search.SearchScreen(
                         onBack = { navController.popBackStack() },
                         onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) }
                     )
                 }
 
-                composable(Routes.CATEGORIES_MANAGE) {
+                composableAnimated(Routes.CATEGORIES_MANAGE, NavAnimationType.SECONDARY) {
                     CategoriesManageScreen(
                         onBack = { navController.popBackStack() },
                         onAddCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
@@ -386,44 +264,22 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(Routes.CATEGORY_CREATE) {
+                composableAnimated(Routes.CATEGORY_CREATE, NavAnimationType.SECONDARY) {
                     CategoryCreateScreen(onBack = { navController.popBackStack() })
                 }
 
-                composable(
+                composableAnimated(
                     Routes.CATEGORY_EDIT,
+                    NavAnimationType.SECONDARY,
                     arguments = listOf(navArgument("id") { type = NavType.LongType })
                 ) {
                     CategoryCreateScreen(onBack = { navController.popBackStack() })
                 }
 
-                composable(
+                composableAnimated(
                     Routes.ACCOUNT_DETAIL,
-                    arguments = listOf(navArgument("id") { type = NavType.LongType }),
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }
+                    NavAnimationType.MAIN,
+                    arguments = listOf(navArgument("id") { type = NavType.LongType })
                 ) {
                     com.lop.budget.ui.screens.accounts.AccountDetailScreen(
                         onBack = { navController.popBackStack() },
@@ -432,31 +288,7 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(
-                    Routes.ACCOUNTS_MANAGE, enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }) {
+                composableAnimated(Routes.ACCOUNTS_MANAGE, NavAnimationType.SECONDARY) {
                     AccountsManageScreen(
                         onBack = { navController.popBackStack() },
                         onAddAccount = { navController.navigate(Routes.ACCOUNT_ADD) },
@@ -464,157 +296,33 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(Routes.ACCOUNT_ADD,
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }) {
+                composableAnimated(Routes.ACCOUNT_ADD, NavAnimationType.SECONDARY) {
                     AccountEditScreen(onBack = { navController.popBackStack() })
                 }
 
-                composable(
+                composableAnimated(
                     Routes.ACCOUNT_EDIT,
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
+                    NavAnimationType.SECONDARY,
                     arguments = listOf(navArgument("id") { type = NavType.LongType })
                 ) {
                     AccountEditScreen(onBack = { navController.popBackStack() })
                 }
 
-                composable(
-                    Routes.TAGS_MANAGE, enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }) {
+                composableAnimated(Routes.TAGS_MANAGE, NavAnimationType.SECONDARY) {
                     TagsManageScreen(onBack = { navController.popBackStack() })
                 }
 
-                composable(Routes.CATEGORY_CREATE) {
-                    CategoryCreateScreen(onBack = { navController.popBackStack() })
-                }
-
-                composable(
-                    Routes.ADD,
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }
-                ) {
+                composableAnimated(Routes.ADD, NavAnimationType.MAIN) {
                     TransactionEditScreen(
                         onBack = { navController.popBackStack() },
                         onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
                     )
                 }
 
-                composable(
+                composableAnimated(
                     Routes.EDIT,
-                    arguments = listOf(navArgument("id") { type = NavType.LongType }),
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }
+                    NavAnimationType.MAIN,
+                    arguments = listOf(navArgument("id") { type = NavType.LongType })
                 ) {
                     TransactionEditScreen(
                         onBack = { navController.popBackStack() },
@@ -622,33 +330,10 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 }
 
-                composable(
+                composableAnimated(
                     Routes.DETAIL,
-                    arguments = listOf(navArgument("id") { type = NavType.LongType }),
-                    enterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        slideIntoContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popExitTransition = {
-                        slideOutOfContainer(
-                            towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }
+                    NavAnimationType.MAIN,
+                    arguments = listOf(navArgument("id") { type = NavType.LongType })
                 ) { entry ->
                     val id = entry.arguments?.getLong("id") ?: 0L
                     TransactionDetailScreen(
