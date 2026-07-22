@@ -376,11 +376,25 @@ class BudgetRepository @Inject constructor(
         }
     }
 
+    suspend fun updateEntireSeries(seriesId: Long, updatedSeries: RecurringSeriesEntity) {
+        recurringSeriesDao.update(updatedSeries.copy(id = seriesId))
+    }
+
+    suspend fun updateSeriesFrom(seriesId: Long, fromDate: Long, updatedSeries: RecurringSeriesEntity) {
+        // 1. Tronquer l'ancienne série (arrête à la veille de fromDate)
+        cancelSeries(seriesId.toString(), com.lop.budget.domain.model.SeriesDeletionMode.FUTURE, fromDate)
+        
+        // 2. Sauvegarder la nouvelle série (ID = 0 pour auto-générer)
+        recurringSeriesDao.upsert(updatedSeries.copy(id = 0, startDate = fromDate))
+    }
+
     suspend fun saveRecurringSeries(series: RecurringSeriesEntity): Long {
         return recurringSeriesDao.upsert(series)
     }
 
     suspend fun getSeriesById(id: Long) = recurringSeriesDao.getSeriesById(id)
+
+    suspend fun getTransactionById(id: Long) = transactionDao.getById(id)
 
     suspend fun cancelSeries(seriesIdStr: String, mode: SeriesDeletionMode, fromDate: Long? = null) {
         val seriesId = seriesIdStr.toLongOrNull() ?: return

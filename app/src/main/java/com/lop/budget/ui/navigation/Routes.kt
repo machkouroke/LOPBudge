@@ -40,8 +40,15 @@ object Routes {
     const val DETAIL = "detail/{id}"
     fun detail(id: Long) = "detail/$id"
 
-    const val EDIT = "edit/{id}"
-    fun edit(id: Long) = "edit/$id"
+    const val EDIT = "edit/{id}?scope={scope}&date={date}"
+    fun edit(id: Long, scope: String? = null, date: Long? = null): String {
+        var path = "edit/$id"
+        val params = mutableListOf<String>()
+        if (scope != null) params.add("scope=$scope")
+        if (date != null) params.add("date=$date")
+        if (params.isNotEmpty()) path += "?" + params.joinToString("&")
+        return path
+    }
 
     // Monthly income/expense pages
     const val MONTHLY = "monthly/{type}/{ym}"

@@ -14,3 +14,6 @@ enum class AccountType { CHECKING, CASH, SAVINGS, CARD, CRYPTO, INVESTMENT, OTHE
 
 /** Mode de suppression d'une série récurrente. */
 enum class SeriesDeletionMode { ALL, FUTURE }
+
+/** Portée de modification d'une transaction récurrente. */
+enum class EditScope { SINGLE, FUTURE, ALL }

@@ -52,6 +52,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
+import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
@@ -63,6 +64,7 @@ import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import com.lop.budget.ui.components.RecurringDeleteSheet
+import com.lop.budget.ui.components.RecurringEditSheet
 import com.lop.budget.ui.components.SwipeDownDismissWrapper
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.LopTheme
@@ -74,7 +76,7 @@ import com.lop.budget.util.IconMapper
 fun TransactionDetailScreen(
     transactionId: Long,
     onBack: () -> Unit,
-    onEdit: (Long) -> Unit = {},
+    onEdit: (id: Long, scope: String?, date: Long?) -> Unit = { _, _, _ -> },
     vm: TransactionDetailViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(transactionId) { vm.load(transactionId) }
@@ -91,6 +93,7 @@ fun TransactionDetailScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showAccountSheet by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showEditScopeChoice by remember { mutableStateOf(false) }
 
     val twr = state.transaction
     val tx = twr?.transaction
@@ -127,7 +130,15 @@ fun TransactionDetailScreen(
                                     MaterialTheme.colorScheme.surfaceVariant,
                                     androidx.compose.foundation.shape.CircleShape
                                 )
-                                .clickableNoRipple { if (!isBusy) onEdit(transactionId) },
+                                .clickableNoRipple { 
+                                    if (!isBusy) {
+                                        if (tx.seriesId != null) {
+                                            showEditScopeChoice = true
+                                        } else {
+                                            onEdit(transactionId, null, null)
+                                        }
+                                    }
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -381,6 +392,28 @@ fun TransactionDetailScreen(
                 }
             }
         }
+    }
+
+    if (showEditScopeChoice && tx != null) {
+        RecurringEditSheet(
+            onDismiss = { showEditScopeChoice = false },
+            onChoose = { scope ->
+                showEditScopeChoice = false
+                when (scope) {
+                    EditScope.SINGLE -> {
+                        vm.materializeAndEdit { realId ->
+                            onEdit(realId, null, null)
+                        }
+                    }
+                    EditScope.FUTURE -> {
+                        onEdit(transactionId, "FUTURE", tx.date)
+                    }
+                    EditScope.ALL -> {
+                        onEdit(transactionId, "ALL", null)
+                    }
+                }
+            }
+        )
     }
 
     if (showDatePicker && tx != null) {

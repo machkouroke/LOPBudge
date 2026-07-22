@@ -258,7 +258,18 @@ fun LopNavHost(startRoute: String? = null) {
                 composableAnimated(
                     Routes.EDIT,
                     NavAnimationType.MAIN,
-                    arguments = listOf(navArgument("id") { type = NavType.LongType })
+                    arguments = listOf(
+                        navArgument("id") { type = NavType.LongType },
+                        navArgument("scope") { 
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        },
+                        navArgument("date") {
+                            type = NavType.LongType
+                            defaultValue = -1L
+                        }
+                    )
                 ) {
                     TransactionEditScreen(
                         onBack = { navController.popBackStack() },
@@ -275,7 +286,9 @@ fun LopNavHost(startRoute: String? = null) {
                     TransactionDetailScreen(
                         transactionId = id,
                         onBack = { navController.popBackStack() },
-                        onEdit = { txId -> navController.navigate(Routes.edit(txId)) }
+                        onEdit = { txId, scope, date -> 
+                            navController.navigate(Routes.edit(txId, scope, date))
+                        }
                     )
                 }
             }

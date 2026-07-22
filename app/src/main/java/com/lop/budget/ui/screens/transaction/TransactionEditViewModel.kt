@@ -11,6 +11,7 @@ import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -62,6 +63,8 @@ class TransactionEditViewModel @Inject constructor(
     private val _form = MutableStateFlow(TransactionForm())
 
     private var editingTransactionId: Long? = null
+    private var editScope: EditScope = EditScope.SINGLE
+    private var seriesDate: Long? = null
     private var isLoaded = false
 
     val isEditing: Boolean
@@ -69,6 +72,16 @@ class TransactionEditViewModel @Inject constructor(
 
     init {
         val txId = savedStateHandle.get<Long>("id")
+        val scopeStr = savedStateHandle.get<String>("scope")
+        val dateVal = savedStateHandle.get<Long>("date") ?: -1L
+        
+        editScope = when(scopeStr) {
+            "FUTURE" -> EditScope.FUTURE
+            "ALL" -> EditScope.ALL
+            else -> EditScope.SINGLE
+        }
+        if (dateVal > 0) seriesDate = dateVal
+
         if (txId != null && !isLoaded) {
             editingTransactionId = txId
             loadTransaction(txId)
@@ -88,29 +101,51 @@ class TransactionEditViewModel @Inject constructor(
             repo.observeTransaction(id).collect { twr ->
                 if (twr != null && !isLoaded) {
                     val tx = twr.transaction
-
-                    // Si c'est une occurrence d'une série, on récupère les infos de récurrence
                     val seriesId = tx.seriesId?.toLongOrNull()
                     val series = if (seriesId != null) repo.getSeriesById(seriesId) else null
 
-                    _form.value = TransactionForm(
-                        type = tx.type,
-                        amountInput = tx.amount.toString(),
-                        title = tx.title,
-                        date = tx.date,
-                        categoryId = tx.categoryId,
-                        subCategoryId = tx.subCategoryId,
-                        accountId = tx.accountId,
-                        tagIds = twr.tags.map { it.id }.toSet(),
-                        note = tx.note ?: "",
-                        linkedGoalId = tx.linkedGoalId,
-                        linkedDebtId = tx.linkedDebtId,
-                        frequency = series?.frequency ?: RecurrenceFrequency.NONE,
-                        interval = series?.interval ?: 1,
-                        daysOfWeek = series?.daysOfWeek?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet(),
-                        endDate = series?.endDate,
-                        maxOccurrences = series?.maxOccurrences,
-                    )
+                    val initialForm = if (editScope == EditScope.ALL && series != null) {
+                        // On charge les données de la série
+                        TransactionForm(
+                            type = series.type,
+                            amountInput = series.amount.toString(),
+                            title = series.title,
+                            date = series.startDate,
+                            categoryId = series.categoryId,
+                            subCategoryId = series.subCategoryId,
+                            accountId = series.accountId,
+                            tagIds = emptySet(), // Les tags ne sont pas portés par la série dans le modèle actuel ?
+                            note = series.note ?: "",
+                            linkedGoalId = series.linkedGoalId,
+                            linkedDebtId = series.linkedDebtId,
+                            frequency = series.frequency,
+                            interval = series.interval,
+                            daysOfWeek = series.daysOfWeek?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet(),
+                            endDate = series.endDate,
+                            maxOccurrences = series.maxOccurrences,
+                        )
+                    } else {
+                        // Mode SINGLE ou FUTURE (basé sur l'occurrence)
+                        TransactionForm(
+                            type = tx.type,
+                            amountInput = tx.amount.toString(),
+                            title = tx.title,
+                            date = seriesDate ?: tx.date, // Utilise la date de la série si fournie
+                            categoryId = tx.categoryId,
+                            subCategoryId = tx.subCategoryId,
+                            accountId = tx.accountId,
+                            tagIds = twr.tags.map { it.id }.toSet(),
+                            note = tx.note ?: "",
+                            linkedGoalId = tx.linkedGoalId,
+                            linkedDebtId = tx.linkedDebtId,
+                            frequency = series?.frequency ?: RecurrenceFrequency.NONE,
+                            interval = series?.interval ?: 1,
+                            daysOfWeek = series?.daysOfWeek?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet(),
+                            endDate = series?.endDate,
+                            maxOccurrences = series?.maxOccurrences,
+                        )
+                    }
+                    _form.value = initialForm
                     isLoaded = true
                 }
             }
@@ -214,25 +249,85 @@ class TransactionEditViewModel @Inject constructor(
         if (f.amount <= 0.0 || f.categoryId == null || f.accountId == null) return
 
         viewModelScope.launch {
-            repo.saveWithTransition(
-                editingId = editingTransactionId,
-                title = f.title.ifBlank { context.getString(R.string.tx_default_title) },
-                amount = f.amount,
-                type = f.type,
-                date = f.date,
-                accountId = f.accountId,
-                categoryId = f.categoryId,
-                subCategoryId = f.subCategoryId,
-                note = f.note.ifBlank { null },
-                frequency = f.frequency,
-                interval = f.interval,
-                daysOfWeek = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(","),
-                endDate = f.endDate,
-                maxOccurrences = f.maxOccurrences,
-                linkedGoalId = f.linkedGoalId,
-                linkedDebtId = f.linkedDebtId,
-                tagIds = f.tagIds.toList(),
-            )
+            val title = f.title.ifBlank { context.getString(R.string.tx_default_title) }
+            val note = f.note.ifBlank { null }
+            val dow = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",")
+
+            when (editScope) {
+                EditScope.SINGLE -> {
+                    repo.saveWithTransition(
+                        editingId = editingTransactionId,
+                        title = title,
+                        amount = f.amount,
+                        type = f.type,
+                        date = f.date,
+                        accountId = f.accountId,
+                        categoryId = f.categoryId,
+                        subCategoryId = f.subCategoryId,
+                        note = note,
+                        frequency = f.frequency,
+                        interval = f.interval,
+                        daysOfWeek = dow,
+                        endDate = f.endDate,
+                        maxOccurrences = f.maxOccurrences,
+                        linkedGoalId = f.linkedGoalId,
+                        linkedDebtId = f.linkedDebtId,
+                        tagIds = f.tagIds.toList(),
+                    )
+                }
+                EditScope.FUTURE -> {
+                    // Récupérer la série parente pour tronquer
+                    val twr = editingTransactionId?.let { repo.getTransactionById(it) }
+                    val seriesId = twr?.transaction?.seriesId?.toLongOrNull()
+                    
+                    if (seriesId != null) {
+                        val newSeries = com.lop.budget.data.local.entity.RecurringSeriesEntity(
+                            title = title,
+                            amount = f.amount,
+                            type = f.type,
+                            categoryId = f.categoryId,
+                            subCategoryId = f.subCategoryId,
+                            accountId = f.accountId,
+                            frequency = f.frequency,
+                            interval = f.interval,
+                            startDate = f.date,
+                            endDate = f.endDate,
+                            maxOccurrences = f.maxOccurrences,
+                            daysOfWeek = dow,
+                            note = note,
+                            linkedGoalId = f.linkedGoalId,
+                            linkedDebtId = f.linkedDebtId
+                        )
+                        repo.updateSeriesFrom(seriesId, f.date, newSeries)
+                    }
+                }
+                EditScope.ALL -> {
+                    val twr = editingTransactionId?.let { repo.getTransactionById(it) }
+                    val seriesId = twr?.transaction?.seriesId?.toLongOrNull()
+
+                    if (seriesId != null) {
+                        val updatedSeries = com.lop.budget.data.local.entity.RecurringSeriesEntity(
+                            id = seriesId,
+                            title = title,
+                            amount = f.amount,
+                            type = f.type,
+                            categoryId = f.categoryId,
+                            subCategoryId = f.subCategoryId,
+                            accountId = f.accountId,
+                            frequency = f.frequency,
+                            interval = f.interval,
+                            startDate = f.date, // On garde la date de début originale ou on la change ?
+                            endDate = f.endDate,
+                            maxOccurrences = f.maxOccurrences,
+                            daysOfWeek = dow,
+                            note = note,
+                            linkedGoalId = f.linkedGoalId,
+                            linkedDebtId = f.linkedDebtId
+                        )
+                        repo.updateEntireSeries(seriesId, updatedSeries)
+                    }
+                }
+            }
             onDone()
         }
     }
