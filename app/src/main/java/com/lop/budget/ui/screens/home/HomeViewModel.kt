@@ -23,13 +23,16 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 
-
+@Immutable
 data class HomeUiState(
     val month: YearMonth = YearMonth.now(),
     val isCurrentMonth: Boolean = true,
@@ -166,7 +169,7 @@ class HomeViewModel @Inject constructor(
 
     /**
      * Retourne un Flow de données pour un mois spécifique.
-     * Utilisé par le Pager pour afficher le contenu des mois adjacents pendant le swipe.
+     * Optimisé avec distinctUntilChanged pour éviter des recompositions inutiles du Pager.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observeMonthState(ym: YearMonth): kotlinx.coroutines.flow.Flow<HomeUiState> {
@@ -174,15 +177,15 @@ class HomeViewModel @Inject constructor(
         val (prevStart, prevEnd) = ym.minusMonths(1).range()
 
         return combine(
-            repo.observeTransactionsBetween(start, end),
-            repo.observeTransactionsBetween(prevStart, prevEnd),
-            settings.currency,
+            repo.observeTransactionsBetween(start, end).distinctUntilChanged(),
+            repo.observeTransactionsBetween(prevStart, prevEnd).distinctUntilChanged(),
+            settings.currency.distinctUntilChanged(),
             pendingDeletes,
             pendingSeriesDeletes,
             pendingSeriesFromDates,
             txVersions,
-            repo.observeAccounts(),
-            repo.observeAccountBalances()
+            repo.observeAccounts().distinctUntilChanged(),
+            repo.observeAccountBalances().distinctUntilChanged()
         ) { args ->
             @Suppress("UNCHECKED_CAST")
             val txsBetween = args[0] as List<TransactionWithRelations>

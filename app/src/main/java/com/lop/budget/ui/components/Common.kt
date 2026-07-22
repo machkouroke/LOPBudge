@@ -195,9 +195,6 @@ fun CircleIcon(
                         onError = { state ->
                             android.util.Log.e("LOPBudge", "❌ CircleIcon: Failed to load $icon. Error: ${state.result.throwable.message}")
                         },
-                        onSuccess = {
-                            android.util.Log.d("LOPBudge", "✅ CircleIcon: Successfully loaded $icon")
-                        },
                         error = androidx.compose.ui.graphics.painter.ColorPainter(Color.Gray.copy(alpha = 0.1f)),
                         placeholder = androidx.compose.ui.graphics.painter.ColorPainter(Color.LightGray.copy(alpha = 0.05f))
                     )

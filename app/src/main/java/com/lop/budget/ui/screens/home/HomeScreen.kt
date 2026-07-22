@@ -49,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -111,16 +112,18 @@ fun HomeScreen(
     val initialPage = 5000
     val pagerState = rememberPagerState(initialPage = initialPage) { 10000 }
 
-    // Sync Pager -> ViewModel
+    // Sync Pager -> ViewModel (Déclenché uniquement quand la page est fixée)
     LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.settledPage }.collect { page ->
-            val diff = (page - initialPage).toLong()
-            val targetMonth = YearMonth.now().plusMonths(diff)
-            if (state.month != targetMonth) {
-                vm.setMonth(targetMonth)
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        snapshotFlow { pagerState.settledPage }
+            .distinctUntilChanged()
+            .collect { page ->
+                val diff = (page - initialPage).toLong()
+                val targetMonth = YearMonth.now().plusMonths(diff)
+                if (state.month != targetMonth) {
+                    vm.setMonth(targetMonth)
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                }
             }
-        }
     }
 
     // Sync ViewModel -> Pager (for manual month selection)
@@ -143,7 +146,8 @@ fun HomeScreen(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
             beyondViewportPageCount = 1,
-            userScrollEnabled = true
+            userScrollEnabled = true,
+            key = { it } // Utilisation d'une clé stable pour éviter de recréer les mois adjacents
         ) { page ->
             val diff = (page - initialPage).toLong()
             val pageMonth = remember(page) { YearMonth.now().plusMonths(diff) }
@@ -178,7 +182,9 @@ fun HomeScreen(
 
     if (showDeleteConfirmForTx != null) {
         val toDelete = showDeleteConfirmForTx!!
-        val context = androidx.compose.ui.platform.LocalContext.current
+        val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
+        val undoMsg = stringResource(R.string.undo)
+        
         RecurringDeleteSheet(
             onDismiss = { showDeleteConfirmForTx = null },
             showFutureOnly = true,
@@ -186,16 +192,16 @@ fun HomeScreen(
                 showDeleteConfirmForTx = null
                 when (choice) {
                     RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                        vm.deleteOccurrenceWithUndo(toDelete.transaction.id, snackbarHostState, context.getString(R.string.tx_deleted_snackbar), context.getString(R.string.undo))
+                        vm.deleteOccurrenceWithUndo(toDelete.transaction.id, snackbarHostState, txDeletedMsg, undoMsg)
                     }
                     RecurringDeleteChoice.FUTURE_ONLY -> {
                         toDelete.transaction.seriesId?.let { 
-                            vm.deleteSeriesWithUndo(it, SeriesDeletionMode.FUTURE, toDelete.transaction.date, snackbarHostState, context.getString(R.string.tx_deleted_snackbar), context.getString(R.string.undo)) 
+                            vm.deleteSeriesWithUndo(it, SeriesDeletionMode.FUTURE, toDelete.transaction.date, snackbarHostState, txDeletedMsg, undoMsg) 
                         }
                     }
                     RecurringDeleteChoice.ALL_SERIES -> {
                         toDelete.transaction.seriesId?.let { 
-                            vm.deleteSeriesWithUndo(it, SeriesDeletionMode.ALL, null, snackbarHostState, context.getString(R.string.tx_deleted_snackbar), context.getString(R.string.undo)) 
+                            vm.deleteSeriesWithUndo(it, SeriesDeletionMode.ALL, null, snackbarHostState, txDeletedMsg, undoMsg)
                         }
                     }
                 }
