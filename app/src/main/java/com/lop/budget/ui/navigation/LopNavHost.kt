@@ -1,14 +1,9 @@
 package com.lop.budget.ui.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -27,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -56,53 +50,6 @@ import com.lop.budget.ui.screens.transaction.TransactionEditScreen
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
-private val screenOrder = listOf(Routes.HOME, Routes.ANALYTICS, Routes.GOALS, Routes.ACCOUNTS)
-private const val NAV_ANIM_DURATION = 500
-
-@OptIn(ExperimentalAnimationApi::class)
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.createEnterTransition(): EnterTransition {
-    val initialIndex = screenOrder.indexOf(initialState.destination.route)
-    val targetIndex = screenOrder.indexOf(targetState.destination.route)
-
-    // Fallback for non-root routes or same route
-    if (initialIndex == -1 || targetIndex == -1 || initialIndex == targetIndex) {
-        return fadeIn(animationSpec = tween(NAV_ANIM_DURATION))
-    }
-
-    val direction = if (initialIndex > targetIndex)
-        AnimatedContentTransitionScope.SlideDirection.Right
-    else
-        AnimatedContentTransitionScope.SlideDirection.Left
-
-    return slideIntoContainer(
-        towards = direction,
-        animationSpec = tween(NAV_ANIM_DURATION, easing = FastOutSlowInEasing)
-    ) + fadeIn(animationSpec = tween(NAV_ANIM_DURATION))
-}
-
-@OptIn(ExperimentalAnimationApi::class)
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.createExitTransition(): ExitTransition {
-    val initialIndex = screenOrder.indexOf(initialState.destination.route)
-    val targetIndex = screenOrder.indexOf(targetState.destination.route)
-
-    if (initialIndex == -1 || targetIndex == -1 || initialIndex == targetIndex) {
-        return fadeOut(animationSpec = tween(NAV_ANIM_DURATION))
-    }
-
-    val direction = if (initialIndex > targetIndex)
-        AnimatedContentTransitionScope.SlideDirection.Right
-    else
-        AnimatedContentTransitionScope.SlideDirection.Left
-
-    return slideOutOfContainer(
-        towards = direction,
-        animationSpec = tween(NAV_ANIM_DURATION, easing = FastOutSlowInEasing)
-    ) + fadeOut(animationSpec = tween(NAV_ANIM_DURATION))
-}
-
-private typealias EnterTransition = androidx.compose.animation.EnterTransition
-private typealias ExitTransition = androidx.compose.animation.ExitTransition
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LopNavHost(startRoute: String? = null) {
@@ -119,9 +66,9 @@ fun LopNavHost(startRoute: String? = null) {
 
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route?.substringBefore("/") ?: Routes.HOME
+    
     val showBar =
         currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts"
-    val animDuration = 400
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -136,31 +83,20 @@ fun LopNavHost(startRoute: String? = null) {
             NavHost(
                 navController = navController,
                 startDestination = Routes.HOME,
-                enterTransition = { createEnterTransition() },
-                exitTransition = { createExitTransition() },
-                popEnterTransition = { createEnterTransition() },
-                popExitTransition = { createExitTransition() },
+                enterTransition = { 
+                    NavAnimations.getGlobalEnterTransition(initialState.destination.route, targetState.destination.route)(this)
+                },
+                exitTransition = { 
+                    NavAnimations.getGlobalExitTransition(initialState.destination.route, targetState.destination.route)(this)
+                },
+                popEnterTransition = { 
+                    NavAnimations.getGlobalEnterTransition(initialState.destination.route, targetState.destination.route)(this)
+                },
+                popExitTransition = { 
+                    NavAnimations.getGlobalExitTransition(initialState.destination.route, targetState.destination.route)(this)
+                },
             ) {
-                composable(
-                    Routes.HOME,
-                    exitTransition = {
-                        scaleOut(
-                            targetScale = 0.95f,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        ) + fadeOut(
-                            targetAlpha = 0.5f,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    },
-                    popEnterTransition = {
-                        scaleIn(
-                            initialScale = 0.95f,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        ) + fadeIn(
-                            initialAlpha = 0.5f,
-                            animationSpec = tween(animDuration, easing = FastOutSlowInEasing)
-                        )
-                    }) {
+                composable(Routes.HOME) {
                     HomeScreen(
                         snackbarHostState = snackbarHostState,
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
@@ -171,7 +107,16 @@ fun LopNavHost(startRoute: String? = null) {
                         },
                     )
                 }
+
+                composableAnimated(Routes.DETECTED, NavAnimationType.MAIN) {
+                    DetectedTransactionsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenEdit = { id -> navController.navigate(Routes.edit(id)) },
+                    )
+                }
+
                 composable(Routes.ANALYTICS) { AnalyticsScreen() }
+
                 composable(Routes.GOALS) {
                     GoalsScreen(
                         onBack = { navController.popBackStack() },
@@ -181,17 +126,6 @@ fun LopNavHost(startRoute: String? = null) {
                         onEditDebt = { id -> navController.navigate(Routes.debtEdit(id)) }
                     )
                 }
-
-                composableAnimated(Routes.DETECTED, NavAnimationType.MAIN) {
-                    DetectedTransactionsScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenEdit = { id -> navController.navigate(Routes.edit(id)) },
-                    )
-                }
-
-
-
-
 
                 composableAnimated(Routes.GOAL_ADD, NavAnimationType.MAIN) {
                     GoalEditScreen(onBack = { navController.popBackStack() })
@@ -391,7 +325,7 @@ fun LopNavHost(startRoute: String? = null) {
                         .padding(bottom = 20.dp, top = 40.dp)
                 ) {
                     FloatingBottomBar(
-                        current = currentRoute ?: Routes.HOME,
+                        current = currentRoute,
                         onSelect = { route ->
                             navController.navigate(route) {
                                 popUpTo(Routes.HOME) { saveState = true }
