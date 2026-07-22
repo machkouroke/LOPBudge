@@ -171,16 +171,7 @@ fun LopNavHost(startRoute: String? = null) {
                         },
                     )
                 }
-
-                composableAnimated(Routes.DETECTED, NavAnimationType.MAIN) {
-                    DetectedTransactionsScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenEdit = { id -> navController.navigate(Routes.edit(id)) },
-                    )
-                }
-
                 composable(Routes.ANALYTICS) { AnalyticsScreen() }
-
                 composable(Routes.GOALS) {
                     GoalsScreen(
                         onBack = { navController.popBackStack() },
@@ -190,6 +181,17 @@ fun LopNavHost(startRoute: String? = null) {
                         onEditDebt = { id -> navController.navigate(Routes.debtEdit(id)) }
                     )
                 }
+
+                composableAnimated(Routes.DETECTED, NavAnimationType.MAIN) {
+                    DetectedTransactionsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenEdit = { id -> navController.navigate(Routes.edit(id)) },
+                    )
+                }
+
+
+
+
 
                 composableAnimated(Routes.GOAL_ADD, NavAnimationType.MAIN) {
                     GoalEditScreen(onBack = { navController.popBackStack() })
