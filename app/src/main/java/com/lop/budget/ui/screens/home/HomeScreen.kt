@@ -76,6 +76,7 @@ import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import com.lop.budget.ui.components.RecurringDeleteSheet
+import com.lop.budget.ui.components.TransactionPreviewPopup
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.components.transactionDayGroups
 import com.lop.budget.ui.navigation.Routes
@@ -83,6 +84,7 @@ import com.lop.budget.ui.theme.ExpenseCoral
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
+import dev.chrisbanes.haze.HazeState
 import java.time.YearMonth
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -93,6 +95,7 @@ fun HomeScreen(
     onOpenAi: () -> Unit,
     onOpenMonthly: (TransactionType, YearMonth) -> Unit,
     navController: NavController,
+    hazeState: HazeState? = null,
     vm: HomeViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -127,6 +130,7 @@ fun HomeScreen(
 
     var isMonthPickerOpen by remember { mutableStateOf(false) }
     var showDeleteConfirmForTx by remember { mutableStateOf<TransactionWithRelations?>(null) }
+    var previewTx by remember { mutableStateOf<TransactionWithRelations?>(null) }
 
     if (isMonthPickerOpen) {
         MonthPickerBottomSheet(
@@ -190,7 +194,9 @@ fun HomeScreen(
                 onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
                 onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },
                 onDeleteRequest = { showDeleteConfirmForTx = it },
+                onPreviewTransaction = { previewTx = it },
                 snackbarHostState = snackbarHostState,
+                hazeState = hazeState,
                 vm = vm
             )
         }
@@ -206,6 +212,31 @@ fun HomeScreen(
             onSettingsClick = { navController.navigate(Routes.SETTINGS) },
             modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)
         )
+
+        // Global Popup Overlay
+        if (previewTx != null) {
+            val tx = previewTx!!
+            TransactionPreviewPopup(
+                tx = tx,
+                currency = state.currency,
+                onDismiss = { previewTx = null },
+                onEdit = {
+                    previewTx = null
+                    if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
+                    else tx.transaction.seriesId?.let { vm.materializeAndOpen(it.toLong(), tx.transaction.seriesDate!!, onOpenTransaction) }
+                },
+                onDelete = {
+                    previewTx = null
+                    if (tx.transaction.seriesId != null) showDeleteConfirmForTx = tx
+                    else vm.deleteWithUndo(tx.transaction.id, snackbarHostState, context.getString(R.string.tx_deleted_snackbar), context.getString(R.string.undo))
+                },
+                onTogglePaid = {
+                    previewTx = null
+                    vm.togglePaid(tx.transaction.id, tx.transaction.status)
+                },
+                hazeState = hazeState
+            )
+        }
     }
 
     if (showDeleteConfirmForTx != null) {
@@ -247,7 +278,9 @@ fun HomeContent(
     onOpenAccounts: () -> Unit,
     onOpenAccountDetail: (Long) -> Unit,
     onDeleteRequest: (TransactionWithRelations) -> Unit,
+    onPreviewTransaction: (TransactionWithRelations) -> Unit,
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
+    hazeState: HazeState? = null,
     vm: HomeViewModel
 ) {
     val listState = rememberLazyListState()
@@ -392,7 +425,9 @@ fun HomeContent(
             onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
             onTogglePaid = vm::togglePaid,
             onDeleteRequest = onDeleteRequest,
-            onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) }
+            onPreviewTransaction = onPreviewTransaction,
+            onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) },
+            hazeState = hazeState
         )
 
         if (state.dayGroups.isEmpty()) {

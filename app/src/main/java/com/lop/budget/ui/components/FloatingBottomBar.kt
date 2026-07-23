@@ -61,15 +61,12 @@ fun FloatingBottomBar(
     ) {
         // --- Pilule principale de navigation ---
         Surface(
-
             shape = pillShape,
-//            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+            color = Color.Transparent,
             modifier = Modifier
                 .weight(1f)
                 .height(64.dp)
                 .shadow(elevation = 4.dp, shape = CircleShape)
-
-
         ) {
             Row(
                 modifier = Modifier

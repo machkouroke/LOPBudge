@@ -47,6 +47,7 @@ import com.lop.budget.ui.screens.manage.TagsManageScreen
 import com.lop.budget.ui.screens.monthly.MonthlyTransactionsScreen
 import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
+import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
@@ -105,6 +106,7 @@ fun LopNavHost(startRoute: String? = null) {
                         onOpenMonthly = { type, ym ->
                             navController.navigate(Routes.monthly(type, ym))
                         },
+                        hazeState = hazeState,
                     )
                 }
 
@@ -169,6 +171,7 @@ fun LopNavHost(startRoute: String? = null) {
                     MonthlyTransactionsScreen(
                         onBack = { navController.popBackStack() },
                         onOpenTransaction = { navController.navigate(Routes.detail(it)) },
+                        hazeState = hazeState,
                     )
                 }
 
@@ -188,7 +191,8 @@ fun LopNavHost(startRoute: String? = null) {
                 composableAnimated(Routes.SEARCH, NavAnimationType.MAIN) {
                     com.lop.budget.ui.screens.search.SearchScreen(
                         onBack = { navController.popBackStack() },
-                        onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) }
+                        onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
+                        hazeState = hazeState,
                     )
                 }
 
@@ -220,7 +224,8 @@ fun LopNavHost(startRoute: String? = null) {
                     com.lop.budget.ui.screens.accounts.AccountDetailScreen(
                         onBack = { navController.popBackStack() },
                         onEdit = { id -> navController.navigate(Routes.accountEdit(id)) },
-                        onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) }
+                        onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
+                        hazeState = hazeState,
                     )
                 }
 
@@ -328,9 +333,8 @@ fun LopNavHost(startRoute: String? = null) {
                             brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                                 colors = listOf(
                                     androidx.compose.ui.graphics.Color.Transparent,
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.4f),
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
-                                    MaterialTheme.colorScheme.background,
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.2f),
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
                                 )
                             )
                         )

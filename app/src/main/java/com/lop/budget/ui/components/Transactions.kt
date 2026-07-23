@@ -28,6 +28,7 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
+import dev.chrisbanes.haze.HazeState
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -43,7 +44,9 @@ fun LazyListScope.transactionDayGroups(
     onMaterializeAndOpen: (Long, Long) -> Unit,
     onTogglePaid: (Long, TransactionStatus) -> Unit,
     onDeleteRequest: (TransactionWithRelations) -> Unit,
-    onDeleteSimple: (Long) -> Unit
+    onPreviewTransaction: (TransactionWithRelations) -> Unit,
+    onDeleteSimple: (Long) -> Unit,
+    hazeState: HazeState? = null
 ) {
     dayGroups.forEach { day ->
         item(key = "day_header_${day.date}", contentType = "day_header") {
@@ -90,7 +93,9 @@ fun LazyListScope.transactionDayGroups(
                     onMaterializeAndOpen = onMaterializeAndOpen,
                     onTogglePaid = onTogglePaid,
                     onDeleteRequest = onDeleteRequest,
-                    onDeleteSimple = onDeleteSimple
+                    onPreviewTransaction = onPreviewTransaction,
+                    onDeleteSimple = onDeleteSimple,
+                    hazeState = hazeState
                 )
             }
         }
@@ -105,7 +110,9 @@ fun TransactionRow(
     onMaterializeAndOpen: (Long, Long) -> Unit,
     onTogglePaid: (Long, TransactionStatus) -> Unit,
     onDeleteRequest: (TransactionWithRelations) -> Unit,
-    onDeleteSimple: (Long) -> Unit
+    onPreviewTransaction: (TransactionWithRelations) -> Unit,
+    onDeleteSimple: (Long) -> Unit,
+    hazeState: HazeState? = null
 ) {
     val ext = LopTheme.extended
     val isIncome = tx.transaction.type == TransactionType.INCOME
@@ -113,25 +120,6 @@ fun TransactionRow(
     val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
     val isPaid = tx.transaction.status == TransactionStatus.PAID
     
-    var showPreview by remember { mutableStateOf(false) }
-
-    if (showPreview) {
-        TransactionPreviewPopup(
-            tx = tx,
-            currency = currency,
-            onDismiss = { showPreview = false },
-            onEdit = {
-                if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
-                else tx.transaction.seriesId?.let { onMaterializeAndOpen(it.toLong(), tx.transaction.seriesDate!!) }
-            },
-            onDelete = {
-                if (tx.transaction.seriesId != null) onDeleteRequest(tx)
-                else onDeleteSimple(tx.transaction.id)
-            },
-            onTogglePaid = { onTogglePaid(tx.transaction.id, tx.transaction.status) }
-        )
-    }
-
     SwipeableTransactionRow(
         isPaid = isPaid,
         onTogglePaid = { onTogglePaid(tx.transaction.id, tx.transaction.status) },
@@ -151,7 +139,7 @@ fun TransactionRow(
                         if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
                         else tx.transaction.seriesId?.let { onMaterializeAndOpen(it.toLong(), tx.transaction.seriesDate!!) }
                     },
-                    onLongClick = { showPreview = true }
+                    onLongClick = { onPreviewTransaction(tx) }
                 )
                 .graphicsLayer {
                     alpha = if (isPaid) 0.5f else 1f
