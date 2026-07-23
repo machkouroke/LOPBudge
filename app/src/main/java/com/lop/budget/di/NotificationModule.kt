@@ -6,6 +6,7 @@ import com.lop.budget.notifications.MLKitEntityClassifier
 import com.lop.budget.notifications.NotificationClassifier
 import com.lop.budget.notifications.SmartCategorizer
 import com.lop.budget.notifications.QwenLocalCategorizer
+import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.SettingsRepository
 import dagger.Module
 import dagger.Provides
@@ -39,6 +40,14 @@ object NotificationModule {
                 return hResult
             }
         }
+    }
+
+    @Provides
+    @Singleton
+    fun providePaymentNotificationParser(
+        classifier: NotificationClassifier
+    ): com.lop.budget.notifications.PaymentNotificationParser {
+        return com.lop.budget.notifications.PaymentNotificationParser(classifier)
     }
 
     @Provides

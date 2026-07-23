@@ -31,6 +31,7 @@ data class DetectedTransactionProposalEntity(
     /** pending | confirmed | ignored | uncertain */
     val status: String = STATUS_PENDING,
     val confidenceScore: Float = 1.0f,
+    val suggestedCategoryId: Long? = null,
     val createdTransactionId: Long? = null,
 ) {
     companion object {

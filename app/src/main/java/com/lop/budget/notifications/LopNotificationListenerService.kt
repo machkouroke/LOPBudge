@@ -13,6 +13,7 @@ import com.lop.budget.R
 import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.ui.navigation.Routes
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.EntryPoint
@@ -21,6 +22,7 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -36,6 +38,8 @@ class LopNotificationListenerService : NotificationListenerService() {
         fun settingsRepository(): SettingsRepository
         fun notificationDetectionRepository(): NotificationDetectionRepository
         fun paymentNotificationParser(): PaymentNotificationParser
+        fun smartCategorizer(): SmartCategorizer
+        fun budgetRepository(): BudgetRepository
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -43,6 +47,8 @@ class LopNotificationListenerService : NotificationListenerService() {
         val settings = ep.settingsRepository()
         val repo = ep.notificationDetectionRepository()
         val parser = ep.paymentNotificationParser()
+        val categorizer = ep.smartCategorizer()
+        val budget = ep.budgetRepository()
 
         scope.launch {
             if (!settings.isNotificationDetectionEnabledOnce()) return@launch
@@ -58,6 +64,16 @@ class LopNotificationListenerService : NotificationListenerService() {
                 else -> return@launch // Déjà filtré par le parser normalement
             }
 
+            // Catégorisation intelligente (IA)
+            var suggestedCatId: Long? = null
+            if (settings.useLocalLlm.first()) {
+                val availableCats = budget.observeCategories().first().map { it.name }
+                val suggestedName = categorizer.suggestCategory(parsed.label, availableCats)
+                if (suggestedName != null) {
+                    suggestedCatId = budget.observeCategories().first().find { it.name == suggestedName }?.id
+                }
+            }
+
             val proposal = DetectedTransactionProposalEntity(
                 amount = parsed.amount,
                 currency = parsed.currency,
@@ -68,7 +84,8 @@ class LopNotificationListenerService : NotificationListenerService() {
                 sourcePackage = pkg,
                 dedupeKey = "${pkg}|${parsed.amount}|${parsed.currency ?: ""}|${parsed.normalizedText}",
                 status = status,
-                confidenceScore = parsed.classification.confidence
+                confidenceScore = parsed.classification.confidence,
+                suggestedCategoryId = suggestedCatId
             )
 
             // Anti-doublon : fenêtre courte (2 minutes)

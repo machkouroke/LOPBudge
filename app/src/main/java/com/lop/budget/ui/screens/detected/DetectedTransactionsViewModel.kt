@@ -29,11 +29,13 @@ class DetectedTransactionsViewModel @Inject constructor(
     fun ignore(id: Long) = viewModelScope.launch { detectionRepo.ignore(id) }
 
     /**
-     * MVP : confirme une proposition en créant une transaction PLANNED (modifiable ensuite).
+     * MVP : confirme une proposition en créeant une transaction PLANNED (modifiable ensuite).
      */
     fun accept(proposal: DetectedTransactionProposalEntity, onOpenEdit: (Long) -> Unit) {
         viewModelScope.launch {
             val defaultCatId = budgetRepo.getDefaultExpenseCategoryId()
+            val categoryId = proposal.suggestedCategoryId ?: defaultCatId
+            
             val tx = TransactionEntity(
                 title = proposal.label.ifBlank { "Transaction" },
                 amount = proposal.amount,
@@ -41,7 +43,7 @@ class DetectedTransactionsViewModel @Inject constructor(
                 status = TransactionStatus.PLANNED,
                 date = proposal.detectedAt,
                 accountId = 1L, // TODO MVP: choisir un compte par défaut
-                categoryId = defaultCatId,
+                categoryId = categoryId,
                 note = "Détecté via ${proposal.sourcePackage}",
             )
             val id = budgetRepo.saveTransaction(tx)
