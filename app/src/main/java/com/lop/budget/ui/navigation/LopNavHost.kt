@@ -65,8 +65,12 @@ fun LopNavHost(startRoute: String? = null) {
 
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route?.substringBefore("/") ?: Routes.HOME
-    
-    var globalPreviewTx by remember { mutableStateOf<com.lop.budget.data.local.entity.TransactionWithRelations?>(null) }
+
+    var globalPreviewTx by remember {
+        mutableStateOf<com.lop.budget.data.local.entity.TransactionWithRelations?>(
+            null
+        )
+    }
     var globalCurrency by remember { mutableStateOf("EUR") }
 
     val showBar =
@@ -89,17 +93,29 @@ fun LopNavHost(startRoute: String? = null) {
                 NavHost(
                     navController = navController,
                     startDestination = Routes.HOME,
-                    enterTransition = { 
-                        NavAnimations.getGlobalEnterTransition(initialState.destination.route, targetState.destination.route)(this)
+                    enterTransition = {
+                        NavAnimations.getGlobalEnterTransition(
+                            initialState.destination.route,
+                            targetState.destination.route
+                        )(this)
                     },
-                    exitTransition = { 
-                        NavAnimations.getGlobalExitTransition(initialState.destination.route, targetState.destination.route)(this)
+                    exitTransition = {
+                        NavAnimations.getGlobalExitTransition(
+                            initialState.destination.route,
+                            targetState.destination.route
+                        )(this)
                     },
-                    popEnterTransition = { 
-                        NavAnimations.getGlobalEnterTransition(initialState.destination.route, targetState.destination.route)(this)
+                    popEnterTransition = {
+                        NavAnimations.getGlobalEnterTransition(
+                            initialState.destination.route,
+                            targetState.destination.route
+                        )(this)
                     },
-                    popExitTransition = { 
-                        NavAnimations.getGlobalExitTransition(initialState.destination.route, targetState.destination.route)(this)
+                    popExitTransition = {
+                        NavAnimations.getGlobalExitTransition(
+                            initialState.destination.route,
+                            targetState.destination.route
+                        )(this)
                     },
                 ) {
                     composable(Routes.HOME) {
@@ -111,7 +127,7 @@ fun LopNavHost(startRoute: String? = null) {
                             onOpenMonthly = { type, ym ->
                                 navController.navigate(Routes.monthly(type, ym))
                             },
-                            onPreviewTransaction = { tx, cur -> 
+                            onPreviewTransaction = { tx, cur ->
                                 globalPreviewTx = tx
                                 globalCurrency = cur
                             },
@@ -169,7 +185,7 @@ fun LopNavHost(startRoute: String? = null) {
                         )
                     }
 
-                        composableAnimated(
+                    composableAnimated(
                         Routes.MONTHLY,
                         NavAnimationType.SECONDARY,
                         arguments = listOf(
@@ -180,7 +196,7 @@ fun LopNavHost(startRoute: String? = null) {
                         MonthlyTransactionsScreen(
                             onBack = { navController.popBackStack() },
                             onOpenTransaction = { navController.navigate(Routes.detail(it)) },
-                            onPreviewTransaction = { tx, cur -> 
+                            onPreviewTransaction = { tx, cur ->
                                 globalPreviewTx = tx
                                 globalCurrency = cur
                             },
@@ -205,7 +221,7 @@ fun LopNavHost(startRoute: String? = null) {
                         com.lop.budget.ui.screens.search.SearchScreen(
                             onBack = { navController.popBackStack() },
                             onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
-                            onPreviewTransaction = { tx, cur -> 
+                            onPreviewTransaction = { tx, cur ->
                                 globalPreviewTx = tx
                                 globalCurrency = cur
                             },
@@ -242,7 +258,7 @@ fun LopNavHost(startRoute: String? = null) {
                             onBack = { navController.popBackStack() },
                             onEdit = { id -> navController.navigate(Routes.accountEdit(id)) },
                             onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
-                            onPreviewTransaction = { tx, cur -> 
+                            onPreviewTransaction = { tx, cur ->
                                 globalPreviewTx = tx
                                 globalCurrency = cur
                             },
@@ -254,7 +270,13 @@ fun LopNavHost(startRoute: String? = null) {
                         AccountsManageScreen(
                             onBack = { navController.popBackStack() },
                             onAddAccount = { navController.navigate(Routes.ACCOUNT_ADD) },
-                            onEditAccount = { id: Long -> navController.navigate(Routes.accountEdit(id)) }
+                            onEditAccount = { id: Long ->
+                                navController.navigate(
+                                    Routes.accountEdit(
+                                        id
+                                    )
+                                )
+                            }
                         )
                     }
 
@@ -286,7 +308,7 @@ fun LopNavHost(startRoute: String? = null) {
                         NavAnimationType.MAIN,
                         arguments = listOf(
                             navArgument("id") { type = NavType.LongType },
-                            navArgument("scope") { 
+                            navArgument("scope") {
                                 type = NavType.StringType
                                 nullable = true
                                 defaultValue = null
@@ -312,7 +334,7 @@ fun LopNavHost(startRoute: String? = null) {
                         TransactionDetailScreen(
                             transactionId = id,
                             onBack = { navController.popBackStack() },
-                            onEdit = { txId, scope, date -> 
+                            onEdit = { txId, scope, date ->
                                 navController.navigate(Routes.edit(txId, scope, date))
                             }
                         )
@@ -355,8 +377,9 @@ fun LopNavHost(startRoute: String? = null) {
                             brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                                 colors = listOf(
                                     androidx.compose.ui.graphics.Color.Transparent,
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.2f),
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.4f),
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
+                                    MaterialTheme.colorScheme.background,
                                 )
                             )
                         )
