@@ -107,6 +107,9 @@ dependencies {
     // Image loading
     implementation("io.coil-kt:coil-compose:2.7.0")
 
+    // MediaPipe GenAI (Local LLM)
+    implementation("com.google.mediapipe:tasks-genai:0.10.35")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 

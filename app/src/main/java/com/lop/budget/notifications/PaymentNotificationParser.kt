@@ -5,12 +5,17 @@ import android.service.notification.StatusBarNotification
 import com.lop.budget.R
 import java.text.Normalizer
 import java.util.Locale
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Parseur testable : extrait un montant + label depuis le texte de notification.
  * MVP : heuristiques simples (tolérantes).
  */
-object PaymentNotificationParser {
+@Singleton
+class PaymentNotificationParser @Inject constructor(
+    private val classifier: NotificationClassifier
+) {
 
     data class ParsedPayment(
         val amount: Double,
@@ -27,9 +32,7 @@ object PaymentNotificationParser {
     // Pattern marchand simple (ex: "chez Starbucks", "à McDonald's")
     private val merchantRegex = Regex("(?:chez|à|at|from)\\s+([^•\\n,]+)", RegexOption.IGNORE_CASE)
 
-    private val classifier: NotificationClassifier = HeuristicNotificationClassifier()
-
-    fun parse(sbn: StatusBarNotification, context: Context): ParsedPayment? {
+    suspend fun parse(sbn: StatusBarNotification, context: Context): ParsedPayment? {
         val n = sbn.notification
         val extras = n.extras
         val title = extras.getCharSequence("android.title")?.toString().orEmpty()

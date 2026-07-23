@@ -160,6 +160,28 @@ fun SettingsScreen(
                         )
                     }
 
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "IA Locale (Gemma 2b)",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                "Améliore la détection des transactions complexes (Bêta). Nécessite ~1.5 Go de stockage.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = state.useLocalLlm,
+                            onCheckedChange = vm::setUseLocalLlm,
+                        )
+                    }
+
                     Spacer(Modifier.height(10.dp))
                     Button(
                         onClick = {

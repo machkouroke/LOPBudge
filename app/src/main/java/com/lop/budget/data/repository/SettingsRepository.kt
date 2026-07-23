@@ -29,6 +29,7 @@ class SettingsRepository @Inject constructor(
 
         // Notifications
         val NOTIF_DETECTION = stringPreferencesKey("notif_tx_detection")
+        val USE_LOCAL_LLM = stringPreferencesKey("use_local_llm")
 
         // UX helpers
         val LAST_ACCOUNT_ID = stringPreferencesKey("last_account_id")
@@ -44,6 +45,9 @@ class SettingsRepository @Inject constructor(
     val notificationDetectionEnabled: Flow<Boolean> =
         context.dataStore.data.map { (it[Keys.NOTIF_DETECTION] ?: "false").toBoolean() }
 
+    val useLocalLlm: Flow<Boolean> =
+        context.dataStore.data.map { (it[Keys.USE_LOCAL_LLM] ?: "false").toBoolean() }
+
     /** Dernier compte utilisé (pour pré-sélection à l'ajout). */
     val lastAccountId: Flow<Long?> = context.dataStore.data.map {
         it[Keys.LAST_ACCOUNT_ID]?.toLongOrNull()
@@ -56,6 +60,9 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setNotificationDetectionEnabled(enabled: Boolean) =
         context.dataStore.edit { it[Keys.NOTIF_DETECTION] = enabled.toString() }
+
+    suspend fun setUseLocalLlm(enabled: Boolean) =
+        context.dataStore.edit { it[Keys.USE_LOCAL_LLM] = enabled.toString() }
 
     suspend fun setLastAccountId(id: Long?) = context.dataStore.edit {
         if (id == null) it.remove(Keys.LAST_ACCOUNT_ID) else it[Keys.LAST_ACCOUNT_ID] = id.toString()

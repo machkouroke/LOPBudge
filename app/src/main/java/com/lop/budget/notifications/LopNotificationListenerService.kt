@@ -35,12 +35,14 @@ class LopNotificationListenerService : NotificationListenerService() {
     interface ServiceEntryPoint {
         fun settingsRepository(): SettingsRepository
         fun notificationDetectionRepository(): NotificationDetectionRepository
+        fun paymentNotificationParser(): PaymentNotificationParser
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val ep = EntryPointAccessors.fromApplication(applicationContext, ServiceEntryPoint::class.java)
         val settings = ep.settingsRepository()
         val repo = ep.notificationDetectionRepository()
+        val parser = ep.paymentNotificationParser()
 
         scope.launch {
             if (!settings.isNotificationDetectionEnabledOnce()) return@launch
@@ -48,7 +50,7 @@ class LopNotificationListenerService : NotificationListenerService() {
             val pkg = sbn.packageName
             if (!settings.isAllowedNotificationSource(pkg)) return@launch
 
-            val parsed = PaymentNotificationParser.parse(sbn, applicationContext) ?: return@launch
+            val parsed = parser.parse(sbn, applicationContext) ?: return@launch
 
             val status = when (parsed.classification.status) {
                 ClassificationResult.Status.TRANSACTION -> DetectedTransactionProposalEntity.STATUS_PENDING

@@ -22,7 +22,7 @@ data class ClassificationResult(
  * Permet d'interchanger l'implémentation (Heuristiques, ML, LLM).
  */
 interface NotificationClassifier {
-    fun classify(text: String): ClassificationResult
+    suspend fun classify(text: String): ClassificationResult
 }
 
 /**
@@ -41,7 +41,7 @@ class HeuristicNotificationClassifier : NotificationClassifier {
         "off", "save", "balance", "available", "gift", "discover", "limit"
     )
 
-    override fun classify(text: String): ClassificationResult {
+    override suspend fun classify(text: String): ClassificationResult {
         val lowerText = text.lowercase(Locale.ROOT)
         
         var score = 0f

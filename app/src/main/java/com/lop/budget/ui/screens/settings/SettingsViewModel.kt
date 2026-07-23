@@ -17,6 +17,7 @@ data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val notificationDetectionEnabled: Boolean = false,
+    val useLocalLlm: Boolean = false,
 )
 
 @HiltViewModel
@@ -30,8 +31,16 @@ class SettingsViewModel @Inject constructor(
         settings.themeMode,
         settings.dynamicColor,
         settings.notificationDetectionEnabled,
-    ) { currency, key, theme, dynamic, notifEnabled ->
-        SettingsUiState(currency, key, theme, dynamic, notifEnabled)
+        settings.useLocalLlm,
+    ) { args ->
+        SettingsUiState(
+            currency = args[0] as String,
+            geminiKey = args[1] as String,
+            themeMode = args[2] as ThemeMode,
+            dynamicColor = args[3] as Boolean,
+            notificationDetectionEnabled = args[4] as Boolean,
+            useLocalLlm = args[5] as Boolean,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsUiState())
 
     fun setCurrency(v: String) = viewModelScope.launch { settings.setCurrency(v) }
@@ -41,4 +50,7 @@ class SettingsViewModel @Inject constructor(
 
     fun setNotificationDetectionEnabled(b: Boolean) =
         viewModelScope.launch { settings.setNotificationDetectionEnabled(b) }
+
+    fun setUseLocalLlm(b: Boolean) =
+        viewModelScope.launch { settings.setUseLocalLlm(b) }
 }
