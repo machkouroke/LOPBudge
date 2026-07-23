@@ -3,9 +3,12 @@ package com.lop.budget.ui.screens.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.notifications.ModelDownloadManager
 import com.lop.budget.ui.theme.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -18,11 +21,14 @@ data class SettingsUiState(
     val dynamicColor: Boolean = true,
     val notificationDetectionEnabled: Boolean = false,
     val useLocalLlm: Boolean = false,
+    val isModelInstalled: Boolean = false,
+    val downloadStatus: ModelDownloadManager.DownloadStatus = ModelDownloadManager.DownloadStatus.Idle,
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settings: SettingsRepository,
+    private val downloadManager: ModelDownloadManager,
 ) : ViewModel() {
 
     val uiState = combine(
@@ -40,8 +46,34 @@ class SettingsViewModel @Inject constructor(
             dynamicColor = args[3] as Boolean,
             notificationDetectionEnabled = args[4] as Boolean,
             useLocalLlm = args[5] as Boolean,
+            isModelInstalled = downloadManager.isModelInstalled()
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsUiState())
+
+    private val _downloadStatus = MutableStateFlow<ModelDownloadManager.DownloadStatus>(ModelDownloadManager.DownloadStatus.Idle)
+    val downloadStatus = _downloadStatus.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            settings.llmDownloadId.collect { id ->
+                if (id != null) {
+                    downloadManager.getDownloadProgress(id).collect { status ->
+                        _downloadStatus.value = status
+                        if (status is ModelDownloadManager.DownloadStatus.Success) {
+                            settings.setLlmDownloadId(null)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun startModelDownload() {
+        viewModelScope.launch {
+            val id = downloadManager.startDownload()
+            settings.setLlmDownloadId(id)
+        }
+    }
 
     fun setCurrency(v: String) = viewModelScope.launch { settings.setCurrency(v) }
     fun setGeminiKey(v: String) = viewModelScope.launch { settings.setGeminiKey(v) }

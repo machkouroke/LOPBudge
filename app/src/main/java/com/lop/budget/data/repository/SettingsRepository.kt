@@ -30,6 +30,7 @@ class SettingsRepository @Inject constructor(
         // Notifications
         val NOTIF_DETECTION = stringPreferencesKey("notif_tx_detection")
         val USE_LOCAL_LLM = stringPreferencesKey("use_local_llm")
+        val LLM_DOWNLOAD_ID = stringPreferencesKey("llm_download_id")
 
         // UX helpers
         val LAST_ACCOUNT_ID = stringPreferencesKey("last_account_id")
@@ -48,6 +49,9 @@ class SettingsRepository @Inject constructor(
     val useLocalLlm: Flow<Boolean> =
         context.dataStore.data.map { (it[Keys.USE_LOCAL_LLM] ?: "false").toBoolean() }
 
+    val llmDownloadId: Flow<Long?> =
+        context.dataStore.data.map { it[Keys.LLM_DOWNLOAD_ID]?.toLongOrNull() }
+
     /** Dernier compte utilisé (pour pré-sélection à l'ajout). */
     val lastAccountId: Flow<Long?> = context.dataStore.data.map {
         it[Keys.LAST_ACCOUNT_ID]?.toLongOrNull()
@@ -63,6 +67,10 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setUseLocalLlm(enabled: Boolean) =
         context.dataStore.edit { it[Keys.USE_LOCAL_LLM] = enabled.toString() }
+
+    suspend fun setLlmDownloadId(id: Long?) = context.dataStore.edit {
+        if (id == null) it.remove(Keys.LLM_DOWNLOAD_ID) else it[Keys.LLM_DOWNLOAD_ID] = id.toString()
+    }
 
     suspend fun setLastAccountId(id: Long?) = context.dataStore.edit {
         if (id == null) it.remove(Keys.LAST_ACCOUNT_ID) else it[Keys.LAST_ACCOUNT_ID] = id.toString()

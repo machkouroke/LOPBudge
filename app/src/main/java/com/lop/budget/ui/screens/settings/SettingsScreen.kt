@@ -5,6 +5,7 @@ import android.provider.Settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
@@ -13,12 +14,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.notifications.ModelDownloadManager
 import com.lop.budget.ui.components.*
 import com.lop.budget.ui.theme.ThemeMode
 
@@ -32,7 +35,19 @@ fun SettingsScreen(
     vm: SettingsViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val downloadStatus by vm.downloadStatus.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    var showDownloadDialog by remember { mutableStateOf(false) }
+
+    if (showDownloadDialog) {
+        ModelDownloadDialog(
+            status = downloadStatus,
+            isInstalled = state.isModelInstalled,
+            onStartDownload = vm::startModelDownload,
+            onDismiss = { showDownloadDialog = false }
+        )
+    }
 
     LopScreenScaffold(
         title = stringResource(R.string.settings_title),
@@ -178,8 +193,39 @@ fun SettingsScreen(
                         }
                         Switch(
                             checked = state.useLocalLlm,
-                            onCheckedChange = vm::setUseLocalLlm,
+                            onCheckedChange = { 
+                                if (it && !state.isModelInstalled) {
+                                    showDownloadDialog = true
+                                } else {
+                                    vm.setUseLocalLlm(it)
+                                }
+                            },
                         )
+                    }
+
+                    if (state.isModelInstalled) {
+                        Text(
+                            "Modèle installé ✅",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = com.lop.budget.ui.theme.IncomeGreen
+                        )
+                    } else if (downloadStatus is ModelDownloadManager.DownloadStatus.Downloading) {
+                        val progress = (downloadStatus as ModelDownloadManager.DownloadStatus.Downloading).progress
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            LinearProgressIndicator(
+                                progress = progress / 100f,
+                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape)
+                            )
+                            Text(
+                                "Téléchargement : $progress%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    } else {
+                        TextButton(onClick = { showDownloadDialog = true }) {
+                            Text("Gérer le modèle (1.5 Go)")
+                        }
                     }
 
                     Spacer(Modifier.height(10.dp))
