@@ -60,6 +60,7 @@ class LopNotificationListenerService : NotificationListenerService() {
                 amount = parsed.amount,
                 currency = parsed.currency,
                 label = parsed.label,
+                fullText = parsed.fullText,
                 detectedAt = System.currentTimeMillis(),
                 sourcePackage = pkg,
                 dedupeKey = "${pkg}|${parsed.amount}|${parsed.currency ?: ""}|${parsed.normalizedText}",

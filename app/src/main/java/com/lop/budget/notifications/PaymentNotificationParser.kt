@@ -16,6 +16,7 @@ object PaymentNotificationParser {
         val amount: Double,
         val currency: String?,
         val label: String,
+        val fullText: String,
         val normalizedText: String,
         val classification: ClassificationResult,
     )
@@ -72,6 +73,7 @@ object PaymentNotificationParser {
             amount = kotlin.math.abs(amount),
             currency = currency,
             label = extractedLabel,
+            fullText = raw,
             normalizedText = normalizeForDedupe(raw),
             classification = classification,
         )

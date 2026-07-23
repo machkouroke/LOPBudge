@@ -85,11 +85,11 @@ fun DetectedTransactionsScreen(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalAlignment = Alignment.Top,
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                             SourceIcon(p.sourcePackage)
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(16.dp))
                             Column {
                                 Text(p.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                                 if (p.status == DetectedTransactionProposalEntity.STATUS_UNCERTAIN) {
@@ -119,6 +119,7 @@ fun DetectedTransactionsScreen(
                                 }
                             }
                         }
+                        Spacer(Modifier.width(16.dp))
                         Text(
                             Format.money(p.amount, p.currency ?: "EUR"),
                             style = MaterialTheme.typography.titleMedium,
@@ -127,7 +128,7 @@ fun DetectedTransactionsScreen(
                         )
                     }
                     Text(
-                        stringResource(R.string.detected_source, p.sourcePackage),
+                        p.fullText,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

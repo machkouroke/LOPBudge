@@ -32,7 +32,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         DebtEntity::class,
         DetectedTransactionProposalEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -48,6 +48,12 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        val MIGRATION_8_9 = object : androidx.room.migration.Migration(8, 9) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE detected_transaction_proposals ADD COLUMN fullText TEXT NOT NULL DEFAULT ''")
+            }
+        }
 
         val MIGRATION_7_8 = object : androidx.room.migration.Migration(7, 8) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {

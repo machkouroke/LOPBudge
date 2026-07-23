@@ -22,6 +22,7 @@ data class DetectedTransactionProposalEntity(
     val amount: Double,
     val currency: String?,
     val label: String,
+    val fullText: String = "",
     val detectedAt: Long,
     val sourcePackage: String,
     /** Clé normalisée utilisée pour l'anti-doublon (local). */
