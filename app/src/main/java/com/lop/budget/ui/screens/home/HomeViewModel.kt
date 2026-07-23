@@ -52,6 +52,7 @@ data class HomeUiState(
 
     // Notifications proposals
     val detectedCount: Int = 0,
+    val notificationDetectionEnabled: Boolean = false,
 ) {
     val budgetRemaining: Double get() = totalBudget - monthExpense
     val budgetPercentage: Float get() = if (totalBudget > 0) (monthExpense / totalBudget).toFloat() else 0f
@@ -300,7 +301,8 @@ class HomeViewModel @Inject constructor(
             txVersions,
             repo.observeAccounts(),
             repo.observeAccountBalances(),
-            detectedCount
+            detectedCount,
+            settings.notificationDetectionEnabled
         ) { args ->
             val data = args[0] as List<*>
             val currency = args[1] as String
@@ -312,6 +314,7 @@ class HomeViewModel @Inject constructor(
             val accounts = args[7] as List<AccountEntity>
             val balances = args[8] as Map<Long, Double>
             val detected = args[9] as Int
+            val detectionEnabled = args[10] as Boolean
 
             @Suppress("UNCHECKED_CAST")
             val allTxs = data[0] as List<TransactionWithRelations>
@@ -388,7 +391,8 @@ class HomeViewModel @Inject constructor(
                 dayGroups = dayGroups,
                 accounts = accountBalances.sortedByDescending { it.balance }.take(3),
                 txVersions = versions,
-                detectedCount = args[9] as Int
+                detectedCount = detected,
+                notificationDetectionEnabled = detectionEnabled
             )
         }
             .flowOn(Dispatchers.Default)

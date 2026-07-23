@@ -4,7 +4,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
-import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationCompat
@@ -51,6 +50,12 @@ class LopNotificationListenerService : NotificationListenerService() {
 
             val parsed = PaymentNotificationParser.parse(sbn, applicationContext) ?: return@launch
 
+            val status = when (parsed.classification.status) {
+                ClassificationResult.Status.TRANSACTION -> DetectedTransactionProposalEntity.STATUS_PENDING
+                ClassificationResult.Status.UNCERTAIN -> DetectedTransactionProposalEntity.STATUS_UNCERTAIN
+                else -> return@launch // Déjà filtré par le parser normalement
+            }
+
             val proposal = DetectedTransactionProposalEntity(
                 amount = parsed.amount,
                 currency = parsed.currency,
@@ -58,11 +63,13 @@ class LopNotificationListenerService : NotificationListenerService() {
                 detectedAt = System.currentTimeMillis(),
                 sourcePackage = pkg,
                 dedupeKey = "${pkg}|${parsed.amount}|${parsed.currency ?: ""}|${parsed.normalizedText}",
+                status = status,
+                confidenceScore = parsed.classification.confidence
             )
 
             // Anti-doublon : fenêtre courte (2 minutes)
             val inserted = repo.upsertIfNotDuplicate(proposal, dedupeWindowMs = 2 * 60 * 1000L)
-            if (inserted > 0) {
+            if (inserted > 0 && status == DetectedTransactionProposalEntity.STATUS_PENDING) {
                 postDetectedNotification(proposal)
             }
         }
@@ -80,7 +87,7 @@ class LopNotificationListenerService : NotificationListenerService() {
             applicationContext,
             1001,
             intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
         val text = "${p.label} • ${p.amount} ${p.currency ?: ""}".trim()
@@ -94,11 +101,14 @@ class LopNotificationListenerService : NotificationListenerService() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
 
-        NotificationManagerCompat.from(applicationContext).notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notif)
+        try {
+            NotificationManagerCompat.from(applicationContext).notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notif)
+        } catch (e: SecurityException) {
+            // Handle missing POST_NOTIFICATIONS on Android 13+
+        }
     }
 
     private fun ensureChannel() {
-        if (Build.VERSION.SDK_INT < 26) return
         val mgr = getSystemService(NotificationManager::class.java)
         val existing = mgr.getNotificationChannel(CHANNEL_ID)
         if (existing != null) return

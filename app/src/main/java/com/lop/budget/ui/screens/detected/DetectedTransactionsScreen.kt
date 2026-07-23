@@ -1,20 +1,25 @@
 package com.lop.budget.ui.screens.detected
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,12 +27,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.lop.budget.R
+import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -74,7 +87,38 @@ fun DetectedTransactionsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(p.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            SourceIcon(p.sourcePackage)
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(p.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                if (p.status == DetectedTransactionProposalEntity.STATUS_UNCERTAIN) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(MaterialTheme.shapes.extraSmall)
+                                            .background(MaterialTheme.colorScheme.errorContainer)
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Filled.Warning,
+                                                null,
+                                                modifier = Modifier.size(10.dp),
+                                                tint = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Text(
+                                                stringResource(R.string.detected_uncertain_badge),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         Text(
                             Format.money(p.amount, p.currency ?: "EUR"),
                             style = MaterialTheme.typography.titleMedium,
@@ -130,6 +174,43 @@ fun DetectedTransactionsScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SourceIcon(pkg: String) {
+    val logoUrl = when {
+        pkg.contains("walletnfcrel") || pkg.contains("google.android.apps.wallet") -> "https://logos.hunter.io/google.com"
+        pkg.contains("samsung") && pkg.contains("wallet") -> "https://logos.hunter.io/samsung.com"
+        else -> null
+    }
+
+    Surface(
+        modifier = Modifier.size(40.dp),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp
+    ) {
+        if (logoUrl != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(logoUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                modifier = Modifier.padding(8.dp).fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Filled.NotificationsActive,
+                    null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

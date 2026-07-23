@@ -52,12 +52,16 @@ import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -94,6 +98,31 @@ fun HomeScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
+
+    // Vérification de la permission au lancement
+    LaunchedEffect(state.notificationDetectionEnabled) {
+        if (state.notificationDetectionEnabled) {
+            val isListenerEnabled = android.provider.Settings.Secure.getString(
+                context.contentResolver,
+                "enabled_notification_listeners"
+            )?.contains(context.packageName) == true
+            
+            if (!isListenerEnabled) {
+                val result = snackbarHostState.showSnackbar(
+                    message = context.getString(R.string.notif_listener_missing_msg),
+                    actionLabel = context.getString(R.string.notif_listener_missing_action),
+                    duration = androidx.compose.material3.SnackbarDuration.Indefinite
+                )
+                if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                    context.startActivity(
+                        android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }
+            }
+        }
+    }
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
@@ -426,7 +455,7 @@ fun HomeOverlay(
     onSearchClick: () -> Unit,
     onDetectedClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier.background(Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.background.copy(alpha = 0.95f), MaterialTheme.colorScheme.background.copy(alpha = 0.8f), MaterialTheme.colorScheme.background.copy(alpha = 0f)), startY = 0f, endY = 300f)).padding(horizontal = 20.dp, vertical = 16.dp)

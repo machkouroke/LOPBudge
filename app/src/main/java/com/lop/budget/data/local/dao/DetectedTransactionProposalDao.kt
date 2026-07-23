@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface DetectedTransactionProposalDao {
 
-    @Query("SELECT * FROM detected_transaction_proposals WHERE status = 'pending' ORDER BY detectedAt DESC")
+    @Query("SELECT * FROM detected_transaction_proposals WHERE status IN ('pending', 'uncertain') ORDER BY detectedAt DESC")
     fun observePending(): Flow<List<DetectedTransactionProposalEntity>>
 
     @Query("SELECT * FROM detected_transaction_proposals WHERE status = 'pending' ORDER BY detectedAt DESC LIMIT 1")

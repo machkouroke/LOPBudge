@@ -148,6 +148,7 @@
     <string name="detected_source">Source : %1$s</string>
     <string name="detected_accept">Accepter</string>
     <string name="detected_ignore">Refuser</string>
+    <string name="detected_uncertain_badge">À vérifier</string>
 
     <!-- Goals & Debts -->
     <string name="goals_title">Objectifs</string>
@@ -213,6 +214,8 @@
     <string name="undo">Annuler</string>
     <string name="tx_default_title">Transaction</string>
     <string name="payment_detected_default">Paiement détecté</string>
+    <string name="notif_listener_missing_msg">L\'accès aux notifications est désactivé. LOPBudge ne peut pas détecter vos transactions.</string>
+    <string name="notif_listener_missing_action">Activer</string>
 
     <!-- Bottom Bar -->
     <string name="nav_home">Accueil</string>

@@ -17,10 +17,16 @@ object PaymentNotificationParser {
         val currency: String?,
         val label: String,
         val normalizedText: String,
+        val classification: ClassificationResult,
     )
 
     // Très tolérant : 12,50 € / €12.50 / 12.50 EUR / -12,50 €
     private val amountRegex = Regex("(-?\\d{1,6}(?:[.,]\\d{1,2})?)\\s*([€$]|EUR|USD|GBP)?", RegexOption.IGNORE_CASE)
+    
+    // Pattern marchand simple (ex: "chez Starbucks", "à McDonald's")
+    private val merchantRegex = Regex("(?:chez|à|at|from)\\s+([^•\\n,]+)", RegexOption.IGNORE_CASE)
+
+    private val classifier: NotificationClassifier = HeuristicNotificationClassifier()
 
     fun parse(sbn: StatusBarNotification, context: Context): ParsedPayment? {
         val n = sbn.notification
@@ -36,6 +42,11 @@ object PaymentNotificationParser {
 
         if (raw.isBlank()) return null
 
+        // 1. Classification
+        val classification = classifier.classify(raw)
+        if (classification.status == ClassificationResult.Status.IGNORE) return null
+
+        // 2. Extraction montant
         val m = amountRegex.find(raw) ?: return null
         val amountStr = m.groupValues[1]
         val currencyRaw = m.groupValues.getOrNull(2)?.takeIf { it.isNotBlank() }
@@ -48,13 +59,21 @@ object PaymentNotificationParser {
             else -> null
         }
 
-        val label = buildLabel(title, text, bigText, context)
+        // 3. Extraction Marchand (Information cruciale : le titre de la notification)
+        // Sur Google Wallet/Samsung Wallet, le titre est souvent le nom du marchand (ex: "DR AROUK")
+        val extractedLabel = if (title.isNotBlank() && !isKnownSourceTitle(title)) {
+            title.trim()
+        } else {
+            val merchantMatch = merchantRegex.find(raw)
+            merchantMatch?.groupValues?.get(1)?.trim() ?: buildLabel(title, text, bigText, context)
+        }
 
         return ParsedPayment(
             amount = kotlin.math.abs(amount),
             currency = currency,
-            label = label,
+            label = extractedLabel,
             normalizedText = normalizeForDedupe(raw),
+            classification = classification,
         )
     }
 
@@ -64,6 +83,11 @@ object PaymentNotificationParser {
             .firstOrNull { it.isNotBlank() }
             ?.take(80)
             ?: context.getString(R.string.payment_detected_default)
+    }
+
+    private fun isKnownSourceTitle(title: String): Boolean {
+        val t = title.lowercase(Locale.ROOT)
+        return t.contains("google wallet") || t.contains("samsung wallet") || t.contains("pay")
     }
 
     fun normalizeForDedupe(input: String): String {

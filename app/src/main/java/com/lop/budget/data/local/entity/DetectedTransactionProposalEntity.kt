@@ -26,13 +26,15 @@ data class DetectedTransactionProposalEntity(
     val sourcePackage: String,
     /** Clé normalisée utilisée pour l'anti-doublon (local). */
     val dedupeKey: String,
-    /** pending | confirmed | ignored */
+    /** pending | confirmed | ignored | uncertain */
     val status: String = STATUS_PENDING,
+    val confidenceScore: Float = 1.0f,
     val createdTransactionId: Long? = null,
 ) {
     companion object {
         const val STATUS_PENDING = "pending"
         const val STATUS_CONFIRMED = "confirmed"
         const val STATUS_IGNORED = "ignored"
+        const val STATUS_UNCERTAIN = "uncertain"
     }
 }
