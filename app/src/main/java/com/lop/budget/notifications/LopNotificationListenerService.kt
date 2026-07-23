@@ -105,7 +105,7 @@ class LopNotificationListenerService : NotificationListenerService() {
         try {
             NotificationManagerCompat.from(applicationContext).notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notif)
         } catch (e: SecurityException) {
-            // Handle missing POST_NOTIFICATIONS on Android 13+
+            android.util.Log.e("LopNotifService", "Permission POST_NOTIFICATIONS missing", e)
         }
     }
 

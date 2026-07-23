@@ -269,12 +269,10 @@ fun HomeContent(
         item(key = "budget_summary", contentType = "summary") {
             val monthName = Format.monthYear(state.month).split(" ").first()
             val solde = state.monthIncome - state.monthExpense
-            var targetSolde by rememberSaveable(state.month) { mutableStateOf(0f) }
-            LaunchedEffect(state.month, solde) { targetSolde = solde.toFloat() }
-            val animatedSolde by animateFloatAsState(targetValue = targetSolde, animationSpec = tween(1000), label = "soldeAnimation")
+            
             val soldeColor = when {
-                animatedSolde > 50 -> com.lop.budget.ui.theme.IncomeGreen
-                animatedSolde < -50 -> ExpenseCoral
+                solde > 50 -> com.lop.budget.ui.theme.IncomeGreen
+                solde < -50 -> ExpenseCoral
                 else -> com.lop.budget.ui.theme.CategoryOrange
             }
 
@@ -285,7 +283,7 @@ fun HomeContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(8.dp))
-                Text(Format.money(animatedSolde.toDouble(), state.currency), style = MaterialTheme.typography.displayLarge, fontWeight = FontWeight.Bold, color = soldeColor)
+                Text(Format.money(solde, state.currency), style = MaterialTheme.typography.displayLarge, fontWeight = FontWeight.Bold, color = soldeColor)
                 Spacer(Modifier.height(32.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     StatCard(
