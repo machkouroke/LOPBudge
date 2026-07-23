@@ -36,7 +36,8 @@ import java.util.Locale
 fun MonthlyTransactionsScreen(
     onBack: () -> Unit,
     onOpenTransaction: (Long) -> Unit,
-    snackbarHostState: androidx.compose.material3.SnackbarHostState = remember { androidx.compose.material3.SnackbarHostState() },
+    onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     hazeState: HazeState? = null,
     vm: MonthlyTransactionsViewModel = hiltViewModel(),
 ) {
@@ -53,7 +54,6 @@ fun MonthlyTransactionsScreen(
     }
 
     var showDeleteConfirmForTx by remember { mutableStateOf<TransactionWithRelations?>(null) }
-    var previewTx by remember { mutableStateOf<TransactionWithRelations?>(null) }
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
     val undoMsg = stringResource(R.string.undo)
 
@@ -147,7 +147,7 @@ fun MonthlyTransactionsScreen(
             onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
             onTogglePaid = vm::togglePaid,
             onDeleteRequest = { showDeleteConfirmForTx = it },
-            onPreviewTransaction = { previewTx = it },
+            onPreviewTransaction = { onPreviewTransaction(it, state.currency) },
             onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) },
             hazeState = hazeState
         )
@@ -161,30 +161,6 @@ fun MonthlyTransactionsScreen(
                 )
             }
         }
-    }
-
-    if (previewTx != null) {
-        val tx = previewTx!!
-        TransactionPreviewPopup(
-            tx = tx,
-            currency = state.currency,
-            onDismiss = { previewTx = null },
-            onEdit = {
-                previewTx = null
-                if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
-                else tx.transaction.seriesId?.let { vm.materializeAndOpen(it.toLong(), tx.transaction.seriesDate!!, onOpenTransaction) }
-            },
-            onDelete = {
-                previewTx = null
-                if (tx.transaction.seriesId != null) showDeleteConfirmForTx = tx
-                else vm.deleteWithUndo(tx.transaction.id, snackbarHostState, txDeletedMsg, undoMsg)
-            },
-            onTogglePaid = {
-                previewTx = null
-                vm.togglePaid(tx.transaction.id, tx.transaction.status)
-            },
-            hazeState = hazeState
-        )
     }
 
     if (showDeleteConfirmForTx != null) {

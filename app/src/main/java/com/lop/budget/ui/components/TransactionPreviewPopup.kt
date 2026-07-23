@@ -16,7 +16,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -31,10 +30,9 @@ import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
 
-@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun TransactionPreviewPopup(
     tx: TransactionWithRelations,
@@ -77,10 +75,16 @@ fun TransactionPreviewPopup(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
                 .scale(scale)
-                .hazeEffect(state = hazeState, style = HazeMaterials.regular())
+                .hazeEffect(state = hazeState) {
+                    style = HazeStyle(
+                        blurRadius = 30.dp,
+                        backgroundColor = Color(0xFF1E1E1E).copy(alpha = 0.7f),
+                        tints = listOf(HazeTint(Color.Black.copy(alpha = 0.3f)))
+                    )
+                }
                 .clickableNoRipple { /* stop propagation */ },
             shape = RoundedCornerShape(28.dp),
-            color = Color(0xFF1E1E1E).copy(alpha = 0.7f),
+            color = Color.Transparent, // Surface is transparent, HazeStyle handles the background
             tonalElevation = 8.dp
         ) {
             Column(

@@ -28,7 +28,6 @@ import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.LopScreenScaffold
-import com.lop.budget.ui.components.TransactionPreviewPopup
 import com.lop.budget.ui.components.transactionDayGroups
 import com.lop.budget.util.Format
 import dev.chrisbanes.haze.HazeState
@@ -38,17 +37,16 @@ import dev.chrisbanes.haze.HazeState
 fun SearchScreen(
     onBack: () -> Unit,
     onOpenTransaction: (Long) -> Unit,
+    onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
     hazeState: HazeState? = null,
     vm: SearchViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = androidx.compose.ui.platform.LocalContext.current
     
     var showAccountPicker by remember { mutableStateOf(false) }
     var showCategoryPicker by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var previewTx by remember { mutableStateOf<TransactionWithRelations?>(null) }
 
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
     val undoMsg = stringResource(R.string.undo)
@@ -166,34 +164,11 @@ fun SearchScreen(
                 onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
                 onTogglePaid = vm::togglePaid,
                 onDeleteRequest = { /* Handle recurring delete if needed */ },
-                onPreviewTransaction = { previewTx = it },
+                onPreviewTransaction = { onPreviewTransaction(it, state.currency) },
                 onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) },
                 hazeState = hazeState
             )
         }
-    }
-
-    if (previewTx != null) {
-        val tx = previewTx!!
-        TransactionPreviewPopup(
-            tx = tx,
-            currency = state.currency,
-            onDismiss = { previewTx = null },
-            onEdit = {
-                previewTx = null
-                if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
-                else tx.transaction.seriesId?.let { vm.materializeAndOpen(it.toLong(), tx.transaction.seriesDate!!, onOpenTransaction) }
-            },
-            onDelete = {
-                previewTx = null
-                vm.deleteWithUndo(tx.transaction.id, snackbarHostState, txDeletedMsg, undoMsg)
-            },
-            onTogglePaid = {
-                previewTx = null
-                vm.togglePaid(tx.transaction.id, tx.transaction.status)
-            },
-            hazeState = hazeState
-        )
     }
 
     if (showAccountPicker) {

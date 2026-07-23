@@ -1,12 +1,10 @@
 package com.lop.budget.ui.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,14 +30,13 @@ import com.lop.budget.R
 import com.lop.budget.ui.navigation.Routes
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
 
 /**
  * Barre de navigation type "Pill" flottante, inspirée du Galaxy Store.
  * 3 éléments avec indicateur de pilule sombre et bouton Ajouter séparé.
  */
-@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun FloatingBottomBar(
     current: String,
@@ -49,6 +46,8 @@ fun FloatingBottomBar(
     hazeState: HazeState? = null,
 ) {
     val pillShape = RoundedCornerShape(32.dp)
+    val hazeBackgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+    val hazeTint = HazeTint(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f))
 
     Row(
         modifier = modifier
@@ -70,13 +69,15 @@ fun FloatingBottomBar(
         ) {
             Row(
                 modifier = Modifier
-
-
-//                    .background(MaterialTheme.colorScheme.surfaceContainer, CircleShape)
-                    .hazeEffect(state = hazeState, style = HazeMaterials.regular())
+                    .hazeEffect(state = hazeState) {
+                        style = HazeStyle(
+                            blurRadius = 24.dp,
+                            backgroundColor = hazeBackgroundColor,
+                            tints = listOf(hazeTint)
+                        )
+                    }
                     .padding(horizontal = 8.dp)
-                    .fillMaxSize()
-                ,
+                    .fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
@@ -171,7 +172,5 @@ private fun GalaxyNavItem(
             ),
             maxLines = 1
         )
-
-
     }
 }

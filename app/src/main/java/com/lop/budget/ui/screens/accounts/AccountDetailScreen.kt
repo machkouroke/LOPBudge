@@ -22,7 +22,6 @@ import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.SimpleLineChart
 import com.lop.budget.ui.components.LopScreenScaffold
-import com.lop.budget.ui.components.TransactionPreviewPopup
 import com.lop.budget.ui.components.TransactionRow
 import com.lop.budget.ui.navigation.Routes
 import com.lop.budget.util.Format
@@ -34,6 +33,7 @@ fun AccountDetailScreen(
     onBack: () -> Unit,
     onEdit: (Long) -> Unit,
     onOpenTransaction: (Long) -> Unit,
+    onPreviewTransaction: (com.lop.budget.data.local.entity.TransactionWithRelations, String) -> Unit,
     hazeState: HazeState? = null,
     vm: AccountDetailViewModel = hiltViewModel()
 ) {
@@ -43,8 +43,6 @@ fun AccountDetailScreen(
     
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
     val undoMsg = stringResource(R.string.undo)
-
-    var previewTx by remember { mutableStateOf<com.lop.budget.data.local.entity.TransactionWithRelations?>(null) }
 
     LopScreenScaffold(
         title = "Compte",
@@ -107,7 +105,7 @@ fun AccountDetailScreen(
                         onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
                         onTogglePaid = vm::togglePaid,
                         onDeleteRequest = { vm.deleteWithUndo(it.transaction.id, snackbarHostState, txDeletedMsg, undoMsg) },
-                        onPreviewTransaction = { previewTx = it },
+                        onPreviewTransaction = { onPreviewTransaction(it, state.currency) },
                         onDeleteSimple = { vm.deleteWithUndo(it, snackbarHostState, txDeletedMsg, undoMsg) },
                         hazeState = hazeState
                     )
@@ -124,7 +122,7 @@ fun AccountDetailScreen(
                         onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
                         onTogglePaid = vm::togglePaid,
                         onDeleteRequest = { vm.deleteWithUndo(it.transaction.id, snackbarHostState, txDeletedMsg, undoMsg) },
-                        onPreviewTransaction = { previewTx = it },
+                        onPreviewTransaction = { onPreviewTransaction(it, state.currency) },
                         onDeleteSimple = { vm.deleteWithUndo(it, snackbarHostState, txDeletedMsg, undoMsg) },
                         hazeState = hazeState
                     )
@@ -158,29 +156,6 @@ fun AccountDetailScreen(
                 }
             }
         }
-    }
-
-    if (previewTx != null) {
-        val tx = previewTx!!
-        TransactionPreviewPopup(
-            tx = tx,
-            currency = state.currency,
-            onDismiss = { previewTx = null },
-            onEdit = {
-                previewTx = null
-                if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
-                else tx.transaction.seriesId?.let { vm.materializeAndOpen(it.toLong(), tx.transaction.seriesDate!!, onOpenTransaction) }
-            },
-            onDelete = {
-                previewTx = null
-                vm.deleteWithUndo(tx.transaction.id, snackbarHostState, txDeletedMsg, undoMsg)
-            },
-            onTogglePaid = {
-                previewTx = null
-                vm.togglePaid(tx.transaction.id, tx.transaction.status)
-            },
-            hazeState = hazeState
-        )
     }
 }
 
