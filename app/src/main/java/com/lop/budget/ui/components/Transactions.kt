@@ -178,6 +178,18 @@ fun TransactionRow(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    
+                    if (tx.tags.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            tx.tags.forEach { tag ->
+                                PillTag(
+                                    text = tag.name,
+                                    color = Color(tag.colorArgb).copy(alpha = 0.8f),
+                                )
+                            }
+                        }
+                    }
                 }
                 Text(
                     (if (isIncome) "+" else "−") + Format.money(tx.transaction.amount, currency),
