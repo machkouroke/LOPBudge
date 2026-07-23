@@ -68,25 +68,30 @@ fun TransactionPreviewPopup(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Transparent) // Remove the black veil as requested
+            // Increased blur radius and added a stronger dark tint for better legibility
+            .hazeEffect(state = hazeState) {
+                style = HazeStyle(
+                    blurRadius = 40.dp, // Increased from 15.dp for much stronger blur
+                    backgroundColor = Color.Black.copy(alpha = 0.5f * alpha),
+                    tints = listOf(
+                        HazeTint(Color.Black.copy(alpha = 0.4f)) // Added/Stronger dark tint
+                    ),
+                    noiseFactor = 0.15f // Added a bit of noise for premium frosted look
+                )
+            }
             .clickableNoRipple(onDismiss),
         contentAlignment = Alignment.Center
     ) {
         val popupShape = RoundedCornerShape(28.dp)
         
-        Box(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
                 .scale(scale)
-                .clip(popupShape) // Clip to rounded corners FIRST
-                .hazeEffect(state = hazeState) {
-                    style = HazeStyle(
-                        blurRadius = 30.dp,
-                        backgroundColor = Color(0xFF1E1E1E).copy(alpha = 0.65f),
-                        tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
-                    )
-                }
-                .clickableNoRipple { /* stop propagation */ }
+                .clickableNoRipple { /* stop propagation */ },
+            shape = popupShape,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -113,13 +118,13 @@ fun TransactionPreviewPopup(
                     text = transaction.title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 
                 Text(
                     text = tx.account?.name ?: "",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(Modifier.height(12.dp))
@@ -142,7 +147,7 @@ fun TransactionPreviewPopup(
                             text = transaction.note,
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.8f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }

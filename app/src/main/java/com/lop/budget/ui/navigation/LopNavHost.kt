@@ -86,264 +86,274 @@ fun LopNavHost(startRoute: String? = null) {
             modifier = Modifier
                 .fillMaxSize()
         ) {
+            // SIBLING 1: The background content (Marked as HazeSource)
+            // We apply fillMaxSize() so it covers the status bar area as well
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
                     .hazeSource(state = hazeState)
             ) {
-                NavHost(
-                    navController = navController,
-                    startDestination = Routes.HOME,
-                    enterTransition = {
-                        NavAnimations.getGlobalEnterTransition(
-                            initialState.destination.route,
-                            targetState.destination.route
-                        )(this)
-                    },
-                    exitTransition = {
-                        NavAnimations.getGlobalExitTransition(
-                            initialState.destination.route,
-                            targetState.destination.route
-                        )(this)
-                    },
-                    popEnterTransition = {
-                        NavAnimations.getGlobalEnterTransition(
-                            initialState.destination.route,
-                            targetState.destination.route
-                        )(this)
-                    },
-                    popExitTransition = {
-                        NavAnimations.getGlobalExitTransition(
-                            initialState.destination.route,
-                            targetState.destination.route
-                        )(this)
-                    },
+                // We apply statusBarsPadding ONLY to the inner content (NavHost),
+                // so the 'hazeSource' Box itself still occupies the full screen.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
                 ) {
-                    composable(Routes.HOME) {
-                        HomeScreen(
-                            snackbarHostState = snackbarHostState,
-                            onOpenTransaction = { navController.navigate(Routes.detail(it)) },
-                            onOpenAi = { navController.navigate(Routes.AI) },
-                            navController = navController,
-                            onOpenMonthly = { type, ym ->
-                                navController.navigate(Routes.monthly(type, ym))
-                            },
-                            onPreviewTransaction = { tx, cur ->
-                                globalPreviewTx = tx
-                                globalCurrency = cur
-                            },
-                            hazeState = hazeState,
-                        )
-                    }
-
-                    composableAnimated(Routes.DETECTED, NavAnimationType.MAIN) {
-                        DetectedTransactionsScreen(
-                            onBack = { navController.popBackStack() },
-                            onOpenEdit = { id -> navController.navigate(Routes.edit(id)) },
-                        )
-                    }
-
-                    composable(Routes.ANALYTICS) { AnalyticsScreen() }
-
-                    composable(Routes.GOALS) {
-                        GoalsScreen(
-                            onBack = { navController.popBackStack() },
-                            onAddGoal = { navController.navigate(Routes.GOAL_ADD) },
-                            onEditGoal = { id -> navController.navigate(Routes.goalEdit(id)) },
-                            onAddDebt = { navController.navigate(Routes.DEBT_ADD) },
-                            onEditDebt = { id -> navController.navigate(Routes.debtEdit(id)) }
-                        )
-                    }
-
-                    composableAnimated(Routes.GOAL_ADD, NavAnimationType.MAIN) {
-                        GoalEditScreen(onBack = { navController.popBackStack() })
-                    }
-
-                    composableAnimated(
-                        Routes.GOAL_EDIT,
-                        NavAnimationType.MAIN,
-                        arguments = listOf(navArgument("id") { type = NavType.LongType })
+                    NavHost(
+                        navController = navController,
+                        startDestination = Routes.HOME,
+                        enterTransition = {
+                            NavAnimations.getGlobalEnterTransition(
+                                initialState.destination.route,
+                                targetState.destination.route
+                            )(this)
+                        },
+                        exitTransition = {
+                            NavAnimations.getGlobalExitTransition(
+                                initialState.destination.route,
+                                targetState.destination.route
+                            )(this)
+                        },
+                        popEnterTransition = {
+                            NavAnimations.getGlobalEnterTransition(
+                                initialState.destination.route,
+                                targetState.destination.route
+                            )(this)
+                        },
+                        popExitTransition = {
+                            NavAnimations.getGlobalExitTransition(
+                                initialState.destination.route,
+                                targetState.destination.route
+                            )(this)
+                        },
                     ) {
-                        GoalEditScreen(onBack = { navController.popBackStack() })
-                    }
+                        composable(Routes.HOME) {
+                            HomeScreen(
+                                snackbarHostState = snackbarHostState,
+                                onOpenTransaction = { navController.navigate(Routes.detail(it)) },
+                                onOpenAi = { navController.navigate(Routes.AI) },
+                                navController = navController,
+                                onOpenMonthly = { type, ym ->
+                                    navController.navigate(Routes.monthly(type, ym))
+                                },
+                                onPreviewTransaction = { tx, cur ->
+                                    globalPreviewTx = tx
+                                    globalCurrency = cur
+                                },
+                                hazeState = hazeState,
+                            )
+                        }
 
-                    composableAnimated(Routes.DEBT_ADD, NavAnimationType.MAIN) {
-                        DebtEditScreen(onBack = { navController.popBackStack() })
-                    }
+                        composableAnimated(Routes.DETECTED, NavAnimationType.MAIN) {
+                            DetectedTransactionsScreen(
+                                onBack = { navController.popBackStack() },
+                                onOpenEdit = { id -> navController.navigate(Routes.edit(id)) },
+                            )
+                        }
 
-                    composableAnimated(
-                        Routes.DEBT_EDIT,
-                        NavAnimationType.MAIN,
-                        arguments = listOf(navArgument("id") { type = NavType.LongType })
-                    ) {
-                        DebtEditScreen(onBack = { navController.popBackStack() })
-                    }
+                        composable(Routes.ANALYTICS) { AnalyticsScreen() }
 
-                    composableAnimated(Routes.ACCOUNTS, NavAnimationType.ROOT) {
-                        AccountsScreen(
-                            onBack = { navController.popBackStack() },
-                            onOpenDetail = { id -> navController.navigate(Routes.accountDetail(id)) }
-                        )
-                    }
+                        composable(Routes.GOALS) {
+                            GoalsScreen(
+                                onBack = { navController.popBackStack() },
+                                onAddGoal = { navController.navigate(Routes.GOAL_ADD) },
+                                onEditGoal = { id -> navController.navigate(Routes.goalEdit(id)) },
+                                onAddDebt = { navController.navigate(Routes.DEBT_ADD) },
+                                onEditDebt = { id -> navController.navigate(Routes.debtEdit(id)) }
+                            )
+                        }
 
-                    composableAnimated(
-                        Routes.MONTHLY,
-                        NavAnimationType.SECONDARY,
-                        arguments = listOf(
-                            navArgument("type") { type = NavType.StringType },
-                            navArgument("ym") { type = NavType.StringType },
-                        )
-                    ) {
-                        MonthlyTransactionsScreen(
-                            onBack = { navController.popBackStack() },
-                            onOpenTransaction = { navController.navigate(Routes.detail(it)) },
-                            onPreviewTransaction = { tx, cur ->
-                                globalPreviewTx = tx
-                                globalCurrency = cur
-                            },
-                            hazeState = hazeState,
-                        )
-                    }
+                        composableAnimated(Routes.GOAL_ADD, NavAnimationType.MAIN) {
+                            GoalEditScreen(onBack = { navController.popBackStack() })
+                        }
 
-                    composableAnimated(Routes.AI, NavAnimationType.SECONDARY) {
-                        AiScreen(onBack = { navController.popBackStack() })
-                    }
+                        composableAnimated(
+                            Routes.GOAL_EDIT,
+                            NavAnimationType.MAIN,
+                            arguments = listOf(navArgument("id") { type = NavType.LongType })
+                        ) {
+                            GoalEditScreen(onBack = { navController.popBackStack() })
+                        }
 
-                    composableAnimated(Routes.SETTINGS, NavAnimationType.MAIN) {
-                        SettingsScreen(
-                            onBack = { navController.popBackStack() },
-                            onNavigateToTags = { navController.navigate(Routes.TAGS_MANAGE) },
-                            onNavigateToAccounts = { navController.navigate(Routes.ACCOUNTS_MANAGE) },
-                            onNavigateToCategories = { navController.navigate(Routes.CATEGORIES_MANAGE) }
-                        )
-                    }
+                        composableAnimated(Routes.DEBT_ADD, NavAnimationType.MAIN) {
+                            DebtEditScreen(onBack = { navController.popBackStack() })
+                        }
 
-                    composableAnimated(Routes.SEARCH, NavAnimationType.MAIN) {
-                        com.lop.budget.ui.screens.search.SearchScreen(
-                            onBack = { navController.popBackStack() },
-                            onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
-                            onPreviewTransaction = { tx, cur ->
-                                globalPreviewTx = tx
-                                globalCurrency = cur
-                            },
-                            hazeState = hazeState,
-                        )
-                    }
+                        composableAnimated(
+                            Routes.DEBT_EDIT,
+                            NavAnimationType.MAIN,
+                            arguments = listOf(navArgument("id") { type = NavType.LongType })
+                        ) {
+                            DebtEditScreen(onBack = { navController.popBackStack() })
+                        }
 
-                    composableAnimated(Routes.CATEGORIES_MANAGE, NavAnimationType.SECONDARY) {
-                        CategoriesManageScreen(
-                            onBack = { navController.popBackStack() },
-                            onAddCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
-                            onEditCategory = { id -> navController.navigate(Routes.categoryEdit(id)) }
-                        )
-                    }
+                        composableAnimated(Routes.ACCOUNTS, NavAnimationType.ROOT) {
+                            AccountsScreen(
+                                onBack = { navController.popBackStack() },
+                                onOpenDetail = { id -> navController.navigate(Routes.accountDetail(id)) }
+                            )
+                        }
 
-                    composableAnimated(Routes.CATEGORY_CREATE, NavAnimationType.SECONDARY) {
-                        CategoryCreateScreen(onBack = { navController.popBackStack() })
-                    }
+                        composableAnimated(
+                            Routes.MONTHLY,
+                            NavAnimationType.SECONDARY,
+                            arguments = listOf(
+                                navArgument("type") { type = NavType.StringType },
+                                navArgument("ym") { type = NavType.StringType },
+                            )
+                        ) {
+                            MonthlyTransactionsScreen(
+                                onBack = { navController.popBackStack() },
+                                onOpenTransaction = { navController.navigate(Routes.detail(it)) },
+                                onPreviewTransaction = { tx, cur ->
+                                    globalPreviewTx = tx
+                                    globalCurrency = cur
+                                },
+                                hazeState = hazeState,
+                            )
+                        }
 
-                    composableAnimated(
-                        Routes.CATEGORY_EDIT,
-                        NavAnimationType.SECONDARY,
-                        arguments = listOf(navArgument("id") { type = NavType.LongType })
-                    ) {
-                        CategoryCreateScreen(onBack = { navController.popBackStack() })
-                    }
+                        composableAnimated(Routes.AI, NavAnimationType.SECONDARY) {
+                            AiScreen(onBack = { navController.popBackStack() })
+                        }
 
-                    composableAnimated(
-                        Routes.ACCOUNT_DETAIL,
-                        NavAnimationType.MAIN,
-                        arguments = listOf(navArgument("id") { type = NavType.LongType })
-                    ) {
-                        com.lop.budget.ui.screens.accounts.AccountDetailScreen(
-                            onBack = { navController.popBackStack() },
-                            onEdit = { id -> navController.navigate(Routes.accountEdit(id)) },
-                            onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
-                            onPreviewTransaction = { tx, cur ->
-                                globalPreviewTx = tx
-                                globalCurrency = cur
-                            },
-                            hazeState = hazeState,
-                        )
-                    }
+                        composableAnimated(Routes.SETTINGS, NavAnimationType.MAIN) {
+                            SettingsScreen(
+                                onBack = { navController.popBackStack() },
+                                onNavigateToTags = { navController.navigate(Routes.TAGS_MANAGE) },
+                                onNavigateToAccounts = { navController.navigate(Routes.ACCOUNTS_MANAGE) },
+                                onNavigateToCategories = { navController.navigate(Routes.CATEGORIES_MANAGE) }
+                            )
+                        }
 
-                    composableAnimated(Routes.ACCOUNTS_MANAGE, NavAnimationType.SECONDARY) {
-                        AccountsManageScreen(
-                            onBack = { navController.popBackStack() },
-                            onAddAccount = { navController.navigate(Routes.ACCOUNT_ADD) },
-                            onEditAccount = { id: Long ->
-                                navController.navigate(
-                                    Routes.accountEdit(
-                                        id
+                        composableAnimated(Routes.SEARCH, NavAnimationType.MAIN) {
+                            com.lop.budget.ui.screens.search.SearchScreen(
+                                onBack = { navController.popBackStack() },
+                                onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
+                                onPreviewTransaction = { tx, cur ->
+                                    globalPreviewTx = tx
+                                    globalCurrency = cur
+                                },
+                                hazeState = hazeState,
+                            )
+                        }
+
+                        composableAnimated(Routes.CATEGORIES_MANAGE, NavAnimationType.SECONDARY) {
+                            CategoriesManageScreen(
+                                onBack = { navController.popBackStack() },
+                                onAddCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
+                                onEditCategory = { id -> navController.navigate(Routes.categoryEdit(id)) }
+                            )
+                        }
+
+                        composableAnimated(Routes.CATEGORY_CREATE, NavAnimationType.SECONDARY) {
+                            CategoryCreateScreen(onBack = { navController.popBackStack() })
+                        }
+
+                        composableAnimated(
+                            Routes.CATEGORY_EDIT,
+                            NavAnimationType.SECONDARY,
+                            arguments = listOf(navArgument("id") { type = NavType.LongType })
+                        ) {
+                            CategoryCreateScreen(onBack = { navController.popBackStack() })
+                        }
+
+                        composableAnimated(
+                            Routes.ACCOUNT_DETAIL,
+                            NavAnimationType.MAIN,
+                            arguments = listOf(navArgument("id") { type = NavType.LongType })
+                        ) {
+                            com.lop.budget.ui.screens.accounts.AccountDetailScreen(
+                                onBack = { navController.popBackStack() },
+                                onEdit = { id -> navController.navigate(Routes.accountEdit(id)) },
+                                onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
+                                onPreviewTransaction = { tx, cur ->
+                                    globalPreviewTx = tx
+                                    globalCurrency = cur
+                                },
+                                hazeState = hazeState,
+                            )
+                        }
+
+                        composableAnimated(Routes.ACCOUNTS_MANAGE, NavAnimationType.SECONDARY) {
+                            AccountsManageScreen(
+                                onBack = { navController.popBackStack() },
+                                onAddAccount = { navController.navigate(Routes.ACCOUNT_ADD) },
+                                onEditAccount = { id: Long ->
+                                    navController.navigate(
+                                        Routes.accountEdit(
+                                            id
+                                        )
                                     )
-                                )
-                            }
-                        )
-                    }
+                                }
+                            )
+                        }
 
-                    composableAnimated(Routes.ACCOUNT_ADD, NavAnimationType.SECONDARY) {
-                        AccountEditScreen(onBack = { navController.popBackStack() })
-                    }
+                        composableAnimated(Routes.ACCOUNT_ADD, NavAnimationType.SECONDARY) {
+                            AccountEditScreen(onBack = { navController.popBackStack() })
+                        }
 
-                    composableAnimated(
-                        Routes.ACCOUNT_EDIT,
-                        NavAnimationType.SECONDARY,
-                        arguments = listOf(navArgument("id") { type = NavType.LongType })
-                    ) {
-                        AccountEditScreen(onBack = { navController.popBackStack() })
-                    }
+                        composableAnimated(
+                            Routes.ACCOUNT_EDIT,
+                            NavAnimationType.SECONDARY,
+                            arguments = listOf(navArgument("id") { type = NavType.LongType })
+                        ) {
+                            AccountEditScreen(onBack = { navController.popBackStack() })
+                        }
 
-                    composableAnimated(Routes.TAGS_MANAGE, NavAnimationType.SECONDARY) {
-                        TagsManageScreen(onBack = { navController.popBackStack() })
-                    }
+                        composableAnimated(Routes.TAGS_MANAGE, NavAnimationType.SECONDARY) {
+                            TagsManageScreen(onBack = { navController.popBackStack() })
+                        }
 
-                    composableAnimated(Routes.ADD, NavAnimationType.MAIN) {
-                        TransactionEditScreen(
-                            onBack = { navController.popBackStack() },
-                            onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
-                        )
-                    }
+                        composableAnimated(Routes.ADD, NavAnimationType.MAIN) {
+                            TransactionEditScreen(
+                                onBack = { navController.popBackStack() },
+                                onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
+                            )
+                        }
 
-                    composableAnimated(
-                        Routes.EDIT,
-                        NavAnimationType.MAIN,
-                        arguments = listOf(
-                            navArgument("id") { type = NavType.LongType },
-                            navArgument("scope") {
-                                type = NavType.StringType
-                                nullable = true
-                                defaultValue = null
-                            },
-                            navArgument("date") {
-                                type = NavType.LongType
-                                defaultValue = -1L
-                            }
-                        )
-                    ) {
-                        TransactionEditScreen(
-                            onBack = { navController.popBackStack() },
-                            onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
-                        )
-                    }
+                        composableAnimated(
+                            Routes.EDIT,
+                            NavAnimationType.MAIN,
+                            arguments = listOf(
+                                navArgument("id") { type = NavType.LongType },
+                                navArgument("scope") {
+                                    type = NavType.StringType
+                                    nullable = true
+                                    defaultValue = null
+                                },
+                                navArgument("date") {
+                                    type = NavType.LongType
+                                    defaultValue = -1L
+                                }
+                            )
+                        ) {
+                            TransactionEditScreen(
+                                onBack = { navController.popBackStack() },
+                                onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
+                            )
+                        }
 
-                    composableAnimated(
-                        Routes.DETAIL,
-                        NavAnimationType.MAIN,
-                        arguments = listOf(navArgument("id") { type = NavType.LongType })
-                    ) { entry ->
-                        val id = entry.arguments?.getLong("id") ?: 0L
-                        TransactionDetailScreen(
-                            transactionId = id,
-                            onBack = { navController.popBackStack() },
-                            onEdit = { txId, scope, date ->
-                                navController.navigate(Routes.edit(txId, scope, date))
-                            }
-                        )
+                        composableAnimated(
+                            Routes.DETAIL,
+                            NavAnimationType.MAIN,
+                            arguments = listOf(navArgument("id") { type = NavType.LongType })
+                        ) { entry ->
+                            val id = entry.arguments?.getLong("id") ?: 0L
+                            TransactionDetailScreen(
+                                transactionId = id,
+                                onBack = { navController.popBackStack() },
+                                onEdit = { txId, scope, date ->
+                                    navController.navigate(Routes.edit(txId, scope, date))
+                                }
+                            )
+                        }
                     }
                 }
             }
 
+            // SIBLING 2: The Bottom Bar (Blur Effect)
             AnimatedVisibility(
                 visible = showBar,
                 enter = slideInVertically(
@@ -403,7 +413,7 @@ fun LopNavHost(startRoute: String? = null) {
                 }
             }
 
-            // Global Transaction Preview Popup Overlay
+            // SIBLING 3: Global Transaction Preview Popup Overlay (Full Screen Blur)
             if (globalPreviewTx != null) {
                 val tx = globalPreviewTx!!
                 TransactionPreviewPopup(
@@ -413,15 +423,12 @@ fun LopNavHost(startRoute: String? = null) {
                     onEdit = {
                         globalPreviewTx = null
                         if (tx.transaction.id >= 0L) navController.navigate(Routes.edit(tx.transaction.id))
-                        // Manual handle series if needed
                     },
                     onDelete = {
                         globalPreviewTx = null
-                        // Actions are handled in original screens for simplicity
                     },
                     onTogglePaid = {
                         globalPreviewTx = null
-                        // Actions are handled in original screens for simplicity
                     },
                     hazeState = hazeState
                 )
