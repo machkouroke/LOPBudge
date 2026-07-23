@@ -23,6 +23,7 @@ import com.lop.budget.domain.model.TransactionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import java.time.Instant
 import java.time.LocalDate
@@ -506,4 +507,12 @@ class BudgetRepository @Inject constructor(
     suspend fun saveDebt(d: DebtEntity) = debtDao.upsert(d)
     suspend fun getDebtById(id: Long) = debtDao.getById(id)
     suspend fun deleteDebt(id: Long) = debtDao.delete(id)
+
+    suspend fun getDefaultExpenseCategoryId(): Long {
+        // Cherche "Alimentation" ou "Autre" ou la première dépense
+        val all = categoryDao.observeAll().first()
+        return all.find { it.name.contains("Alimentation", ignoreCase = true) }?.id
+            ?: all.find { it.type == TransactionType.EXPENSE }?.id
+            ?: 1L
+    }
 }

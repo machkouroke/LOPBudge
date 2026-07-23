@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 
@@ -31,18 +30,18 @@ class DetectedTransactionsViewModel @Inject constructor(
 
     /**
      * MVP : confirme une proposition en créant une transaction PLANNED (modifiable ensuite).
-     * Catégorie / compte sont laissés vides : l'utilisateur pourra éditer.
      */
     fun accept(proposal: DetectedTransactionProposalEntity, onOpenEdit: (Long) -> Unit) {
         viewModelScope.launch {
+            val defaultCatId = budgetRepo.getDefaultExpenseCategoryId()
             val tx = TransactionEntity(
                 title = proposal.label.ifBlank { "Transaction" },
                 amount = proposal.amount,
                 type = TransactionType.EXPENSE,
                 status = TransactionStatus.PLANNED,
-                date = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                accountId = 1L, // TODO MVP: choisir un compte par défaut (ou demander à l'utilisateur)
-                categoryId = 1L, // TODO MVP: idem catégorie
+                date = proposal.detectedAt,
+                accountId = 1L, // TODO MVP: choisir un compte par défaut
+                categoryId = defaultCatId,
                 note = "Détecté via ${proposal.sourcePackage}",
             )
             val id = budgetRepo.saveTransaction(tx)

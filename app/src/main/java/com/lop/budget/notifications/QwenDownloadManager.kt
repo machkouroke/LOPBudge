@@ -17,7 +17,8 @@ class QwenDownloadManager @Inject constructor(
 ) {
     private val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
     private val modelFileName = "qwen-0.5b-int4.onnx"
-    private val modelUrl = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf" // Modèle libre Apache 2.0
+    // URL directe vers le modèle Qwen 0.5B au format ONNX (exemple valide)
+    private val modelUrl = "https://huggingface.co/onnx-community/Qwen2.5-0.5B-Instruct/resolve/main/onnx/model_q4.onnx"
 
     fun isModelInstalled(): Boolean {
         val file = File(context.filesDir, modelFileName)

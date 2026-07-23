@@ -22,6 +22,7 @@ class PaymentNotificationParser @Inject constructor(
         val currency: String?,
         val label: String,
         val fullText: String,
+        val cardName: String? = null,
         val normalizedText: String,
         val classification: ClassificationResult,
     )
@@ -46,6 +47,9 @@ class PaymentNotificationParser @Inject constructor(
 
         if (raw.isBlank()) return null
 
+        val pkg = sbn.packageName
+        val isSamsung = pkg.contains("samsung") && pkg.contains("pay") || pkg.contains("spay")
+        
         // 1. Classification
         val classification = classifier.classify(raw)
         if (classification.status == ClassificationResult.Status.IGNORE) return null
@@ -63,13 +67,27 @@ class PaymentNotificationParser @Inject constructor(
             else -> null
         }
 
-        // 3. Extraction Marchand (Information cruciale : le titre de la notification)
-        // Sur Google Wallet/Samsung Wallet, le titre est souvent le nom du marchand (ex: "DR AROUK")
-        val extractedLabel = if (title.isNotBlank() && !isKnownSourceTitle(title)) {
-            title.trim()
+        // 3. Extraction Marchand & Carte
+        var extractedLabel = ""
+        var cardName: String? = null
+
+        if (isSamsung) {
+            // Samsung Wallet : Title = Card, Text = "Merchant Amount"
+            cardName = title.trim()
+            // On enlève le montant de la description pour trouver le marchand
+            extractedLabel = text.replace(amountRegex, "").trim()
         } else {
-            val merchantMatch = merchantRegex.find(raw)
-            merchantMatch?.groupValues?.get(1)?.trim() ?: buildLabel(title, text, bigText, context)
+            // Google Wallet / Autre : Title = Merchant (souvent)
+            extractedLabel = if (title.isNotBlank() && !isKnownSourceTitle(title)) {
+                title.trim()
+            } else {
+                val merchantMatch = merchantRegex.find(raw)
+                merchantMatch?.groupValues?.get(1)?.trim() ?: buildLabel(title, text, bigText, context)
+            }
+            
+            // Tentative d'extraction de la carte chez Google ("avec la carte X")
+            val cardMatch = Regex("(?:avec la carte|with card)\\s+([^•\\n,]+)", RegexOption.IGNORE_CASE).find(raw)
+            cardName = cardMatch?.groupValues?.get(1)?.trim()
         }
 
         return ParsedPayment(
@@ -77,6 +95,7 @@ class PaymentNotificationParser @Inject constructor(
             currency = currency,
             label = extractedLabel,
             fullText = raw,
+            cardName = cardName,
             normalizedText = normalizeForDedupe(raw),
             classification = classification,
         )
