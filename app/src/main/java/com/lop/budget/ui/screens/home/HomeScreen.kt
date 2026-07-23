@@ -266,23 +266,36 @@ fun HomeContent(
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         item(key = "budget_summary", contentType = "summary") {
-            val monthName = Format.monthYear(state.month).split(" ").first()
-            val solde = state.monthIncome - state.monthExpense
+            val solde = remember(state.monthIncome, state.monthExpense) {
+                state.monthIncome - state.monthExpense
+            }
             
-            val soldeColor = when {
-                solde > 50 -> com.lop.budget.ui.theme.IncomeGreen
-                solde < -50 -> ExpenseCoral
-                else -> com.lop.budget.ui.theme.CategoryOrange
+            val soldeColor = remember(solde) {
+                when {
+                    solde > 50 -> com.lop.budget.ui.theme.IncomeGreen
+                    solde < -50 -> ExpenseCoral
+                    else -> com.lop.budget.ui.theme.CategoryOrange
+                }
+            }
+
+            val monthLabel = remember(state.month, state.isCurrentMonth) {
+                val name = Format.monthYear(state.month).split(" ").first()
+                if (state.isCurrentMonth) "Solde de $name" else "Solde en $name"
             }
 
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = if (state.isCurrentMonth) "Solde de $monthName" else "Solde en $monthName",
+                    text = monthLabel,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(8.dp))
-                Text(Format.money(solde, state.currency), style = MaterialTheme.typography.displayLarge, fontWeight = FontWeight.Bold, color = soldeColor)
+                Text(
+                    text = Format.money(solde, state.currency),
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = soldeColor
+                )
                 Spacer(Modifier.height(32.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     StatCard(
@@ -454,16 +467,54 @@ fun HomeOverlay(
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Optimization: Read monthYear once
+    val monthLabel = remember(state.month) { Format.monthYear(state.month) }
+    
     Box(
-        modifier = modifier.background(Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.background.copy(alpha = 0.95f), MaterialTheme.colorScheme.background.copy(alpha = 0.8f), MaterialTheme.colorScheme.background.copy(alpha = 0f)), startY = 0f, endY = 300f)).padding(horizontal = 20.dp, vertical = 16.dp)
+        modifier = modifier
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
+                        MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
+                        MaterialTheme.colorScheme.background.copy(alpha = 0f)
+                    ),
+                    startY = 0f,
+                    endY = 300f
+                )
+            )
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(50)).clickableNoRipple { onMonthClick() }.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                        androidx.compose.foundation.shape.RoundedCornerShape(50)
+                    )
+                    .clickableNoRipple { onMonthClick() }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    Icons.Filled.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(16.dp)
+                )
                 Spacer(Modifier.width(6.dp))
-                Text(Format.monthYear(state.month), style = MaterialTheme.typography.titleSmall)
+                Text(monthLabel, style = MaterialTheme.typography.titleSmall)
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 if (!isCurrentMonth) {
                     IconButton(Icons.Filled.Today, onTodayClick)
                 }

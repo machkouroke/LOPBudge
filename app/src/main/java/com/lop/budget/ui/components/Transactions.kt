@@ -15,8 +15,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -71,9 +71,13 @@ fun LazyListScope.transactionDayGroups(
             items = day.transactions,
             key = { tx ->
                 val id = tx.transaction.id
-                if (id < 0L) "tx_virtual_${tx.transaction.seriesId}_${tx.transaction.seriesDate}" else {
-                    val v = txVersions[id] ?: 0
-                    "tx_${id}_v$v"
+                if (id < 0L) {
+                    // Unique stable key for virtual transactions without heavy string concat
+                    "v_${tx.transaction.seriesId}_${tx.transaction.seriesDate}"
+                } else {
+                    // For real transactions, use Long ID if versions are not changing often
+                    // If versions are needed for Undo, concat is necessary but we can use a simpler format
+                    if (txVersions.isEmpty()) id else "${id}_${txVersions[id] ?: 0}"
                 }
             },
             contentType = { "transaction" }
@@ -149,7 +153,9 @@ fun TransactionRow(
                     },
                     onLongClick = { showPreview = true }
                 )
-                .alpha(if (isPaid) 0.5f else 1f),
+                .graphicsLayer {
+                    alpha = if (isPaid) 0.5f else 1f
+                },
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
             contentPadding = PaddingValues(14.dp),
         ) {
