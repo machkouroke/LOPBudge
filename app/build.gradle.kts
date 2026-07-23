@@ -40,7 +40,7 @@ android {
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = false
         }
     }
 }
@@ -97,7 +97,10 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     // DataStore (settings : devise, clé Gemini, thème)
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("androidx.datastore:datastore-preferences:1.2.1")
+
+    // Graphics Path (16 KB alignment)
+    implementation("androidx.graphics:graphics-path:1.1.0")
 
     // Glance (widgets)
     implementation("androidx.glance:glance-appwidget:1.1.0")
@@ -112,7 +115,7 @@ dependencies {
 
     // AI & ML (Hybrid Strategy)
     implementation("com.google.mlkit:entity-extraction:16.0.0-beta6")
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.27.0")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
