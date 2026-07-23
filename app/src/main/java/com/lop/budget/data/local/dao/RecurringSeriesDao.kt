@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RecurringSeriesDao {
-    @Query("SELECT * FROM recurring_series WHERE status = 'ACTIVE'")
+    @Query("SELECT * FROM recurring_series WHERE status = 'ACTIVE' OR (status = 'CANCELLED' AND endDate IS NOT NULL)")
     fun observeActiveSeries(): Flow<List<RecurringSeriesEntity>>
 
     @Query("SELECT * FROM recurring_series WHERE id = :id")
