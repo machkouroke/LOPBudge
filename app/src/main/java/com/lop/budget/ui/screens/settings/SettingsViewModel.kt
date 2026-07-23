@@ -3,7 +3,7 @@ package com.lop.budget.ui.screens.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.notifications.ModelDownloadManager
+import com.lop.budget.notifications.QwenDownloadManager
 import com.lop.budget.ui.theme.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,13 +22,13 @@ data class SettingsUiState(
     val notificationDetectionEnabled: Boolean = false,
     val useLocalLlm: Boolean = false,
     val isModelInstalled: Boolean = false,
-    val downloadStatus: ModelDownloadManager.DownloadStatus = ModelDownloadManager.DownloadStatus.Idle,
+    val downloadStatus: QwenDownloadManager.DownloadStatus = QwenDownloadManager.DownloadStatus.Idle,
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settings: SettingsRepository,
-    private val downloadManager: ModelDownloadManager,
+    private val downloadManager: QwenDownloadManager,
 ) : ViewModel() {
 
     val uiState = combine(
@@ -50,7 +50,7 @@ class SettingsViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsUiState())
 
-    private val _downloadStatus = MutableStateFlow<ModelDownloadManager.DownloadStatus>(ModelDownloadManager.DownloadStatus.Idle)
+    private val _downloadStatus = MutableStateFlow<QwenDownloadManager.DownloadStatus>(QwenDownloadManager.DownloadStatus.Idle)
     val downloadStatus = _downloadStatus.asStateFlow()
 
     init {
@@ -59,7 +59,7 @@ class SettingsViewModel @Inject constructor(
                 if (id != null) {
                     downloadManager.getDownloadProgress(id).collect { status ->
                         _downloadStatus.value = status
-                        if (status is ModelDownloadManager.DownloadStatus.Success) {
+                        if (status is QwenDownloadManager.DownloadStatus.Success) {
                             settings.setLlmDownloadId(null)
                         }
                     }

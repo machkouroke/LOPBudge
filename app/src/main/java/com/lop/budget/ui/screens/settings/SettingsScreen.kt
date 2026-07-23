@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
-import com.lop.budget.notifications.ModelDownloadManager
+import com.lop.budget.notifications.QwenDownloadManager
 import com.lop.budget.ui.components.*
 import com.lop.budget.ui.theme.ThemeMode
 
@@ -38,16 +38,10 @@ fun SettingsScreen(
     val downloadStatus by vm.downloadStatus.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    var showDownloadDialog by remember { mutableStateOf(false) }
-
-    if (showDownloadDialog) {
-        ModelDownloadDialog(
-            status = downloadStatus,
-            isInstalled = state.isModelInstalled,
-            onStartDownload = vm::startModelDownload,
-            onDismiss = { showDownloadDialog = false }
-        )
-    }
+    val isDownloading = downloadStatus is QwenDownloadManager.DownloadStatus.Downloading
+    val progress = if (downloadStatus is QwenDownloadManager.DownloadStatus.Downloading) {
+        (downloadStatus as QwenDownloadManager.DownloadStatus.Downloading).progress
+    } else 0
 
     LopScreenScaffold(
         title = stringResource(R.string.settings_title),
@@ -194,8 +188,8 @@ fun SettingsScreen(
                         Switch(
                             checked = state.useLocalLlm,
                             onCheckedChange = { 
-                                if (it && !state.isModelInstalled) {
-                                    showDownloadDialog = true
+                                if (it && !state.isModelInstalled && !isDownloading) {
+                                    vm.startModelDownload()
                                 } else {
                                     vm.setUseLocalLlm(it)
                                 }
@@ -205,27 +199,29 @@ fun SettingsScreen(
 
                     if (state.isModelInstalled) {
                         Text(
-                            "Modèle installé ✅",
+                            "Moteur IA installé ✅",
                             style = MaterialTheme.typography.labelMedium,
                             color = com.lop.budget.ui.theme.IncomeGreen
                         )
-                    } else if (downloadStatus is ModelDownloadManager.DownloadStatus.Downloading) {
-                        val progress = (downloadStatus as ModelDownloadManager.DownloadStatus.Downloading).progress
+                    } else if (isDownloading) {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             LinearProgressIndicator(
-                                progress = progress / 100f,
+                                progress = { progress / 100f },
                                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape)
                             )
                             Text(
-                                "Téléchargement : $progress%",
+                                "Téléchargement de l'IA : $progress%",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
-                    } else {
-                        TextButton(onClick = { showDownloadDialog = true }) {
-                            Text("Gérer le modèle (1.5 Go)")
-                        }
+                    } else if (downloadStatus is QwenDownloadManager.DownloadStatus.Error) {
+                        Text(
+                            "Erreur de téléchargement. Réessayez.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.clickableNoRipple { vm.startModelDownload() }
+                        )
                     }
 
                     Spacer(Modifier.height(10.dp))

@@ -2,8 +2,10 @@ package com.lop.budget.di
 
 import com.lop.budget.notifications.ClassificationResult
 import com.lop.budget.notifications.HeuristicNotificationClassifier
-import com.lop.budget.notifications.LocalLLMClassifier
+import com.lop.budget.notifications.MLKitEntityClassifier
 import com.lop.budget.notifications.NotificationClassifier
+import com.lop.budget.notifications.SmartCategorizer
+import com.lop.budget.notifications.QwenLocalCategorizer
 import com.lop.budget.data.repository.SettingsRepository
 import dagger.Module
 import dagger.Provides
@@ -20,7 +22,7 @@ object NotificationModule {
     @Singleton
     fun provideNotificationClassifier(
         settings: SettingsRepository,
-        localLLM: LocalLLMClassifier
+        mlKit: MLKitEntityClassifier
     ): NotificationClassifier {
         return object : NotificationClassifier {
             private val heuristic = HeuristicNotificationClassifier()
@@ -28,14 +30,20 @@ object NotificationModule {
             override suspend fun classify(text: String): ClassificationResult {
                 val hResult = heuristic.classify(text)
                 
-                // Si c'est uncertain et que le LLM est activé, on délègue
-                if (hResult.status == ClassificationResult.Status.UNCERTAIN &&
-                    settings.useLocalLlm.first()) {
-                    return localLLM.classifyAsync(text)
+                // Si c'est uncertain ou même transaction, on renforce via ML Kit
+                if (hResult.status != ClassificationResult.Status.IGNORE && 
+                    settings.notificationDetectionEnabled.first()) {
+                    return mlKit.classify(text)
                 }
                 
                 return hResult
             }
         }
     }
+
+    @Provides
+    @Singleton
+    fun provideSmartCategorizer(
+        impl: QwenLocalCategorizer
+    ): SmartCategorizer = impl
 }
