@@ -44,7 +44,7 @@ fun LazyListScope.transactionDayGroups(
     onMaterializeAndOpen: (Long, Long) -> Unit,
     onTogglePaid: (Long, TransactionStatus) -> Unit,
     onDeleteRequest: (TransactionWithRelations) -> Unit,
-    onPreviewTransaction: (TransactionWithRelations) -> Unit,
+    onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
     onDeleteSimple: (Long) -> Unit,
     hazeState: HazeState? = null
 ) {
@@ -110,7 +110,7 @@ fun TransactionRow(
     onMaterializeAndOpen: (Long, Long) -> Unit,
     onTogglePaid: (Long, TransactionStatus) -> Unit,
     onDeleteRequest: (TransactionWithRelations) -> Unit,
-    onPreviewTransaction: (TransactionWithRelations) -> Unit,
+    onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
     onDeleteSimple: (Long) -> Unit,
     hazeState: HazeState? = null
 ) {
@@ -139,7 +139,7 @@ fun TransactionRow(
                         if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
                         else tx.transaction.seriesId?.let { onMaterializeAndOpen(it.toLong(), tx.transaction.seriesDate!!) }
                     },
-                    onLongClick = { onPreviewTransaction(tx) }
+                    onLongClick = { onPreviewTransaction(tx, currency) }
                 )
                 .graphicsLayer {
                     alpha = if (isPaid) 0.5f else 1f

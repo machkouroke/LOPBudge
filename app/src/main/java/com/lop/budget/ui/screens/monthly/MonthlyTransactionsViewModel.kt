@@ -38,11 +38,16 @@ data class MonthlyTransactionsUiState(
     val type: TransactionType = TransactionType.EXPENSE,
     val filter: PaidFilter = PaidFilter.ALL,
     val insightMode: InsightMode = InsightMode.CATEGORY,
+    val searchQuery: String = "",
+    val selectedAccountId: Long? = null,
+    val selectedCategoryId: Long? = null,
     val currency: String = "EUR",
     val total: Double = 0.0,
     val breakdown: List<MonthlyCategoryBreakdown> = emptyList(),
     val dayGroups: List<DayGroup> = emptyList(),
     val transactions: List<TransactionWithRelations> = emptyList(),
+    val availableAccounts: List<com.lop.budget.data.local.entity.AccountEntity> = emptyList(),
+    val availableCategories: List<com.lop.budget.data.local.entity.CategoryEntity> = emptyList(),
     /** Version par transaction pour forcer la recréation après Undo. */
     val txVersions: Map<Long, Int> = emptyMap(),
 )
@@ -64,6 +69,9 @@ class MonthlyTransactionsViewModel @Inject constructor(
     private val type = MutableStateFlow(initialType)
     private val filter = MutableStateFlow(PaidFilter.ALL)
     private val insightMode = MutableStateFlow(InsightMode.CATEGORY)
+    private val searchQuery = MutableStateFlow("")
+    private val selectedAccountId = MutableStateFlow<Long?>(null)
+    private val selectedCategoryId = MutableStateFlow<Long?>(null)
 
     private val pendingDeletes = MutableStateFlow<Set<Long>>(emptySet())
     private val pendingSeriesDeletes = MutableStateFlow<Map<String, com.lop.budget.domain.model.SeriesDeletionMode>>(emptyMap())
@@ -72,6 +80,10 @@ class MonthlyTransactionsViewModel @Inject constructor(
 
     fun setFilter(f: PaidFilter) { filter.value = f }
     fun setInsightMode(m: InsightMode) { insightMode.value = m }
+    fun onQueryChange(q: String) { searchQuery.value = q }
+    fun onAccountFilterChange(id: Long?) { selectedAccountId.value = id }
+    fun onCategoryFilterChange(id: Long?) { selectedCategoryId.value = id }
+    fun setType(t: TransactionType) { type.value = t }
 
     fun togglePaid(transactionId: Long, currentStatus: TransactionStatus) {
         viewModelScope.launch {
@@ -145,17 +157,38 @@ class MonthlyTransactionsViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<MonthlyTransactionsUiState> =
-        combine(baseTxs, settings.currency, month, type, filter, insightMode, pendingDeletes, pendingSeriesDeletes, pendingSeriesFromDates, txVersions) { args ->
+        combine(
+            baseTxs,
+            settings.currency,
+            month,
+            type,
+            filter,
+            insightMode,
+            searchQuery,
+            selectedAccountId,
+            selectedCategoryId,
+            repo.observeAccounts(),
+            repo.observeCategories(),
+            pendingDeletes,
+            pendingSeriesDeletes,
+            pendingSeriesFromDates,
+            txVersions
+        ) { args ->
             val allTxs = args[0] as List<TransactionWithRelations>
             val currency = args[1] as String
             val ym = args[2] as YearMonth
             val t = args[3] as TransactionType
             val f = args[4] as PaidFilter
             val mode = args[5] as InsightMode
-            val pending = args[6] as Set<Long>
-            val pSeries = args[7] as Map<String, com.lop.budget.domain.model.SeriesDeletionMode>
-            val pDates = args[8] as Map<String, Long>
-            val versions = args[9] as Map<Long, Int>
+            val query = args[6] as String
+            val accId = args[7] as Long?
+            val catId = args[8] as Long?
+            val accounts = args[9] as List<com.lop.budget.data.local.entity.AccountEntity>
+            val categories = args[10] as List<com.lop.budget.data.local.entity.CategoryEntity>
+            val pending = args[11] as Set<Long>
+            val pSeries = args[12] as Map<String, com.lop.budget.domain.model.SeriesDeletionMode>
+            val pDates = args[13] as Map<String, Long>
+            val versions = args[14] as Map<Long, Int>
 
             val filtered = allTxs
                 .filter { twr ->
@@ -181,6 +214,13 @@ class MonthlyTransactionsViewModel @Inject constructor(
                         PaidFilter.PLANNED -> it.transaction.status == TransactionStatus.PLANNED
                     }
                 }
+                .filter { 
+                    if (query.isBlank()) true 
+                    else it.transaction.title.contains(query, ignoreCase = true) || 
+                         it.transaction.note?.contains(query, ignoreCase = true) == true
+                }
+                .filter { if (accId == null) true else it.account?.id == accId }
+                .filter { if (catId == null) true else it.category?.id == catId }
                 .sortedByDescending { it.transaction.date }
 
             val total = filtered.sumOf { it.transaction.amount }
@@ -231,6 +271,11 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 type = t,
                 filter = f,
                 insightMode = mode,
+                searchQuery = query,
+                selectedAccountId = accId,
+                selectedCategoryId = catId,
+                availableAccounts = accounts,
+                availableCategories = categories,
                 currency = currency,
                 total = total,
                 breakdown = breakdown,

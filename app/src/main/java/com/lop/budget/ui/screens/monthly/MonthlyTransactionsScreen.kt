@@ -2,9 +2,18 @@ package com.lop.budget.ui.screens.monthly
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +34,7 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.*
+import com.lop.budget.ui.screens.search.AccountList
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import dev.chrisbanes.haze.HazeState
@@ -45,7 +55,10 @@ fun MonthlyTransactionsScreen(
     val ext = LopTheme.extended
     val context = LocalContext.current
 
-    val title = if (state.type == TransactionType.EXPENSE) stringResource(R.string.expense) else stringResource(R.string.income)
+    var showAccountPicker by remember { mutableStateOf(false) }
+    var showCategoryPicker by remember { mutableStateOf(false) }
+
+    val title = stringResource(R.string.monthly_transactions_title)
     val accent = if (state.type == TransactionType.EXPENSE) ext.expense else ext.income
 
     val top = state.breakdown
@@ -68,15 +81,95 @@ fun MonthlyTransactionsScreen(
                 "${state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }} ${state.month.year}",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
         }
 
-        // Filtre payé
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FilterChip(stringResource(R.string.monthly_filter_all), state.filter == PaidFilter.ALL, Modifier.weight(1f), accent) { vm.setFilter(PaidFilter.ALL) }
-                FilterChip(stringResource(R.string.monthly_filter_paid), state.filter == PaidFilter.PAID, Modifier.weight(1f), accent) { vm.setFilter(PaidFilter.PAID) }
-                FilterChip(stringResource(R.string.monthly_filter_planned), state.filter == PaidFilter.PLANNED, Modifier.weight(1f), accent) { vm.setFilter(PaidFilter.PLANNED) }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = state.searchQuery,
+                    onValueChange = vm::onQueryChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Rechercher...") },
+                    leadingIcon = { Icon(Icons.Default.Search, null) },
+                    trailingIcon = {
+                        if (state.searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { vm.onQueryChange("") }) {
+                                Icon(Icons.Default.Close, null)
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    )
+                )
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 8.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = true,
+                            onClick = { vm.setType(if (state.type == TransactionType.EXPENSE) TransactionType.INCOME else TransactionType.EXPENSE) },
+                            label = { Text(if (state.type == TransactionType.EXPENSE) "Dépenses" else "Revenus") },
+                            leadingIcon = { Icon(if (state.type == TransactionType.EXPENSE) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward, null, modifier = Modifier.size(18.dp)) }
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = state.filter != PaidFilter.ALL,
+                            onClick = { 
+                                val next = when(state.filter) {
+                                    PaidFilter.ALL -> PaidFilter.PAID
+                                    PaidFilter.PAID -> PaidFilter.PLANNED
+                                    PaidFilter.PLANNED -> PaidFilter.ALL
+                                }
+                                vm.setFilter(next)
+                            },
+                            label = { 
+                                Text(when(state.filter) {
+                                    PaidFilter.ALL -> "Tous"
+                                    PaidFilter.PAID -> "Payé"
+                                    PaidFilter.PLANNED -> "Planifié"
+                                })
+                            }
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = state.selectedAccountId != null,
+                            onClick = { showAccountPicker = true },
+                            label = { 
+                                val acc = state.availableAccounts.find { it.id == state.selectedAccountId }
+                                Text(acc?.name ?: "Compte") 
+                            },
+                            leadingIcon = { Icon(Icons.Default.Wallet, null, modifier = Modifier.size(18.dp)) },
+                            trailingIcon = if (state.selectedAccountId != null) {
+                                { IconButton(onClick = { vm.onAccountFilterChange(null) }, modifier = Modifier.size(18.dp)) { Icon(Icons.Default.Close, null) } }
+                            } else null
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = state.selectedCategoryId != null,
+                            onClick = { showCategoryPicker = true },
+                            label = { 
+                                val cat = state.availableCategories.find { it.id == state.selectedCategoryId }
+                                Text(cat?.name ?: "Catégorie") 
+                            },
+                            leadingIcon = { Icon(Icons.Default.Category, null, modifier = Modifier.size(18.dp)) },
+                            trailingIcon = if (state.selectedCategoryId != null) {
+                                { IconButton(onClick = { vm.onCategoryFilterChange(null) }, modifier = Modifier.size(18.dp)) { Icon(Icons.Default.Close, null) } }
+                            } else null
+                        )
+                    }
+                }
             }
         }
 
@@ -147,7 +240,7 @@ fun MonthlyTransactionsScreen(
             onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
             onTogglePaid = vm::togglePaid,
             onDeleteRequest = { showDeleteConfirmForTx = it },
-            onPreviewTransaction = { onPreviewTransaction(it, state.currency) },
+            onPreviewTransaction = onPreviewTransaction,
             onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) },
             hazeState = hazeState
         )
@@ -161,6 +254,32 @@ fun MonthlyTransactionsScreen(
                 )
             }
         }
+    }
+
+    if (showAccountPicker) {
+        ModalBottomSheet(onDismissRequest = { showAccountPicker = false }) {
+            AccountList(
+                accounts = state.availableAccounts,
+                selectedId = state.selectedAccountId,
+                onSelect = { id ->
+                    vm.onAccountFilterChange(id)
+                    showAccountPicker = false
+                }
+            )
+        }
+    }
+
+    if (showCategoryPicker) {
+        CategoryBottomSheet(
+            title = "Filtrer par catégorie",
+            categories = state.availableCategories,
+            selectedId = state.selectedCategoryId,
+            onSelect = {
+                vm.onCategoryFilterChange(it)
+                showCategoryPicker = false
+            },
+            onDismiss = { showCategoryPicker = false }
+        )
     }
 
     if (showDeleteConfirmForTx != null) {
@@ -239,29 +358,6 @@ fun BreakdownChip(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun FilterChip(
-    label: String,
-    selected: Boolean,
-    modifier: Modifier,
-    accent: Color,
-    onClick: () -> Unit,
-) {
-    Surface(
-        modifier = modifier.clickableNoRipple(onClick),
-        shape = CircleShape,
-        color = if (selected) accent.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-    ) {
-        Text(
-            label,
-            color = if (selected) accent else MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(vertical = 12.dp),
-        )
     }
 }
 

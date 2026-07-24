@@ -164,7 +164,7 @@ fun SearchScreen(
                 onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
                 onTogglePaid = vm::togglePaid,
                 onDeleteRequest = { /* Handle recurring delete if needed */ },
-                onPreviewTransaction = { onPreviewTransaction(it, state.currency) },
+                onPreviewTransaction = { tx, cur -> onPreviewTransaction(tx, cur) },
                 onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) },
                 hazeState = hazeState
             )

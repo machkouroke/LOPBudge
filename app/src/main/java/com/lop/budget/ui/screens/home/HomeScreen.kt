@@ -76,6 +76,7 @@ import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import com.lop.budget.ui.components.RecurringDeleteSheet
+import com.lop.budget.ui.components.TransactionsDashboardWidget
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.components.transactionDayGroups
 import com.lop.budget.ui.navigation.Routes
@@ -193,7 +194,7 @@ fun HomeScreen(
                 onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
                 onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },
                 onDeleteRequest = { showDeleteConfirmForTx = it },
-                onPreviewTransaction = { onPreviewTransaction(it, state.currency) },
+                onPreviewTransaction = onPreviewTransaction,
                 snackbarHostState = snackbarHostState,
                 hazeState = hazeState,
                 vm = vm
@@ -252,7 +253,7 @@ fun HomeContent(
     onOpenAccounts: () -> Unit,
     onOpenAccountDetail: (Long) -> Unit,
     onDeleteRequest: (TransactionWithRelations) -> Unit,
-    onPreviewTransaction: (TransactionWithRelations) -> Unit,
+    onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
     hazeState: HazeState? = null,
     vm: HomeViewModel
@@ -388,25 +389,23 @@ fun HomeContent(
         }
 
         item(contentType = "recent_transactions_header") {
-            Text(stringResource(R.string.home_recent_transactions), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+            TransactionsDashboardWidget(
+                transactions = state.dashboardTransactions,
+                currency = state.currency,
+                onSeeAll = { onOpenMonthly(TransactionType.EXPENSE, state.month) }, // Default to expense list
+                onOpenTransaction = onOpenTransaction,
+                onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
+                onTogglePaid = vm::togglePaid,
+                onDeleteRequest = onDeleteRequest,
+                onPreviewTransaction = onPreviewTransaction,
+                onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) },
+                hazeState = hazeState
+            )
         }
 
-        transactionDayGroups(
-            dayGroups = state.dayGroups,
-            currency = state.currency,
-            txVersions = state.txVersions,
-            onOpenTransaction = onOpenTransaction,
-            onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
-            onTogglePaid = vm::togglePaid,
-            onDeleteRequest = onDeleteRequest,
-            onPreviewTransaction = onPreviewTransaction,
-            onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) },
-            hazeState = hazeState
-        )
-
-        if (state.dayGroups.isEmpty()) {
+        if (state.dashboardTransactions.isEmpty() && state.dayGroups.isEmpty()) {
             item(contentType = "empty_state") {
-                Text(stringResource(R.string.home_no_transactions_month), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Widget handles empty state internally now
             }
         }
     }

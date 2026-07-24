@@ -46,6 +46,7 @@ data class HomeUiState(
     val upcoming: List<TransactionWithRelations> = emptyList(),
     val subscriptions: List<TransactionWithRelations> = emptyList(),
     val dayGroups: List<DayGroup> = emptyList(),
+    val dashboardTransactions: List<TransactionWithRelations> = emptyList(),
     val accounts: List<AccountBalance> = emptyList(),
     /** Version par transaction : incrémenté à chaque Undo pour forcer la recréation du composant Compose */
     val txVersions: Map<Long, Int> = emptyMap(),
@@ -249,6 +250,8 @@ class HomeViewModel @Inject constructor(
                 AccountBalance(acc, balances[acc.id] ?: acc.initialBalance)
             }
 
+            val dashboardTxs = getDashboardTransactions(txs)
+
             HomeUiState(
                 month = ym,
                 isCurrentMonth = ym == YearMonth.now(),
@@ -258,6 +261,7 @@ class HomeViewModel @Inject constructor(
                 previousPeriodExpense = prevExpense,
                 projectedBalance = projected,
                 dayGroups = dayGroups,
+                dashboardTransactions = dashboardTxs,
                 accounts = accountBalances.sortedByDescending { it.balance }.take(3),
                 txVersions = versions,
                 // On omet les données globales comme detectedCount qui sont gérées par l'Overlay
@@ -377,6 +381,8 @@ class HomeViewModel @Inject constructor(
                 AccountBalance(acc, balances[acc.id] ?: acc.initialBalance)
             }
 
+            val dashboardTxs = getDashboardTransactions(txs)
+
             HomeUiState(
                 month = ym,
                 isCurrentMonth = ym == YearMonth.now(),
@@ -389,6 +395,7 @@ class HomeViewModel @Inject constructor(
                 upcoming = upcoming,
                 subscriptions = subscriptions,
                 dayGroups = dayGroups,
+                dashboardTransactions = dashboardTxs,
                 accounts = accountBalances.sortedByDescending { it.balance }.take(3),
                 txVersions = versions,
                 detectedCount = detected,
@@ -408,5 +415,19 @@ class HomeViewModel @Inject constructor(
                 val d = Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate()
                 java.time.temporal.ChronoUnit.DAYS.between(now, d).toInt().coerceAtLeast(0)
             }
+    }
+
+    private fun getDashboardTransactions(txs: List<TransactionWithRelations>): List<TransactionWithRelations> {
+        val now = System.currentTimeMillis()
+        val zone = ZoneId.systemDefault()
+        val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+
+        val sorted = txs.sortedWith(
+            compareByDescending<TransactionWithRelations> {
+                val txDate = Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate()
+                txDate == today
+            }.thenByDescending { it.transaction.date }
+        )
+        return sorted.take(3)
     }
 }

@@ -105,7 +105,7 @@ fun AccountDetailScreen(
                         onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
                         onTogglePaid = vm::togglePaid,
                         onDeleteRequest = { vm.deleteWithUndo(it.transaction.id, snackbarHostState, txDeletedMsg, undoMsg) },
-                        onPreviewTransaction = { onPreviewTransaction(it, state.currency) },
+                        onPreviewTransaction = { tx, cur -> onPreviewTransaction(tx, cur) },
                         onDeleteSimple = { vm.deleteWithUndo(it, snackbarHostState, txDeletedMsg, undoMsg) },
                         hazeState = hazeState
                     )
@@ -122,7 +122,7 @@ fun AccountDetailScreen(
                         onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
                         onTogglePaid = vm::togglePaid,
                         onDeleteRequest = { vm.deleteWithUndo(it.transaction.id, snackbarHostState, txDeletedMsg, undoMsg) },
-                        onPreviewTransaction = { onPreviewTransaction(it, state.currency) },
+                        onPreviewTransaction = { tx, cur -> onPreviewTransaction(tx, cur) },
                         onDeleteSimple = { vm.deleteWithUndo(it, snackbarHostState, txDeletedMsg, undoMsg) },
                         hazeState = hazeState
                     )
