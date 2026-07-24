@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -26,12 +27,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.lop.budget.R
 import com.lop.budget.ui.navigation.Routes
+import com.lop.budget.ui.screens.settings.SettingsViewModel
+import com.lop.budget.ui.theme.ThemeMode
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
 
 /**
  * Barre de navigation type "Pill" flottante, inspirée du Galaxy Store.
@@ -44,10 +46,12 @@ fun FloatingBottomBar(
     onAdd: () -> Unit,
     modifier: Modifier = Modifier,
     hazeState: HazeState? = null,
+    settingsVm: SettingsViewModel = hiltViewModel()
 ) {
+    val settings by settingsVm.uiState.collectAsState()
+    val isAppInDarkDirectory = settings.themeMode == ThemeMode.DARK
     val pillShape = RoundedCornerShape(32.dp)
-    val hazeBackgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-    val hazeTint = HazeTint(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f))
+
 
     Row(
         modifier = modifier
@@ -69,13 +73,11 @@ fun FloatingBottomBar(
         ) {
             Row(
                 modifier = Modifier
-                    .hazeEffect(state = hazeState) {
-                        style = HazeStyle(
-                            blurRadius = 24.dp,
-                            backgroundColor = hazeBackgroundColor,
-                            tints = listOf(hazeTint)
-                        )
-                    }
+                    .background(
+                        if (!isAppInDarkDirectory) Color.White
+                        else Color.Black
+                    )
+                    .hazeEffect(state = hazeState)
                     .padding(horizontal = 8.dp)
                     .fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically,
