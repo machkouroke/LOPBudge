@@ -89,8 +89,8 @@ interface TransactionDao {
     @Query("UPDATE transactions SET accountId = :accountId WHERE id = :id")
     suspend fun updateAccount(id: Long, accountId: Long)
 
-    @Query("UPDATE transactions SET status = :status WHERE id = :id")
-    suspend fun updateStatus(id: Long, status: String)
+    @Query("UPDATE transactions SET status = :status, paidAt = :paidAt WHERE id = :id")
+    suspend fun updateStatus(id: Long, status: String, paidAt: Long?)
 
     @Query("UPDATE transactions SET deleted = 1 WHERE id = :id")
     suspend fun softDelete(id: Long)

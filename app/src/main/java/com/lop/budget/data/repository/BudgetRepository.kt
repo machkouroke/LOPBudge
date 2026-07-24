@@ -202,15 +202,24 @@ class BudgetRepository @Inject constructor(
     // à partir de observeTransactionsBetween() qui inclut les occurrences virtuelles.
 
     suspend fun saveTransaction(tx: TransactionEntity, tagIds: List<Long> = emptyList()): Long {
+        // Gérer le champ paidAt si absent
+        val finalTx = if (tx.status == TransactionStatus.PAID && tx.paidAt == null) {
+            tx.copy(paidAt = System.currentTimeMillis())
+        } else if (tx.status == TransactionStatus.PLANNED && tx.paidAt != null) {
+            tx.copy(paidAt = null)
+        } else {
+            tx
+        }
+
         // 1. Sauvegarder la transaction initiale (ou mettre à jour si tx.id != 0L)
-        val id = transactionDao.upsert(tx)
-        val txId = if (tx.id == 0L) id else tx.id
+        val id = transactionDao.upsert(finalTx)
+        val txId = if (finalTx.id == 0L) id else finalTx.id
         transactionDao.clearTags(txId)
         tagIds.forEach { transactionDao.addTagCrossRef(TransactionTagCrossRef(txId, it)) }
 
         // 2. Recalculer les progrès si lié à un objectif ou une dette
-        tx.linkedGoalId?.let { recalculateGoalProgress(it) }
-        tx.linkedDebtId?.let { recalculateDebtProgress(it) }
+        finalTx.linkedGoalId?.let { recalculateGoalProgress(it) }
+        finalTx.linkedDebtId?.let { recalculateDebtProgress(it) }
 
         return txId
     }
@@ -435,7 +444,8 @@ class BudgetRepository @Inject constructor(
         transactionDao.updateAccount(transactionId, accountId)
 
     suspend fun setStatus(transactionId: Long, status: String) {
-        transactionDao.updateStatus(transactionId, status)
+        val paidAt = if (status == TransactionStatus.PAID.name) System.currentTimeMillis() else null
+        transactionDao.updateStatus(transactionId, status, paidAt)
         // Recalculer le progrès si la transaction est liée à un objectif ou une dette
         val twr = transactionDao.getById(transactionId)
         twr?.transaction?.linkedGoalId?.let { recalculateGoalProgress(it) }

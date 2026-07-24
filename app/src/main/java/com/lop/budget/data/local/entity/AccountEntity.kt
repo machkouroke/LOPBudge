@@ -10,6 +10,8 @@ data class AccountEntity(
     val name: String,
     val type: AccountType,
     val initialBalance: Double,
+    /** Date/heure à laquelle le solde initial (de référence) a été mis à jour. */
+    val balanceUpdatedAt: Long = 0L,
     val colorArgb: Int,
     val icon: String,
     val bankName: String? = null,

@@ -33,6 +33,9 @@ import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.util.IconMapper
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +47,31 @@ fun AccountEditScreen(
     var showTypeSheet by remember { mutableStateOf(false) }
     var showBankSheet by remember { mutableStateOf(false) }
     var showIconSheet by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    val balanceDateLabel = remember(state.balanceUpdatedAt) {
+        val zdt = Instant.ofEpochMilli(state.balanceUpdatedAt).atZone(ZoneId.systemDefault())
+        zdt.format(DateTimeFormatter.ofPattern("dd MMMM yyyy, HH:mm"))
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = state.balanceUpdatedAt)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { vm.onBalanceDateChange(it) }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Annuler") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -189,10 +216,17 @@ fun AccountEditScreen(
                             OutlinedTextField(
                                 value = state.initialBalance,
                                 onValueChange = vm::onInitialBalanceChange,
-                                label = { Text("Solde initial") },
+                                label = { Text("Solde de référence") },
                                 modifier = Modifier.fillMaxWidth(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true
+                            )
+
+                            // Date du solde
+                            SelectorField(
+                                label = "Date du solde de référence",
+                                value = balanceDateLabel,
+                                onClick = { showDatePicker = true }
                             )
 
                             Row(verticalAlignment = Alignment.CenterVertically) {

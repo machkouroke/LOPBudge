@@ -22,6 +22,7 @@ data class AccountFormUiState(
     val name: String = "",
     val type: AccountType = AccountType.CHECKING,
     val initialBalance: String = "0",
+    val balanceUpdatedAt: Long = System.currentTimeMillis(),
     val colorArgb: Int = 0xFF9C27B0.toInt(),
     val iconName: String = "account_balance",
     val bankName: String = "",
@@ -50,6 +51,7 @@ class AccountFormViewModel @Inject constructor(
     private val name = MutableStateFlow("")
     private val type = MutableStateFlow(AccountType.CHECKING)
     private val initialBalance = MutableStateFlow("0")
+    private val balanceUpdatedAt = MutableStateFlow(System.currentTimeMillis())
     private val colorArgb = MutableStateFlow(0xFF9C27B0.toInt())
     private val iconName = MutableStateFlow("account_balance")
     private val bankName = MutableStateFlow("")
@@ -77,6 +79,7 @@ class AccountFormViewModel @Inject constructor(
                     name.value = account.name
                     type.value = account.type
                     initialBalance.value = account.initialBalance.toString()
+                    balanceUpdatedAt.value = if (account.balanceUpdatedAt == 0L) System.currentTimeMillis() else account.balanceUpdatedAt
                     colorArgb.value = account.colorArgb
                     iconName.value = account.icon
                     bankName.value = account.bankName ?: ""
@@ -90,7 +93,7 @@ class AccountFormViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<AccountFormUiState> = combine(
-        name, type, initialBalance, colorArgb, iconName, bankName, comment, 
+        name, type, initialBalance, balanceUpdatedAt, colorArgb, iconName, bankName, comment, 
         includeInTotal, archived, isSaving, isLoaded, searchQuery, iconResults, isSearching
     ) { args ->
         AccountFormUiState(
@@ -98,17 +101,18 @@ class AccountFormViewModel @Inject constructor(
             name = args[0] as String,
             type = args[1] as AccountType,
             initialBalance = args[2] as String,
-            colorArgb = args[3] as Int,
-            iconName = args[4] as String,
-            bankName = args[5] as String,
-            comment = args[6] as String,
-            includeInTotal = args[7] as Boolean,
-            archived = args[8] as Boolean,
-            isSaving = args[9] as Boolean,
-            isLoaded = args[10] as Boolean,
-            searchQuery = args[11] as String,
-            iconResults = args[12] as List<IconResult>,
-            isSearching = args[13] as Boolean,
+            balanceUpdatedAt = args[3] as Long,
+            colorArgb = args[4] as Int,
+            iconName = args[5] as String,
+            bankName = args[6] as String,
+            comment = args[7] as String,
+            includeInTotal = args[8] as Boolean,
+            archived = args[9] as Boolean,
+            isSaving = args[10] as Boolean,
+            isLoaded = args[11] as Boolean,
+            searchQuery = args[12] as String,
+            iconResults = args[13] as List<IconResult>,
+            isSearching = args[14] as Boolean,
             isEdit = isEdit,
             knownBanks = iconSearch.getKnownBanks()
         )
@@ -125,7 +129,12 @@ class AccountFormViewModel @Inject constructor(
             else -> iconName.value = "account_balance"
         }
     }
-    fun onInitialBalanceChange(v: String) { initialBalance.value = v }
+    fun onInitialBalanceChange(v: String) { 
+        initialBalance.value = v 
+        // Mise à jour automatique de la date de référence lors du changement de solde
+        balanceUpdatedAt.value = System.currentTimeMillis()
+    }
+    fun onBalanceDateChange(v: Long) { balanceUpdatedAt.value = v }
     fun onColorChange(v: Int) { colorArgb.value = v }
     fun onIconChange(v: String) { iconName.value = v }
     
@@ -174,6 +183,7 @@ class AccountFormViewModel @Inject constructor(
                 name = name.value,
                 type = type.value,
                 initialBalance = initialBalance.value.toDoubleOrNull() ?: 0.0,
+                balanceUpdatedAt = balanceUpdatedAt.value,
                 colorArgb = colorArgb.value,
                 icon = iconName.value,
                 bankName = if (type.value == AccountType.CHECKING) bankName.value else null,

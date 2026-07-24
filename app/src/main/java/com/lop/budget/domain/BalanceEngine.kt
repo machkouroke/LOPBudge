@@ -9,7 +9,8 @@ object BalanceEngine {
 
     /**
      * Calcule les soldes actuels pour une liste de comptes donnés.
-     * @param accounts La liste des comptes avec leur solde initial.
+     * Utilise le solde de référence et les transactions payées après la date de mise à jour du solde.
+     * @param accounts La liste des comptes avec leur solde de référence.
      * @param transactions La liste exhaustive des transactions physiques.
      * @return Une map associant l'ID du compte à son solde calculé.
      */
@@ -17,17 +18,28 @@ object BalanceEngine {
         accounts: List<AccountEntity>,
         transactions: List<TransactionEntity>
     ): Map<Long, Double> {
-        val balances = accounts.associate { it.id to it.initialBalance }.toMutableMap()
+        val result = mutableMapOf<Long, Double>()
 
-        transactions
-            .filter { it.status == TransactionStatus.PAID && !it.deleted }
-            .forEach { tx ->
-                val current = balances[tx.accountId] ?: 0.0
-                val amount = if (tx.type == TransactionType.INCOME) tx.amount else -tx.amount
-                balances[tx.accountId] = current + amount
-            }
+        for (account in accounts) {
+            var currentBalance = account.initialBalance // initialBalance est notre solde de référence
+            
+            // Calculer la somme des transactions payées APRÈS la dernière mise à jour du solde de ce compte
+            transactions
+                .filter { 
+                    it.accountId == account.id && 
+                    it.status == TransactionStatus.PAID && 
+                    !it.deleted && 
+                    it.paidAt != null && it.paidAt > account.balanceUpdatedAt 
+                }
+                .forEach { tx ->
+                    val amount = if (tx.type == TransactionType.INCOME) tx.amount else -tx.amount
+                    currentBalance += amount
+                }
+            
+            result[account.id] = currentBalance
+        }
 
-        return balances
+        return result
     }
 
     /**

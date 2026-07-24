@@ -24,6 +24,7 @@ import com.lop.budget.domain.model.TransactionType
         Index("categoryId"),
         Index("seriesId"),
         Index("date"),
+        Index("paidAt"),
         Index("status"),
         Index("deleted")
     ],
@@ -40,6 +41,8 @@ data class TransactionEntity(
     val categoryId: Long,
     val subCategoryId: Long? = null,
     val note: String? = null,
+    /** Date effective de paiement, epoch millis. */
+    val paidAt: Long? = null,
 
     // --- Lien vers série récurrente ---
     val seriesId: String? = null,
