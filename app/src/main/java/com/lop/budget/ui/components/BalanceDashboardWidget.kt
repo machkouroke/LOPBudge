@@ -26,12 +26,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.lop.budget.R
 import com.lop.budget.ui.theme.ExpenseCoral
 import com.lop.budget.ui.theme.IncomeGreen
 import com.lop.budget.util.Format
 import kotlinx.coroutines.launch
 import java.time.YearMonth
+import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -61,7 +63,23 @@ fun BalanceDashboardWidget(
         else -> com.lop.budget.ui.theme.CategoryOrange
     }
     
-    val monthName = month.month.name.lowercase().capitalize(Locale.ROOT)
+    // Use system locale for French display
+    val locale = Locale.getDefault()
+    val monthName = remember(month) {
+        month.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar { it.uppercase() }
+    }
+
+    // Dynamic labels for month targets
+    val prevMonthLabel = remember(month) {
+        val prev = month.minusMonths(1)
+        val name = prev.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar { it.uppercase() }
+        "$name ${prev.year}"
+    }
+    val nextMonthLabel = remember(month) {
+        val next = month.plusMonths(1)
+        val name = next.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar { it.uppercase() }
+        "$name ${next.year}"
+    }
 
     Box(
         modifier = modifier
@@ -91,19 +109,19 @@ fun BalanceDashboardWidget(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 8.dp)
                 .graphicsLayer { alpha = dragProgress },
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (offsetX.value > 0) {
                 // Dragging right -> Previous month
-                Indicator(icon = Icons.AutoMirrored.Filled.ArrowBack, label = "Précédent")
+                Indicator(icon = Icons.AutoMirrored.Filled.ArrowBack, label = prevMonthLabel)
                 Spacer(Modifier.weight(1f))
             } else if (offsetX.value < 0) {
                 // Dragging left -> Next month
                 Spacer(Modifier.weight(1f))
-                Indicator(icon = Icons.AutoMirrored.Filled.ArrowForward, label = "Suivant")
+                Indicator(icon = Icons.AutoMirrored.Filled.ArrowForward, label = nextMonthLabel)
             }
         }
 
@@ -157,9 +175,15 @@ fun BalanceDashboardWidget(
 
 @Composable
 private fun Indicator(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+        Text(
+            text = label, 
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp), 
+            color = MaterialTheme.colorScheme.primary, 
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
+        )
     }
 }
 
