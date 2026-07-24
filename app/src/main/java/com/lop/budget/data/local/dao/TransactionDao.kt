@@ -45,6 +45,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE accountId = :accountId AND deleted = 0 ORDER BY date DESC")
     fun observeByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
 
+    @Query("SELECT * FROM transactions WHERE accountId = :accountId AND status = 'PAID' AND deleted = 0 ORDER BY date DESC")
+    fun observePaidByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
+
     @Query("SELECT * FROM transactions WHERE accountId = :accountId AND status = 'PLANNED' AND deleted = 0 ORDER BY date ASC")
     fun observePlannedByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
 

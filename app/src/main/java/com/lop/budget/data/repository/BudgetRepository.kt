@@ -48,6 +48,7 @@ class BudgetRepository @Inject constructor(
     // Transactions
     fun observeTransactions(): Flow<List<TransactionWithRelations>> = transactionDao.observeAll()
     fun observeTransactionsByAccount(accountId: Long) = transactionDao.observeByAccount(accountId)
+    fun observePaidTransactionsByAccount(accountId: Long) = transactionDao.observePaidByAccount(accountId)
     fun observePlannedTransactionsByAccount(accountId: Long) = transactionDao.observePlannedByAccount(accountId)
     
     fun searchTransactions(query: String) = transactionDao.search(query)

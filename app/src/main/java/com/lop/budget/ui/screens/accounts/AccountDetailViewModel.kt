@@ -41,22 +41,22 @@ class AccountDetailViewModel @Inject constructor(
 
     val uiState: StateFlow<AccountDetailUiState> = combine(
         repo.observeAccountBalances(),
-        repo.observeTransactionsByAccount(accountId),
+        repo.observePaidTransactionsByAccount(accountId),
         repo.observePlannedTransactionsByAccount(accountId),
         settings.currency,
         _txVersions
-    ) { balances, txs, planned, currency, versions ->
+    ) { balances, paid, planned, currency, versions ->
         val account = repo.getAccountById(accountId)
         
         // Calcul de l'historique (simplifié pour le prototype)
-        val history = calculateHistory(account?.initialBalance ?: 0.0, txs)
+        val history = calculateHistory(account?.initialBalance ?: 0.0, paid)
 
         AccountDetailUiState(
             account = account,
             balance = balances[accountId] ?: account?.initialBalance ?: 0.0,
             currency = currency,
             history = history,
-            recentTransactions = txs.take(10),
+            recentTransactions = paid.take(10),
             upcomingTransactions = planned.take(5),
             txVersions = versions,
             isLoaded = true
