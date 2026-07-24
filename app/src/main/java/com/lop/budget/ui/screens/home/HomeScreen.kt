@@ -1,5 +1,9 @@
 package com.lop.budget.ui.screens.home
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -23,8 +27,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -71,6 +73,7 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.components.BalanceDashboardWidget
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.MonthPickerBottomSheet
@@ -100,7 +103,6 @@ fun HomeScreen(
     vm: HomeViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
 
     // Vérification de la permission au lancement
@@ -140,66 +142,22 @@ fun HomeScreen(
         )
     }
 
-    // Pager configuration for infinite-like horizontal scrolling
-    val initialPage = 5000
-    val pagerState = rememberPagerState(initialPage = initialPage) { 10000 }
-
-    // Sync Pager -> ViewModel (Déclenché uniquement quand la page est fixée)
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.settledPage }
-            .distinctUntilChanged()
-            .collect { page ->
-                val diff = (page - initialPage).toLong()
-                val targetMonth = YearMonth.now().plusMonths(diff)
-                if (state.month != targetMonth) {
-                    vm.setMonth(targetMonth)
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                }
-            }
-    }
-
-    // Sync ViewModel -> Pager (for manual month selection)
-    LaunchedEffect(state.month) {
-        val now = YearMonth.now()
-        val diff = (state.month.year - now.year) * 12 + (state.month.monthValue - now.monthValue)
-        val targetPage = initialPage + diff
-        if (pagerState.currentPage != targetPage) {
-            val distance = kotlin.math.abs(pagerState.currentPage - targetPage)
-            if (distance > 1) {
-                pagerState.scrollToPage(targetPage)
-            } else {
-                pagerState.animateScrollToPage(targetPage)
-            }
-        }
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-            beyondViewportPageCount = 1,
-            userScrollEnabled = true,
-            key = { it } // Utilisation d'une clé stable pour éviter de recréer les mois adjacents
-        ) { page ->
-            val diff = (page - initialPage).toLong()
-            val pageMonth = remember(page) { YearMonth.now().plusMonths(diff) }
-            val monthState by remember(pageMonth) { vm.observeMonthState(pageMonth) }
-                .collectAsStateWithLifecycle(initialValue = HomeUiState(month = pageMonth))
-
-            HomeContent(
-                state = monthState,
-                statusBarPadding = statusBarPadding,
-                onOpenTransaction = onOpenTransaction,
-                onOpenMonthly = onOpenMonthly,
-                onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
-                onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },
-                onDeleteRequest = { showDeleteConfirmForTx = it },
-                onPreviewTransaction = onPreviewTransaction,
-                snackbarHostState = snackbarHostState,
-                hazeState = hazeState,
-                vm = vm
-            )
-        }
+        HomeContent(
+            state = state,
+            statusBarPadding = statusBarPadding,
+            onOpenTransaction = onOpenTransaction,
+            onOpenMonthly = onOpenMonthly,
+            onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
+            onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },
+            onDeleteRequest = { showDeleteConfirmForTx = it },
+            onPreviewTransaction = onPreviewTransaction,
+            onPrevMonth = { vm.prevMonth() },
+            onNextMonth = { vm.nextMonth() },
+            snackbarHostState = snackbarHostState,
+            hazeState = hazeState,
+            vm = vm
+        )
 
         // Overlay UI (Header and Floating elements)
         HomeOverlay(
@@ -254,6 +212,8 @@ fun HomeContent(
     onOpenAccountDetail: (Long) -> Unit,
     onDeleteRequest: (TransactionWithRelations) -> Unit,
     onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
+    onPrevMonth: () -> Unit,
+    onNextMonth: () -> Unit,
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
     hazeState: HazeState? = null,
     vm: HomeViewModel
@@ -274,126 +234,142 @@ fun HomeContent(
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         item(key = "budget_summary", contentType = "summary") {
-            val solde = remember(state.monthIncome, state.monthExpense) {
-                state.monthIncome - state.monthExpense
-            }
-            
-            val soldeColor = remember(solde) {
-                when {
-                    solde > 50 -> com.lop.budget.ui.theme.IncomeGreen
-                    solde < -50 -> ExpenseCoral
-                    else -> com.lop.budget.ui.theme.CategoryOrange
-                }
-            }
-
-            val monthLabel = remember(state.month, state.isCurrentMonth) {
-                val name = Format.monthYear(state.month).split(" ").first()
-                if (state.isCurrentMonth) "Solde de $name" else "Solde en $name"
-            }
-
-            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = monthLabel,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            // Using AnimatedContent for smooth transitions between months
+            AnimatedContent(
+                targetState = state.month,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
+                },
+                label = "dashboard_balance"
+            ) { targetMonth ->
+                // Note: since the rest of 'state' (income, expense) is already for 'targetMonth', 
+                // we just use it directly.
+                BalanceDashboardWidget(
+                    month = targetMonth,
+                    income = state.monthIncome,
+                    expense = state.monthExpense,
+                    currency = state.currency,
+                    onPrevMonth = onPrevMonth,
+                    onNextMonth = onNextMonth,
+                    onOpenMonthly = { onOpenMonthly(it, targetMonth) }
                 )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = Format.money(solde, state.currency),
-                    style = MaterialTheme.typography.displayLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = soldeColor
-                )
-                Spacer(Modifier.height(32.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StatCard(
-                        label = stringResource(R.string.expense),
-                        amount = state.monthExpense,
-                        currency = state.currency,
-                        icon = Icons.Filled.ArrowDownward,
-                        color = ExpenseCoral,
-                        modifier = Modifier.weight(1f).clickableNoRipple { onOpenMonthly(TransactionType.EXPENSE, state.month) }
-                    )
-                    StatCard(
-                        label = stringResource(R.string.income),
-                        amount = state.monthIncome,
-                        currency = state.currency,
-                        icon = Icons.Filled.ArrowUpward,
-                        color = com.lop.budget.ui.theme.IncomeGreen,
-                        modifier = Modifier.weight(1f).clickableNoRipple { onOpenMonthly(TransactionType.INCOME, state.month) }
-                    )
-                }
             }
         }
 
         item(key = "accounts_widget", contentType = "accounts") {
-            FloatingCard(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Column {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 18.dp, end = 8.dp, top = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            stringResource(R.string.accounts_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        TextButton(onClick = onOpenAccounts) {
-                            Text(stringResource(R.string.see_all))
-                            Icon(
-                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-
-                    if (state.accounts.isNotEmpty()) {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 18.dp, top = 8.dp)
+            AnimatedContent(
+                targetState = state.month,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
+                },
+                label = "dashboard_accounts"
+            ) { _ ->
+                FloatingCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 18.dp, end = 8.dp, top = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            items(state.accounts, key = { it.account.id }) { balance ->
-                                AccountWidgetCard(balance, state.currency) {
-                                    onOpenAccountDetail(balance.account.id)
-                                }
+                            Text(
+                                stringResource(R.string.accounts_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            TextButton(onClick = onOpenAccounts) {
+                                Text(stringResource(R.string.see_all))
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    null,
+                                    modifier = Modifier.size(16.dp)
+                                )
                             }
                         }
-                    } else {
-                        Text(
-                            stringResource(R.string.no_accounts_to_show),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 18.dp, end = 18.dp, bottom = 18.dp, top = 8.dp)
-                        )
+
+                        if (state.accounts.isNotEmpty()) {
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 18.dp, top = 8.dp)
+                            ) {
+                                items(state.accounts, key = { it.account.id }) { balance ->
+                                    AccountWidgetCard(balance, state.currency) {
+                                        onOpenAccountDetail(balance.account.id)
+                                    }
+                                }
+                            }
+                        } else {
+                            Text(
+                                stringResource(R.string.no_accounts_to_show),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 18.dp, end = 18.dp, bottom = 18.dp, top = 8.dp)
+                            )
+                        }
                     }
                 }
             }
         }
 
         item(contentType = "unpaid_subscriptions") {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(stringResource(R.string.home_unpaid_subscriptions), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-                FloatingCard(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant, contentPadding = PaddingValues(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircleIcon(icon = Icons.Filled.Repeat, tint = MaterialTheme.colorScheme.onSurface, background = MaterialTheme.colorScheme.surface, size = 40.dp)
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text(stringResource(R.string.home_subscriptions), style = MaterialTheme.typography.titleMedium)
-                                Text(if (state.subscriptions.isEmpty()) stringResource(R.string.home_no_pending_subscriptions) else stringResource(R.string.home_pending_subscriptions_count, state.subscriptions.size), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            AnimatedContent(
+                targetState = state.month,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
+                },
+                label = "dashboard_subscriptions"
+            ) { _ ->
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        stringResource(R.string.home_unpaid_subscriptions),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    FloatingCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        contentPadding = PaddingValues(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircleIcon(
+                                    icon = Icons.Filled.Repeat,
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    background = MaterialTheme.colorScheme.surface,
+                                    size = 40.dp
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        stringResource(R.string.home_subscriptions),
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Text(
+                                        if (state.subscriptions.isEmpty()) stringResource(R.string.home_no_pending_subscriptions) else stringResource(
+                                            R.string.home_pending_subscriptions_count,
+                                            state.subscriptions.size
+                                        ),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
-                        }
-                        if (state.subscriptions.isNotEmpty()) {
-                            val totalSubs = state.subscriptions.sumOf { it.transaction.amount }
-                            Text(Format.money(totalSubs, state.currency), style = MaterialTheme.typography.titleMedium, color = ExpenseCoral)
+                            if (state.subscriptions.isNotEmpty()) {
+                                val totalSubs = state.subscriptions.sumOf { it.transaction.amount }
+                                Text(
+                                    Format.money(totalSubs, state.currency),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = ExpenseCoral
+                                )
+                            }
                         }
                     }
                 }
@@ -401,37 +377,45 @@ fun HomeContent(
         }
 
         item(contentType = "recent_transactions_header") {
-            TransactionsDashboardWidget(
-                transactions = state.dashboardTransactions,
-                currency = state.currency,
-                onSeeAll = { onOpenMonthly(TransactionType.EXPENSE, state.month) }, // Default to expense list
-                onOpenTransaction = onOpenTransaction,
-                onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
-                onTogglePaid = vm::togglePaid,
-                onDeleteRequest = onDeleteRequest,
-                onPreviewTransaction = onPreviewTransaction,
-                onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) },
-                hazeState = hazeState
-            )
+            AnimatedContent(
+                targetState = state.month,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
+                },
+                label = "dashboard_transactions"
+            ) { targetMonth ->
+                TransactionsDashboardWidget(
+                    transactions = state.dashboardTransactions,
+                    currency = state.currency,
+                    onSeeAll = { onOpenMonthly(TransactionType.EXPENSE, targetMonth) },
+                    onOpenTransaction = onOpenTransaction,
+                    onMaterializeAndOpen = { sid, date ->
+                        vm.materializeAndOpen(
+                            sid,
+                            date,
+                            onOpenTransaction
+                        )
+                    },
+                    onTogglePaid = vm::togglePaid,
+                    onDeleteRequest = onDeleteRequest,
+                    onPreviewTransaction = onPreviewTransaction,
+                    onDeleteSimple = { id ->
+                        vm.deleteWithUndo(
+                            id,
+                            snackbarHostState,
+                            txDeletedMsg,
+                            undoMsg
+                        )
+                    },
+                    hazeState = hazeState
+                )
+            }
         }
 
         if (state.dashboardTransactions.isEmpty() && state.dayGroups.isEmpty()) {
             item(contentType = "empty_state") {
                 // Widget handles empty state internally now
             }
-        }
-    }
-}
-
-@Composable
-fun StatCard(label: String, amount: Double, currency: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier = Modifier) {
-    FloatingCard(modifier = modifier, color = MaterialTheme.colorScheme.surfaceVariant, contentPadding = PaddingValues(16.dp)) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            CircleIcon(icon = icon, tint = color, background = color.copy(alpha = 0.15f), size = 40.dp)
-            Spacer(Modifier.height(12.dp))
-            Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(4.dp))
-            Text(Format.money(amount, currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
