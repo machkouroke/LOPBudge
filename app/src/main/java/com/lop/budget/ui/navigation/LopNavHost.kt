@@ -196,23 +196,26 @@ fun LopNavHost(startRoute: String? = null) {
                         }
 
                         composableAnimated(
-                            Routes.MONTHLY,
-                            NavAnimationType.SECONDARY,
-                            arguments = listOf(
-                                navArgument("type") { type = NavType.StringType },
-                                navArgument("ym") { type = NavType.StringType },
-                            )
-                        ) {
-                            MonthlyTransactionsScreen(
-                                onBack = { navController.popBackStack() },
-                                onOpenTransaction = { navController.navigate(Routes.detail(it)) },
-                                onPreviewTransaction = { tx, cur ->
-                                    globalPreviewTx = tx
-                                    globalCurrency = cur
-                                },
-                                hazeState = hazeState,
-                            )
-                        }
+                        Routes.MONTHLY,
+                        NavAnimationType.SECONDARY,
+                        arguments = listOf(
+                            navArgument("type") { type = NavType.StringType },
+                            navArgument("ym") { type = NavType.StringType },
+                        )
+                    ) {
+                        MonthlyTransactionsScreen(
+                            onBack = { navController.popBackStack() },
+                            onOpenTransaction = { navController.navigate(Routes.detail(it)) },
+                            onPreviewTransaction = { tx, cur ->
+                                globalPreviewTx = tx
+                                globalCurrency = cur
+                            },
+                            onNavigateToSearch = { query ->
+                                navController.navigate(Routes.SEARCH)
+                            },
+                            hazeState = hazeState,
+                        )
+                    }
 
                         composableAnimated(Routes.AI, NavAnimationType.SECONDARY) {
                             AiScreen(onBack = { navController.popBackStack() })

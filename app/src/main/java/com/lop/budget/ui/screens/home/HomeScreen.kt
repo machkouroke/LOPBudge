@@ -327,41 +327,53 @@ fun HomeContent(
         }
 
         item(key = "accounts_widget", contentType = "accounts") {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        stringResource(R.string.accounts_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    TextButton(onClick = onOpenAccounts) {
-                        Text(stringResource(R.string.see_all))
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, modifier = Modifier.size(16.dp))
-                    }
-                }
-                
-                if (state.accounts.isNotEmpty()) {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(horizontal = 0.dp)
+            FloatingCard(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 18.dp, end = 8.dp, top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        items(state.accounts, key = { it.account.id }) { balance ->
-                            AccountWidgetCard(balance, state.currency) {
-                                onOpenAccountDetail(balance.account.id)
-                            }
+                        Text(
+                            stringResource(R.string.accounts_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        TextButton(onClick = onOpenAccounts) {
+                            Text(stringResource(R.string.see_all))
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                null,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
-                } else {
-                    Text(
-                        stringResource(R.string.no_accounts_to_show),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
+
+                    if (state.accounts.isNotEmpty()) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 18.dp, top = 8.dp)
+                        ) {
+                            items(state.accounts, key = { it.account.id }) { balance ->
+                                AccountWidgetCard(balance, state.currency) {
+                                    onOpenAccountDetail(balance.account.id)
+                                }
+                            }
+                        }
+                    } else {
+                        Text(
+                            stringResource(R.string.no_accounts_to_show),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 18.dp, end = 18.dp, bottom = 18.dp, top = 8.dp)
+                        )
+                    }
                 }
             }
         }

@@ -1,5 +1,10 @@
 package com.lop.budget.ui.screens.monthly
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -12,7 +17,9 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +41,7 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.*
+import com.lop.budget.ui.navigation.Routes
 import com.lop.budget.ui.screens.search.AccountList
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
@@ -47,6 +55,7 @@ fun MonthlyTransactionsScreen(
     onBack: () -> Unit,
     onOpenTransaction: (Long) -> Unit,
     onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
+    onNavigateToSearch: (String) -> Unit, // Callback to navigate to global search
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     hazeState: HazeState? = null,
     vm: MonthlyTransactionsViewModel = hiltViewModel(),
@@ -59,12 +68,7 @@ fun MonthlyTransactionsScreen(
     var showCategoryPicker by remember { mutableStateOf(false) }
 
     val title = stringResource(R.string.monthly_transactions_title)
-    val accent = if (state.type == TransactionType.EXPENSE) ext.expense else ext.income
-
-    val top = state.breakdown
-    val slices = buildList {
-        top.take(8).forEach { add(DonutSlice(it.total, Color(it.colorArgb), it.name)) }
-    }
+    val accent = if (state.type == TransactionType.EXPENSE) ext.expense else if (state.type == TransactionType.INCOME) ext.income else MaterialTheme.colorScheme.primary
 
     var showDeleteConfirmForTx by remember { mutableStateOf<TransactionWithRelations?>(null) }
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
@@ -87,26 +91,11 @@ fun MonthlyTransactionsScreen(
 
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+                // Use the new modern LopSearchBar
+                LopSearchBar(
                     value = state.searchQuery,
                     onValueChange = vm::onQueryChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Rechercher...") },
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                    trailingIcon = {
-                        if (state.searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { vm.onQueryChange("") }) {
-                                Icon(Icons.Default.Close, null)
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    )
+                    placeholder = "Rechercher ce mois..."
                 )
 
                 LazyRow(
@@ -115,10 +104,33 @@ fun MonthlyTransactionsScreen(
                 ) {
                     item {
                         FilterChip(
-                            selected = true,
-                            onClick = { vm.setType(if (state.type == TransactionType.EXPENSE) TransactionType.INCOME else TransactionType.EXPENSE) },
-                            label = { Text(if (state.type == TransactionType.EXPENSE) "Dépenses" else "Revenus") },
-                            leadingIcon = { Icon(if (state.type == TransactionType.EXPENSE) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward, null, modifier = Modifier.size(18.dp)) }
+                            selected = state.type != null,
+                            onClick = { 
+                                val next = when(state.type) {
+                                    null -> TransactionType.EXPENSE
+                                    TransactionType.EXPENSE -> TransactionType.INCOME
+                                    TransactionType.INCOME -> null
+                                }
+                                vm.setType(next)
+                            },
+                            label = { 
+                                Text(when(state.type) {
+                                    null -> "Tous les types"
+                                    TransactionType.EXPENSE -> "Dépenses"
+                                    TransactionType.INCOME -> "Revenus"
+                                }) 
+                            },
+                            leadingIcon = { 
+                                Icon(
+                                    when(state.type) {
+                                        null -> Icons.Default.SwapHoriz
+                                        TransactionType.EXPENSE -> Icons.Default.ArrowDownward
+                                        TransactionType.INCOME -> Icons.Default.ArrowUpward
+                                    }, 
+                                    null, 
+                                    modifier = Modifier.size(18.dp)
+                                ) 
+                            }
                         )
                     }
                     item {
@@ -134,7 +146,7 @@ fun MonthlyTransactionsScreen(
                             },
                             label = { 
                                 Text(when(state.filter) {
-                                    PaidFilter.ALL -> "Tous"
+                                    PaidFilter.ALL -> "Tous les statuts"
                                     PaidFilter.PAID -> "Payé"
                                     PaidFilter.PLANNED -> "Planifié"
                                 })
@@ -173,55 +185,32 @@ fun MonthlyTransactionsScreen(
             }
         }
 
-        // Insights + Chart
+        // Cross-month suggestion banner
         item {
-            FloatingCard(Modifier.fillMaxWidth()) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            AnimatedVisibility(
+                visible = state.hasResultsInOtherMonths,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth()
+                ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                        horizontalArrangement = Arrangement.Center
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        InsightToggle("Catégories", state.insightMode == InsightMode.CATEGORY, accent) { vm.setInsightMode(InsightMode.CATEGORY) }
-                        Spacer(Modifier.width(8.dp))
-                        InsightToggle("Étiquettes", state.insightMode == InsightMode.TAG, accent) { vm.setInsightMode(InsightMode.TAG) }
-                    }
-
-                    if (state.transactions.isEmpty()) {
-                        Text(stringResource(R.string.monthly_no_data), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(40.dp))
-                    } else {
-                        DonutChart(slices = slices) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(stringResource(R.string.total), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(
-                                    Format.money(state.total, state.currency),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = accent,
-                                )
-                            }
+                        Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Aucun résultat ce mois-ci", style = MaterialTheme.typography.titleSmall)
+                            Text("Des transactions correspondantes existent dans d'autres mois.", style = MaterialTheme.typography.bodySmall)
+                        }
+                        TextButton(onClick = { onNavigateToSearch(state.searchQuery) }) {
+                            Text("Voir tout")
                         }
                     }
-                }
-            }
-        }
-
-        // Breakdown en Grille (3 colonnes)
-        item {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                maxItemsInEachRow = 3
-            ) {
-                state.breakdown.forEach { item ->
-                    BreakdownChip(
-                        name = item.name,
-                        amount = item.total,
-                        percentage = (item.share * 100).toInt(),
-                        color = Color(item.colorArgb),
-                        currency = state.currency,
-                        modifier = Modifier.weight(1f)
-                    )
                 }
             }
         }

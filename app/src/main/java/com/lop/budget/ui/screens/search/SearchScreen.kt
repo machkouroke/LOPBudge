@@ -28,6 +28,7 @@ import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.LopScreenScaffold
+import com.lop.budget.ui.components.LopSearchBar
 import com.lop.budget.ui.components.transactionDayGroups
 import com.lop.budget.util.Format
 import dev.chrisbanes.haze.HazeState
@@ -59,28 +60,11 @@ fun SearchScreen(
     ) {
         item {
             Column {
-                OutlinedTextField(
+                LopSearchBar(
                     value = state.query,
                     onValueChange = vm::onQueryChange,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    placeholder = { Text("Titre, notes...") },
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                    trailingIcon = {
-                        if (state.query.isNotEmpty()) {
-                            IconButton(onClick = { vm.onQueryChange("") }) {
-                                Icon(Icons.Default.Close, null)
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    )
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    placeholder = "Titre, notes..."
                 )
 
                 // Filter chips

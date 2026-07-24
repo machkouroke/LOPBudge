@@ -68,7 +68,7 @@ fun TransactionPreviewPopup(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // Increased blur radius and added a stronger dark tint for better legibility
+                // Increased blur radius and added a stronger dark tint for better legibility
             .hazeEffect(state = hazeState) {
                 style = HazeStyle(
                     blurRadius = 40.dp, // Increased from 15.dp for much stronger blur

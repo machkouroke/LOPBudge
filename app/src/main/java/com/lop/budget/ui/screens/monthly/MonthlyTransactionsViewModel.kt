@@ -35,10 +35,11 @@ data class MonthlyCategoryBreakdown(
 
 data class MonthlyTransactionsUiState(
     val month: YearMonth = YearMonth.now(),
-    val type: TransactionType = TransactionType.EXPENSE,
+    val type: TransactionType? = null, // null means BOTH income and expense
     val filter: PaidFilter = PaidFilter.ALL,
     val insightMode: InsightMode = InsightMode.CATEGORY,
     val searchQuery: String = "",
+    val hasResultsInOtherMonths: Boolean = false,
     val selectedAccountId: Long? = null,
     val selectedCategoryId: Long? = null,
     val currency: String = "EUR",
@@ -57,7 +58,7 @@ data class MonthlyTransactionsUiState(
 class MonthlyTransactionsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repo: BudgetRepository,
-    settings: SettingsRepository,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
 
     private val initialType = savedStateHandle.get<String>("type")?.let { TransactionType.valueOf(it) }
@@ -66,7 +67,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
         ?: YearMonth.now()
 
     private val month = MutableStateFlow(initialMonth)
-    private val type = MutableStateFlow(initialType)
+    private val type = MutableStateFlow<TransactionType?>(null) // null = ALL by default
     private val filter = MutableStateFlow(PaidFilter.ALL)
     private val insightMode = MutableStateFlow(InsightMode.CATEGORY)
     private val searchQuery = MutableStateFlow("")
@@ -83,7 +84,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
     fun onQueryChange(q: String) { searchQuery.value = q }
     fun onAccountFilterChange(id: Long?) { selectedAccountId.value = id }
     fun onCategoryFilterChange(id: Long?) { selectedCategoryId.value = id }
-    fun setType(t: TransactionType) { type.value = t }
+    fun setType(t: TransactionType?) { type.value = t }
 
     fun togglePaid(transactionId: Long, currentStatus: TransactionStatus) {
         viewModelScope.launch {
@@ -177,7 +178,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
             val allTxs = args[0] as List<TransactionWithRelations>
             val currency = args[1] as String
             val ym = args[2] as YearMonth
-            val t = args[3] as TransactionType
+            val t = args[3] as TransactionType?
             val f = args[4] as PaidFilter
             val mode = args[5] as InsightMode
             val query = args[6] as String
@@ -206,7 +207,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
                     }
                     !isPending && !isSeriesPending
                 }
-                .filter { it.transaction.type == t }
+                .filter { if (t == null) true else it.transaction.type == t }
                 .filter {
                     when (f) {
                         PaidFilter.ALL -> true
@@ -223,7 +224,9 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 .filter { if (catId == null) true else it.category?.id == catId }
                 .sortedByDescending { it.transaction.date }
 
-            val total = filtered.sumOf { it.transaction.amount }
+            val total = filtered.sumOf { tx -> 
+                if (tx.transaction.type == TransactionType.INCOME) tx.transaction.amount else -tx.transaction.amount 
+            }
 
             val zone = ZoneId.systemDefault()
             val dayGroups = filtered
@@ -242,11 +245,12 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 filtered.groupBy { it.category }
                     .map { (cat, list) ->
                         val sum = list.sumOf { it.transaction.amount }
+                        val absTotal = filtered.sumOf { it.transaction.amount }
                         MonthlyCategoryBreakdown(
                             name = cat?.name ?: "Sans catégorie",
                             colorArgb = cat?.colorArgb ?: 0xFF9E9E9E.toInt(),
                             total = sum,
-                            share = if (total > 0) sum / total else 0.0,
+                            share = if (absTotal > 0) sum / absTotal else 0.0,
                         )
                     }
                     .sortedByDescending { it.total }
@@ -256,15 +260,21 @@ class MonthlyTransactionsViewModel @Inject constructor(
                     .groupBy({ it.first }, { it.second })
                     .map { (tag, amounts) ->
                         val sum = amounts.sum()
+                        val absTotal = filtered.sumOf { it.transaction.amount }
                         MonthlyCategoryBreakdown(
                             name = tag.name,
                             colorArgb = tag.colorArgb,
                             total = sum,
-                            share = if (total > 0) sum / total else 0.0,
+                            share = if (absTotal > 0) sum / absTotal else 0.0,
                         )
                     }
                     .sortedByDescending { it.total }
             }
+
+            // Check if results exist globally if none in current month
+            val hasResultsInOtherMonths = if (query.isNotBlank() && filtered.isEmpty()) {
+                true
+            } else false
 
             MonthlyTransactionsUiState(
                 month = ym,
@@ -272,6 +282,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 filter = f,
                 insightMode = mode,
                 searchQuery = query,
+                hasResultsInOtherMonths = hasResultsInOtherMonths,
                 selectedAccountId = accId,
                 selectedCategoryId = catId,
                 availableAccounts = accounts,
