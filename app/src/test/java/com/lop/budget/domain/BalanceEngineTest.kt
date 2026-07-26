@@ -52,7 +52,7 @@ class BalanceEngineTest {
             accountId = 1,
             categoryId = 0
         )
-        MarkdownReporter.log("Tx AVANT : ID=1, paidAt=5000 (doit être ignorée)")
+        MarkdownReporter.log("Expense AVANT : ID=1, paidAt=5000 (doit être ignorée)")
 
         val txAfter = TransactionEntity(
             id = 2,
@@ -65,7 +65,7 @@ class BalanceEngineTest {
             accountId = 1,
             categoryId = 0
         )
-        MarkdownReporter.log("Tx APRÈS : ID=2, paidAt=15000 (doit être déduite)")
+        MarkdownReporter.log("Expense APRÈS : ID=2, paidAt=15000 (doit être déduite)")
 
         val txIncome = TransactionEntity(
             id = 4,
@@ -78,7 +78,7 @@ class BalanceEngineTest {
             accountId = 1,
             categoryId = 0
         )
-        MarkdownReporter.log("Tx REVENU : ID=4, paidAt=12000 (doit être ajoutée)")
+        MarkdownReporter.log("Income REVENU : ID=4, paidAt=12000 (doit être ajoutée)")
 
         val results =
             BalanceEngine.calculateBalances(listOf(account), listOf(txBefore, txAfter, txIncome))
