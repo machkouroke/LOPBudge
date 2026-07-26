@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -69,12 +70,14 @@ import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.LopScreenScaffold
+import com.lop.budget.ui.components.LopSwitch
 import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.PressScale
 import com.lop.budget.ui.components.pressScaleClickable
@@ -94,6 +97,25 @@ fun TransactionEditScreen(
     val tags by vm.tags.collectAsStateWithLifecycle()
     val goals by vm.goals.collectAsStateWithLifecycle()
     val debts by vm.debts.collectAsStateWithLifecycle()
+    val showAlert by vm.showBalanceImpactAlert.collectAsStateWithLifecycle()
+
+    if (showAlert) {
+        AlertDialog(
+            onDismissRequest = { vm.dismissAlert() },
+            title = { Text(stringResource(R.string.impact_balance_title)) },
+            text = { Text(stringResource(R.string.impact_balance_msg)) },
+            confirmButton = {
+                TextButton(onClick = { vm.confirmSave(accountNow = true, onDone = onBack) }) {
+                    Text(stringResource(R.string.impact_balance_account_now))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { vm.confirmSave(accountNow = false, onDone = onBack) }) {
+                    Text(stringResource(R.string.impact_balance_do_not_account))
+                }
+            }
+        )
+    }
 
     var showCategorySheet by remember { mutableStateOf(!vm.isEditing) }
     var showAccountSheet by remember { mutableStateOf(false) }
@@ -167,6 +189,26 @@ fun TransactionEditScreen(
                         keyboardType = KeyboardType.Text,
                         textStyle = MaterialTheme.typography.bodyLarge,
                     )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Status Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = stringResource(R.string.tx_detail_mark_as_paid),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        LopSwitch(
+                            checked = form.status == TransactionStatus.PAID,
+                            onCheckedChange = { isChecked -> 
+                                vm.setStatus(if (isChecked) TransactionStatus.PAID else TransactionStatus.PLANNED)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -361,7 +403,6 @@ fun TransactionEditScreen(
                 }
             },
             onCreateTag = { name, color -> vm.createTag(name, color) },
-            onDeleteTag = { id -> vm.deleteTag(id) },
             onDismiss = { showTagsSheet = false },
         )
     }
@@ -750,7 +791,6 @@ private fun TagsBottomSheet(
     selectedTagIds: Set<Long>,
     onToggleTag: (Long) -> Unit,
     onCreateTag: (String, Int) -> Unit,
-    onDeleteTag: (Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(

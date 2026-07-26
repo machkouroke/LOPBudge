@@ -217,6 +217,12 @@
     <string name="notif_listener_missing_msg">L\'accès aux notifications est désactivé. LOPBudge ne peut pas détecter vos transactions.</string>
     <string name="notif_listener_missing_action">Activer</string>
 
+    <!-- Impact Solde Alert -->
+    <string name="impact_balance_title">Impact sur le solde</string>
+    <string name="impact_balance_msg">Cette transaction a été payée avant la dernière mise à jour du solde du compte. Les modifications apportées ne seront pas prises en compte dans le solde actuel, sauf si vous choisissez de la comptabiliser à partir de maintenant.</string>
+    <string name="impact_balance_account_now">Comptabiliser maintenant</string>
+    <string name="impact_balance_do_not_account">Ne pas comptabiliser</string>
+
     <!-- Bottom Bar -->
     <string name="nav_home">Accueil</string>
     <string name="nav_analytics">Analyse</string>
