@@ -287,6 +287,7 @@ class BudgetRepository @Inject constructor(
                     categoryId = categoryId,
                     subCategoryId = subCategoryId,
                     note = note,
+                    paidAt = currentTwr?.transaction?.paidAt, // Préserver la date de paiement existante
                     seriesId = null, // Débranchée
                     seriesDate = null,
                     isException = false,
@@ -307,6 +308,7 @@ class BudgetRepository @Inject constructor(
                     categoryId = categoryId,
                     subCategoryId = subCategoryId,
                     note = note,
+                    paidAt = currentTwr?.transaction?.paidAt, // Préserver la date de paiement existante
                     linkedGoalId = linkedGoalId,
                     linkedDebtId = linkedDebtId
                 )
