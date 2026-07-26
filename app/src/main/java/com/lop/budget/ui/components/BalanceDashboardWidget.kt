@@ -3,9 +3,7 @@ package com.lop.budget.ui.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -21,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -53,8 +52,8 @@ fun BalanceDashboardWidget(
     val offsetX = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     
-    // Threshold for triggering month change (30% of typical screen width, roughly 100dp)
-    val threshold = 300f 
+    // Reduced threshold for easier validation (from 300f to 180f)
+    val threshold = 200f
     
     val solde = income - expense
     val soldeColor = when {
@@ -63,13 +62,11 @@ fun BalanceDashboardWidget(
         else -> com.lop.budget.ui.theme.CategoryOrange
     }
     
-    // Use system locale for French display
     val locale = Locale.getDefault()
     val monthName = remember(month) {
         month.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar { it.uppercase() }
     }
 
-    // Dynamic labels for month targets
     val prevMonthLabel = remember(month) {
         val prev = month.minusMonths(1)
         val name = prev.month.getDisplayName(TextStyle.FULL, locale).replaceFirstChar { it.uppercase() }
@@ -84,26 +81,35 @@ fun BalanceDashboardWidget(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .draggable(
-                state = rememberDraggableState { delta ->
-                    // Add resistance to the drag
-                    val resistance = 0.5f
-                    scope.launch {
-                        offsetX.snapTo(offsetX.value + delta * resistance)
+            .pointerInput(Unit) {
+                // Use detectHorizontalDragGestures for more reliable gesture handling
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        scope.launch {
+                            if (abs(offsetX.value) > threshold) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                if (offsetX.value > 0) onPrevMonth() else onNextMonth()
+                            }
+                            // Always animate back to 0 to prevent getting "stuck"
+                            offsetX.animateTo(0f, spring(stiffness = Spring.StiffnessLow))
+                        }
+                    },
+                    onDragCancel = {
+                        scope.launch {
+                            offsetX.animateTo(0f, spring(stiffness = Spring.StiffnessLow))
+                        }
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        val resistance = 0.5f
+                        scope.launch {
+                            offsetX.snapTo(offsetX.value + dragAmount * resistance)
+                        }
                     }
-                },
-                orientation = Orientation.Horizontal,
-                onDragStopped = {
-                    if (abs(offsetX.value) > threshold) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        if (offsetX.value > 0) onPrevMonth() else onNextMonth()
-                    }
-                    offsetX.animateTo(0f, spring(stiffness = Spring.StiffnessLow))
-                }
-            ),
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
-        // Directional Indicators (Arrows)
         val dragProgress = (abs(offsetX.value) / threshold).coerceIn(0f, 1f)
         
         Row(
@@ -115,23 +121,19 @@ fun BalanceDashboardWidget(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (offsetX.value > 0) {
-                // Dragging right -> Previous month
                 Indicator(icon = Icons.AutoMirrored.Filled.ArrowBack, label = prevMonthLabel)
                 Spacer(Modifier.weight(1f))
             } else if (offsetX.value < 0) {
-                // Dragging left -> Next month
                 Spacer(Modifier.weight(1f))
                 Indicator(icon = Icons.AutoMirrored.Filled.ArrowForward, label = nextMonthLabel)
             }
         }
 
-        // The Main Card Content
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
                 .graphicsLayer {
-                    // Subtle scale down effect when dragging
                     val scale = 1f - (dragProgress * 0.05f)
                     scaleX = scale
                     scaleY = scale
