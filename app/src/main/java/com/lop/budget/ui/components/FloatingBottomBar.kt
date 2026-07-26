@@ -74,8 +74,7 @@ fun FloatingBottomBar(
             Row(
                 modifier = Modifier
                     .background(
-                        if (!isAppInDarkDirectory) Color.White
-                        else Color.Black
+                        MaterialTheme.colorScheme.background
                     )
                     .hazeEffect(state = hazeState)
                     .padding(horizontal = 8.dp)
