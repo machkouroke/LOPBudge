@@ -59,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -101,16 +102,23 @@ fun TransactionEditScreen(
 
     if (showAlert) {
         AlertDialog(
+            modifier = Modifier.testTag("impact_alert_dialog"),
             onDismissRequest = { vm.dismissAlert() },
             title = { Text(stringResource(R.string.impact_balance_title)) },
             text = { Text(stringResource(R.string.impact_balance_msg)) },
             confirmButton = {
-                TextButton(onClick = { vm.confirmSave(accountNow = true, onDone = onBack) }) {
+                TextButton(
+                    onClick = { vm.confirmSave(accountNow = true, onDone = onBack) },
+                    modifier = Modifier.testTag("impact_alert_confirm")
+                ) {
                     Text(stringResource(R.string.impact_balance_account_now))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { vm.confirmSave(accountNow = false, onDone = onBack) }) {
+                TextButton(
+                    onClick = { vm.confirmSave(accountNow = false, onDone = onBack) },
+                    modifier = Modifier.testTag("impact_alert_dismiss")
+                ) {
                     Text(stringResource(R.string.impact_balance_do_not_account))
                 }
             }
@@ -133,7 +141,7 @@ fun TransactionEditScreen(
             Box(Modifier.fillMaxWidth().padding(20.dp)) {
                 Button(
                     onClick = { vm.save(onBack) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp).testTag("transaction_save_button"),
                     shape = MaterialTheme.shapes.medium,
                     enabled = form.amount > 0.0 && form.categoryId != null && form.accountId != null
                 ) {
@@ -176,6 +184,7 @@ fun TransactionEditScreen(
                         value = form.amountInput,
                         onValueChange = vm::setAmountRaw,
                         keyboardType = KeyboardType.Decimal,
+                        modifier = Modifier.testTag("transaction_amount_field"),
                         textStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
                         leading = { Text(if (form.type == TransactionType.EXPENSE) "−" else "+", style = MaterialTheme.typography.displaySmall) },
                         trailing = { Text("€", style = MaterialTheme.typography.titleLarge) }
@@ -477,11 +486,12 @@ private fun FilledField(
     onValueChange: (String) -> Unit,
     keyboardType: KeyboardType,
     textStyle: androidx.compose.ui.text.TextStyle,
+    modifier: Modifier = Modifier,
     leading: @Composable (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
     minLines: Int = 1,
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,

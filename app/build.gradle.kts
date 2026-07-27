@@ -17,7 +17,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.lop.budget.HiltTestRunner"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -44,9 +44,14 @@ android {
     }
     buildFeatures { compose = true }
     packaging {
-        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/LICENSE.md"
+            excludes += "META-INF/LICENSE-notice.md"
+            excludes += "META-INF/junit-jupiter-api.kotlin_module"
+        }
         jniLibs {
-            useLegacyPackaging = false
+            useLegacyPackaging = true
         }
     }
 }
@@ -83,6 +88,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.8.5")
@@ -134,4 +140,12 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("app.cash.turbine:turbine:1.1.0")
     testImplementation("io.mockk:mockk:1.13.12")
+
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("io.mockk:mockk-android:1.13.12")
+    androidTestImplementation("com.google.dagger:hilt-android-testing:2.54")
+    kspAndroidTest("com.google.dagger:hilt-android-compiler:2.54")
 }

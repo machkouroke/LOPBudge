@@ -57,13 +57,6 @@ fun LopNavHost(startRoute: String? = null) {
     val hazeState = rememberHazeState()
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
-    // deep link simple depuis notification
-    androidx.compose.runtime.LaunchedEffect(startRoute) {
-        if (!startRoute.isNullOrBlank()) {
-            navController.navigate(startRoute) { launchSingleTop = true }
-        }
-    }
-
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route?.substringBefore("/") ?: Routes.HOME
 
@@ -76,6 +69,15 @@ fun LopNavHost(startRoute: String? = null) {
 
     val showBar =
         currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts"
+
+    // deep link simple depuis notification
+    // DÉPLACÉ ICI : Après la définition de showBar pour être sûr que NavHost a été initialisé
+    // lors du premier passage de composition.
+    androidx.compose.runtime.LaunchedEffect(startRoute) {
+        if (!startRoute.isNullOrBlank()) {
+            navController.navigate(startRoute) { launchSingleTop = true }
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
