@@ -187,8 +187,25 @@ class TransactionEditViewModel @Inject constructor(
     }
 
     fun setAmountRaw(raw: String) {
-        val clamped = if (raw.isEmpty() || raw == ".") "0" else raw
-        _form.value = _form.value.copy(amountInput = clamped)
+        // 1. Autoriser le champ vide (permet de tout effacer proprement)
+        if (raw.isEmpty()) {
+            _form.value = _form.value.copy(amountInput = "")
+            return
+        }
+
+        // 2. Un seul séparateur décimal autorisé (point ou virgule)
+        val clean = raw.replace(',', '.')
+        if (clean.count { it == '.' } > 1) return
+
+        // 3. Suppression du zéro initial si suivi d'un autre chiffre (ex: "05" -> "5")
+        // Mais on garde "0." (ex: "0.5")
+        val finalValue = if (clean.length > 1 && clean.startsWith("0") && clean[1] != '.') {
+            clean.substring(1)
+        } else {
+            clean
+        }
+
+        _form.value = _form.value.copy(amountInput = finalValue)
     }
 
     fun setTitle(v: String) { _form.value = _form.value.copy(title = v) }
