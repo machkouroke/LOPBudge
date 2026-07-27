@@ -76,7 +76,6 @@ class TransactionBalanceImpactTest {
         icon = ""
     )
 
-    // Epsilon relatif : Très proche d'aujourd'hui pour être dans "Transactions récentes"
     private val epsilonDate = System.currentTimeMillis() - 5000L
 
     private val oldPaidTransaction = TransactionEntity(
@@ -85,7 +84,7 @@ class TransactionBalanceImpactTest {
         amount = 50.0,
         type = TransactionType.EXPENSE,
         status = TransactionStatus.PAID,
-        date = epsilonDate, 
+        date = epsilonDate,
         paidAt = 5000L, // < 10000 -> Impactée
         accountId = 1,
         categoryId = 1
@@ -110,7 +109,7 @@ class TransactionBalanceImpactTest {
         every { repo.observeTotalBalance() } answers { flowOf(1000.0) }
         every { repo.observeTransactions() } answers { flowOf(listOf(twr)) }
         every { detectionRepo.observePending() } answers { flowOf(emptyList()) }
-        
+
         every { settings.currency } answers { flowOf("EUR") }
         every { settings.themeMode } answers { flowOf(ThemeMode.SYSTEM) }
         every { settings.dynamicColor } answers { flowOf(true) }
@@ -130,10 +129,9 @@ class TransactionBalanceImpactTest {
 
     /**
      * CAS 1 : L'utilisateur choisit "Ne pas comptabiliser".
-     * On vérifie que saveWithTransition est appelé avec le montant modifié (60.0).
      */
     @Test
-    fun shouldSaveModifiedTransactionWithoutAccountingItNow() {
+    fun verifyBalanceImpact_shouldNotAccountWhenDismissed() = runBlocking {
         navigateToEditAndModify()
 
         // --- ÉTAPE 6 : ENREGISTRER ---
@@ -144,27 +142,17 @@ class TransactionBalanceImpactTest {
         composeTestRule.onNodeWithTag("impact_alert_dismiss").performClick()
         think()
 
-        // On vérifie que la sauvegarde est appelée. 
-        // Note: Le ViewModel utilise le paidAt de l'objet originalTransaction.
-        coVerify { 
+        // Vérification métier : L'appel de sauvegarde ne doit pas modifier paidAt
+        coVerify {
             repo.saveWithTransition(
                 editingId = 10L,
                 title = any(),
-                amount = 60.0, // Vérification du nouveau montant
+                amount = 60.0,
                 type = any(),
                 date = any(),
                 accountId = 1L,
                 categoryId = 1L,
-                subCategoryId = any(),
-                note = any(),
-                frequency = any(),
-                interval = any(),
-                daysOfWeek = any(),
-                endDate = any(),
-                maxOccurrences = any(),
-                linkedGoalId = any(),
-                linkedDebtId = any(),
-                tagIds = any()
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any()
             )
         }
     }
@@ -173,7 +161,7 @@ class TransactionBalanceImpactTest {
      * CAS 2 : L'utilisateur choisit "Comptabiliser maintenant".
      */
     @Test
-    fun shouldSaveModifiedTransactionAndAccountItNow() {
+    fun verifyBalanceImpact_shouldAccountNowWhenConfirmed() = runBlocking {
         navigateToEditAndModify()
 
         // --- ÉTAPE 6 : ENREGISTRER ---
@@ -184,8 +172,8 @@ class TransactionBalanceImpactTest {
         composeTestRule.onNodeWithTag("impact_alert_confirm").performClick()
         think()
 
-        // On vérifie que la sauvegarde est bien appelée avec le nouveau montant.
-        coVerify { 
+        // Vérification métier : sauvegarde avec le nouveau montant.
+        coVerify {
             repo.saveWithTransition(
                 editingId = 10L,
                 title = any(),
