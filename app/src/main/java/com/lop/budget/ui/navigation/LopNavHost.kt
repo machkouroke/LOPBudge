@@ -73,13 +73,13 @@ fun LopNavHost(startRoute: String? = null) {
         currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts"
 
     // deep link simple depuis notification
-    // DÉPLACÉ ICI : Après la définition de showBar pour être sûr que NavHost a été initialisé
-    // lors du premier passage de composition.
     LaunchedEffect(startRoute, navController) {
         if (!startRoute.isNullOrBlank()) {
-            // Attendre que le graphe soit prêt avant de naviguer
+            // On attend que le NavHost soit monté et ait un graphe
             snapshotFlow { navController.graph }.distinctUntilChanged().collect {
-                navController.navigate(startRoute) { launchSingleTop = true }
+                if (navController.currentDestination == null) {
+                    navController.navigate(startRoute) { launchSingleTop = true }
+                }
             }
         }
     }

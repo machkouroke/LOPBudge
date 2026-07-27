@@ -12,6 +12,7 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.TransactionStatus
@@ -23,7 +24,7 @@ import dagger.hilt.android.testing.HiltAndroidTest
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -47,6 +48,10 @@ class TransactionBalanceImpactTest {
     @BindValue
     @JvmField
     val repo: BudgetRepository = mockk(relaxed = true)
+
+    @BindValue
+    @JvmField
+    val detectionRepo: NotificationDetectionRepository = mockk(relaxed = true)
 
     @BindValue
     @JvmField
@@ -78,39 +83,46 @@ class TransactionBalanceImpactTest {
     fun setup() {
         hiltRule.inject()
 
-        // Mock du repository pour les données d'accueil
-        every { repo.observeTransactionsBetween(any(), any()) } returns flowOf(
-            listOf(TransactionWithRelations(oldPaidTransaction, null, testAccount, emptyList()))
-        )
-        
-        // Mock pour l'édition
-        every { repo.observeTransaction(10L) } returns flowOf(
+        // 1. Mock des données de transactions (Home + Edit)
+        val transactionsFlow = MutableStateFlow(listOf(
+            TransactionWithRelations(oldPaidTransaction, null, testAccount, emptyList())
+        ))
+        every { repo.observeTransactionsBetween(any(), any()) } returns transactionsFlow
+        every { repo.observeTransaction(10L) } returns MutableStateFlow(
             TransactionWithRelations(oldPaidTransaction, null, testAccount, emptyList())
         )
+        
+        // 2. Mock des comptes et balances
+        every { repo.observeAccounts() } returns MutableStateFlow(listOf(testAccount))
+        every { repo.observeAccountBalances() } returns MutableStateFlow(mapOf(1L to 950.0))
         coEvery { repo.getAccountById(1L) } returns testAccount
         
-        // Mocks pour les référentiels
-        every { repo.observeAccounts() } returns flowOf(listOf(testAccount))
-        every { repo.observeCategories() } returns flowOf(emptyList())
-        every { repo.observeTags() } returns flowOf(emptyList())
-        every { repo.observeGoals() } returns flowOf(emptyList())
-        every { repo.observeDebts() } returns flowOf(emptyList())
+        // 3. Mock des référentiels (obligatoires pour éviter les listes vides bloquantes)
+        every { repo.observeCategories() } returns MutableStateFlow(emptyList())
+        every { repo.observeTags() } returns MutableStateFlow(emptyList())
+        every { repo.observeGoals() } returns MutableStateFlow(emptyList())
+        every { repo.observeDebts() } returns MutableStateFlow(emptyList())
         
-        // Mocks pour SettingsRepository
-        every { settings.currency } returns flowOf("EUR")
-        every { settings.themeMode } returns flowOf(ThemeMode.SYSTEM)
-        every { settings.dynamicColor } returns flowOf(true)
-        every { settings.geminiKey } returns flowOf("")
-        every { settings.notificationDetectionEnabled } returns flowOf(false)
-        every { settings.useLocalLlm } returns flowOf(false)
-        every { settings.llmDownloadId } returns flowOf(null)
+        // 4. Mock du NotificationDetectionRepository
+        every { detectionRepo.observePending() } returns MutableStateFlow(emptyList())
+        
+        // 5. Mock COMPLET des Settings (Si un seul manque, le 'combine' du ViewModel bloque)
+        every { settings.currency } returns MutableStateFlow("EUR")
+        every { settings.themeMode } returns MutableStateFlow(ThemeMode.SYSTEM)
+        every { settings.dynamicColor } returns MutableStateFlow(true)
+        every { settings.geminiKey } returns MutableStateFlow("")
+        every { settings.notificationDetectionEnabled } returns MutableStateFlow(false)
+        every { settings.useLocalLlm } returns MutableStateFlow(false)
+        every { settings.llmDownloadId } returns MutableStateFlow(null)
+        every { settings.lastAccountId } returns MutableStateFlow(1L)
         coEvery { settings.lastAccountIdOnce() } returns 1L
     }
 
     @Test
     fun shouldShowAlertWhenModifyingOldPaidTransactionFromHome() {
         // 1. Attendre l'accueil et s'assurer que la transaction est chargée
-        composeTestRule.waitUntil(timeoutMillis = 5000) {
+        // On attend que le texte apparaisse à l'écran
+        composeTestRule.waitUntil(timeoutMillis = 15000) {
             composeTestRule.onAllNodes(hasText("Ancienne Dépense")).fetchSemanticsNodes().isNotEmpty()
         }
 
@@ -132,7 +144,7 @@ class TransactionBalanceImpactTest {
         composeTestRule.onNodeWithTag("impact_alert_dialog")
             .assertIsDisplayed()
 
-        // 6. VÉRIFICATION : Les boutons sont là
+        // 6. VÉRIFICATION : Les boutons sont présents
         composeTestRule.onNodeWithTag("impact_alert_confirm")
             .assertIsDisplayed()
         

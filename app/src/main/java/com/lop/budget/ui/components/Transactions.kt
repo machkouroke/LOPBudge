@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -156,7 +157,11 @@ fun TransactionRow(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(tx.transaction.title, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            text = tx.transaction.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.testTag("transaction_title_${tx.transaction.id}")
+                        )
                         if (tx.transaction.seriesId != null) {
                             Spacer(Modifier.width(6.dp))
                             Icon(
