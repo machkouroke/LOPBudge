@@ -49,6 +49,8 @@ import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,9 +75,12 @@ fun LopNavHost(startRoute: String? = null) {
     // deep link simple depuis notification
     // DÉPLACÉ ICI : Après la définition de showBar pour être sûr que NavHost a été initialisé
     // lors du premier passage de composition.
-    androidx.compose.runtime.LaunchedEffect(startRoute) {
+    LaunchedEffect(startRoute, navController) {
         if (!startRoute.isNullOrBlank()) {
-            navController.navigate(startRoute) { launchSingleTop = true }
+            // Attendre que le graphe soit prêt avant de naviguer
+            snapshotFlow { navController.graph }.distinctUntilChanged().collect {
+                navController.navigate(startRoute) { launchSingleTop = true }
+            }
         }
     }
 
