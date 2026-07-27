@@ -491,7 +491,7 @@ private fun FilledField(
     trailing: @Composable (() -> Unit)? = null,
     minLines: Int = 1,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
@@ -501,7 +501,7 @@ private fun FilledField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth(),
             textStyle = textStyle,
             leadingIcon = leading,
             trailingIcon = trailing,

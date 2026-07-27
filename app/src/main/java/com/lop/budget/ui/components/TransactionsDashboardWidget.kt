@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lop.budget.R
@@ -46,7 +47,10 @@ fun TransactionsDashboardWidget(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                TextButton(onClick = onSeeAll) {
+                TextButton(
+                    onClick = onSeeAll,
+                    modifier = Modifier.testTag("recent_transactions_see_all")
+                ) {
                     Text(stringResource(R.string.see_all))
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, modifier = Modifier.size(16.dp))
                 }

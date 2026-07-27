@@ -145,6 +145,7 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
     androidTestImplementation("io.mockk:mockk-android:1.13.12")
     androidTestImplementation("com.google.dagger:hilt-android-testing:2.54")
     kspAndroidTest("com.google.dagger:hilt-android-compiler:2.54")
