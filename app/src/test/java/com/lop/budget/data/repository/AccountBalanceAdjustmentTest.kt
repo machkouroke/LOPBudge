@@ -17,6 +17,7 @@ import org.junit.Test
 
 /**
  * Tests de la logique métier de haut niveau pour l'ajustement des soldes.
+ * Couvre l'US : Calculer les ajustements de solde via transactions compensatoires (LOP-87)
  * Contrairement au BalanceEngine (pure logique), ici on teste l'interaction
  * avec les DAO et la création automatique de transactions techniques.
  */

@@ -12,6 +12,11 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+/**
+ * Tests du moteur de calcul des soldes.
+ * Couvre l'US : Calculer les ajustements de solde via transactions compensatoires (LOP-87)
+ * et l'historique LOP-78 / LOP-85.
+ */
 class BalanceEngineTest {
 
     @get:Rule
