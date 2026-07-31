@@ -56,9 +56,10 @@ class RecurrenceArchitectureTest {
         repository = BudgetRepository(
             transactionDao, recurringSeriesDao, accountDao, categoryDao, tagDao, goalDao, debtDao
         )
-        // Mocks par défaut pour éviter les NPE sur les relations obligatoires
+        // Mocks par défaut pour éviter les NPE sur les relations obligatoires et NoSuchElementException sur observeAll
         coEvery { accountDao.observeAll() } returns flowOf(emptyList())
         coEvery { categoryDao.observeAll() } returns flowOf(emptyList())
+        coEvery { transactionDao.observeAll() } returns flowOf(emptyList())
     }
 
     /**
@@ -86,7 +87,7 @@ class RecurrenceArchitectureTest {
             )
 
             coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
-            coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
+            coEvery { transactionDao.observeBetweenIncludeDeleted(any(), any()) } returns flowOf(emptyList())
 
             // Fenêtre de tir : 01/07/2026 au 30/09/2026 (3 mois)
             val rangeEnd =
@@ -168,7 +169,7 @@ class RecurrenceArchitectureTest {
         )
 
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
-        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
+        coEvery { transactionDao.observeBetweenIncludeDeleted(any(), any()) } returns flowOf(emptyList())
 
         // 1. Vérifier AVANT le début (Février 2026)
         val febStart = LocalDate.of(2026, 2, 1).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -256,7 +257,7 @@ class RecurrenceArchitectureTest {
             coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
 
             // Le DAO ne renvoie l'exception que si la période inclut Juillet
-            coEvery { transactionDao.observeBetween(any(), any()) } answers {
+            coEvery { transactionDao.observeBetweenIncludeDeleted(any(), any()) } answers {
                 val start = it.invocation.args[0] as Long
                 val end = it.invocation.args[1] as Long
                 if (julyOccDate in start..end) flowOf(listOf(twrException)) else flowOf(emptyList())
@@ -355,7 +356,7 @@ class RecurrenceArchitectureTest {
 
             // Attention : Si le DAO ne renvoie pas les 'deleted', ce test va échouer car le Repo ne saura pas qu'il doit cacher le virtuel
             coEvery {
-                transactionDao.observeBetween(
+                transactionDao.observeBetweenIncludeDeleted(
                     any(),
                     any()
                 )
@@ -398,7 +399,7 @@ class RecurrenceArchitectureTest {
         )
 
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
-        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
+        coEvery { transactionDao.observeBetweenIncludeDeleted(any(), any()) } returns flowOf(emptyList())
 
         // Test en Février 2026
         val febStart = LocalDate.of(2026, 2, 1).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -439,7 +440,7 @@ class RecurrenceArchitectureTest {
         )
 
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
-        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
+        coEvery { transactionDao.observeBetweenIncludeDeleted(any(), any()) } returns flowOf(emptyList())
 
         // On demande Juillet
         MarkdownReporter.log("Action : Demande de Juillet 2026 pour une série limitée à 2 occurrences (Janvier/Février)")

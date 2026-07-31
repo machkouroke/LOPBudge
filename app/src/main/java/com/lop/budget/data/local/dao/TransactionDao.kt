@@ -24,6 +24,10 @@ interface TransactionDao {
     fun observeBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>>
 
     @Transaction
+    @Query("SELECT * FROM transactions WHERE date BETWEEN :start AND :end ORDER BY date ASC")
+    fun observeBetweenIncludeDeleted(start: Long, end: Long): Flow<List<TransactionWithRelations>>
+
+    @Transaction
     @Query("SELECT * FROM transactions WHERE id = :id AND deleted = 0")
     suspend fun getById(id: Long): TransactionWithRelations?
 

@@ -136,33 +136,34 @@ class BudgetRepository @Inject constructor(
      * et les occurrences virtuelles générées à la volée à partir des séries actives.
      */
     fun observeTransactionsBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>> {
-        val exceptionsFlow = transactionDao.observeBetween(start, end)
+        val allTransactionsFlow = transactionDao.observeBetweenIncludeDeleted(start, end)
         val seriesFlow = recurringSeriesDao.observeActiveSeries()
         val accountsFlow = accountDao.observeAll()
         val categoriesFlow = categoryDao.observeAll()
 
-        return combine(exceptionsFlow, seriesFlow, accountsFlow, categoriesFlow) { exceptions, seriesList, accounts, categories ->
-            // Filtre les ajustements de solde pour les vues métier
-            val result = exceptions.filter { it.transaction.kind == TransactionKind.STANDARD }.toMutableList()
+        return combine(allTransactionsFlow, seriesFlow, accountsFlow, categoriesFlow) { allInPeriod, seriesList, accounts, categories ->
             val zone = ZoneId.systemDefault()
             val startLocalDate = Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
             val endLocalDate = Instant.ofEpochMilli(end).atZone(zone).toLocalDate()
+
+            // On garde les transactions réelles (non supprimées) pour l'affichage final
+            // On affiche tout (Standard + Ajustements) dans cette vue de liste chronologique
+            val finalResult = allInPeriod.filter { !it.transaction.deleted }.toMutableList()
 
             for (series in seriesList) {
                 // 1. Calculer les occurrences virtuelles de cette série qui tombent dans ce mois
                 val occurrences = generateOccurrencesForMonth(series, startLocalDate, endLocalDate, zone)
                 
-                // 2. Pour chaque occurrence, vérifier s'il existe déjà une exception
+                // 2. Pour chaque date prévue, on vérifie si une exception (même supprimée) existe déjà
                 for (occDate in occurrences) {
                     val occEpoch = occDate.atStartOfDay(zone).toInstant().toEpochMilli()
-                    val hasException = exceptions.any { 
+                    
+                    // Une exception (matérialisée ou supprimée) bloque la génération du virtuel
+                    val hasExistingEntry = allInPeriod.any { 
                         it.transaction.seriesId == series.id.toString() && it.transaction.seriesDate == occEpoch 
                     }
                     
-                    if (!hasException) {
-                        // Créer une TransactionWithRelations virtuelle
-                        // ID virtuel unique déterministe (négatif pour éviter collision avec DB)
-                        // hashCode() de seriesId + seriesDate donne un Int, on le passe en Long négatif
+                    if (!hasExistingEntry) {
                         val virtualId = -Math.abs("${series.id}_$occEpoch".hashCode().toLong()) - 1L
                         
                         val virtualTx = TransactionEntity(
@@ -181,19 +182,15 @@ class BudgetRepository @Inject constructor(
                             linkedGoalId = series.linkedGoalId,
                             linkedDebtId = series.linkedDebtId
                         )
-                        // Résoudre les relations en mémoire
                         val account = accounts.find { it.id == series.accountId }
                         val category = categories.find { it.id == series.categoryId }
                         
-                        // Note: Les tags nécessiteraient une table de liaison series_tags, 
-                        // pour l'instant on laisse vide
-                        result.add(TransactionWithRelations(virtualTx, category, account, emptyList()))
+                        finalResult.add(TransactionWithRelations(virtualTx, category, account, emptyList()))
                     }
                 }
             }
             
-            // Trier par date
-            result.sortedBy { it.transaction.date }
+            finalResult.sortedBy { it.transaction.date }
         }.flowOn(Dispatchers.Default)
     }
 
