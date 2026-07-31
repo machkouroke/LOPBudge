@@ -21,7 +21,13 @@ import java.time.ZoneId
  * Tests QA pour l'US : Refactoring récurrence : architecture Série + Exceptions (LOP-49)
  * 
  * Ces tests vérifient que le moteur de récurrence (via le Repository) se comporte
- * conformément aux spécifications : calcul à la volée, IDs négatifs, et gestion des exceptions.
+ * conformément aux spécifications du ticket, indépendamment de l'implémentation actuelle.
+ * 
+ * Comportements testés :
+ * - Génération à la volée d'occurrences virtuelles (Contrat des IDs < 0).
+ * - Respect des limites temporelles (Infinity, endDate, startDate).
+ * - Remplacement des occurrences virtuelles par des exceptions réelles.
+ * - Masquage des occurrences supprimées (via marqueur d'exception supprimée).
  */
 class RecurrenceArchitectureTest {
 
@@ -38,69 +44,104 @@ class RecurrenceArchitectureTest {
 
     private lateinit var repository: BudgetRepository
 
-    // Période de test : Juillet 2026
     private val zone = ZoneId.systemDefault()
-    private val julyStart = LocalDate.of(2026, 7, 1)
-        .atStartOfDay(zone).toInstant().toEpochMilli()
+
+    // Périodes de référence
+    private val julyStart = LocalDate.of(2026, 7, 1).atStartOfDay(zone).toInstant().toEpochMilli()
     private val julyEnd =
-        LocalDate.of(2026, 7, 31)
-            .atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+        LocalDate.of(2026, 7, 31).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
 
     @Before
     fun setup() {
         repository = BudgetRepository(
             transactionDao, recurringSeriesDao, accountDao, categoryDao, tagDao, goalDao, debtDao
         )
-        // Mocks par défaut pour éviter les NPE sur les relations
+        // Mocks par défaut pour éviter les NPE sur les relations obligatoires
         coEvery { accountDao.observeAll() } returns flowOf(emptyList())
         coEvery { categoryDao.observeAll() } returns flowOf(emptyList())
     }
 
     /**
-     * TC_REC_01 : Cas nominal - Génération d'occurrences virtuelles.
-     * Vérifie qu'une série mensuelle sans exception génère bien une occurrence par mois.
+     * TC_REC_01 : Cas nominal - Génération d'occurrences virtuelles multiples pour série infinie.
+     * D'après le ticket : "Une série sans endDate est considérée comme infinie."
+     * Elle doit générer TOUTES les occurrences attendues dans la période demandée.
      */
     @Test
-    fun `TC_REC_01 - should generate virtual occurrences for active series`() = runBlocking {
-        MarkdownReporter.log("TC_REC_01 : Génération d'occurrences virtuelles")
+    fun `TC_REC_01 - should generate exactly 3 distinct virtual occurrences for a 3-month range`() =
+        runBlocking {
+            MarkdownReporter.log("TC_REC_01 : Test de génération sur 3 mois pour une série infinie")
 
-        val series = RecurringSeriesEntity(
-            id = 100L,
-            title = "Abonnement Netflix",
-            amount = 15.99,
-            type = TransactionType.EXPENSE,
-            categoryId = 1,
-            accountId = 1,
-            frequency = RecurrenceFrequency.MONTHLY,
-            interval = 1,
-            startDate = LocalDate.of(2026, 1, 5)
-                .atStartOfDay(zone).toInstant().toEpochMilli(),
-            status = "ACTIVE"
-        )
+            val series = RecurringSeriesEntity(
+                id = 100L,
+                title = "Abonnement Netflix",
+                amount = 15.99,
+                type = TransactionType.EXPENSE,
+                categoryId = 1,
+                accountId = 1,
+                frequency = RecurrenceFrequency.MONTHLY,
+                interval = 1,
+                startDate = LocalDate.of(2026, 1, 5)
+                    .atStartOfDay(zone).toInstant().toEpochMilli(),
+                status = "ACTIVE"
+            )
 
-        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
-        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
+            coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
+            coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
 
-        val transactions = repository.observeTransactionsBetween(julyStart, julyEnd).first()
+            // Fenêtre de tir : 01/07/2026 au 30/09/2026 (3 mois)
+            val rangeEnd =
+                LocalDate.of(2026, 9, 30).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
 
-        MarkdownReporter.log("Vérification : Une seule occurrence attendue le 5 Juillet")
-        assertEquals("Une occurrence doit être générée", 1, transactions.size)
+            val transactions = repository.observeTransactionsBetween(julyStart, rangeEnd).first()
 
-        val virtualTx = transactions.first().transaction
-        MarkdownReporter.log("Données reçues : [id=${virtualTx.id}, title=${virtualTx.title}, date=${virtualTx.date}]")
+            MarkdownReporter.log("Vérification : exactement 3 occurrences attendues (05/07, 05/08, 05/09)")
+            assertEquals(
+                "Le nombre d'occurrences virtuelles générées est incorrect",
+                3,
+                transactions.size
+            )
 
-        assertTrue("L'ID doit être négatif pour une occurrence virtuelle",
-            virtualTx.id < 0)
-        assertEquals("Le titre doit correspondre à la série",
-            "Abonnement Netflix", virtualTx.title)
-        assertFalse("isException doit être false", virtualTx.isException)
-    }
+            val dates = transactions.map {
+                Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate()
+            }.sorted()
+
+            val expectedDates = listOf(
+                LocalDate.of(2026, 7, 5),
+                LocalDate.of(2026, 8, 5),
+                LocalDate.of(2026, 9, 5)
+            )
+
+            assertEquals(
+                "Les dates générées ne correspondent pas au planning de la récurrence",
+                expectedDates,
+                dates
+            )
+
+            // Vérification du contrat technique de l'US
+            val ids = transactions.map { it.transaction.id }
+            assertTrue(
+                "Toutes les occurrences virtuelles doivent avoir un ID < 0",
+                ids.all { it < 0 })
+            assertEquals(
+                "Chaque occurrence doit avoir un ID unique et déterministe",
+                3,
+                ids.distinct().size
+            )
+
+            val firstTx = transactions.first().transaction
+            assertFalse(
+                "isException doit être FALSE pour une occurrence virtuelle",
+                firstTx.isException
+            )
+            assertEquals("seriesId doit être renseigné", "100", firstTx.seriesId)
+        }
 
     /**
-     * TC_REC_02 : Gestion des limites - Arrêt après endDate.
+     * TC_REC_02 : Gestion des limites temporelles - Respect de endDate.
+     * D'après le ticket : "Une série avec endDate ne génère aucune occurrence après cette date."
      */
     @Test
-    fun `TC_REC_02 - should respect series endDate`() = runBlocking {
+    fun `TC_REC_02 - should not generate occurrences after series endDate`() = runBlocking {
         MarkdownReporter.log("TC_REC_02 : Respect de la date de fin (endDate)")
 
         val seriesWithEndInJune = RecurringSeriesEntity(
@@ -112,10 +153,8 @@ class RecurrenceArchitectureTest {
             accountId = 1,
             frequency = RecurrenceFrequency.MONTHLY,
             interval = 1,
-            startDate = LocalDate.of(2026, 1, 1)
-                .atStartOfDay(zone).toInstant().toEpochMilli(),
-            endDate = LocalDate.of(2026, 6, 30)
-                .atStartOfDay(zone).toInstant().toEpochMilli(),
+            startDate = LocalDate.of(2026, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli(),
+            endDate = LocalDate.of(2026, 6, 30).atStartOfDay(zone).toInstant().toEpochMilli(),
             status = "ACTIVE"
         )
 
@@ -128,126 +167,142 @@ class RecurrenceArchitectureTest {
 
         val transactionsInJuly = repository.observeTransactionsBetween(julyStart, julyEnd).first()
 
-        MarkdownReporter.log("Vérification : Aucune occurrence en Juillet car finie en Juin")
-        assertTrue("La liste doit être vide", transactionsInJuly.isEmpty())
+        MarkdownReporter.log("Vérification : La série s'arrête en Juin, donc 0 en Juillet")
+        assertTrue(
+            "La liste doit être vide car la série est terminée",
+            transactionsInJuly.isEmpty()
+        )
     }
 
     /**
      * TC_REC_03 : Gestion des exceptions (Écrasement).
-     * Vérifie qu'une transaction matérialisée remplace l'occurrence virtuelle.
+     * D'après le ticket : "Une exception remplace toujours l’occurrence virtuelle correspondante."
      */
     @Test
-    fun `TC_REC_03 - real exception should replace virtual occurrence`() = runBlocking {
-        MarkdownReporter.log("TC_REC_03 : Une exception réelle remplace l'occurrence virtuelle")
+    fun `TC_REC_03 - materialized exception must replace virtual occurrence (no duplicates)`() =
+        runBlocking {
+            MarkdownReporter.log("TC_REC_03 : Une exception réelle en base remplace le virtuel")
 
-        val seriesId = 102L
-        val occDate = LocalDate.of(2026, 7, 10).atStartOfDay(zone).toInstant().toEpochMilli()
+            val seriesId = 102L
+            val occDate = LocalDate.of(2026, 7, 10).atStartOfDay(zone).toInstant().toEpochMilli()
 
-        val series = RecurringSeriesEntity(
-            id = seriesId,
-            title = "Sport",
-            amount = 20.0,
-            type = TransactionType.EXPENSE,
-            categoryId = 1,
-            accountId = 1,
-            frequency = RecurrenceFrequency.MONTHLY,
-            interval = 1,
-            startDate = occDate,
-            status = "ACTIVE"
-        )
+            val series = RecurringSeriesEntity(
+                id = seriesId,
+                title = "Sport",
+                amount = 20.0,
+                type = TransactionType.EXPENSE,
+                categoryId = 1,
+                accountId = 1,
+                frequency = RecurrenceFrequency.MONTHLY,
+                interval = 1,
+                startDate = occDate,
+                status = "ACTIVE"
+            )
 
-        // Exception matérialisée en DB (id positif, isException = true)
-        val exception = TransactionEntity(
-            id = 500L,
-            title = "Sport (Séance longue)",
-            amount = 30.0,
-            type = TransactionType.EXPENSE,
-            status = TransactionStatus.PLANNED,
-            date = occDate,
-            accountId = 1,
-            categoryId = 1,
-            seriesId = seriesId.toString(),
-            seriesDate = occDate,
-            isException = true
-        )
+            // Marqueur d'exception en DB (ID positif, isException = true)
+            val exception = TransactionEntity(
+                id = 500L,
+                title = "Sport (Séance longue)",
+                amount = 30.0,
+                type = TransactionType.EXPENSE,
+                status = TransactionStatus.PLANNED,
+                date = occDate,
+                accountId = 1,
+                categoryId = 1,
+                seriesId = seriesId.toString(),
+                seriesDate = occDate,
+                isException = true
+            )
 
-        val twrException = TransactionWithRelations(exception, null, null, emptyList())
+            val twrException = TransactionWithRelations(exception, null, null, emptyList())
 
-        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
-        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(listOf(twrException))
+            coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
+            coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(
+                listOf(
+                    twrException
+                )
+            )
 
-        val results = repository.observeTransactionsBetween(julyStart, julyEnd).first()
+            val results = repository.observeTransactionsBetween(julyStart, julyEnd).first()
 
-        MarkdownReporter.log("Vérification : On doit trouver UNIQUEMENT l'exception (30€), pas le virtuel (20€)")
-        assertEquals("On doit avoir exactement 1 transaction", 1, results.size)
+            MarkdownReporter.log("Vérification : on doit voir l'ID 500 (30€), et PAS l'occurrence virtuelle (20€)")
+            assertEquals("On doit avoir exactement 1 transaction (pas de doublon)", 1, results.size)
 
-        val finalTx = results.first().transaction
-        MarkdownReporter.log("Trouvé : [id=${finalTx.id}, title=${finalTx.title}, amount=${finalTx.amount}]")
-
-        assertEquals("C'est l'exception qui doit être affichée (ID 500)", 500L, finalTx.id)
-        assertEquals("Le montant doit être celui de l'exception", 30.0, finalTx.amount, 0.0)
-    }
+            val finalTx = results.first().transaction
+            assertEquals("L'ID doit être celui de l'exception (ID > 0)", 500L, finalTx.id)
+            assertEquals("Le montant doit être celui de l'exception", 30.0, finalTx.amount, 0.0)
+        }
 
     /**
-     * TC_REC_04 : Cas limite - Occurrence supprimée.
-     * Si l'exception est marquée 'deleted = true', elle ne doit plus apparaître,
-     * et l'occurrence virtuelle correspondante doit rester masquée.
+     * TC_REC_04 : Gestion de la suppression individuelle.
+     * D'après le ticket : "Une occurrence supprimée devient une exception supprimée ou un marqueur d’exclusion ... masque uniquement l’occurrence concernée."
+     * CE TEST PEUT ÉCHOUER SI LE CODE NE FILTRE PAS LES VIRTUELS VIA LES DELETED EXCEPTIONS.
      */
     @Test
-    fun `TC_REC_04 - deleted exception should hide the occurrence entirely`() = runBlocking {
-        MarkdownReporter.log("TC_REC_04 : Une exception supprimée masque l'occurrence virtuelle")
+    fun `TC_REC_04 - a deleted exception must hide the virtual occurrence entirely`() =
+        runBlocking {
+            MarkdownReporter.log("TC_REC_04 : Suppression d'une occurrence via exception marked 'deleted'")
 
-        val seriesId = 103L
-        val occDate = LocalDate.of(2026, 7, 15).atStartOfDay(zone).toInstant().toEpochMilli()
+            val seriesId = 103L
+            val occDate = LocalDate.of(2026, 7, 15).atStartOfDay(zone).toInstant().toEpochMilli()
 
-        val series = RecurringSeriesEntity(
-            id = seriesId,
-            title = "Optionnelle",
-            amount = 10.0,
-            type = TransactionType.EXPENSE,
-            categoryId = 1,
-            accountId = 1,
-            frequency = RecurrenceFrequency.MONTHLY,
-            interval = 1,
-            startDate = occDate,
-            status = "ACTIVE"
-        )
+            val series = RecurringSeriesEntity(
+                id = seriesId,
+                title = "Optionnelle",
+                amount = 10.0,
+                type = TransactionType.EXPENSE,
+                categoryId = 1,
+                accountId = 1,
+                frequency = RecurrenceFrequency.MONTHLY,
+                interval = 1,
+                startDate = occDate,
+                status = "ACTIVE"
+            )
 
-        // Exception supprimée (deleted = true)
-        val deletedException = TransactionEntity(
-            id = 600L,
-            title = "Optionnelle",
-            amount = 10.0,
-            type = TransactionType.EXPENSE,
-            status = TransactionStatus.PLANNED,
-            date = occDate,
-            accountId = 1,
-            categoryId = 1,
-            seriesId = seriesId.toString(),
-            seriesDate = occDate,
-            isException = true,
-            deleted = true
-        )
+            // Exception marquée comme supprimée (deleted = true)
+            val deletedException = TransactionEntity(
+                id = 600L,
+                title = "Optionnelle",
+                amount = 10.0,
+                type = TransactionType.EXPENSE,
+                status = TransactionStatus.PLANNED,
+                date = occDate,
+                accountId = 1,
+                categoryId = 1,
+                seriesId = seriesId.toString(),
+                seriesDate = occDate,
+                isException = true,
+                deleted = true
+            )
 
-        val twrDeleted = TransactionWithRelations(deletedException, null, null, emptyList())
+            val twrDeleted = TransactionWithRelations(deletedException, null, null, emptyList())
 
-        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
-        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(listOf(twrDeleted))
+            coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
 
-        val results = repository.observeTransactionsBetween(julyStart, julyEnd).first()
+            // Attention : Si le DAO ne renvoie pas les 'deleted', ce test va échouer car le Repo ne saura pas qu'il doit cacher le virtuel
+            coEvery {
+                transactionDao.observeBetween(
+                    any(),
+                    any()
+                )
+            } returns flowOf(listOf(twrDeleted))
 
-        MarkdownReporter.log("Vérification : L'occurrence de Juillet doit être absente")
-        assertTrue("La liste doit être vide car l'occurrence est supprimée", results.isEmpty())
-    }
+            val results = repository.observeTransactionsBetween(julyStart, julyEnd).first()
+
+            MarkdownReporter.log("Vérification : La liste doit être vide (le virtuel est masqué par le marqueur 'deleted')")
+            assertTrue(
+                "L'occurrence virtuelle de Juillet n'a pas été masquée par l'exception supprimée",
+                results.isEmpty()
+            )
+        }
 
     /**
      * TC_REC_05 : Cas limite - Mensuel le 31.
-     * Vérifie que la logique gère le décalage (même si le repo actuel semble utiliser 
-     * un simple plusMonths, ce qui est le comportement standard Java/Kotlin).
+     * D'après le ticket : "Une occurrence prévue le 31 doit avoir une règle de fallback pour les mois sans 31."
      */
     @Test
-    fun `TC_REC_05 - monthly series on 31st should fallback correctly`() = runBlocking {
-        MarkdownReporter.log("TC_REC_05 : Série mensuelle au 31")
+    fun `TC_REC_05 - monthly series on 31st should fallback to last day of month`() = runBlocking {
+        MarkdownReporter.log("TC_REC_05 : Série mensuelle au 31 (Test en Février)")
 
         val series = RecurringSeriesEntity(
             id = 104L,
@@ -265,19 +320,54 @@ class RecurrenceArchitectureTest {
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
         coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
 
-        // Tester Février 2026 (non bissextile)
+        // Test en Février 2026
         val febStart = LocalDate.of(2026, 2, 1).atStartOfDay(zone).toInstant().toEpochMilli()
         val febEnd =
             LocalDate.of(2026, 2, 28).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
 
         val resultsFeb = repository.observeTransactionsBetween(febStart, febEnd).first()
 
-        MarkdownReporter.log("Vérification en Février : doit tomber le 28")
-        assertEquals(1, resultsFeb.size)
+        assertEquals("Une occurrence attendue en Février", 1, resultsFeb.size)
         val febDate =
             Instant.ofEpochMilli(resultsFeb.first().transaction.date).atZone(zone).toLocalDate()
+
         MarkdownReporter.log("Date générée en Février : $febDate")
-        assertEquals(28, febDate.dayOfMonth)
+        assertEquals("La date aurait dû être ramenée au 28 Février", 28, febDate.dayOfMonth)
+    }
+
+    /**
+     * TC_REC_06 : Gestion de maxOccurrences.
+     * D'après le ticket : "Une série avec maxOccurrences ne génère pas plus d’occurrences que la limite définie."
+     */
+    @Test
+    fun `TC_REC_06 - should stop generating after maxOccurrences is reached`() = runBlocking {
+        MarkdownReporter.log("TC_REC_06 : Respect de la limite maxOccurrences")
+
+        val series = RecurringSeriesEntity(
+            id = 105L,
+            title = "Abonnement 2 mois",
+            amount = 10.0,
+            type = TransactionType.EXPENSE,
+            categoryId = 1,
+            accountId = 1,
+            frequency = RecurrenceFrequency.MONTHLY,
+            interval = 1,
+            startDate = LocalDate.of(2026, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli(),
+            maxOccurrences = 2, // Janvier et Février uniquement
+            status = "ACTIVE"
+        )
+
+        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
+        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
+
+        // On demande Juillet
+        val results = repository.observeTransactionsBetween(julyStart, julyEnd).first()
+
+        MarkdownReporter.log("Vérification : 0 occurrence en Juillet car limite de 2 atteinte en Février")
+        assertTrue(
+            "La série a généré trop d'occurrences par rapport au maxOccurrences",
+            results.isEmpty()
+        )
     }
 
     @Test
