@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -78,7 +79,13 @@ class AccountFormViewModel @Inject constructor(
                 if (account != null) {
                     name.value = account.name
                     type.value = account.type
-                    initialBalance.value = account.initialBalance.toString()
+                    
+                    // On affiche le solde ACTUEL calculé au lieu du solde initial technique
+                    val allTxs = repo.observeTransactionsByAccount(accountId).first().map { it.transaction }
+                    val currentBalances = com.lop.budget.domain.BalanceEngine.calculateBalances(listOf(account), allTxs)
+                    val currentBalance = currentBalances[accountId] ?: account.initialBalance
+                    initialBalance.value = currentBalance.toString()
+
                     balanceUpdatedAt.value = if (account.balanceUpdatedAt == 0L) System.currentTimeMillis() else account.balanceUpdatedAt
                     colorArgb.value = account.colorArgb
                     iconName.value = account.icon
@@ -178,20 +185,44 @@ class AccountFormViewModel @Inject constructor(
         
         viewModelScope.launch {
             isSaving.value = true
-            val account = AccountEntity(
-                id = accountId,
-                name = name.value,
-                type = type.value,
-                initialBalance = initialBalance.value.toDoubleOrNull() ?: 0.0,
-                balanceUpdatedAt = balanceUpdatedAt.value,
-                colorArgb = colorArgb.value,
-                icon = iconName.value,
-                bankName = if (type.value == AccountType.CHECKING) bankName.value else null,
-                comment = comment.value.takeIf { it.isNotBlank() },
-                includeInTotal = includeInTotal.value,
-                archived = archived.value
-            )
-            repo.saveAccount(account)
+            val newInitialBalance = initialBalance.value.toDoubleOrNull() ?: 0.0
+
+            if (isEdit) {
+                // Pour un compte existant, on ajuste via transaction compensatoire
+                repo.adjustAccountBalance(accountId, newInitialBalance)
+                
+                // On met à jour les autres champs du compte (sans toucher au solde initial)
+                val currentAccount = repo.getAccountById(accountId)
+                if (currentAccount != null) {
+                    val updatedAccount = currentAccount.copy(
+                        name = name.value,
+                        type = type.value,
+                        colorArgb = colorArgb.value,
+                        icon = iconName.value,
+                        bankName = if (type.value == AccountType.CHECKING) bankName.value else null,
+                        comment = comment.value.takeIf { it.isNotBlank() },
+                        includeInTotal = includeInTotal.value,
+                        archived = archived.value
+                    )
+                    repo.saveAccount(updatedAccount)
+                }
+            } else {
+                // Création : on garde le comportement standard
+                val account = AccountEntity(
+                    id = accountId,
+                    name = name.value,
+                    type = type.value,
+                    initialBalance = newInitialBalance,
+                    balanceUpdatedAt = System.currentTimeMillis(),
+                    colorArgb = colorArgb.value,
+                    icon = iconName.value,
+                    bankName = if (type.value == AccountType.CHECKING) bankName.value else null,
+                    comment = comment.value.takeIf { it.isNotBlank() },
+                    includeInTotal = includeInTotal.value,
+                    archived = archived.value
+                )
+                repo.saveAccount(account)
+            }
             onDone()
         }
     }

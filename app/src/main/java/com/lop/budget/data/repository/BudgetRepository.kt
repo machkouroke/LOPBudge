@@ -18,13 +18,16 @@ import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.BalanceEngine
 import com.lop.budget.domain.model.SeriesDeletionMode
+import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.TransactionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -50,7 +53,44 @@ class BudgetRepository @Inject constructor(
     fun observeTransactionsByAccount(accountId: Long) = transactionDao.observeByAccount(accountId)
     fun observePaidTransactionsByAccount(accountId: Long) = transactionDao.observePaidByAccount(accountId)
     fun observePlannedTransactionsByAccount(accountId: Long) = transactionDao.observePlannedByAccount(accountId)
-    
+
+    /** Observe les transactions "métier" (exclut les ajustements de solde). */
+    fun observeBusinessTransactions(): Flow<List<TransactionWithRelations>> =
+        transactionDao.observeAll().map { list ->
+            list.filter { it.transaction.kind == TransactionKind.STANDARD }
+        }
+
+    /** Ajuste le solde d'un compte en créant une transaction compensatoire technique. */
+    suspend fun adjustAccountBalance(accountId: Long, newTargetBalance: Double) {
+        val account = accountDao.getById(accountId) ?: return
+        val allTransactions = transactionDao.observeAll().first().map { it.transaction }
+        
+        // Calcul du solde actuel via le moteur
+        val currentBalances = BalanceEngine.calculateBalances(listOf(account), allTransactions)
+        val currentBalance = currentBalances[accountId] ?: account.initialBalance
+        
+        val delta = newTargetBalance - currentBalance
+        if (delta == 0.0) return
+        
+        val type = if (delta > 0) TransactionType.INCOME else TransactionType.EXPENSE
+        val absAmount = Math.abs(delta)
+        
+        val adjustmentTx = TransactionEntity(
+            title = "Ajustement de solde",
+            amount = absAmount,
+            type = type,
+            status = TransactionStatus.PAID,
+            kind = TransactionKind.BALANCE_ADJUSTMENT,
+            date = System.currentTimeMillis(),
+            paidAt = System.currentTimeMillis(),
+            accountId = accountId,
+            categoryId = 0L, // Catégorie technique ou racine
+            note = "Ajustement automatique du solde"
+        )
+        
+        transactionDao.upsert(adjustmentTx)
+    }
+
     fun searchTransactions(query: String) = transactionDao.search(query)
 
     fun searchTransactionsAdvanced(
@@ -102,7 +142,8 @@ class BudgetRepository @Inject constructor(
         val categoriesFlow = categoryDao.observeAll()
 
         return combine(exceptionsFlow, seriesFlow, accountsFlow, categoriesFlow) { exceptions, seriesList, accounts, categories ->
-            val result = exceptions.toMutableList()
+            // Filtre les ajustements de solde pour les vues métier
+            val result = exceptions.filter { it.transaction.kind == TransactionKind.STANDARD }.toMutableList()
             val zone = ZoneId.systemDefault()
             val startLocalDate = Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
             val endLocalDate = Instant.ofEpochMilli(end).atZone(zone).toLocalDate()

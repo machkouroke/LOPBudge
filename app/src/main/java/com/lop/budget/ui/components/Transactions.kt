@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.DayGroup
+import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.theme.LopTheme
@@ -120,15 +121,18 @@ fun TransactionRow(
     val amountColor = if (isIncome) ext.income else ext.expense
     val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
     val isPaid = tx.transaction.status == TransactionStatus.PAID
+    val isAdjustment = tx.transaction.kind == TransactionKind.BALANCE_ADJUSTMENT
     
     SwipeableTransactionRow(
         isPaid = isPaid,
-        onTogglePaid = { onTogglePaid(tx.transaction.id, tx.transaction.status) },
+        onTogglePaid = { if (!isAdjustment) onTogglePaid(tx.transaction.id, tx.transaction.status) },
         onDelete = {
-            if (tx.transaction.seriesId != null) {
-                onDeleteRequest(tx)
-            } else {
-                onDeleteSimple(tx.transaction.id)
+            if (!isAdjustment) {
+                if (tx.transaction.seriesId != null) {
+                    onDeleteRequest(tx)
+                } else {
+                    onDeleteSimple(tx.transaction.id)
+                }
             }
         }
     ) {
@@ -137,22 +141,29 @@ fun TransactionRow(
                 .fillMaxWidth()
                 .combinedClickableHaptic(
                     onClick = {
-                        if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
-                        else tx.transaction.seriesId?.let { onMaterializeAndOpen(it.toLong(), tx.transaction.seriesDate!!) }
+                        if (!isAdjustment) {
+                            if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
+                            else tx.transaction.seriesId?.let {
+                                onMaterializeAndOpen(
+                                    it.toLong(),
+                                    tx.transaction.seriesDate!!
+                                )
+                            }
+                        }
                     },
-                    onLongClick = { onPreviewTransaction(tx, currency) }
+                    onLongClick = { if (!isAdjustment) onPreviewTransaction(tx, currency) }
                 )
                 .graphicsLayer {
-                    alpha = if (isPaid) 0.5f else 1f
+                    alpha = if (isPaid && !isAdjustment) 0.5f else 1f
                 },
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
             contentPadding = PaddingValues(14.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CircleIcon(
-                    icon = IconMapper.get(tx.category?.icon ?: "category"),
-                    tint = catColor,
-                    background = catColor.copy(alpha = 0.18f),
+                    icon = IconMapper.get(if (isAdjustment) "sync" else (tx.category?.icon ?: "category")),
+                    tint = if (isAdjustment) MaterialTheme.colorScheme.secondary else catColor,
+                    background = if (isAdjustment) MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f) else catColor.copy(alpha = 0.18f),
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
@@ -160,6 +171,7 @@ fun TransactionRow(
                         Text(
                             text = tx.transaction.title,
                             style = MaterialTheme.typography.titleMedium,
+                            fontWeight = if (isAdjustment) FontWeight.Bold else FontWeight.Normal,
                             modifier = Modifier.testTag("transaction_title_${tx.transaction.id}")
                         )
                         if (tx.transaction.seriesId != null) {

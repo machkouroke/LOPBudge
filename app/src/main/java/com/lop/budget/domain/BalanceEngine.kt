@@ -21,15 +21,15 @@ object BalanceEngine {
         val result = mutableMapOf<Long, Double>()
 
         for (account in accounts) {
-            var currentBalance = account.initialBalance // initialBalance est notre solde de référence
+            var currentBalance = account.initialBalance
             
-            // Calculer la somme des transactions payées APRÈS la dernière mise à jour du solde de ce compte
+            // On somme TOUTES les transactions payées et non supprimées rattachées au compte.
+            // On ignore désormais balanceUpdatedAt car on utilise les transactions compensatoires (ajustements).
             transactions
                 .filter { 
                     it.accountId == account.id && 
                     it.status == TransactionStatus.PAID && 
-                    !it.deleted && 
-                    it.paidAt != null && it.paidAt > account.balanceUpdatedAt 
+                    !it.deleted
                 }
                 .forEach { tx ->
                     val amount = if (tx.type == TransactionType.INCOME) tx.amount else -tx.amount

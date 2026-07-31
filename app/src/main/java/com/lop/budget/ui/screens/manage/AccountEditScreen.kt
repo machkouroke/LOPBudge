@@ -216,7 +216,7 @@ fun AccountEditScreen(
                             OutlinedTextField(
                                 value = state.initialBalance,
                                 onValueChange = vm::onInitialBalanceChange,
-                                label = { Text("Solde de référence") },
+                                label = { Text("Solde du compte") },
                                 modifier = Modifier.fillMaxWidth(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true

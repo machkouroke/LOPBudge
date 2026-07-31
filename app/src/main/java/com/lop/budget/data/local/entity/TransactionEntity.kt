@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 
@@ -26,6 +27,7 @@ import com.lop.budget.domain.model.TransactionType
         Index("date"),
         Index("paidAt"),
         Index("status"),
+        Index("kind"),
         Index("deleted")
     ],
 )
@@ -35,6 +37,7 @@ data class TransactionEntity(
     val amount: Double,
     val type: TransactionType,
     val status: TransactionStatus,
+    val kind: TransactionKind = TransactionKind.STANDARD,
     /** Date d'échéance / de réalisation, epoch millis. */
     val date: Long,
     val accountId: Long,

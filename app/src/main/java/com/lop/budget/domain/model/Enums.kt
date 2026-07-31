@@ -3,6 +3,9 @@ package com.lop.budget.domain.model
 /** Nature d'un mouvement. */
 enum class TransactionType { INCOME, EXPENSE }
 
+/** Type de transaction (standard ou ajustement technique). */
+enum class TransactionKind { STANDARD, BALANCE_ADJUSTMENT }
+
 /** Cycle de vie d'une transaction planifiée. */
 enum class TransactionStatus { PLANNED, PAID }
 

@@ -49,6 +49,7 @@ class AccountDetailViewModel @Inject constructor(
         val account = repo.getAccountById(accountId)
         
         // Calcul de l'historique (simplifié pour le prototype)
+        // L'historique inclut désormais les ajustements de solde pour être cohérent avec le solde affiché
         val history = calculateHistory(account?.initialBalance ?: 0.0, paid)
 
         AccountDetailUiState(
@@ -56,7 +57,7 @@ class AccountDetailViewModel @Inject constructor(
             balance = balances[accountId] ?: account?.initialBalance ?: 0.0,
             currency = currency,
             history = history,
-            recentTransactions = paid.take(10),
+            recentTransactions = paid.take(20), // On en prend un peu plus car les ajustements peuvent s'y glisser
             upcomingTransactions = planned.take(5),
             txVersions = versions,
             isLoaded = true
