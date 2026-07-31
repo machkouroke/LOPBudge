@@ -136,7 +136,7 @@ class BudgetRepository @Inject constructor(
      * et les occurrences virtuelles générées à la volée à partir des séries actives.
      */
     fun observeTransactionsBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>> {
-        val allTransactionsFlow = transactionDao.observeBetweenIncludeDeleted(start, end)
+        val allTransactionsFlow = transactionDao.observeBetween(start, end)
         val seriesFlow = recurringSeriesDao.observeActiveSeries()
         val accountsFlow = accountDao.observeAll()
         val categoriesFlow = categoryDao.observeAll()

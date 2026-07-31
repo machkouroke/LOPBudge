@@ -19,13 +19,14 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE deleted = 0 ORDER BY date ASC")
     fun observeAll(): Flow<List<TransactionWithRelations>>
 
-    @Transaction
-    @Query("SELECT * FROM transactions WHERE deleted = 0 AND date BETWEEN :start AND :end ORDER BY date ASC")
-    fun observeBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>>
-
+    /** 
+     * Observe toutes les transactions entre deux dates.
+     * Inclut désormais les transactions supprimées (deleted = 1) pour permettre au Repository
+     * d'identifier les marqueurs d'exclusion de récurrence.
+     */
     @Transaction
     @Query("SELECT * FROM transactions WHERE date BETWEEN :start AND :end ORDER BY date ASC")
-    fun observeBetweenIncludeDeleted(start: Long, end: Long): Flow<List<TransactionWithRelations>>
+    fun observeBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>>
 
     @Transaction
     @Query("SELECT * FROM transactions WHERE id = :id AND deleted = 0")
