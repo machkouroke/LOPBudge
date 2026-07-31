@@ -56,6 +56,7 @@ fun SwipeableTransactionRow(
     onTogglePaid: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     /** Fraction de la largeur à dépasser pour confirmer le swipe (0f–1f). */
     thresholdFraction: Float = 0.40f,
     /** Vélocité minimale (px/s) pour déclencher l'action par fling. */
@@ -132,7 +133,8 @@ fun SwipeableTransactionRow(
             modifier = Modifier
                 .fillMaxSize()
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .pointerInput(isPaid) {
+                .pointerInput(isPaid, enabled) {
+                    if (!enabled) return@pointerInput
                     val velocityTracker = VelocityTracker()
                     detectHorizontalDragGestures(
                         onDragStart = {

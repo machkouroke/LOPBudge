@@ -125,6 +125,7 @@ fun TransactionRow(
     
     SwipeableTransactionRow(
         isPaid = isPaid,
+        enabled = !isAdjustment,
         onTogglePaid = { if (!isAdjustment) onTogglePaid(tx.transaction.id, tx.transaction.status) },
         onDelete = {
             if (!isAdjustment) {
