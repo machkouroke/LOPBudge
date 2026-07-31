@@ -23,52 +23,150 @@ class BalanceEngineTest {
     }
 
     /**
-     * Vérifie que le calcul du solde actuel :
+     * TC1 : Vérifie que le calcul du solde actuel :
      * 1. Part bien du solde initial (initialBalance).
-     * 2. Prend en compte TOUTES les transactions payées (standards et ajustements).
+     * 2. Somme les revenus et soustrait les dépenses.
      */
     @Test
-    fun `calculateBalances should start from initialBalance and sum all paid transactions`() {
-        MarkdownReporter.log("Initialisation des données de test (Nouveau moteur cumulatif)")
+    fun `TC1 - calculateBalances should sum paid income and subtract paid expenses`() {
+        MarkdownReporter.log("TC1 : Calcul cumulatif simple")
         val account = AccountEntity(
             id = 1,
-            name = "Test Account",
+            name = "A1",
             type = AccountType.CHECKING,
             initialBalance = 1000.0,
             colorArgb = 0,
             icon = ""
         )
-        MarkdownReporter.log("Compte configuré : Solde initial = 1000.0")
 
         val tx1 = TransactionEntity(
             id = 1,
-            title = "Standard 1",
-            amount = 100.0,
-            type = TransactionType.EXPENSE,
+            title = "Revenu",
+            amount = 500.0,
+            type = TransactionType.INCOME,
             status = TransactionStatus.PAID,
-            date = 5000L,
+            date = 1000L,
             accountId = 1,
             categoryId = 0
         )
-        
         val tx2 = TransactionEntity(
             id = 2,
+            title = "Dépense",
+            amount = 200.0,
+            type = TransactionType.EXPENSE,
+            status = TransactionStatus.PAID,
+            date = 2000L,
+            accountId = 1,
+            categoryId = 0
+        )
+
+        val results = BalanceEngine.calculateBalances(
+            listOf(account),
+            listOf(tx1, tx2)
+        )
+        MarkdownReporter.log("Solde calculé pour le compte A1 : ${results[1L]}, Attendu: 1300")
+        assertEquals(1300.0, results[1L]!!, 0.0)
+    }
+
+    /**
+     * TC2 : Vérifie qu'une transaction technique d'ajustement est traitée comme une transaction
+     * standard pour le calcul du solde
+     */
+    @Test
+    fun `TC2 - calculateBalances should include adjustment transactions`() {
+        MarkdownReporter.log("TC2 : Prise en compte des ajustements")
+        val account = AccountEntity(
+            id = 1,
+            name = "A1",
+            type = AccountType.CHECKING,
+            initialBalance = 1000.0,
+            colorArgb = 0,
+            icon = ""
+        )
+
+        val adj = TransactionEntity(
+            id = 1,
             title = "Ajustement",
             amount = 300.0,
             type = TransactionType.INCOME,
             status = TransactionStatus.PAID,
             kind = TransactionKind.BALANCE_ADJUSTMENT,
-            date = 10000L,
+            date = 1000L,
             accountId = 1,
             categoryId = 0
         )
 
-        val results =
-            BalanceEngine.calculateBalances(listOf(account), listOf(tx1, tx2))
-        val finalBalance = results[1L]!!
+        val results = BalanceEngine.calculateBalances(listOf(account),
+            listOf(adj))
+        MarkdownReporter.log("Solde calculé pour le compte A1 : ${results[1L]}, Attendu: 1300")
 
-        MarkdownReporter.log("Solde calculé : $finalBalance (1000 - 100 + 300 = 1200)")
-        assertEquals(1200.0, finalBalance, 0.0)
+        assertEquals(1300.0, results[1L]!!, 0.0)
+    }
+
+    /**
+     * TC3 : Vérifie que les transactions planifiées (non payées) sont ignorées.
+     */
+    @Test
+    fun `TC3 - calculateBalances should ignore planned transactions`() {
+        MarkdownReporter.log("TC3 : Exclusion des transactions PLANNED")
+        val account = AccountEntity(
+            id = 1,
+            name = "A1",
+            type = AccountType.CHECKING,
+            initialBalance = 1000.0,
+            colorArgb = 0,
+            icon = ""
+        )
+
+        val txPlanned = TransactionEntity(
+            id = 1,
+            title = "Futur",
+            amount = 100.0,
+            type = TransactionType.EXPENSE,
+            status = TransactionStatus.PLANNED,
+            date = 1000L,
+            accountId = 1,
+            categoryId = 0
+        )
+
+
+        val results = BalanceEngine.calculateBalances(listOf(account),
+            listOf(txPlanned))
+        MarkdownReporter.log("Solde calculé pour le compte A1 : ${results[1L]}, Attendu: 1000")
+        assertEquals(1000.0, results[1L]!!, 0.0)
+    }
+
+    /**
+     * TC4 : Vérifie que les transactions supprimées sont ignorées.
+     */
+    @Test
+    fun `TC4 - calculateBalances should ignore deleted transactions`() {
+        MarkdownReporter.log("TC4 : Exclusion des transactions supprimées")
+        val account = AccountEntity(
+            id = 1,
+            name = "A1",
+            type = AccountType.CHECKING,
+            initialBalance = 1000.0,
+            colorArgb = 0,
+            icon = ""
+        )
+
+        val txDeleted = TransactionEntity(
+            id = 1,
+            title = "Supprimée",
+            amount = 100.0,
+            type = TransactionType.EXPENSE,
+            status = TransactionStatus.PAID,
+            date = 1000L,
+            deleted = true,
+            accountId = 1,
+            categoryId = 0
+        )
+
+        val results = BalanceEngine.calculateBalances(listOf(account),
+            listOf(txDeleted))
+        MarkdownReporter.log("Solde calculé pour le compte A1 : ${results[1L]}, Attendu: 1000")
+        assertEquals(1000.0, results[1L]!!, 0.0)
     }
 
     /**
@@ -101,7 +199,7 @@ class BalanceEngineTest {
         val balances = mapOf(1L to 1000.0, 2L to 500.0)
         val total = BalanceEngine.calculateTotalBalance(listOf(account1, account2), balances)
 
-        MarkdownReporter.log("Total obtenu : $total (A2 doit être ignoré)")
+        MarkdownReporter.log("Total obtenu : $total (A2 doit être ignoré), Attendu: 1000.0")
         assertEquals(1000.0, total, 0.0)
     }
 
