@@ -40,6 +40,7 @@ fun SearchScreen(
     onBack: () -> Unit,
     onOpenTransaction: (Long) -> Unit,
     onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
+    snackbarHostState: SnackbarHostState,
     hazeState: HazeState? = null,
     vm: SearchViewModel = hiltViewModel(),
     actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
@@ -49,7 +50,6 @@ fun SearchScreen(
     val pendingDeletes by actionVm.pendingDeletes.collectAsStateWithLifecycle()
     val pendingSeriesDeletes by actionVm.pendingSeriesDeletes.collectAsStateWithLifecycle()
     val pendingSeriesDates by actionVm.pendingSeriesFromDates.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
     
     val filteredDayGroups = remember(state.dayGroups, pendingDeletes, pendingSeriesDeletes, pendingSeriesDates) {
         state.dayGroups.map { group ->
@@ -175,8 +175,7 @@ fun SearchScreen(
             onTogglePaid = actionVm::togglePaid,
             onDeleteRequest = { twr ->
                 if (twr.transaction.seriesId != null) {
-                    // Recurring deletion handled via sheet
-                    // For now, let's just trigger simple delete if not implemented
+                    // Pour simplifier ici (pas de sheet encore), on déclenche direct
                     actionVm.deleteWithUndo(twr, snackbarHostState, txDeletedMsg, undoMsg)
                 } else {
                     actionVm.deleteWithUndo(twr, snackbarHostState, txDeletedMsg, undoMsg)

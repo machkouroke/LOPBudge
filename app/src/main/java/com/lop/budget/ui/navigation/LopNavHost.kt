@@ -228,6 +228,7 @@ fun LopNavHost(startRoute: String? = null) {
                                 navController.navigate(Routes.SEARCH)
                             },
                             hazeState = hazeState,
+                            snackbarHostState = snackbarHostState
                         )
                     }
 
@@ -253,6 +254,7 @@ fun LopNavHost(startRoute: String? = null) {
                                     globalCurrency = cur
                                 },
                                 hazeState = hazeState,
+                                snackbarHostState = snackbarHostState
                             )
                         }
 
@@ -290,6 +292,7 @@ fun LopNavHost(startRoute: String? = null) {
                                     globalCurrency = cur
                                 },
                                 hazeState = hazeState,
+                                snackbarHostState = snackbarHostState
                             )
                         }
 
@@ -363,7 +366,8 @@ fun LopNavHost(startRoute: String? = null) {
                                 onBack = { navController.popBackStack() },
                                 onEdit = { txId, scope, date ->
                                     navController.navigate(Routes.edit(txId, scope, date))
-                                }
+                                },
+                                snackbarHostState = snackbarHostState
                             )
                         }
                     }

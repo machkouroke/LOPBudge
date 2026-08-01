@@ -34,6 +34,7 @@ fun AccountDetailScreen(
     onEdit: (Long) -> Unit,
     onOpenTransaction: (Long) -> Unit,
     onPreviewTransaction: (com.lop.budget.data.local.entity.TransactionWithRelations, String) -> Unit,
+    snackbarHostState: SnackbarHostState,
     hazeState: HazeState? = null,
     vm: AccountDetailViewModel = hiltViewModel(),
     actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
@@ -44,7 +45,6 @@ fun AccountDetailScreen(
     val pendingSeriesDeletes by actionVm.pendingSeriesDeletes.collectAsStateWithLifecycle()
     val pendingSeriesDates by actionVm.pendingSeriesFromDates.collectAsStateWithLifecycle()
     val account = state.account
-    val snackbarHostState = remember { SnackbarHostState() }
     
     val upcomingTransactions = remember(state.upcomingTransactions, pendingDeletes, pendingSeriesDeletes, pendingSeriesDates) {
         state.upcomingTransactions.filter { twr ->

@@ -56,7 +56,7 @@ fun MonthlyTransactionsScreen(
     onOpenTransaction: (Long) -> Unit,
     onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
     onNavigateToSearch: (String) -> Unit, // Callback to navigate to global search
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    snackbarHostState: SnackbarHostState,
     hazeState: HazeState? = null,
     vm: MonthlyTransactionsViewModel = hiltViewModel(),
     actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
@@ -87,8 +87,8 @@ fun MonthlyTransactionsScreen(
                 val seriesId = tx.seriesId
                 val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
                 val isSeriesPending = when (seriesPendingMode) {
-                    SeriesDeletionMode.ALL -> true
-                    SeriesDeletionMode.FUTURE -> {
+                    com.lop.budget.domain.model.SeriesDeletionMode.ALL -> true
+                    com.lop.budget.domain.model.SeriesDeletionMode.FUTURE -> {
                         val fromDate = pendingSeriesDates[seriesId]
                         fromDate != null && tx.date >= fromDate
                     }
@@ -321,7 +321,7 @@ fun MonthlyTransactionsScreen(
                 }
             )
         } else {
-            LaunchedEffect(toDelete) {
+            SideEffect {
                 actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
                 showDeleteConfirmForTx = null
             }

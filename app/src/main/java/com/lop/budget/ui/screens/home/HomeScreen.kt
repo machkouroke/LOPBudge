@@ -42,6 +42,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -228,7 +229,7 @@ fun HomeScreen(
         } else {
             // Pour les transactions simples, on déclenche directement le delete avec Undo (Snackbar)
             // L'utilisateur a déjà swipé, le Undo est suffisant et plus fluide.
-            LaunchedEffect(toDelete) {
+            SideEffect {
                 actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
                 showDeleteConfirmForTx = null
             }

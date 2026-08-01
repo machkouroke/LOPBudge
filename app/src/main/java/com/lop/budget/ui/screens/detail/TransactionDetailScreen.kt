@@ -33,6 +33,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -79,7 +80,8 @@ fun TransactionDetailScreen(
     onBack: () -> Unit,
     onEdit: (id: Long, scope: String?, date: Long?) -> Unit = { _, _, _ -> },
     vm: TransactionDetailViewModel = hiltViewModel(),
-    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(),
+    snackbarHostState: androidx.compose.material3.SnackbarHostState,
 ) {
     LaunchedEffect(transactionId) { vm.load(transactionId) }
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -87,7 +89,6 @@ fun TransactionDetailScreen(
     val ext = LopTheme.extended
     val haptic = LocalHapticFeedback.current
 
-    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
     val undoMsg = stringResource(R.string.undo)
 
@@ -483,23 +484,23 @@ fun TransactionDetailScreen(
                         }
 
                         RecurringDeleteChoice.FUTURE_ONLY -> {
-                            tx.seriesId.let { sid ->
+                            tx.seriesId?.let { sid ->
                                 actionVm.deleteSeriesWithUndo(sid, com.lop.budget.domain.model.SeriesDeletionMode.FUTURE, tx.date, snackbarHostState, txDeletedMsg, undoMsg)
                             }
                         }
 
                         RecurringDeleteChoice.ALL_SERIES -> {
-                            tx.seriesId.let { sid ->
+                            tx.seriesId?.let { sid ->
                                 actionVm.deleteSeriesWithUndo(sid, com.lop.budget.domain.model.SeriesDeletionMode.ALL, null, snackbarHostState, txDeletedMsg, undoMsg)
                             }
                         }
                     }
+                    onBack() // On ferme l'écran après la demande de suppression
                 },
             )
         } else {
-            // Pour le détail, on peut soit garder le modal soit passer au Undo. 
-            // Pour l'harmonisation, on va utiliser le deleteWithUndo qui naviguera en arrière via le LaunchedEffect
-            LaunchedEffect(showDeleteConfirm) {
+            // Déclenchement immédiat de la suppression avec Undo pour les transactions simples
+            SideEffect {
                 actionVm.deleteWithUndo(twr, snackbarHostState, txDeletedMsg, undoMsg)
                 showDeleteConfirm = false
             }
