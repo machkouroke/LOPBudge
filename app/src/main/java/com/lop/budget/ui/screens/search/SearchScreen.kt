@@ -43,7 +43,7 @@ fun SearchScreen(
     snackbarHostState: SnackbarHostState,
     hazeState: HazeState? = null,
     vm: SearchViewModel = hiltViewModel(),
-    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(androidx.compose.ui.platform.LocalContext.current as androidx.activity.ComponentActivity)
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()

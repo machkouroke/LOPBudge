@@ -103,7 +103,7 @@ fun HomeScreen(
     navController: NavController,
     hazeState: HazeState? = null,
     vm: HomeViewModel = hiltViewModel(),
-    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(LocalContext.current as androidx.activity.ComponentActivity)
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val actionState by actionVm.txVersions.collectAsStateWithLifecycle()

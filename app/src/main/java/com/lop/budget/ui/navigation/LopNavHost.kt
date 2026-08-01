@@ -61,6 +61,7 @@ fun LopNavHost(startRoute: String? = null) {
     val navController = rememberNavController()
     val hazeState = rememberHazeState()
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+    val actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(androidx.compose.ui.platform.LocalContext.current as androidx.activity.ComponentActivity)
 
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route?.substringBefore("/") ?: Routes.HOME
@@ -71,7 +72,6 @@ fun LopNavHost(startRoute: String? = null) {
         )
     }
     var globalCurrency by remember { mutableStateOf("EUR") }
-    val actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
     
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
     val undoMsg = stringResource(R.string.undo)

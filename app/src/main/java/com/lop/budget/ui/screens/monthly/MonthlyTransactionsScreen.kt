@@ -59,7 +59,7 @@ fun MonthlyTransactionsScreen(
     snackbarHostState: SnackbarHostState,
     hazeState: HazeState? = null,
     vm: MonthlyTransactionsViewModel = hiltViewModel(),
-    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(LocalContext.current as androidx.activity.ComponentActivity)
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()

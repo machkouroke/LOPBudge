@@ -33,6 +33,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,7 +81,7 @@ fun TransactionDetailScreen(
     onBack: () -> Unit,
     onEdit: (id: Long, scope: String?, date: Long?) -> Unit = { _, _, _ -> },
     vm: TransactionDetailViewModel = hiltViewModel(),
-    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(),
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(LocalContext.current as androidx.activity.ComponentActivity),
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
 ) {
     LaunchedEffect(transactionId) { vm.load(transactionId) }
@@ -499,10 +500,11 @@ fun TransactionDetailScreen(
                 },
             )
         } else {
-            // Déclenchement immédiat de la suppression avec Undo pour les transactions simples
-            SideEffect {
+            // Déclenchement de la suppression
+            LaunchedEffect(Unit) {
                 actionVm.deleteWithUndo(twr, snackbarHostState, txDeletedMsg, undoMsg)
                 showDeleteConfirm = false
+                onBack()
             }
         }
     }
