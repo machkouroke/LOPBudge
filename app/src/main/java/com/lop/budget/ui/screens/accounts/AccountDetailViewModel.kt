@@ -59,42 +59,10 @@ class AccountDetailViewModel @Inject constructor(
             history = history,
             recentTransactions = paid.take(20), // On en prend un peu plus car les ajustements peuvent s'y glisser
             upcomingTransactions = planned.take(5),
-            txVersions = versions,
+            txVersions = emptyMap(), // On délègue au SharedViewModel
             isLoaded = true
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountDetailUiState())
-
-    fun togglePaid(id: Long, currentStatus: com.lop.budget.domain.model.TransactionStatus) {
-        viewModelScope.launch {
-            val next = if (currentStatus == com.lop.budget.domain.model.TransactionStatus.PAID) 
-                com.lop.budget.domain.model.TransactionStatus.PLANNED.name 
-            else 
-                com.lop.budget.domain.model.TransactionStatus.PAID.name
-            repo.setStatus(id, next)
-        }
-    }
-
-    fun deleteWithUndo(
-        id: Long,
-        snackbarHostState: androidx.compose.material3.SnackbarHostState,
-        message: String,
-        undoLabel: String
-    ) {
-        viewModelScope.launch {
-            repo.softDeleteTransaction(id)
-            val result = snackbarHostState.showSnackbar(
-                message = message,
-                actionLabel = undoLabel,
-                duration = androidx.compose.material3.SnackbarDuration.Short
-            )
-            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                repo.restoreTransaction(id)
-                _txVersions.value = _txVersions.value.toMutableMap().apply {
-                    put(id, (get(id) ?: 0) + 1)
-                }
-            }
-        }
-    }
 
     fun materializeAndOpen(seriesId: Long, date: Long, onOpen: (Long) -> Unit) {
         viewModelScope.launch {

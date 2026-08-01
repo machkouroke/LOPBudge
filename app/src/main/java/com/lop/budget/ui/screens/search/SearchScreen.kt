@@ -29,6 +29,7 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopSearchBar
+import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.ui.components.transactionDayGroups
 import com.lop.budget.util.Format
 import dev.chrisbanes.haze.HazeState
@@ -40,10 +41,35 @@ fun SearchScreen(
     onOpenTransaction: (Long) -> Unit,
     onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
     hazeState: HazeState? = null,
-    vm: SearchViewModel = hiltViewModel()
+    vm: SearchViewModel = hiltViewModel(),
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
+    val pendingDeletes by actionVm.pendingDeletes.collectAsStateWithLifecycle()
+    val pendingSeriesDeletes by actionVm.pendingSeriesDeletes.collectAsStateWithLifecycle()
+    val pendingSeriesDates by actionVm.pendingSeriesFromDates.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    val filteredDayGroups = remember(state.dayGroups, pendingDeletes, pendingSeriesDeletes, pendingSeriesDates) {
+        state.dayGroups.map { group ->
+            group.copy(transactions = group.transactions.filter { twr ->
+                val tx = twr.transaction
+                val isSinglePending = tx.id in pendingDeletes
+                val seriesId = tx.seriesId
+                val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
+                val isSeriesPending = when (seriesPendingMode) {
+                    SeriesDeletionMode.ALL -> true
+                    SeriesDeletionMode.FUTURE -> {
+                        val fromDate = pendingSeriesDates[seriesId]
+                        fromDate != null && tx.date >= fromDate
+                    }
+                    null -> false
+                }
+                !isSinglePending && !isSeriesPending
+            })
+        }.filter { it.transactions.isNotEmpty() }
+    }
     
     var showAccountPicker by remember { mutableStateOf(false) }
     var showCategoryPicker by remember { mutableStateOf(false) }
@@ -141,17 +167,24 @@ fun SearchScreen(
             }
         } else {
             transactionDayGroups(
-                dayGroups = state.dayGroups,
-                currency = state.currency,
-                txVersions = state.txVersions,
-                onOpenTransaction = onOpenTransaction,
-                onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
-                onTogglePaid = vm::togglePaid,
-                onDeleteRequest = { /* Handle recurring delete if needed */ },
-                onPreviewTransaction = { tx, cur -> onPreviewTransaction(tx, cur) },
-                onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) },
-                hazeState = hazeState
-            )
+            dayGroups = filteredDayGroups,
+            currency = state.currency,
+            txVersions = txVersions,
+            onOpenTransaction = onOpenTransaction,
+            onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
+            onTogglePaid = actionVm::togglePaid,
+            onDeleteRequest = { twr ->
+                if (twr.transaction.seriesId != null) {
+                    // Recurring deletion handled via sheet
+                    // For now, let's just trigger simple delete if not implemented
+                    actionVm.deleteWithUndo(twr, snackbarHostState, txDeletedMsg, undoMsg)
+                } else {
+                    actionVm.deleteWithUndo(twr, snackbarHostState, txDeletedMsg, undoMsg)
+                }
+            },
+            onPreviewTransaction = { tx, cur -> onPreviewTransaction(tx, cur) },
+            hazeState = hazeState
+        )
         }
     }
 

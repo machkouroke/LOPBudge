@@ -35,11 +35,52 @@ fun AccountDetailScreen(
     onOpenTransaction: (Long) -> Unit,
     onPreviewTransaction: (com.lop.budget.data.local.entity.TransactionWithRelations, String) -> Unit,
     hazeState: HazeState? = null,
-    vm: AccountDetailViewModel = hiltViewModel()
+    vm: AccountDetailViewModel = hiltViewModel(),
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
+    val pendingDeletes by actionVm.pendingDeletes.collectAsStateWithLifecycle()
+    val pendingSeriesDeletes by actionVm.pendingSeriesDeletes.collectAsStateWithLifecycle()
+    val pendingSeriesDates by actionVm.pendingSeriesFromDates.collectAsStateWithLifecycle()
     val account = state.account
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    val upcomingTransactions = remember(state.upcomingTransactions, pendingDeletes, pendingSeriesDeletes, pendingSeriesDates) {
+        state.upcomingTransactions.filter { twr ->
+            val tx = twr.transaction
+            val isSinglePending = tx.id in pendingDeletes
+            val seriesId = tx.seriesId
+            val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
+            val isSeriesPending = when (seriesPendingMode) {
+                com.lop.budget.domain.model.SeriesDeletionMode.ALL -> true
+                com.lop.budget.domain.model.SeriesDeletionMode.FUTURE -> {
+                    val fromDate = pendingSeriesDates[seriesId]
+                    fromDate != null && tx.date >= fromDate
+                }
+                null -> false
+            }
+            !isSinglePending && !isSeriesPending
+        }
+    }
+
+    val recentTransactions = remember(state.recentTransactions, pendingDeletes, pendingSeriesDeletes, pendingSeriesDates) {
+        state.recentTransactions.filter { twr ->
+            val tx = twr.transaction
+            val isSinglePending = tx.id in pendingDeletes
+            val seriesId = tx.seriesId
+            val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
+            val isSeriesPending = when (seriesPendingMode) {
+                com.lop.budget.domain.model.SeriesDeletionMode.ALL -> true
+                com.lop.budget.domain.model.SeriesDeletionMode.FUTURE -> {
+                    val fromDate = pendingSeriesDates[seriesId]
+                    fromDate != null && tx.date >= fromDate
+                }
+                null -> false
+            }
+            !isSinglePending && !isSeriesPending
+        }
+    }
     
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
     val undoMsg = stringResource(R.string.undo)
@@ -95,35 +136,46 @@ fun AccountDetailScreen(
                 }
             }
 
-            if (state.upcomingTransactions.isNotEmpty()) {
+            if (upcomingTransactions.isNotEmpty()) {
                 item { SectionHeader("Transactions à venir") }
-                items(state.upcomingTransactions, key = { it.transaction.id }) { twr ->
+                items(upcomingTransactions, key = { tx -> "${tx.transaction.id}_${txVersions[tx.transaction.id] ?: 0}" }) { twr ->
                     TransactionRow(
                         tx = twr,
                         currency = state.currency,
                         onOpenTransaction = onOpenTransaction,
                         onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
-                        onTogglePaid = vm::togglePaid,
-                        onDeleteRequest = { vm.deleteWithUndo(it.transaction.id, snackbarHostState, txDeletedMsg, undoMsg) },
+                        onTogglePaid = actionVm::togglePaid,
+                        onDeleteRequest = { twrToDelete ->
+                            if (twrToDelete.transaction.seriesId != null) {
+                                // For now, we don't have the sheet here, so let's just do single delete
+                                actionVm.deleteWithUndo(twrToDelete, snackbarHostState, txDeletedMsg, undoMsg)
+                            } else {
+                                actionVm.deleteWithUndo(twrToDelete, snackbarHostState, txDeletedMsg, undoMsg)
+                            }
+                        },
                         onPreviewTransaction = { tx, cur -> onPreviewTransaction(tx, cur) },
-                        onDeleteSimple = { vm.deleteWithUndo(it, snackbarHostState, txDeletedMsg, undoMsg) },
                         hazeState = hazeState
                     )
                 }
             }
 
-            if (state.recentTransactions.isNotEmpty()) {
+            if (recentTransactions.isNotEmpty()) {
                 item { SectionHeader("Transactions récentes") }
-                items(state.recentTransactions, key = { it.transaction.id }) { twr ->
+                items(recentTransactions, key = { tx -> "${tx.transaction.id}_${txVersions[tx.transaction.id] ?: 0}" }) { twr ->
                     TransactionRow(
                         tx = twr,
                         currency = state.currency,
                         onOpenTransaction = onOpenTransaction,
                         onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
-                        onTogglePaid = vm::togglePaid,
-                        onDeleteRequest = { vm.deleteWithUndo(it.transaction.id, snackbarHostState, txDeletedMsg, undoMsg) },
+                        onTogglePaid = actionVm::togglePaid,
+                        onDeleteRequest = { twrToDelete ->
+                            if (twrToDelete.transaction.seriesId != null) {
+                                actionVm.deleteWithUndo(twrToDelete, snackbarHostState, txDeletedMsg, undoMsg)
+                            } else {
+                                actionVm.deleteWithUndo(twrToDelete, snackbarHostState, txDeletedMsg, undoMsg)
+                            }
+                        },
                         onPreviewTransaction = { tx, cur -> onPreviewTransaction(tx, cur) },
-                        onDeleteSimple = { vm.deleteWithUndo(it, snackbarHostState, txDeletedMsg, undoMsg) },
                         hazeState = hazeState
                     )
                 }

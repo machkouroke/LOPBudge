@@ -102,8 +102,13 @@ fun HomeScreen(
     navController: NavController,
     hazeState: HazeState? = null,
     vm: HomeViewModel = hiltViewModel(),
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val actionState by actionVm.txVersions.collectAsStateWithLifecycle()
+    val pendingDeletes by actionVm.pendingDeletes.collectAsStateWithLifecycle()
+    val pendingSeriesDeletes by actionVm.pendingSeriesDeletes.collectAsStateWithLifecycle()
+    val pendingSeriesDates by actionVm.pendingSeriesFromDates.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // Vérification de la permission au lancement
@@ -143,9 +148,27 @@ fun HomeScreen(
         )
     }
 
+    val txs = remember(state.dashboardTransactions, pendingDeletes, pendingSeriesDeletes, pendingSeriesDates) {
+        state.dashboardTransactions.filter { twr ->
+            val tx = twr.transaction
+            val isSinglePending = tx.id in pendingDeletes
+            val seriesId = tx.seriesId
+            val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
+            val isSeriesPending = when (seriesPendingMode) {
+                SeriesDeletionMode.ALL -> true
+                SeriesDeletionMode.FUTURE -> {
+                    val fromDate = pendingSeriesDates[seriesId]
+                    fromDate != null && tx.date >= fromDate
+                }
+                null -> false
+            }
+            !isSinglePending && !isSeriesPending
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         HomeContent(
-            state = state,
+            state = state.copy(dashboardTransactions = txs),
             statusBarPadding = statusBarPadding,
             onOpenTransaction = onOpenTransaction,
             onOpenMonthly = onOpenMonthly,
@@ -157,7 +180,8 @@ fun HomeScreen(
             onNextMonth = { vm.nextMonth() },
             snackbarHostState = snackbarHostState,
             hazeState = hazeState,
-            vm = vm
+            vm = vm,
+            actionVm = actionVm
         )
 
         // Overlay UI (Header and Floating elements)
@@ -178,28 +202,37 @@ fun HomeScreen(
         val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
         val undoMsg = stringResource(R.string.undo)
         
-        RecurringDeleteSheet(
-            onDismiss = { showDeleteConfirmForTx = null },
-            showFutureOnly = true,
-            onChoose = { choice ->
-                showDeleteConfirmForTx = null
-                when (choice) {
-                    RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                        vm.deleteOccurrenceWithUndo(toDelete.transaction.id, snackbarHostState, txDeletedMsg, undoMsg)
-                    }
-                    RecurringDeleteChoice.FUTURE_ONLY -> {
-                        toDelete.transaction.seriesId?.let { 
-                            vm.deleteSeriesWithUndo(it, SeriesDeletionMode.FUTURE, toDelete.transaction.date, snackbarHostState, txDeletedMsg, undoMsg) 
+        if (toDelete.transaction.seriesId != null) {
+            RecurringDeleteSheet(
+                onDismiss = { showDeleteConfirmForTx = null },
+                showFutureOnly = true,
+                onChoose = { choice ->
+                    showDeleteConfirmForTx = null
+                    when (choice) {
+                        RecurringDeleteChoice.THIS_OCCURRENCE -> {
+                            actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
                         }
-                    }
-                    RecurringDeleteChoice.ALL_SERIES -> {
-                        toDelete.transaction.seriesId?.let { 
-                            vm.deleteSeriesWithUndo(it, SeriesDeletionMode.ALL, null, snackbarHostState, txDeletedMsg, undoMsg)
+                        RecurringDeleteChoice.FUTURE_ONLY -> {
+                            toDelete.transaction.seriesId?.let { 
+                                actionVm.deleteSeriesWithUndo(it, SeriesDeletionMode.FUTURE, toDelete.transaction.date, snackbarHostState, txDeletedMsg, undoMsg) 
+                            }
+                        }
+                        RecurringDeleteChoice.ALL_SERIES -> {
+                            toDelete.transaction.seriesId?.let { 
+                                actionVm.deleteSeriesWithUndo(it, SeriesDeletionMode.ALL, null, snackbarHostState, txDeletedMsg, undoMsg)
+                            }
                         }
                     }
                 }
+            )
+        } else {
+            // Pour les transactions simples, on déclenche directement le delete avec Undo (Snackbar)
+            // L'utilisateur a déjà swipé, le Undo est suffisant et plus fluide.
+            LaunchedEffect(toDelete) {
+                actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
+                showDeleteConfirmForTx = null
             }
-        )
+        }
     }
 }
 
@@ -217,7 +250,8 @@ fun HomeContent(
     onNextMonth: () -> Unit,
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
     hazeState: HazeState? = null,
-    vm: HomeViewModel
+    vm: HomeViewModel,
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel
 ) {
     val listState = rememberLazyListState()
 
@@ -385,9 +419,11 @@ fun HomeContent(
                 },
                 label = "dashboard_transactions"
             ) { targetMonth ->
+                val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
                 TransactionsDashboardWidget(
                     transactions = state.dashboardTransactions,
                     currency = state.currency,
+                    txVersions = txVersions,
                     onSeeAll = { onOpenMonthly(TransactionType.EXPENSE, targetMonth) },
                     onOpenTransaction = onOpenTransaction,
                     onMaterializeAndOpen = { sid, date ->
@@ -397,17 +433,9 @@ fun HomeContent(
                             onOpenTransaction
                         )
                     },
-                    onTogglePaid = vm::togglePaid,
+                    onTogglePaid = actionVm::togglePaid,
                     onDeleteRequest = onDeleteRequest,
                     onPreviewTransaction = onPreviewTransaction,
-                    onDeleteSimple = { id ->
-                        vm.deleteWithUndo(
-                            id,
-                            snackbarHostState,
-                            txDeletedMsg,
-                            undoMsg
-                        )
-                    },
                     hazeState = hazeState
                 )
             }

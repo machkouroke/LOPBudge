@@ -484,6 +484,41 @@ class BudgetRepository @Inject constructor(
     suspend fun changeAccount(transactionId: Long, accountId: Long) =
         transactionDao.updateAccount(transactionId, accountId)
 
+    /**
+     * Bascule le statut d'une transaction entre PAID et PLANNED.
+     * Matérialise l'occurrence si elle est virtuelle.
+     */
+    suspend fun toggleTransactionStatus(twr: TransactionWithRelations) {
+        val tx = twr.transaction
+        val realId = if (tx.id < 0L && tx.seriesId != null && tx.seriesDate != null) {
+            materializeOccurrence(tx.seriesId.toLong(), tx.seriesDate)
+        } else {
+            tx.id
+        }
+
+        if (realId >= 0L) {
+            val newStatus = if (tx.status == TransactionStatus.PAID) TransactionStatus.PLANNED else TransactionStatus.PAID
+            setStatus(realId, newStatus.name)
+        }
+    }
+
+    /**
+     * Supprime une occurrence de transaction (soft delete).
+     * Matérialise l'occurrence si elle est virtuelle.
+     */
+    suspend fun softDeleteTransactionOccurrence(twr: TransactionWithRelations) {
+        val tx = twr.transaction
+        val realId = if (tx.id < 0L && tx.seriesId != null && tx.seriesDate != null) {
+            materializeOccurrence(tx.seriesId.toLong(), tx.seriesDate)
+        } else {
+            tx.id
+        }
+
+        if (realId >= 0L) {
+            softDeleteTransaction(realId)
+        }
+    }
+
     suspend fun setStatus(transactionId: Long, status: String) {
         val paidAt = if (status == TransactionStatus.PAID.name) System.currentTimeMillis() else null
         transactionDao.updateStatus(transactionId, status, paidAt)

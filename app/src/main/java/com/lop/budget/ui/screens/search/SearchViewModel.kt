@@ -57,7 +57,6 @@ class SearchViewModel @Inject constructor(
         },
         settings.currency,
         _query,
-        _txVersions,
         _selectedAccountId,
         _selectedCategoryId,
         _startDate,
@@ -69,21 +68,19 @@ class SearchViewModel @Inject constructor(
         val txs = args[0] as List<com.lop.budget.data.local.entity.TransactionWithRelations>
         val currency = args[1] as String
         val currentQuery = args[2] as String
-        @Suppress("UNCHECKED_CAST")
-        val versions = args[3] as Map<Long, Int>
         
         SearchUiState(
             query = currentQuery,
             dayGroups = DayGroup.fromTransactions(txs),
             currency = currency,
-            txVersions = versions,
+            txVersions = emptyMap(), // On délègue au SharedViewModel
             isLoading = false,
-            selectedAccountId = args[4] as Long?,
-            selectedCategoryId = args[5] as Long?,
-            startDate = args[6] as Long?,
-            endDate = args[7] as Long?,
-            availableAccounts = args[8] as List<com.lop.budget.data.local.entity.AccountEntity>,
-            availableCategories = args[9] as List<com.lop.budget.data.local.entity.CategoryEntity>
+            selectedAccountId = args[3] as Long?,
+            selectedCategoryId = args[4] as Long?,
+            startDate = args[5] as Long?,
+            endDate = args[6] as Long?,
+            availableAccounts = args[7] as List<com.lop.budget.data.local.entity.AccountEntity>,
+            availableCategories = args[8] as List<com.lop.budget.data.local.entity.CategoryEntity>
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SearchUiState())
 
@@ -102,38 +99,6 @@ class SearchViewModel @Inject constructor(
     fun onDateRangeChange(start: Long?, end: Long?) {
         _startDate.value = start
         _endDate.value = end
-    }
-
-    fun togglePaid(id: Long, currentStatus: TransactionStatus) {
-        viewModelScope.launch {
-            val next = if (currentStatus == TransactionStatus.PAID) 
-                TransactionStatus.PLANNED.name 
-            else 
-                TransactionStatus.PAID.name
-            repo.setStatus(id, next)
-        }
-    }
-
-    fun deleteWithUndo(
-        id: Long,
-        snackbarHostState: androidx.compose.material3.SnackbarHostState,
-        message: String,
-        undoLabel: String
-    ) {
-        viewModelScope.launch {
-            repo.softDeleteTransaction(id)
-            val result = snackbarHostState.showSnackbar(
-                message = message,
-                actionLabel = undoLabel,
-                duration = androidx.compose.material3.SnackbarDuration.Short
-            )
-            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                repo.restoreTransaction(id)
-                _txVersions.value = _txVersions.value.toMutableMap().apply {
-                    put(id, (get(id) ?: 0) + 1)
-                }
-            }
-        }
     }
 
     fun materializeAndOpen(seriesId: Long, date: Long, onOpen: (Long) -> Unit) {

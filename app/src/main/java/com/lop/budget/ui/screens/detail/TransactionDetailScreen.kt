@@ -79,14 +79,21 @@ fun TransactionDetailScreen(
     onBack: () -> Unit,
     onEdit: (id: Long, scope: String?, date: Long?) -> Unit = { _, _, _ -> },
     vm: TransactionDetailViewModel = hiltViewModel(),
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
 ) {
     LaunchedEffect(transactionId) { vm.load(transactionId) }
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val pendingDeletes by actionVm.pendingDeletes.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
     val haptic = LocalHapticFeedback.current
 
-    LaunchedEffect(state.transaction, state.isLoaded) {
-        if (state.isLoaded && state.transaction == null) {
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
+    val undoMsg = stringResource(R.string.undo)
+
+    LaunchedEffect(state.transaction, state.isLoaded, pendingDeletes) {
+        val currentId = state.transaction?.transaction?.id
+        if ((state.isLoaded && state.transaction == null) || (currentId != null && currentId in pendingDeletes)) {
             onBack()
         }
     }
@@ -105,7 +112,8 @@ fun TransactionDetailScreen(
         LopScreenScaffold(
             title = scaffoldTitle,
             onBack = onBack,
-            navigationIcon = Icons.Filled.Close
+            navigationIcon = Icons.Filled.Close,
+            snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) }
         ) {
             if (tx == null) {
                 item {
@@ -364,11 +372,7 @@ fun TransactionDetailScreen(
                                 .fillMaxWidth()
                                 .clickableNoRipple {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    if (isPaid) {
-                                        vm.markUnpaid()
-                                    } else {
-                                        vm.markPaid()
-                                    }
+                                    actionVm.togglePaid(twr)
                                 },
                             color = buttonColor,
                         ) {
@@ -465,7 +469,8 @@ fun TransactionDetailScreen(
         )
     }
 
-    if (showDeleteConfirm && tx != null) {
+    if (showDeleteConfirm && twr != null) {
+        val tx = twr.transaction
         if (tx.seriesId != null) {
             RecurringDeleteSheet(
                 onDismiss = { showDeleteConfirm = false },
@@ -474,30 +479,30 @@ fun TransactionDetailScreen(
                     showDeleteConfirm = false
                     when (choice) {
                         RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                            vm.deleteOccurrence(onBack)
+                            actionVm.deleteWithUndo(twr, snackbarHostState, txDeletedMsg, undoMsg)
                         }
 
                         RecurringDeleteChoice.FUTURE_ONLY -> {
-                            vm.deleteSeries(SeriesDeletionMode.FUTURE, tx.date, onBack)
+                            tx.seriesId.let { sid ->
+                                actionVm.deleteSeriesWithUndo(sid, com.lop.budget.domain.model.SeriesDeletionMode.FUTURE, tx.date, snackbarHostState, txDeletedMsg, undoMsg)
+                            }
                         }
 
                         RecurringDeleteChoice.ALL_SERIES -> {
-                            vm.deleteSeries(SeriesDeletionMode.ALL, null, onBack)
+                            tx.seriesId.let { sid ->
+                                actionVm.deleteSeriesWithUndo(sid, com.lop.budget.domain.model.SeriesDeletionMode.ALL, null, snackbarHostState, txDeletedMsg, undoMsg)
+                            }
                         }
                     }
                 },
             )
         } else {
-            ConfirmDeleteSheet(
-                title = stringResource(R.string.tx_detail_delete_title),
-                message = stringResource(R.string.tx_detail_delete_msg),
-                confirmLabel = stringResource(R.string.delete),
-                onDismiss = { showDeleteConfirm = false },
-                onConfirm = {
-                    showDeleteConfirm = false
-                    vm.delete(onBack)
-                },
-            )
+            // Pour le détail, on peut soit garder le modal soit passer au Undo. 
+            // Pour l'harmonisation, on va utiliser le deleteWithUndo qui naviguera en arrière via le LaunchedEffect
+            LaunchedEffect(showDeleteConfirm) {
+                actionVm.deleteWithUndo(twr, snackbarHostState, txDeletedMsg, undoMsg)
+                showDeleteConfirm = false
+            }
         }
     }
 }

@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
@@ -74,11 +75,6 @@ class MonthlyTransactionsViewModel @Inject constructor(
     private val selectedAccountId = MutableStateFlow<Long?>(null)
     private val selectedCategoryId = MutableStateFlow<Long?>(null)
 
-    private val pendingDeletes = MutableStateFlow<Set<Long>>(emptySet())
-    private val pendingSeriesDeletes = MutableStateFlow<Map<String, com.lop.budget.domain.model.SeriesDeletionMode>>(emptyMap())
-    private val pendingSeriesFromDates = MutableStateFlow<Map<String, Long>>(emptyMap())
-    private val txVersions = MutableStateFlow<Map<Long, Int>>(emptyMap())
-
     fun setFilter(f: PaidFilter) { filter.value = f }
     fun setInsightMode(m: InsightMode) { insightMode.value = m }
     fun onQueryChange(q: String) { searchQuery.value = q }
@@ -86,63 +82,10 @@ class MonthlyTransactionsViewModel @Inject constructor(
     fun onCategoryFilterChange(id: Long?) { selectedCategoryId.value = id }
     fun setType(t: TransactionType?) { type.value = t }
 
-    fun togglePaid(transactionId: Long, currentStatus: TransactionStatus) {
+    fun materializeAndOpen(seriesId: Long, date: Long, onOpen: (Long) -> Unit) {
         viewModelScope.launch {
-            val newStatus = if (currentStatus == TransactionStatus.PAID) TransactionStatus.PLANNED else TransactionStatus.PAID
-            repo.setStatus(transactionId, newStatus.name)
-        }
-    }
-
-    fun deleteWithUndo(
-        transactionId: Long,
-        snackbarHostState: androidx.compose.material3.SnackbarHostState,
-        message: String,
-        actionLabel: String
-    ) {
-        pendingDeletes.value = pendingDeletes.value + transactionId
-        viewModelScope.launch {
-            val result = snackbarHostState.showSnackbar(message, actionLabel, duration = androidx.compose.material3.SnackbarDuration.Short)
-            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                val currentVersion = txVersions.value[transactionId] ?: 0
-                txVersions.value = txVersions.value + (transactionId to currentVersion + 1)
-                pendingDeletes.value = pendingDeletes.value - transactionId
-            } else {
-                pendingDeletes.value = pendingDeletes.value - transactionId
-                repo.softDeleteTransaction(transactionId)
-            }
-        }
-    }
-
-    fun deleteSeriesWithUndo(
-        seriesId: String,
-        mode: com.lop.budget.domain.model.SeriesDeletionMode,
-        fromDate: Long? = null,
-        snackbarHostState: androidx.compose.material3.SnackbarHostState,
-        message: String,
-        actionLabel: String
-    ) {
-        pendingSeriesDeletes.value = pendingSeriesDeletes.value + (seriesId to mode)
-        if (fromDate != null) pendingSeriesFromDates.value = pendingSeriesFromDates.value + (seriesId to fromDate)
-
-        viewModelScope.launch {
-            val result = snackbarHostState.showSnackbar(message, actionLabel, duration = androidx.compose.material3.SnackbarDuration.Short)
-            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                pendingSeriesDeletes.value = pendingSeriesDeletes.value - seriesId
-                pendingSeriesFromDates.value = pendingSeriesFromDates.value - seriesId
-            } else {
-                repo.cancelSeries(seriesId, mode, fromDate)
-                pendingSeriesDeletes.value = pendingSeriesDeletes.value - seriesId
-                pendingSeriesFromDates.value = pendingSeriesFromDates.value - seriesId
-            }
-        }
-    }
-
-    fun materializeAndOpen(seriesId: Long, seriesDate: Long, onOpen: (Long) -> Unit) {
-        viewModelScope.launch {
-            val realId = repo.materializeOccurrence(seriesId, seriesDate)
-            if (realId >= 0L) {
-                onOpen(realId)
-            }
+            val realId = repo.materializeOccurrence(seriesId, date)
+            if (realId >= 0L) onOpen(realId)
         }
     }
 
@@ -170,10 +113,6 @@ class MonthlyTransactionsViewModel @Inject constructor(
             selectedCategoryId,
             repo.observeAccounts(),
             repo.observeCategories(),
-            pendingDeletes,
-            pendingSeriesDeletes,
-            pendingSeriesFromDates,
-            txVersions
         ) { args ->
             val allTxs = args[0] as List<TransactionWithRelations>
             val currency = args[1] as String
@@ -186,27 +125,9 @@ class MonthlyTransactionsViewModel @Inject constructor(
             val catId = args[8] as Long?
             val accounts = args[9] as List<com.lop.budget.data.local.entity.AccountEntity>
             val categories = args[10] as List<com.lop.budget.data.local.entity.CategoryEntity>
-            val pending = args[11] as Set<Long>
-            val pSeries = args[12] as Map<String, com.lop.budget.domain.model.SeriesDeletionMode>
-            val pDates = args[13] as Map<String, Long>
-            val versions = args[14] as Map<Long, Int>
 
+            // On ne filtre plus les pendingDeletes ici car c'est fait dans le Screen
             val filtered = allTxs
-                .filter { twr ->
-                    val tx = twr.transaction
-                    val isPending = tx.id in pending
-                    val seriesId = tx.seriesId
-                    val seriesPendingMode = if (seriesId != null) pSeries[seriesId] else null
-                    val isSeriesPending = when (seriesPendingMode) {
-                        com.lop.budget.domain.model.SeriesDeletionMode.ALL -> true
-                        com.lop.budget.domain.model.SeriesDeletionMode.FUTURE -> {
-                            val fromDate = pDates[seriesId]
-                            fromDate != null && tx.date >= fromDate
-                        }
-                        null -> false
-                    }
-                    !isPending && !isSeriesPending
-                }
                 .filter { if (t == null) true else it.transaction.type == t }
                 .filter {
                     when (f) {
@@ -292,7 +213,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 breakdown = breakdown,
                 dayGroups = dayGroups,
                 transactions = filtered,
-                txVersions = versions
+                txVersions = emptyMap() // On délègue au SharedViewModel
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthlyTransactionsUiState())
 }

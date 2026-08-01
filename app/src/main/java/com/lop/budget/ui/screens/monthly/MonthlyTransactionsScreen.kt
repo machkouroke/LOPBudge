@@ -59,8 +59,13 @@ fun MonthlyTransactionsScreen(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     hazeState: HazeState? = null,
     vm: MonthlyTransactionsViewModel = hiltViewModel(),
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
+    val pendingDeletes by actionVm.pendingDeletes.collectAsStateWithLifecycle()
+    val pendingSeriesDeletes by actionVm.pendingSeriesDeletes.collectAsStateWithLifecycle()
+    val pendingSeriesDates by actionVm.pendingSeriesFromDates.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
     val context = LocalContext.current
 
@@ -73,6 +78,26 @@ fun MonthlyTransactionsScreen(
     var showDeleteConfirmForTx by remember { mutableStateOf<TransactionWithRelations?>(null) }
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
     val undoMsg = stringResource(R.string.undo)
+
+    val filteredDayGroups = remember(state.dayGroups, pendingDeletes, pendingSeriesDeletes, pendingSeriesDates) {
+        state.dayGroups.map { group ->
+            group.copy(transactions = group.transactions.filter { twr ->
+                val tx = twr.transaction
+                val isSinglePending = tx.id in pendingDeletes
+                val seriesId = tx.seriesId
+                val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
+                val isSeriesPending = when (seriesPendingMode) {
+                    SeriesDeletionMode.ALL -> true
+                    SeriesDeletionMode.FUTURE -> {
+                        val fromDate = pendingSeriesDates[seriesId]
+                        fromDate != null && tx.date >= fromDate
+                    }
+                    null -> false
+                }
+                !isSinglePending && !isSeriesPending
+            })
+        }.filter { it.transactions.isNotEmpty() }
+    }
 
     LopScreenScaffold(
         title = title,
@@ -222,15 +247,14 @@ fun MonthlyTransactionsScreen(
 
         // Liste centralisée
         transactionDayGroups(
-            dayGroups = state.dayGroups,
+            dayGroups = filteredDayGroups,
             currency = state.currency,
-            txVersions = state.txVersions,
+            txVersions = txVersions,
             onOpenTransaction = onOpenTransaction,
             onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
-            onTogglePaid = vm::togglePaid,
+            onTogglePaid = actionVm::togglePaid,
             onDeleteRequest = { showDeleteConfirmForTx = it },
             onPreviewTransaction = onPreviewTransaction,
-            onDeleteSimple = { id -> vm.deleteWithUndo(id, snackbarHostState, txDeletedMsg, undoMsg) },
             hazeState = hazeState
         )
 
@@ -273,28 +297,35 @@ fun MonthlyTransactionsScreen(
 
     if (showDeleteConfirmForTx != null) {
         val toDelete = showDeleteConfirmForTx!!
-        RecurringDeleteSheet(
-            onDismiss = { showDeleteConfirmForTx = null },
-            showFutureOnly = true,
-            onChoose = { choice ->
-                showDeleteConfirmForTx = null
-                when (choice) {
-                    RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                        vm.deleteWithUndo(toDelete.transaction.id, snackbarHostState, context.getString(R.string.tx_deleted_snackbar), context.getString(R.string.undo))
-                    }
-                    RecurringDeleteChoice.FUTURE_ONLY -> {
-                        toDelete.transaction.seriesId?.let { 
-                            vm.deleteSeriesWithUndo(it, SeriesDeletionMode.FUTURE, toDelete.transaction.date, snackbarHostState, context.getString(R.string.tx_deleted_snackbar), context.getString(R.string.undo)) 
+        if (toDelete.transaction.seriesId != null) {
+            RecurringDeleteSheet(
+                onDismiss = { showDeleteConfirmForTx = null },
+                showFutureOnly = true,
+                onChoose = { choice ->
+                    showDeleteConfirmForTx = null
+                    when (choice) {
+                        RecurringDeleteChoice.THIS_OCCURRENCE -> {
+                            actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
                         }
-                    }
-                    RecurringDeleteChoice.ALL_SERIES -> {
-                        toDelete.transaction.seriesId?.let { 
-                            vm.deleteSeriesWithUndo(it, SeriesDeletionMode.ALL, null, snackbarHostState, context.getString(R.string.tx_deleted_snackbar), context.getString(R.string.undo)) 
+                        RecurringDeleteChoice.FUTURE_ONLY -> {
+                            toDelete.transaction.seriesId?.let { 
+                                actionVm.deleteSeriesWithUndo(it, SeriesDeletionMode.FUTURE, toDelete.transaction.date, snackbarHostState, txDeletedMsg, undoMsg) 
+                            }
+                        }
+                        RecurringDeleteChoice.ALL_SERIES -> {
+                            toDelete.transaction.seriesId?.let { 
+                                actionVm.deleteSeriesWithUndo(it, SeriesDeletionMode.ALL, null, snackbarHostState, txDeletedMsg, undoMsg) 
+                            }
                         }
                     }
                 }
+            )
+        } else {
+            LaunchedEffect(toDelete) {
+                actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
+                showDeleteConfirmForTx = null
             }
-        )
+        }
     }
 }
 

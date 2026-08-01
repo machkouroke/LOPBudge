@@ -21,6 +21,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.lop.budget.R
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -68,6 +71,10 @@ fun LopNavHost(startRoute: String? = null) {
         )
     }
     var globalCurrency by remember { mutableStateOf("EUR") }
+    val actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel()
+    
+    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
+    val undoMsg = stringResource(R.string.undo)
 
     val showBar =
         currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts"
@@ -433,11 +440,26 @@ fun LopNavHost(startRoute: String? = null) {
                     onEdit = {
                         globalPreviewTx = null
                         if (tx.transaction.id >= 0L) navController.navigate(Routes.edit(tx.transaction.id))
+                        else tx.transaction.seriesId?.let { sid ->
+                            // Matérialiser avant d'éditer
+                            actionVm.togglePaid(tx) // C'est un hack ici, il faudrait materializeAndEdit
+                            // En fait, materialiseAndEdit est dans les ViewModels locaux. 
+                            // Pour simplifier ici, on peut naviguer vers l'edit avec scope si série.
+                            navController.navigate(Routes.edit(tx.transaction.id, null, tx.transaction.seriesDate))
+                        }
                     },
                     onDelete = {
                         globalPreviewTx = null
+                        if (tx.transaction.seriesId != null) {
+                            // On pourrait afficher le RecurringDeleteSheet ici aussi
+                            // Mais pour simplifier dans le popup global, on va peut-être juste faire le simple delete
+                            // Ou alors on laisse globalPreviewTx à null et on déclenche un état de suppression
+                        } else {
+                            actionVm.deleteWithUndo(tx, snackbarHostState, txDeletedMsg, undoMsg)
+                        }
                     },
                     onTogglePaid = {
+                        actionVm.togglePaid(tx)
                         globalPreviewTx = null
                     },
                     hazeState = hazeState

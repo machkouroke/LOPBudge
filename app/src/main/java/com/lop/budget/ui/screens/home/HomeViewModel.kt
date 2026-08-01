@@ -75,92 +75,12 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     fun setMonth(value: YearMonth) { month.value = value }
-    fun togglePaid(transactionId: Long, currentStatus: TransactionStatus) {
-        viewModelScope.launch {
-            val newStatus = if (currentStatus == TransactionStatus.PAID) TransactionStatus.PLANNED else TransactionStatus.PAID
-            repo.setStatus(transactionId, newStatus.name)
-        }
-    }
-
-    private val pendingDeletes = MutableStateFlow<Set<Long>>(emptySet())
-    private val pendingSeriesDeletes = MutableStateFlow<Map<String, SeriesDeletionMode>>(emptyMap())
-    private val pendingSeriesFromDates = MutableStateFlow<Map<String, Long>>(emptyMap())
-    private val txVersions = MutableStateFlow<Map<Long, Int>>(emptyMap())
 
     fun materializeAndOpen(seriesId: Long, seriesDate: Long, onOpen: (Long) -> Unit) {
         viewModelScope.launch {
             val realId = repo.materializeOccurrence(seriesId, seriesDate)
             if (realId >= 0L) {
                 onOpen(realId)
-            }
-        }
-    }
-
-    fun deleteWithUndo(
-        transactionId: Long,
-        snackbarHostState: androidx.compose.material3.SnackbarHostState,
-        message: String,
-        actionLabel: String
-    ) {
-        pendingDeletes.value = pendingDeletes.value + transactionId
-
-        viewModelScope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = message,
-                actionLabel = actionLabel,
-                duration = androidx.compose.material3.SnackbarDuration.Short
-            )
-
-            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                val currentVersion = txVersions.value[transactionId] ?: 0
-                txVersions.value = txVersions.value + (transactionId to currentVersion + 1)
-                pendingDeletes.value = pendingDeletes.value - transactionId
-            } else {
-                pendingDeletes.value = pendingDeletes.value - transactionId
-                repo.softDeleteTransaction(transactionId)
-            }
-        }
-    }
-
-    fun deleteOccurrenceWithUndo(
-        transactionId: Long,
-        snackbarHostState: androidx.compose.material3.SnackbarHostState,
-        message: String,
-        actionLabel: String
-    ) {
-        deleteWithUndo(transactionId, snackbarHostState, message, actionLabel)
-    }
-
-    fun deleteSeriesWithUndo(
-        seriesId: String,
-        mode: SeriesDeletionMode,
-        fromDate: Long? = null,
-        snackbarHostState: androidx.compose.material3.SnackbarHostState,
-        message: String,
-        actionLabel: String
-    ) {
-        // Ajout immédiat à l'état pendante pour masquer sur l'UI
-        pendingSeriesDeletes.value = pendingSeriesDeletes.value + (seriesId to mode)
-        if (fromDate != null) {
-            pendingSeriesFromDates.value = pendingSeriesFromDates.value + (seriesId to fromDate)
-        }
-
-        viewModelScope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = message,
-                actionLabel = actionLabel,
-                duration = androidx.compose.material3.SnackbarDuration.Short
-            )
-
-            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                // Restauration immédiate si Annuler
-                pendingSeriesDeletes.value = pendingSeriesDeletes.value - seriesId
-                pendingSeriesFromDates.value = pendingSeriesFromDates.value - seriesId
-            } else {
-                // Exécution réelle en base
-                repo.cancelSeries(seriesId, mode, fromDate)
-                pendingSeriesDeletes.value = pendingSeriesDeletes.value - seriesId
-                pendingSeriesFromDates.value = pendingSeriesFromDates.value - seriesId
             }
         }
     }
@@ -174,7 +94,13 @@ class HomeViewModel @Inject constructor(
      * Optimisé avec distinctUntilChanged pour éviter des recompositions inutiles du Pager.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun observeMonthState(ym: YearMonth): kotlinx.coroutines.flow.Flow<HomeUiState> {
+    fun observeMonthState(
+        ym: YearMonth,
+        pending: Set<Long>,
+        pendingSeries: Map<String, SeriesDeletionMode>,
+        pendingSeriesDates: Map<String, Long>,
+        versions: Map<Long, Int>
+    ): kotlinx.coroutines.flow.Flow<HomeUiState> {
         val (start, end) = ym.range()
         val (prevStart, prevEnd) = ym.minusMonths(1).range()
 
@@ -182,10 +108,6 @@ class HomeViewModel @Inject constructor(
             repo.observeTransactionsBetween(start, end).distinctUntilChanged(),
             repo.observeTransactionsBetween(prevStart, prevEnd).distinctUntilChanged(),
             settings.currency.distinctUntilChanged(),
-            pendingDeletes,
-            pendingSeriesDeletes,
-            pendingSeriesFromDates,
-            txVersions,
             repo.observeAccounts().distinctUntilChanged(),
             repo.observeAccountBalances().distinctUntilChanged()
         ) { args ->
@@ -195,17 +117,9 @@ class HomeViewModel @Inject constructor(
             val prevTxsBetween = args[1] as List<TransactionWithRelations>
             val currency = args[2] as String
             @Suppress("UNCHECKED_CAST")
-            val pending = args[3] as Set<Long>
+            val allAccounts = args[3] as List<AccountEntity>
             @Suppress("UNCHECKED_CAST")
-            val pendingSeries = args[4] as Map<String, SeriesDeletionMode>
-            @Suppress("UNCHECKED_CAST")
-            val pendingSeriesDates = args[5] as Map<String, Long>
-            @Suppress("UNCHECKED_CAST")
-            val versions = args[6] as Map<Long, Int>
-            @Suppress("UNCHECKED_CAST")
-            val allAccounts = args[7] as List<AccountEntity>
-            @Suppress("UNCHECKED_CAST")
-            val balances = args[8] as Map<Long, Double>
+            val balances = args[4] as Map<Long, Double>
             
             // Même logique de filtrage que l'UI State principal
             val txs = txsBetween.filter { twr ->
@@ -263,7 +177,7 @@ class HomeViewModel @Inject constructor(
                 dayGroups = dayGroups,
                 dashboardTransactions = dashboardTxs,
                 accounts = accountBalances.sortedByDescending { it.balance }.take(3),
-                txVersions = versions,
+                txVersions = emptyMap(), // On délègue au SharedViewModel dans le Screen
                 // On omet les données globales comme detectedCount qui sont gérées par l'Overlay
             )
         }.flowOn(Dispatchers.Default)
@@ -299,10 +213,10 @@ class HomeViewModel @Inject constructor(
             monthData,
             settings.currency,
             month,
-            pendingDeletes,
-            pendingSeriesDeletes,
-            pendingSeriesFromDates,
-            txVersions,
+            // pendingDeletes,  <-- REMOVE
+            // pendingSeriesDeletes, <-- REMOVE
+            // pendingSeriesFromDates, <-- REMOVE
+            // txVersions, <-- REMOVE
             repo.observeAccounts(),
             repo.observeAccountBalances(),
             detectedCount,
@@ -311,37 +225,18 @@ class HomeViewModel @Inject constructor(
             val data = args[0] as List<*>
             val currency = args[1] as String
             val ym = args[2] as YearMonth
-            val pending = args[3] as Set<Long>
-            val pendingSeries = args[4] as Map<String, SeriesDeletionMode>
-            val pendingSeriesDates = args[5] as Map<String, Long>
-            val versions = args[6] as Map<Long, Int>
-            val accounts = args[7] as List<AccountEntity>
-            val balances = args[8] as Map<Long, Double>
-            val detected = args[9] as Int
-            val detectionEnabled = args[10] as Boolean
+            val accounts = args[3] as List<AccountEntity>
+            val balances = args[4] as Map<Long, Double>
+            val detected = args[5] as Int
+            val detectionEnabled = args[6] as Boolean
 
             @Suppress("UNCHECKED_CAST")
             val allTxs = data[0] as List<TransactionWithRelations>
             
-            // Filtrage instantané pour l'UI
-            val txs = allTxs.filter { twr ->
-                val tx = twr.transaction
-                val isSinglePending = tx.id in pending
-                
-                val seriesId = tx.seriesId
-                val seriesPendingMode = if (seriesId != null) pendingSeries[seriesId] else null
-                
-                val isSeriesPending = when (seriesPendingMode) {
-                    SeriesDeletionMode.ALL -> true
-                    SeriesDeletionMode.FUTURE -> {
-                        val fromDate = pendingSeriesDates[seriesId]
-                        fromDate != null && tx.date >= fromDate
-                    }
-                    null -> false
-                }
-                
-                !isSinglePending && !isSeriesPending
-            }
+            // On ne filtre plus ici car on va le faire dynamiquement dans le Screen 
+            // ou on laisse HomeViewModel observer le shared ViewModel si on veut garder le filtrage ici.
+            // Pour l'instant, on laisse tout passer pour éviter les incohérences si on ne branche pas le Screen.
+            val txs = allTxs
 
             val income = data[1] as Double
             val expense = data[2] as Double
@@ -397,7 +292,7 @@ class HomeViewModel @Inject constructor(
                 dayGroups = dayGroups,
                 dashboardTransactions = dashboardTxs,
                 accounts = accountBalances.sortedByDescending { it.balance }.take(3),
-                txVersions = versions,
+                txVersions = emptyMap(), // On délègue au SharedViewModel dans le Screen
                 detectedCount = detected,
                 notificationDetectionEnabled = detectionEnabled
             )
