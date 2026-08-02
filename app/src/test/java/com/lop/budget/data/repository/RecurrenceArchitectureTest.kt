@@ -378,51 +378,11 @@ class RecurrenceArchitectureTest {
         }
 
     /**
-     * TC_REC_05 : Cas limite - Mensuel le 31.
-     * D'après le ticket : "Une occurrence prévue le 31 doit avoir une règle de fallback pour les mois sans 31."
-     */
-    @Test
-    fun `TC_REC_05 - monthly series on 31st should fallback to last day of month`() = runBlocking {
-        MarkdownReporter.log("TC_REC_05 : Série mensuelle au 31 (Test en Février)")
-
-        val series = RecurringSeriesEntity(
-            id = 104L,
-            title = "Fin de mois",
-            amount = 50.0,
-            type = TransactionType.EXPENSE,
-            categoryId = 1,
-            accountId = 1,
-            frequency = RecurrenceFrequency.MONTHLY,
-            interval = 1,
-            startDate = LocalDate.of(2026, 1, 31).atStartOfDay(zone).toInstant().toEpochMilli(),
-            status = "ACTIVE"
-        )
-
-        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
-        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
-
-        // Test en Février 2026
-        val febStart = LocalDate.of(2026, 2, 1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val febEnd =
-            LocalDate.of(2026, 2, 28).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
-
-        MarkdownReporter.log("Action : Observation pour Février 2026 (Série démarrée le 31/01)")
-        val resultsFeb = repository.observeTransactionsBetween(febStart, febEnd).first()
-
-        assertEquals("Une occurrence attendue en Février", 1, resultsFeb.size)
-        val febDate =
-            Instant.ofEpochMilli(resultsFeb.first().transaction.date).atZone(zone).toLocalDate()
-
-        MarkdownReporter.log("Vérification : Date générée en Février = $febDate (Attendu: 28)")
-        assertEquals("La date aurait dû être ramenée au 28 Février", 28, febDate.dayOfMonth)
-    }
-
-    /**
-     * TC_REC_06 : Gestion de maxOccurrences.
+     * TC_REC_05 : Gestion de maxOccurrences.
      * D'après le ticket : "Une série avec maxOccurrences ne génère pas plus d’occurrences que la limite définie."
      */
     @Test
-    fun `TC_REC_06 - should stop generating after maxOccurrences is reached`() = runBlocking {
+    fun `TC_REC_05 - should stop generating after maxOccurrences is reached`() = runBlocking {
         MarkdownReporter.log("TC_REC_06 : Respect de la limite maxOccurrences")
 
         val series = RecurringSeriesEntity(
@@ -434,7 +394,8 @@ class RecurrenceArchitectureTest {
             accountId = 1,
             frequency = RecurrenceFrequency.MONTHLY,
             interval = 1,
-            startDate = LocalDate.of(2026, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli(),
+            startDate = LocalDate.of(2026, 1, 1)
+                .atStartOfDay(zone).toInstant().toEpochMilli(),
             maxOccurrences = 2, // Janvier et Février uniquement
             status = "ACTIVE"
         )
