@@ -88,22 +88,22 @@ class RecurrenceContextualDeletionTest {
 
             // --- PHASE 3 : coVerify (On vérifie si les ordres ont été suivis) ---
             MarkdownReporter.log("3. Vérifications (coVerify) :")
-            
+
             // Vérification A : Le Repo a bien appelé 'upsert' pour matérialiser l'exception
-            coVerify(exactly = 1) { 
-                transactionDao.upsert(match { 
+            coVerify(exactly = 1) {
+                transactionDao.upsert(match {
                     val ok = it.isException && it.seriesDate == occDate
                     if (ok) MarkdownReporter.log("   - [OK] La transaction a bien été matérialisée comme Exception pour le 15/08.")
                     ok
-                }) 
+                })
             }
-            
+
             // Vérification B : Le Repo a bien supprimé l'ID 500 qui vient d'être créé
-            coVerify(exactly = 1) { 
+            coVerify(exactly = 1) {
                 transactionDao.softDelete(500L)
                 MarkdownReporter.log("   - [OK] La suppression standard (softDelete) a été appelée sur l'ID matérialisé 500.")
             }
-            
+
             MarkdownReporter.log("**Résultat final : Succès.**")
         }
 
@@ -118,8 +118,14 @@ class RecurrenceContextualDeletionTest {
 
         val realId = 600L
         val realTx = TransactionEntity(
-            id = realId, title = "Achat ponctuel", amount = 50.0, type = TransactionType.EXPENSE,
-            status = TransactionStatus.PAID, date = System.currentTimeMillis(), accountId = 1, categoryId = 1
+            id = realId,
+            title = "Achat ponctuel",
+            amount = 50.0,
+            type = TransactionType.EXPENSE,
+            status = TransactionStatus.PAID,
+            date = System.currentTimeMillis(),
+            accountId = 1,
+            categoryId = 1
         )
         val twr = TransactionWithRelations(realTx, null, null, emptyList())
 
@@ -134,7 +140,7 @@ class RecurrenceContextualDeletionTest {
         MarkdownReporter.log("   - [OK] Aucune matérialisation (upsert) n'a été déclenchée.")
 
         // On vérifie que la suppression directe a eu lieu
-        coVerify(exactly = 1) { 
+        coVerify(exactly = 1) {
             transactionDao.softDelete(realId)
             MarkdownReporter.log("   - [OK] La suppression directe a bien été appelée pour l'ID 600.")
         }
@@ -151,7 +157,8 @@ class RecurrenceContextualDeletionTest {
         MarkdownReporter.log("Objectif : S'assurer que le filtrage 'deleted = true' fonctionne.")
 
         val seriesId = 100L
-        val occDate = LocalDate.of(2026, 8, 15).atStartOfDay(zone).toInstant().toEpochMilli()
+        val occDate = LocalDate.of(2026, 8, 15)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
 
         val series = RecurringSeriesEntity(
             id = seriesId, title = "Netflix", amount = 15.99, type = TransactionType.EXPENSE,
@@ -176,7 +183,10 @@ class RecurrenceContextualDeletionTest {
         val results = repository.observeTransactionsBetween(0, Long.MAX_VALUE).first()
 
         // --- Vérifications ---
-        assertTrue("La liste doit être vide car l'unique occurrence est marquée 'deleted'", results.isEmpty())
+        assertTrue(
+            "La liste doit être vide car l'unique occurrence est marquée 'deleted'",
+            results.isEmpty()
+        )
         MarkdownReporter.log("Vérification : [OK] La liste retournée est vide. Le masquage est opérationnel.")
         MarkdownReporter.log("**Résultat final : Succès.**")
     }
@@ -208,19 +218,20 @@ class RecurrenceContextualDeletionTest {
 
         // --- Vérifications ---
         MarkdownReporter.log("Vérifications :")
-        
+
         // On vérifie que la série est mise à jour avec endDate = targetDate - 1ms
-        coVerify(exactly = 1) { 
-            recurringSeriesDao.upsert(match { 
-                val ok = it.id == seriesId && it.endDate == targetDate - 1 && it.status == "CANCELLED"
+        coVerify(exactly = 1) {
+            recurringSeriesDao.upsert(match {
+                val ok =
+                    it.id == seriesId && it.endDate == targetDate - 1 && it.status == "CANCELLED"
                 if (ok) MarkdownReporter.log("   - [OK] La série a été arrêtée au ${targetDate - 1} (veille de la cible).")
                 ok
-            }) 
+            })
         }
-        
+
         // On vérifie que les transactions futures déjà matérialisées sont bien nettoyées
-        coVerify(exactly = 1) { 
-            transactionDao.softDeleteSeriesFrom(seriesId.toString(), targetDate) 
+        coVerify(exactly = 1) {
+            transactionDao.softDeleteSeriesFrom(seriesId.toString(), targetDate)
             MarkdownReporter.log("   - [OK] Nettoyage des transactions réelles à partir du 01/12 effectué.")
         }
         MarkdownReporter.log("**Résultat final : Succès.**")
@@ -232,7 +243,7 @@ class RecurrenceContextualDeletionTest {
     @Test
     fun `UT-05 - checking visible occurrences before and after truncation`() = runBlocking {
         MarkdownReporter.log("### UT-05 : Vérification de la fenêtre de troncature")
-        
+
         // On simule une série qui n'est plus active car annulée/tronquée
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(emptyList())
 
@@ -253,19 +264,19 @@ class RecurrenceContextualDeletionTest {
         MarkdownReporter.log("Objectif : Vérifier l'arrêt total de la série et le masquage de l'historique.")
 
         val seriesId = 300L
-        
+
         // --- Action ---
         MarkdownReporter.log("Action : Demande d'annulation complète de la série 300.")
         repository.cancelSeries(seriesId.toString(), SeriesDeletionMode.ALL)
 
         // --- Vérifications ---
         MarkdownReporter.log("Vérifications :")
-        coVerify(exactly = 1) { 
-            recurringSeriesDao.updateStatus(seriesId, "CANCELLED") 
+        coVerify(exactly = 1) {
+            recurringSeriesDao.updateStatus(seriesId, "CANCELLED")
             MarkdownReporter.log("   - [OK] Le statut de la série est bien passé à CANCELLED.")
         }
-        coVerify(exactly = 1) { 
-            transactionDao.softDeleteSeries(seriesId.toString()) 
+        coVerify(exactly = 1) {
+            transactionDao.softDeleteSeries(seriesId.toString())
             MarkdownReporter.log("   - [OK] Toutes les transactions passées/futures de la série ont été marquées 'deleted'.")
         }
         MarkdownReporter.log("**Résultat final : Succès.**")
@@ -277,7 +288,7 @@ class RecurrenceContextualDeletionTest {
     @Test
     fun `UT-07 - no occurrences should be generated for a CANCELLED series`() = runBlocking {
         MarkdownReporter.log("### UT-07 : Vérification post-annulation totale")
-        
+
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(emptyList())
 
         val results = repository.observeTransactionsBetween(0, Long.MAX_VALUE).first()
@@ -309,19 +320,19 @@ class RecurrenceContextualDeletionTest {
         MarkdownReporter.log("Objectif : Vérifier que la suppression standard reste simple.")
 
         val txId = 999L
-        
+
         // --- Action ---
         MarkdownReporter.log("Action : Suppression d'une transaction ponctuelle simple (ID 999).")
         repository.softDeleteTransaction(txId)
 
         // --- Vérifications ---
         MarkdownReporter.log("Vérifications :")
-        coVerify(exactly = 1) { 
-            transactionDao.softDelete(txId) 
+        coVerify(exactly = 1) {
+            transactionDao.softDelete(txId)
             MarkdownReporter.log("   - [OK] Suppression standard appelée (comportement normal).")
         }
-        coVerify(exactly = 0) { 
-            recurringSeriesDao.upsert(any()) 
+        coVerify(exactly = 0) {
+            recurringSeriesDao.upsert(any())
             MarkdownReporter.log("   - [OK] Aucune logique de récurrence n'a été déclenchée par erreur.")
         }
         MarkdownReporter.log("**Résultat final : Succès.**")
@@ -345,8 +356,8 @@ class RecurrenceContextualDeletionTest {
         // --- Vérifications ---
         MarkdownReporter.log("Vérifications :")
         coVerify(exactly = 1) { recurringSeriesDao.updateStatus(seriesA, "CANCELLED") }
-        coVerify(exactly = 0) { 
-            recurringSeriesDao.updateStatus(seriesB, any()) 
+        coVerify(exactly = 0) {
+            recurringSeriesDao.updateStatus(seriesB, any())
             MarkdownReporter.log("   - [OK] La série B est restée intacte.")
         }
         MarkdownReporter.log("**Résultat final : Succès.**")
