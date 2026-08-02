@@ -227,8 +227,10 @@ class RecurrenceContextualDeletionTest {
         val twrDeleted = TransactionWithRelations(deletedException, null, null, emptyList())
 
         // --- Préparation des Mocks ---
-        MarkdownReporter.log("1. Préparation : On injecte 3 " +
-                "transactions dans le DAO (1 normale, 1 exception valide, 1 supprimée).")
+        MarkdownReporter.log(
+            "1. Préparation : On injecte 3 " +
+                    "transactions dans le DAO (1 normale, 1 exception valide, 1 supprimée)."
+        )
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
         coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(
             listOf(
@@ -274,12 +276,15 @@ class RecurrenceContextualDeletionTest {
     /**
      * UT-04 : Supprimer avec portée "Cette occurrence et les suivantes"
      * Scénario : L'utilisateur veut arrêter une série à une date précise.
+     * Validé
      */
     @Test
     fun `UT-04 - deleting FUTURE should truncate the series endDate`() = runBlocking {
         MarkdownReporter.log("### UT-04 : Troncature de série (Portée : FUTURE)")
-        MarkdownReporter.log("Objectif : Vérifier que la série s'arrête la veille " +
-                "de la date cible.")
+        MarkdownReporter.log(
+            "Objectif : Vérifier que la série s'arrête la veille " +
+                    "de la date cible."
+        )
 
         val seriesId = 200L
         val targetDate = LocalDate.of(2026, 12, 1)
@@ -297,16 +302,18 @@ class RecurrenceContextualDeletionTest {
 
         // --- Action ---
         MarkdownReporter.log("Action : Annulation de la série à partir du 01/12/2026.")
-        repository.cancelSeries(seriesId.toString(), SeriesDeletionMode.FUTURE,
-            targetDate)
+        repository.cancelSeries(
+            seriesId.toString(), SeriesDeletionMode.FUTURE,
+            targetDate
+        )
 
         // --- Vérifications ---
         MarkdownReporter.log("Vérifications :")
 
         // On vérifie que la série est mise à jour avec endDate = targetDate - 1ms
         // ET surtout qu'elle reste "ACTIVE" car elle a encore des occurrences avant la date cible.
-        coVerify(exactly = 1) { 
-            recurringSeriesDao.upsert(match { 
+        coVerify(exactly = 1) {
+            recurringSeriesDao.upsert(match {
                 val ok = it.id == seriesId && it.endDate == targetDate - 1 && it.status == "ACTIVE"
                 if (ok) MarkdownReporter.log("   - [OK] La série a été arrêtée au ${targetDate - 1} (veille de la cible) mais est restée ACTIVE.")
                 ok
@@ -323,23 +330,101 @@ class RecurrenceContextualDeletionTest {
 
     /**
      * UT-05 : Recharger les mois avant et après la troncature
+     * Scénario : Une série de Janvier à Décembre. On matérialise l'occurrence d'Août.
+     * On tronque la série en JUIN.
+     * Attendu : L'occurrence de MAI est toujours là.
+     *           L'occurrence de JUIN (virtuelle) a disparu.
+     *           L'occurrence d'AOÛT (matérialisée) a été supprimée et n'apparaît plus.
+     *           Validé
      */
     @Test
     fun `UT-05 - checking visible occurrences before and after truncation`() = runBlocking {
-        MarkdownReporter.log("### UT-05 : Vérification de la fenêtre de troncature")
+        MarkdownReporter.log("### UT-05 : Vérification de la fenêtre de troncature complexe")
+        MarkdownReporter.log("Objectif : S'assurer que la troncature coupe le virtuel ET nettoie le réel futur.")
 
-        // On simule une série qui n'est plus active car annulée/tronquée
-        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(emptyList())
+        val seriesId = 200L
+        val originalStart = LocalDate.of(2026, 1, 1)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
+        val truncationDate = LocalDate.of(2026, 6, 1)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
+        val augustDate = LocalDate.of(2026, 8, 1)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
 
-        MarkdownReporter.log("Action : Observation d'un mois situé APRÈS la troncature.")
-        val startRange = LocalDate.of(2026, 6, 1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val endRange =
+        // 1. La série originale (Janvier ->
+        val series = RecurringSeriesEntity(
+            id = seriesId, title = "Loyer", amount = 800.0, type = TransactionType.EXPENSE,
+            categoryId = 2, accountId = 1, frequency = RecurrenceFrequency.MONTHLY,
+            interval = 1, startDate = originalStart, status = "ACTIVE"
+        )
+
+        // 2. L'exception d'août déjà matérialisée (ID 801)
+        val augustRealTx = TransactionEntity(
+            id = 801L,
+            title = "Loyer",
+            amount = 800.0,
+            type = TransactionType.EXPENSE,
+            status = TransactionStatus.PLANNED,
+            date = augustDate,
+            accountId = 1,
+            categoryId = 2,
+            seriesId = seriesId.toString(),
+            seriesDate = augustDate,
+            isException = true,
+            deleted = true
+        )
+        val twrAugust = TransactionWithRelations(augustRealTx, null, null, emptyList())
+
+        // --- PHASE 1 : Simulation de l'état APRÈS Action du Repository ---
+        // A. La série a maintenant une endDate au 31 Mai
+        val truncatedSeries = series.copy(endDate = truncationDate - 1)
+        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(truncatedSeries))
+
+        // --- PHASE 2 : Vérification visuelle (Observation des mois) ---
+
+        // B. On observe le mois de MAI (Avant troncature)
+        MarkdownReporter.log("1. Action : Observation du mois de MAI (Période conservée).")
+        val startMay = LocalDate.of(2026, 5, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val endMay =
+            LocalDate.of(2026, 5, 31).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+
+        coEvery { transactionDao.observeBetween(startMay, endMay) } returns flowOf(emptyList())
+        val resultsMay = repository.observeTransactionsBetween(startMay, endMay).first()
+
+        assertEquals("L'occurrence de Mai doit être visible", 1, resultsMay.size)
+        MarkdownReporter.log("   - [OK] Mai est toujours visible (Virtuel généré car < endDate).")
+
+        // C. On observe le mois de JUIN (Mois de la troncature)
+        MarkdownReporter.log("2. Action : Observation du mois de JUIN (Période coupée).")
+        val startJune = truncationDate
+        val endJune =
             LocalDate.of(2026, 6, 30).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
-        val results = repository.observeTransactionsBetween(startRange, endRange).first()
 
-        assertTrue("Aucune occurrence ne doit être générée après la date de fin", results.isEmpty())
-        MarkdownReporter.log("Vérification : [OK] Aucune transaction détectée dans la zone de troncature.")
-        MarkdownReporter.log("**Résultat final : Succès.**")
+        coEvery { transactionDao.observeBetween(startJune, endJune) } returns flowOf(emptyList())
+        val resultsJune = repository.observeTransactionsBetween(startJune, endJune).first()
+
+        assertTrue(
+            "L'occurrence de Juin ne doit plus apparaître (Coupée par endDate)",
+            resultsJune.isEmpty()
+        )
+        MarkdownReporter.log("   - [OK] Juin a disparu (Coupure nette par la endDate).")
+
+        // D. On observe le mois d'AOÛT (Mois avec l'exception matérialisée qui a été supprimée)
+        MarkdownReporter.log("3. Action : Observation du mois d'AOÛT (Nettoyage du réel).")
+        val startAugust = augustDate
+        val endAugust =
+            LocalDate.of(2026, 8, 31).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+
+        coEvery { transactionDao.observeBetween(startAugust, endAugust) } returns flowOf(
+            listOf(
+                twrAugust
+            )
+        )
+        val resultsAugust = repository.observeTransactionsBetween(startAugust, endAugust).first()
+
+        assertTrue("L'exception d'Août doit être masquée car deleted=true", resultsAugust.isEmpty())
+        MarkdownReporter.log("   - [OK] Août a disparu. Le nettoyage des transactions matérialisées a fonctionné.")
+
+        MarkdownReporter.log("**Résultat final : Succès. La troncature est étanche.**")
     }
 
     /**
