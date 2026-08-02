@@ -93,6 +93,8 @@ fun HomeScreen(
     val context = LocalContext.current
 
     // Vérification de la permission au lancement
+    val notifMsg = stringResource(R.string.notif_listener_missing_msg)
+    val notifAction = stringResource(R.string.notif_listener_missing_action)
     LaunchedEffect(state.notificationDetectionEnabled) {
         if (state.notificationDetectionEnabled) {
             val isListenerEnabled = android.provider.Settings.Secure.getString(
@@ -102,8 +104,8 @@ fun HomeScreen(
             
             if (!isListenerEnabled) {
                 val result = snackbarHostState.showSnackbar(
-                    message = context.getString(R.string.notif_listener_missing_msg),
-                    actionLabel = context.getString(R.string.notif_listener_missing_action),
+                    message = notifMsg,
+                    actionLabel = notifAction,
                     duration = androidx.compose.material3.SnackbarDuration.Indefinite
                 )
                 if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
@@ -211,17 +213,17 @@ fun HomeContent(
                     fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
                 },
                 label = "dashboard_balance"
-            ) { targetMonth ->
+            ) { _ ->
                 // Note: since the rest of 'state' (income, expense) is already for 'targetMonth', 
                 // we just use it directly.
                 BalanceDashboardWidget(
-                    month = targetMonth,
+                    month = state.month,
                     income = state.monthIncome,
                     expense = state.monthExpense,
                     currency = state.currency,
                     onPrevMonth = onPrevMonth,
                     onNextMonth = onNextMonth,
-                    onOpenMonthly = { onOpenMonthly(it, targetMonth) }
+                    onOpenMonthly = { onOpenMonthly(it, state.month) }
                 )
             }
         }
