@@ -49,6 +49,7 @@ data class MonthlyTransactionsUiState(
     val transactions: List<TransactionWithRelations> = emptyList(),
     val availableAccounts: List<com.lop.budget.data.local.entity.AccountEntity> = emptyList(),
     val availableCategories: List<com.lop.budget.data.local.entity.CategoryEntity> = emptyList(),
+    val isAnalyticsMode: Boolean = false,
     /** Version par transaction pour forcer la recréation après Undo. */
     val txVersions: Map<Long, Int> = emptyMap(),
 )
@@ -65,14 +66,16 @@ class MonthlyTransactionsViewModel @Inject constructor(
         ?: TransactionType.EXPENSE
     private val initialMonth = savedStateHandle.get<String>("ym")?.let { YearMonth.parse(it) }
         ?: YearMonth.now()
+    private val initialMode = savedStateHandle.get<String>("mode") ?: "HISTORY"
 
     private val month = MutableStateFlow(initialMonth)
-    private val type = MutableStateFlow<TransactionType?>(null) // null = ALL by default
+    private val type = MutableStateFlow<TransactionType?>(initialType) // null = ALL
     private val filter = MutableStateFlow(PaidFilter.ALL)
     private val insightMode = MutableStateFlow(InsightMode.CATEGORY)
     private val searchQuery = MutableStateFlow("")
     private val selectedAccountId = MutableStateFlow<Long?>(null)
     private val selectedCategoryId = MutableStateFlow<Long?>(null)
+    private val isAnalyticsMode = MutableStateFlow(initialMode == "ANALYTICS")
 
     fun setFilter(f: PaidFilter) { filter.value = f }
     fun setInsightMode(m: InsightMode) { insightMode.value = m }
@@ -112,6 +115,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
             selectedCategoryId,
             repo.observeAccounts(),
             repo.observeCategories(),
+            isAnalyticsMode,
         ) { args ->
             val allTxs = args[0] as List<TransactionWithRelations>
             val currency = args[1] as String
@@ -124,6 +128,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
             val catId = args[8] as Long?
             val accounts = args[9] as List<com.lop.budget.data.local.entity.AccountEntity>
             val categories = args[10] as List<com.lop.budget.data.local.entity.CategoryEntity>
+            val analytics = args[11] as Boolean
 
             // On ne filtre plus les pendingDeletes ici car c'est fait dans le Screen
             val filtered = allTxs
@@ -212,6 +217,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 breakdown = breakdown,
                 dayGroups = dayGroups,
                 transactions = filtered,
+                isAnalyticsMode = analytics,
                 txVersions = emptyMap() // On délègue au SharedViewModel
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthlyTransactionsUiState())

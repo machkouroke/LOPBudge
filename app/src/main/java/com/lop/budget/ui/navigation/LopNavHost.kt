@@ -230,6 +230,10 @@ fun LopNavHost(startRoute: String? = null) {
                         arguments = listOf(
                             navArgument("type") { type = NavType.StringType },
                             navArgument("ym") { type = NavType.StringType },
+                            navArgument("mode") { 
+                                type = NavType.StringType 
+                                defaultValue = "HISTORY"
+                            },
                         )
                     ) {
                         MonthlyTransactionsScreen(

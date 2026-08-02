@@ -154,10 +154,10 @@ fun HomeScreen(
             statusBarPadding = statusBarPadding,
             onOpenTransaction = onOpenTransaction,
             onOpenMonthly = { type, ym ->
-                navController.navigate(Routes.analytics(type, ym))
+                navController.navigate(Routes.monthly(type, ym, mode = "ANALYTICS"))
             },
             onSeeAllTransactions = { type, ym ->
-                navController.navigate(Routes.monthly(type, ym))
+                navController.navigate(Routes.monthly(type, ym, mode = "HISTORY"))
             },
             onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
             onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },

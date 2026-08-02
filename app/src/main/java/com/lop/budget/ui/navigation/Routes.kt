@@ -52,8 +52,8 @@ object Routes {
     }
 
     // Monthly income/expense pages
-    const val MONTHLY = "monthly/{type}/{ym}"
-    fun monthly(type: TransactionType, ym: YearMonth) = "monthly/${type.name}/${ym}" // ym format: YYYY-MM
+    const val MONTHLY = "monthly/{type}/{ym}?mode={mode}"
+    fun monthly(type: TransactionType, ym: YearMonth, mode: String = "HISTORY") = "monthly/${type.name}/${ym}?mode=$mode" // ym format: YYYY-MM
 
     /** Routes affichant la bottom bar flottante. */
     val rootRoutes = setOf(HOME, ANALYTICS, GOALS, ACCOUNTS)
