@@ -54,7 +54,9 @@ class TransactionDetailViewModel @Inject constructor(
                         val startTime = tx.transaction.date + 1
                         val endTime = startTime + (5L * 365 * 24 * 60 * 60 * 1000) // + 5 ans
                         repo.observeTransactionsBetween(startTime, endTime).map { list ->
-                            list.filter { it.transaction.seriesId == seriesId }.take(6)
+                            list.filter { 
+                                it.transaction.seriesId == seriesId && it.transaction.date > tx.transaction.date
+                            }.take(6)
                         }
                     } else {
                         kotlinx.coroutines.flow.flowOf(emptyList())
