@@ -304,11 +304,11 @@ class RecurrenceContextualDeletionTest {
         MarkdownReporter.log("Vérifications :")
 
         // On vérifie que la série est mise à jour avec endDate = targetDate - 1ms
-        coVerify(exactly = 1) {
-            recurringSeriesDao.upsert(match {
-                val ok =
-                    it.id == seriesId && it.endDate == targetDate - 1 && it.status == "CANCELLED"
-                if (ok) MarkdownReporter.log("   - [OK] La série a été arrêtée au ${targetDate - 1} (veille de la cible).")
+        // ET surtout qu'elle reste "ACTIVE" car elle a encore des occurrences avant la date cible.
+        coVerify(exactly = 1) { 
+            recurringSeriesDao.upsert(match { 
+                val ok = it.id == seriesId && it.endDate == targetDate - 1 && it.status == "ACTIVE"
+                if (ok) MarkdownReporter.log("   - [OK] La série a été arrêtée au ${targetDate - 1} (veille de la cible) mais est restée ACTIVE.")
                 ok
             })
         }

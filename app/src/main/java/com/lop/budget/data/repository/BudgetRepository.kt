@@ -460,8 +460,8 @@ class BudgetRepository @Inject constructor(
                 // 1. Mettre à jour la date de fin de la série pour arrêter la génération future
                 val series = recurringSeriesDao.getSeriesById(seriesId)
                 if (series != null && fromDate != null) {
-                    // On met une date de fin juste avant l'occurrence sélectionnée
-                    recurringSeriesDao.upsert(series.copy(endDate = fromDate - 1, status = "CANCELLED"))
+                    // On met une date de fin juste avant l'occurrence sélectionnée, mais on garde le statut actuel (ex: ACTIVE)
+                    recurringSeriesDao.upsert(series.copy(endDate = fromDate - 1))
                 } else {
                     recurringSeriesDao.updateStatus(seriesId, "CANCELLED")
                 }
