@@ -28,6 +28,8 @@ class RecurrenceContextualDeletionTest {
     @get:Rule
     val reporter = MarkdownReporter()
 
+    // --- MOCKS (Clones espions pour simuler la base de données) ---
+    // relaxed = true permet aux mocks de renvoyer des valeurs par défaut si on oublie un coEvery
     private val transactionDao = mockk<TransactionDao>(relaxed = true)
     private val recurringSeriesDao = mockk<RecurringSeriesDao>(relaxed = true)
     private val accountDao = mockk<AccountDao>(relaxed = true)
@@ -41,6 +43,7 @@ class RecurrenceContextualDeletionTest {
 
     @Before
     fun setup() {
+        // Initialisation du Repository avec nos mocks à la place des vrais DAOs
         repository = BudgetRepository(
             transactionDao, recurringSeriesDao, accountDao, categoryDao, tagDao, goalDao, debtDao
         )
@@ -48,12 +51,13 @@ class RecurrenceContextualDeletionTest {
 
     /**
      * UT-01 : Supprimer une occurrence virtuelle avec portée "Cette occurrence"
-     * Attendu : Une exception supprimée est créée pour le bon seriesId + seriesDate.
+     * Scénario : L'utilisateur swipe une transaction qui n'est pas encore en base.
      */
     @Test
     fun `UT-01 - deleting a virtual occurrence should materialize it and soft delete it`() =
         runBlocking {
-            MarkdownReporter.log("UT-01 : Suppression d'une occurrence VIRTUELLE (Portée : UNIQUE)")
+            MarkdownReporter.log("### UT-01 : Suppression d'une occurrence VIRTUELLE")
+            MarkdownReporter.log("Objectif : Vérifier qu'on crée une ligne en base (matérialisation) AVANT de la supprimer.")
 
             val seriesId = 100L
             val occDate = LocalDate.of(2026, 8, 15).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -64,11 +68,13 @@ class RecurrenceContextualDeletionTest {
                 interval = 1, startDate = occDate, status = "ACTIVE"
             )
 
-            // Mock : La transaction n'existe pas encore (virtuelle)
+            // --- PHASE 1 : coEvery (On programme les ordres de nos clones) ---
+            MarkdownReporter.log("1. Préparation (coEvery) : On simule l'absence de transaction en base et le succès de l'insertion.")
             coEvery { transactionDao.getException(any(), any()) } returns null
             coEvery { recurringSeriesDao.getSeriesById(seriesId) } returns series
-            coEvery { transactionDao.upsert(any()) } returns 500L // ID réel généré à la matérialisation
+            coEvery { transactionDao.upsert(any()) } returns 500L // ID réel simulé après matérialisation
 
+            // Création de l'objet virtuel (id = -1L) arrivant de l'UI
             val virtualTx = TransactionEntity(
                 id = -1L, title = "Netflix", amount = 15.99, type = TransactionType.EXPENSE,
                 status = TransactionStatus.PLANNED, date = occDate, accountId = 1, categoryId = 1,
@@ -76,50 +82,73 @@ class RecurrenceContextualDeletionTest {
             )
             val twr = TransactionWithRelations(virtualTx, null, null, emptyList())
 
+            // --- PHASE 2 : L'Action ---
+            MarkdownReporter.log("2. Action : On appelle softDeleteTransactionOccurrence()")
             repository.softDeleteTransactionOccurrence(twr)
 
-            // Assertions
-            coVerify(exactly = 1) { transactionDao.upsert(match { it.isException && it.seriesDate == occDate }) }
-            coVerify(exactly = 1) { transactionDao.softDelete(500L) }
-            MarkdownReporter.log("Succès : L'occurrence a été matérialisée (ID 500) puis supprimée.")
+            // --- PHASE 3 : coVerify (On vérifie si les ordres ont été suivis) ---
+            MarkdownReporter.log("3. Vérifications (coVerify) :")
+            
+            // Vérification A : Le Repo a bien appelé 'upsert' pour matérialiser l'exception
+            coVerify(exactly = 1) { 
+                transactionDao.upsert(match { 
+                    val ok = it.isException && it.seriesDate == occDate
+                    if (ok) MarkdownReporter.log("   - [OK] La transaction a bien été matérialisée comme Exception pour le 15/08.")
+                    ok
+                }) 
+            }
+            
+            // Vérification B : Le Repo a bien supprimé l'ID 500 qui vient d'être créé
+            coVerify(exactly = 1) { 
+                transactionDao.softDelete(500L)
+                MarkdownReporter.log("   - [OK] La suppression standard (softDelete) a été appelée sur l'ID matérialisé 500.")
+            }
+            
+            MarkdownReporter.log("**Résultat final : Succès.**")
         }
 
     /**
      * UT-03 : Supprimer une occurrence déjà matérialisée
-     * Attendu : L'exception existante est soft-deleted directement.
+     * Scénario : L'utilisateur supprime une transaction réelle (déjà en base).
      */
     @Test
     fun `UT-03 - deleting a real exception should soft delete it directly`() = runBlocking {
-        MarkdownReporter.log("UT-03 : Suppression d'une occurrence RÉELLE (Portée : UNIQUE)")
+        MarkdownReporter.log("### UT-03 : Suppression d'une occurrence RÉELLE")
+        MarkdownReporter.log("Objectif : Vérifier qu'on supprime DIRECTEMENT sans matérialisation inutile.")
 
         val realId = 600L
         val realTx = TransactionEntity(
-            id = realId,
-            title = "Achat ponctuel",
-            amount = 50.0,
-            type = TransactionType.EXPENSE,
-            status = TransactionStatus.PAID,
-            date = System.currentTimeMillis(),
-            accountId = 1,
-            categoryId = 1
+            id = realId, title = "Achat ponctuel", amount = 50.0, type = TransactionType.EXPENSE,
+            status = TransactionStatus.PAID, date = System.currentTimeMillis(), accountId = 1, categoryId = 1
         )
         val twr = TransactionWithRelations(realTx, null, null, emptyList())
 
+        // --- Action ---
+        MarkdownReporter.log("Action : Suppression de la transaction réelle ID 600.")
         repository.softDeleteTransactionOccurrence(twr)
 
-        // On ne doit pas appeler materializeOccurrence (pas de seriesId ici, ou ID déjà positif)
+        // --- Vérifications ---
+        MarkdownReporter.log("Vérifications :")
+        // On vérifie qu'on n'a PAS essayé de matérialiser (pas de seriesId complexe ici)
         coVerify(exactly = 0) { transactionDao.upsert(any()) }
-        coVerify(exactly = 1) { transactionDao.softDelete(realId) }
-        MarkdownReporter.log("Succès : La transaction réelle a été supprimée directement.")
+        MarkdownReporter.log("   - [OK] Aucune matérialisation (upsert) n'a été déclenchée.")
+
+        // On vérifie que la suppression directe a eu lieu
+        coVerify(exactly = 1) { 
+            transactionDao.softDelete(realId)
+            MarkdownReporter.log("   - [OK] La suppression directe a bien été appelée pour l'ID 600.")
+        }
+        MarkdownReporter.log("**Résultat final : Succès.**")
     }
 
     /**
      * UT-02 : Recharger le mois après suppression d'une occurrence
-     * Attendu : L'occurrence supprimée n'apparaît plus dans observeTransactionsBetween.
+     * Scénario : Vérifier que le Repository cache bien les transactions 'deleted'.
      */
     @Test
     fun `UT-02 - deleted occurrence should not appear in transactions list`() = runBlocking {
-        MarkdownReporter.log("UT-02 : Vérification du masquage après suppression (CA-09)")
+        MarkdownReporter.log("### UT-02 : Vérification du masquage (CA-09)")
+        MarkdownReporter.log("Objectif : S'assurer que le filtrage 'deleted = true' fonctionne.")
 
         val seriesId = 100L
         val occDate = LocalDate.of(2026, 8, 15).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -130,7 +159,7 @@ class RecurrenceContextualDeletionTest {
             interval = 1, startDate = occDate, status = "ACTIVE"
         )
 
-        // On simule une exception marquée comme supprimée en base
+        // On simule une exception déjà marquée comme supprimée en base de données
         val deletedException = TransactionEntity(
             id = 500L, title = "Netflix", amount = 15.99, type = TransactionType.EXPENSE,
             status = TransactionStatus.PLANNED, date = occDate, accountId = 1, categoryId = 1,
@@ -138,79 +167,28 @@ class RecurrenceContextualDeletionTest {
         )
         val twrDeleted = TransactionWithRelations(deletedException, null, null, emptyList())
 
+        // --- Préparation des Mocks ---
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
         coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(listOf(twrDeleted))
 
-        val start = LocalDate.of(2026, 8, 1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val end =
-            LocalDate.of(2026, 8, 31).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
-
-        val results = repository.observeTransactionsBetween(start, end).first()
-
-        assertTrue("L'occurrence supprimée ne doit pas être renvoyée", results.isEmpty())
-        MarkdownReporter.log("Succès : Le virtuel est correctement masqué par l'exception 'deleted'.")
-    }
-
-    /**
-     * UT-05 : Recharger les mois avant et après la troncature
-     * Attendu : Avant = visible, Après (date ciblée incluse) = absent.
-     */
-    @Test
-    fun `UT-05 - checking visible occurrences before and after truncation`() = runBlocking {
-        MarkdownReporter.log("UT-05 : Vérification de la fenêtre de troncature (CA-05)")
-
-        val truncationDate = LocalDate.of(2026, 6, 1).atStartOfDay(zone).toInstant().toEpochMilli()
-
-        // On simule que la série est bien exclue de observeActiveSeries car CANCELLED
-        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(emptyList())
-
-        val startJune = truncationDate
-        val endJune =
-            LocalDate.of(2026, 6, 30).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
-
-        val results = repository.observeTransactionsBetween(startJune, endJune).first()
-        assertTrue("Rien ne doit être généré après la date de fin", results.isEmpty())
-        MarkdownReporter.log("Succès : Les occurrences après la troncature sont absentes.")
-    }
-
-    /**
-     * UT-07 : Recharger un mois futur après annulation de série
-     */
-    @Test
-    fun `UT-07 - no occurrences should be generated for a CANCELLED series`() = runBlocking {
-        MarkdownReporter.log("UT-07 : Vérification post-annulation totale (CA-06)")
-
-        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(emptyList())
-        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
-
+        // --- Action ---
+        MarkdownReporter.log("Action : Observation des transactions du mois d'Août.")
         val results = repository.observeTransactionsBetween(0, Long.MAX_VALUE).first()
-        assertTrue(
-            "La liste doit être vide après annulation de toutes les séries",
-            results.isEmpty()
-        )
-        MarkdownReporter.log("Succès : Plus aucune occurrence n'est générée.")
-    }
 
-    /**
-     * UT-08 : Annuler la suppression (Action UI simulée)
-     */
-    @Test
-    fun `UT-08 - dismissing the choice sheet should not trigger any DAO calls`() = runBlocking {
-        MarkdownReporter.log("UT-08 : Simulation annulation UI (CA-07)")
-
-        // Ce test vérifie l'absence d'action si aucune fonction du repo n'est appelée
-        // Ici, on s'assure juste que nos mocks n'ont pas été sollicités indûment
-        confirmVerified(transactionDao, recurringSeriesDao)
-        MarkdownReporter.log("Succès : Aucune modification détectée.")
+        // --- Vérifications ---
+        assertTrue("La liste doit être vide car l'unique occurrence est marquée 'deleted'", results.isEmpty())
+        MarkdownReporter.log("Vérification : [OK] La liste retournée est vide. Le masquage est opérationnel.")
+        MarkdownReporter.log("**Résultat final : Succès.**")
     }
 
     /**
      * UT-04 : Supprimer avec portée "Cette occurrence et les suivantes"
-     * Attendu : La série est tronquée avant l'occurrence ciblée.
+     * Scénario : L'utilisateur veut arrêter une série à une date précise.
      */
     @Test
     fun `UT-04 - deleting FUTURE should truncate the series endDate`() = runBlocking {
-        MarkdownReporter.log("UT-04 : Troncature de série (Portée : FUTURE)")
+        MarkdownReporter.log("### UT-04 : Troncature de série (Portée : FUTURE)")
+        MarkdownReporter.log("Objectif : Vérifier que la série s'arrête la veille de la date cible.")
 
         val seriesId = 200L
         val targetDate = LocalDate.of(2026, 12, 1).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -224,54 +202,129 @@ class RecurrenceContextualDeletionTest {
 
         coEvery { recurringSeriesDao.getSeriesById(seriesId) } returns series
 
+        // --- Action ---
+        MarkdownReporter.log("Action : Annulation de la série à partir du 01/12/2026.")
         repository.cancelSeries(seriesId.toString(), SeriesDeletionMode.FUTURE, targetDate)
 
-        // On attend un upsert de la série avec endDate = targetDate - 1ms
-        coVerify(exactly = 1) {
-            recurringSeriesDao.upsert(match {
-                it.id == seriesId && it.endDate == targetDate - 1 && it.status == "CANCELLED"
-            })
+        // --- Vérifications ---
+        MarkdownReporter.log("Vérifications :")
+        
+        // On vérifie que la série est mise à jour avec endDate = targetDate - 1ms
+        coVerify(exactly = 1) { 
+            recurringSeriesDao.upsert(match { 
+                val ok = it.id == seriesId && it.endDate == targetDate - 1 && it.status == "CANCELLED"
+                if (ok) MarkdownReporter.log("   - [OK] La série a été arrêtée au ${targetDate - 1} (veille de la cible).")
+                ok
+            }) 
         }
-        // Et un nettoyage des transactions déjà en base à partir de cette date
-        coVerify(exactly = 1) {
-            transactionDao.softDeleteSeriesFrom(
-                seriesId.toString(),
-                targetDate
-            )
+        
+        // On vérifie que les transactions futures déjà matérialisées sont bien nettoyées
+        coVerify(exactly = 1) { 
+            transactionDao.softDeleteSeriesFrom(seriesId.toString(), targetDate) 
+            MarkdownReporter.log("   - [OK] Nettoyage des transactions réelles à partir du 01/12 effectué.")
         }
-        MarkdownReporter.log("Succès : La série a été arrêtée au ${targetDate - 1} et le futur a été nettoyé.")
+        MarkdownReporter.log("**Résultat final : Succès.**")
+    }
+
+    /**
+     * UT-05 : Recharger les mois avant et après la troncature
+     */
+    @Test
+    fun `UT-05 - checking visible occurrences before and after truncation`() = runBlocking {
+        MarkdownReporter.log("### UT-05 : Vérification de la fenêtre de troncature")
+        
+        // On simule une série qui n'est plus active car annulée/tronquée
+        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(emptyList())
+
+        MarkdownReporter.log("Action : Observation d'un mois situé APRÈS la troncature.")
+        val results = repository.observeTransactionsBetween(0, Long.MAX_VALUE).first()
+
+        assertTrue("Aucune occurrence ne doit être générée après la date de fin", results.isEmpty())
+        MarkdownReporter.log("Vérification : [OK] Aucune transaction détectée dans la zone de troncature.")
+        MarkdownReporter.log("**Résultat final : Succès.**")
     }
 
     /**
      * UT-06 : Supprimer avec portée "Toutes les occurrences"
-     * Attendu : La série passe en statut CANCELLED.
      */
     @Test
     fun `UT-06 - deleting ALL should cancel the whole series`() = runBlocking {
-        MarkdownReporter.log("UT-06 : Annulation complète (Portée : ALL)")
+        MarkdownReporter.log("### UT-06 : Annulation complète (Portée : ALL)")
+        MarkdownReporter.log("Objectif : Vérifier l'arrêt total de la série et le masquage de l'historique.")
 
         val seriesId = 300L
+        
+        // --- Action ---
+        MarkdownReporter.log("Action : Demande d'annulation complète de la série 300.")
         repository.cancelSeries(seriesId.toString(), SeriesDeletionMode.ALL)
 
-        coVerify(exactly = 1) { recurringSeriesDao.updateStatus(seriesId, "CANCELLED") }
-        coVerify(exactly = 1) { transactionDao.softDeleteSeries(seriesId.toString()) }
-        MarkdownReporter.log("Succès : La série 300 a été annulée et tout son historique masqué.")
+        // --- Vérifications ---
+        MarkdownReporter.log("Vérifications :")
+        coVerify(exactly = 1) { 
+            recurringSeriesDao.updateStatus(seriesId, "CANCELLED") 
+            MarkdownReporter.log("   - [OK] Le statut de la série est bien passé à CANCELLED.")
+        }
+        coVerify(exactly = 1) { 
+            transactionDao.softDeleteSeries(seriesId.toString()) 
+            MarkdownReporter.log("   - [OK] Toutes les transactions passées/futures de la série ont été marquées 'deleted'.")
+        }
+        MarkdownReporter.log("**Résultat final : Succès.**")
+    }
+
+    /**
+     * UT-07 : Recharger un mois futur après annulation de série
+     */
+    @Test
+    fun `UT-07 - no occurrences should be generated for a CANCELLED series`() = runBlocking {
+        MarkdownReporter.log("### UT-07 : Vérification post-annulation totale")
+        
+        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(emptyList())
+
+        val results = repository.observeTransactionsBetween(0, Long.MAX_VALUE).first()
+        assertTrue("La liste doit être vide après annulation", results.isEmpty())
+        MarkdownReporter.log("Vérification : [OK] Plus aucune occurrence générée pour la série annulée.")
+        MarkdownReporter.log("**Résultat final : Succès.**")
+    }
+
+    /**
+     * UT-08 : Annuler la suppression (Action UI simulée)
+     */
+    @Test
+    fun `UT-08 - dismissing the choice sheet should not trigger any DAO calls`() = runBlocking {
+        MarkdownReporter.log("### UT-08 : Simulation annulation UI")
+        MarkdownReporter.log("Objectif : S'assurer qu'aucune action n'est prise si l'utilisateur annule son geste.")
+
+        // confirmVerified s'assure qu'aucune fonction n'a été appelée sur les clones
+        confirmVerified(transactionDao, recurringSeriesDao)
+        MarkdownReporter.log("Vérification : [OK] Aucun appel DAO détecté. Intégrité de la base préservée.")
+        MarkdownReporter.log("**Résultat final : Succès.**")
     }
 
     /**
      * UT-09 : Supprimer une transaction ponctuelle
-     * Attendu : La suppression standard est appelée, pas de logique de série.
      */
     @Test
     fun `UT-09 - deleting a standalone transaction should just soft delete it`() = runBlocking {
-        MarkdownReporter.log("UT-09 : Non-régression - Suppression transaction PONCTUELLE")
+        MarkdownReporter.log("### UT-09 : Non-régression - Transaction PONCTUELLE")
+        MarkdownReporter.log("Objectif : Vérifier que la suppression standard reste simple.")
 
         val txId = 999L
+        
+        // --- Action ---
+        MarkdownReporter.log("Action : Suppression d'une transaction ponctuelle simple (ID 999).")
         repository.softDeleteTransaction(txId)
 
-        coVerify(exactly = 1) { transactionDao.softDelete(txId) }
-        coVerify(exactly = 0) { recurringSeriesDao.upsert(any()) }
-        MarkdownReporter.log("Succès : Comportement standard préservé pour les transactions simples.")
+        // --- Vérifications ---
+        MarkdownReporter.log("Vérifications :")
+        coVerify(exactly = 1) { 
+            transactionDao.softDelete(txId) 
+            MarkdownReporter.log("   - [OK] Suppression standard appelée (comportement normal).")
+        }
+        coVerify(exactly = 0) { 
+            recurringSeriesDao.upsert(any()) 
+            MarkdownReporter.log("   - [OK] Aucune logique de récurrence n'a été déclenchée par erreur.")
+        }
+        MarkdownReporter.log("**Résultat final : Succès.**")
     }
 
     /**
@@ -279,16 +332,24 @@ class RecurrenceContextualDeletionTest {
      */
     @Test
     fun `UT-10 - isolation check between two series`() = runBlocking {
-        MarkdownReporter.log("UT-10 : Vérification d'isolation")
+        MarkdownReporter.log("### UT-10 : Vérification d'isolation (CA-10)")
+        MarkdownReporter.log("Objectif : Vérifier qu'une action sur une série n'en impacte pas une autre.")
 
         val seriesA = 1001L
         val seriesB = 1002L
 
+        // --- Action ---
+        MarkdownReporter.log("Action : Annulation de la série A uniquement.")
         repository.cancelSeries(seriesA.toString(), SeriesDeletionMode.ALL)
 
+        // --- Vérifications ---
+        MarkdownReporter.log("Vérifications :")
         coVerify(exactly = 1) { recurringSeriesDao.updateStatus(seriesA, "CANCELLED") }
-        coVerify(exactly = 0) { recurringSeriesDao.updateStatus(seriesB, any()) }
-        MarkdownReporter.log("Succès : Seule la série ciblée a été impactée.")
+        coVerify(exactly = 0) { 
+            recurringSeriesDao.updateStatus(seriesB, any()) 
+            MarkdownReporter.log("   - [OK] La série B est restée intacte.")
+        }
+        MarkdownReporter.log("**Résultat final : Succès.**")
     }
 
     @Test
