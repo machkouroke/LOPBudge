@@ -15,10 +15,10 @@ import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.cornerRadius
+import androidx.glance.color.ColorProvider
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -68,19 +68,19 @@ class BalanceWidget : GlanceAppWidget() {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(ColorProvider(Color(0xFF0F0E13)))
+                .background(Color(0xFF0F0E13))
                 .cornerRadius(24.dp)
                 .padding(16.dp),
             verticalAlignment = Alignment.Vertical.CenterVertically,
         ) {
-            Text("Solde LOPBudge", style = TextStyle(color = ColorProvider(Color(0xFFCAC4D0)), fontSize = androidx.compose.ui.unit.TextUnit.Unspecified))
+            Text("Solde LOPBudge", style = TextStyle(color = ColorProvider(day = Color(0xFFCAC4D0), night = Color(0xFFCAC4D0)), fontSize = androidx.compose.ui.unit.TextUnit.Unspecified))
             Text(
                 Format.money(balance, currency),
-                style = TextStyle(color = ColorProvider(Color(0xFFB69DF8)), fontWeight = FontWeight.Bold),
+                style = TextStyle(color = ColorProvider(day = Color(0xFFB69DF8), night = Color(0xFFB69DF8)), fontWeight = FontWeight.Bold),
             )
             Text(
                 "$upcoming à venir",
-                style = TextStyle(color = ColorProvider(Color(0xFF4ADE80))),
+                style = TextStyle(color = ColorProvider(day = Color(0xFFB69DF8), night = Color(0xFFB69DF8))),
             )
         }
     }

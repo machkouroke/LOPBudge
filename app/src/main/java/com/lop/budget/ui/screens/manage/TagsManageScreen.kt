@@ -1,6 +1,5 @@
 package com.lop.budget.ui.screens.manage
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,7 +30,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -53,9 +51,7 @@ import com.lop.budget.R
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.ui.components.ConfirmDeleteSheet
 import com.lop.budget.ui.components.FloatingCard
-import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.LopScreenScaffold
-import com.lop.budget.ui.components.pressScaleClickable
 
 @Composable
 fun TagsManageScreen(

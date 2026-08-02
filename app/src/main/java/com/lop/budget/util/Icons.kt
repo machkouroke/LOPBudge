@@ -49,7 +49,6 @@ import androidx.compose.material.icons.filled.Store
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.filled.Work
-import androidx.compose.ui.graphics.vector.ImageVector
 
 /** Convertit un nom d'icône stocké en base en ImageVector Compose. */
 object IconMapper {

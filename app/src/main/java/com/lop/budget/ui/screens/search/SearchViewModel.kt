@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.DayGroup
-import com.lop.budget.domain.model.TransactionStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*

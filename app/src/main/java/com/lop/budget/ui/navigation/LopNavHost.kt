@@ -52,7 +52,6 @@ import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalMaterial3Api::class)

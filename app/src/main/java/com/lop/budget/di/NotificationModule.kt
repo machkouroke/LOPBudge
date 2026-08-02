@@ -6,7 +6,6 @@ import com.lop.budget.notifications.MLKitEntityClassifier
 import com.lop.budget.notifications.NotificationClassifier
 import com.lop.budget.notifications.SmartCategorizer
 import com.lop.budget.notifications.QwenLocalCategorizer
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.SettingsRepository
 import dagger.Module
 import dagger.Provides

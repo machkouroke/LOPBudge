@@ -30,7 +30,6 @@ import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.Stable
 
 @Immutable
 data class HomeUiState(

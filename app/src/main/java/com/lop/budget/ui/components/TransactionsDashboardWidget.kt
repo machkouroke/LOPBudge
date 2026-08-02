@@ -12,7 +12,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
-import com.lop.budget.domain.model.TransactionStatus
 import dev.chrisbanes.haze.HazeState
 
 @Composable

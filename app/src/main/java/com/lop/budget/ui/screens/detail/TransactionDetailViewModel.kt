@@ -6,8 +6,6 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
-import com.lop.budget.domain.model.SeriesDeletionMode
-import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.recurrence.RecurrenceEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
