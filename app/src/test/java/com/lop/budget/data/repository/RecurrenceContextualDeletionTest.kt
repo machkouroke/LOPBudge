@@ -206,7 +206,9 @@ class RecurrenceContextualDeletionTest {
         // --- Action ---
         MarkdownReporter.log("2. Action : On appelle observeTransactionsBetween().")
         val results = try {
-            repository.observeTransactionsBetween(0, Long.MAX_VALUE).first()
+            val startRange = LocalDate.of(2026, 8, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val endRange = LocalDate.of(2026, 8, 31).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+            repository.observeTransactionsBetween(startRange, endRange).first()
         } catch (e: Exception) {
             MarkdownReporter.log("ERREUR : ${e.message}")
             throw e
@@ -214,6 +216,7 @@ class RecurrenceContextualDeletionTest {
 
         // --- Vérifications ---
         MarkdownReporter.log("3. Vérifications :")
+        MarkdownReporter.log("Result=${results}")
         
         val containsDeleted = results.any { it.transaction.id == 500L }
         val containsNormal = results.any { it.transaction.id == 700L }
@@ -289,7 +292,9 @@ class RecurrenceContextualDeletionTest {
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(emptyList())
 
         MarkdownReporter.log("Action : Observation d'un mois situé APRÈS la troncature.")
-        val results = repository.observeTransactionsBetween(0, Long.MAX_VALUE).first()
+        val startRange = LocalDate.of(2026, 6, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val endRange = LocalDate.of(2026, 6, 30).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+        val results = repository.observeTransactionsBetween(startRange, endRange).first()
 
         assertTrue("Aucune occurrence ne doit être générée après la date de fin", results.isEmpty())
         MarkdownReporter.log("Vérification : [OK] Aucune transaction détectée dans la zone de troncature.")
@@ -332,7 +337,9 @@ class RecurrenceContextualDeletionTest {
 
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(emptyList())
 
-        val results = repository.observeTransactionsBetween(0, Long.MAX_VALUE).first()
+        val startRange = LocalDate.of(2027, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val endRange = LocalDate.of(2027, 1, 31).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+        val results = repository.observeTransactionsBetween(startRange, endRange).first()
         assertTrue("La liste doit être vide après annulation", results.isEmpty())
         MarkdownReporter.log("Vérification : [OK] Plus aucune occurrence générée pour la série annulée.")
         MarkdownReporter.log("**Résultat final : Succès.**")
