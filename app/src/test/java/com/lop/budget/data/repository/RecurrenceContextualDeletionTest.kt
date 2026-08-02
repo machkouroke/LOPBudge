@@ -349,12 +349,14 @@ class RecurrenceContextualDeletionTest {
             .atStartOfDay(zone).toInstant().toEpochMilli()
         val augustDate = LocalDate.of(2026, 8, 1)
             .atStartOfDay(zone).toInstant().toEpochMilli()
+        val decEnd = LocalDate.of(2026, 12, 31)
+            .atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
 
-        // 1. La série originale (Janvier ->
+        // 1. La série originale (Janvier -> Décembre)
         val series = RecurringSeriesEntity(
             id = seriesId, title = "Loyer", amount = 800.0, type = TransactionType.EXPENSE,
             categoryId = 2, accountId = 1, frequency = RecurrenceFrequency.MONTHLY,
-            interval = 1, startDate = originalStart, status = "ACTIVE"
+            interval = 1, startDate = originalStart, endDate = decEnd, status = "ACTIVE"
         )
 
         // 2. L'exception d'août déjà matérialisée (ID 801)
