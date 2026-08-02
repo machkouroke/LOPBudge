@@ -47,7 +47,7 @@ class RecurrenceContextualDeletionTest {
         repository = BudgetRepository(
             transactionDao, recurringSeriesDao, accountDao, categoryDao, tagDao, goalDao, debtDao
         )
-        
+
         // Mocks globaux pour observeTransactionsBetween (qui fait un combine de 4 flows)
         // Si l'un de ces flows ne renvoie rien, le combine reste bloqué et .first() plante.
         coEvery { accountDao.observeAll() } returns flowOf(emptyList())
@@ -57,6 +57,7 @@ class RecurrenceContextualDeletionTest {
     /**
      * UT-01 : Supprimer une occurrence virtuelle avec portée "Cette occurrence"
      * Scénario : L'utilisateur swipe une transaction qui n'est pas encore en base.
+     * Validé
      */
     @Test
     fun `UT-01 - deleting a virtual occurrence should materialize it and soft delete it`() =
@@ -117,40 +118,48 @@ class RecurrenceContextualDeletionTest {
 
     /**
      * UT-03 : Supprimer une occurrence déjà matérialisée
-     * Scénario : L'utilisateur supprime une transaction réelle (déjà en base).
+     * Scénario : L'utilisateur supprime une exception réelle (déjà en base).
+     * Validé
      */
     @Test
     fun `UT-03 - deleting a real exception should soft delete it directly`() = runBlocking {
-        MarkdownReporter.log("### UT-03 : Suppression d'une occurrence RÉELLE")
-        MarkdownReporter.log("Objectif : Vérifier qu'on supprime DIRECTEMENT sans matérialisation inutile.")
+        MarkdownReporter.log("### UT-03 : Suppression d'une occurrence RÉELLE (Exception matérialisée)")
+        MarkdownReporter.log("Objectif : Vérifier qu'on supprime DIRECTEMENT sans matérialisation inutile car l'ID est déjà positif.")
 
         val realId = 600L
-        val realTx = TransactionEntity(
+        val seriesId = 100L
+        val occDate = LocalDate.of(2026, 8, 15).atStartOfDay(zone).toInstant().toEpochMilli()
+
+        // On simule une exception déjà présente en base (isException = true, seriesId présent)
+        val realException = TransactionEntity(
             id = realId,
-            title = "Achat ponctuel",
-            amount = 50.0,
+            title = "Netflix (Exception matérialisée)",
+            amount = 15.99,
             type = TransactionType.EXPENSE,
             status = TransactionStatus.PAID,
-            date = System.currentTimeMillis(),
+            date = occDate,
             accountId = 1,
-            categoryId = 1
+            categoryId = 1,
+            seriesId = seriesId.toString(),
+            seriesDate = occDate,
+            isException = true
         )
-        val twr = TransactionWithRelations(realTx, null, null, emptyList())
+        val twr = TransactionWithRelations(realException, null, null, emptyList())
 
         // --- Action ---
-        MarkdownReporter.log("Action : Suppression de la transaction réelle ID 600.")
+        MarkdownReporter.log("Action : Suppression de l'exception matérialisée ID 600.")
         repository.softDeleteTransactionOccurrence(twr)
 
         // --- Vérifications ---
         MarkdownReporter.log("Vérifications :")
-        // On vérifie qu'on n'a PAS essayé de matérialiser (pas de seriesId complexe ici)
+        // On vérifie qu'on n'a PAS essayé de matérialiser (upsert)
         coVerify(exactly = 0) { transactionDao.upsert(any()) }
-        MarkdownReporter.log("   - [OK] Aucune matérialisation (upsert) n'a été déclenchée.")
+        MarkdownReporter.log("   - [OK] Aucune matérialisation (upsert) n'a été déclenchée (ID déjà positif).")
 
         // On vérifie que la suppression directe a eu lieu
         coVerify(exactly = 1) {
             transactionDao.softDelete(realId)
-            MarkdownReporter.log("   - [OK] La suppression directe a bien été appelée pour l'ID 600.")
+            MarkdownReporter.log("   - [OK] La suppression directe (softDelete) a bien été appelée pour l'ID 600.")
         }
         MarkdownReporter.log("**Résultat final : Succès.**")
     }
@@ -158,6 +167,7 @@ class RecurrenceContextualDeletionTest {
     /**
      * UT-02 : Recharger le mois après suppression d'une occurrence
      * Scénario : Vérifier que le Repository cache bien les transactions 'deleted'.
+     * Validé
      */
     @Test
     fun `UT-02 - deleted occurrence should not appear in transactions list`() = runBlocking {
@@ -184,30 +194,56 @@ class RecurrenceContextualDeletionTest {
 
         // 2. Une exception de série NON supprimée (doit rester visible)
         val validException = TransactionEntity(
-            id = 501L, title = "Netflix (Exception valide)", amount = 15.99, type = TransactionType.EXPENSE,
-            status = TransactionStatus.PAID, date = occDate, accountId = 1, categoryId = 1,
-            seriesId = seriesId.toString(), seriesDate = occDate, isException = true, deleted = false
+            id = 501L,
+            title = "Netflix (Exception valide)",
+            amount = 15.99,
+            type = TransactionType.EXPENSE,
+            status = TransactionStatus.PAID,
+            date = occDate,
+            accountId = 1,
+            categoryId = 1,
+            seriesId = seriesId.toString(),
+            seriesDate = occDate,
+            isException = true,
+            deleted = false
         )
         val twrValid = TransactionWithRelations(validException, null, null, emptyList())
 
         // 3. L'exception marquée comme SUPPRIMÉE (doit être masquée)
         val deletedException = TransactionEntity(
-            id = 500L, title = "Netflix (À masquer)", amount = 15.99, type = TransactionType.EXPENSE,
-            status = TransactionStatus.PLANNED, date = occDate, accountId = 1, categoryId = 1,
-            seriesId = seriesId.toString(), seriesDate = occDate, isException = true, deleted = true
+            id = 500L,
+            title = "Netflix (À masquer)",
+            amount = 15.99,
+            type = TransactionType.EXPENSE,
+            status = TransactionStatus.PLANNED,
+            date = occDate,
+            accountId = 1,
+            categoryId = 1,
+            seriesId = seriesId.toString(),
+            seriesDate = occDate,
+            isException = true,
+            deleted = true
         )
         val twrDeleted = TransactionWithRelations(deletedException, null, null, emptyList())
 
         // --- Préparation des Mocks ---
-        MarkdownReporter.log("1. Préparation : On injecte 3 transactions dans le DAO (1 normale, 1 exception valide, 1 supprimée).")
+        MarkdownReporter.log("1. Préparation : On injecte 3 " +
+                "transactions dans le DAO (1 normale, 1 exception valide, 1 supprimée).")
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
-        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(listOf(twrNormal, twrValid, twrDeleted))
+        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(
+            listOf(
+                twrNormal,
+                twrValid,
+                twrDeleted
+            )
+        )
 
         // --- Action ---
         MarkdownReporter.log("2. Action : On appelle observeTransactionsBetween().")
         val results = try {
             val startRange = LocalDate.of(2026, 8, 1).atStartOfDay(zone).toInstant().toEpochMilli()
-            val endRange = LocalDate.of(2026, 8, 31).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+            val endRange =
+                LocalDate.of(2026, 8, 31).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
             repository.observeTransactionsBetween(startRange, endRange).first()
         } catch (e: Exception) {
             MarkdownReporter.log("ERREUR : ${e.message}")
@@ -217,17 +253,17 @@ class RecurrenceContextualDeletionTest {
         // --- Vérifications ---
         MarkdownReporter.log("3. Vérifications :")
         MarkdownReporter.log("Result=${results}")
-        
+
         val containsDeleted = results.any { it.transaction.id == 500L }
         val containsNormal = results.any { it.transaction.id == 700L }
         val containsValidEx = results.any { it.transaction.id == 501L }
 
         assertFalse("L'occurrence ID 500 (deleted=true) NE DOIT PAS être présente", containsDeleted)
         if (!containsDeleted) MarkdownReporter.log("   - [OK] La transaction supprimée a bien été filtrée.")
-        
+
         assertTrue("La transaction normale ID 700 DOIT être présente", containsNormal)
         if (containsNormal) MarkdownReporter.log("   - [OK] La transaction normale est toujours visible.")
-        
+
         assertTrue("L'exception valide ID 501 DOIT être présente", containsValidEx)
         if (containsValidEx) MarkdownReporter.log("   - [OK] L'exception non-supprimée est toujours visible.")
 
@@ -242,11 +278,14 @@ class RecurrenceContextualDeletionTest {
     @Test
     fun `UT-04 - deleting FUTURE should truncate the series endDate`() = runBlocking {
         MarkdownReporter.log("### UT-04 : Troncature de série (Portée : FUTURE)")
-        MarkdownReporter.log("Objectif : Vérifier que la série s'arrête la veille de la date cible.")
+        MarkdownReporter.log("Objectif : Vérifier que la série s'arrête la veille " +
+                "de la date cible.")
 
         val seriesId = 200L
-        val targetDate = LocalDate.of(2026, 12, 1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val originalStart = LocalDate.of(2026, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val targetDate = LocalDate.of(2026, 12, 1)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
+        val originalStart = LocalDate.of(2026, 1, 1)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
 
         val series = RecurringSeriesEntity(
             id = seriesId, title = "Loyer", amount = 800.0, type = TransactionType.EXPENSE,
@@ -258,7 +297,8 @@ class RecurrenceContextualDeletionTest {
 
         // --- Action ---
         MarkdownReporter.log("Action : Annulation de la série à partir du 01/12/2026.")
-        repository.cancelSeries(seriesId.toString(), SeriesDeletionMode.FUTURE, targetDate)
+        repository.cancelSeries(seriesId.toString(), SeriesDeletionMode.FUTURE,
+            targetDate)
 
         // --- Vérifications ---
         MarkdownReporter.log("Vérifications :")
@@ -293,7 +333,8 @@ class RecurrenceContextualDeletionTest {
 
         MarkdownReporter.log("Action : Observation d'un mois situé APRÈS la troncature.")
         val startRange = LocalDate.of(2026, 6, 1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val endRange = LocalDate.of(2026, 6, 30).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+        val endRange =
+            LocalDate.of(2026, 6, 30).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
         val results = repository.observeTransactionsBetween(startRange, endRange).first()
 
         assertTrue("Aucune occurrence ne doit être générée après la date de fin", results.isEmpty())
@@ -338,7 +379,8 @@ class RecurrenceContextualDeletionTest {
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(emptyList())
 
         val startRange = LocalDate.of(2027, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val endRange = LocalDate.of(2027, 1, 31).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+        val endRange =
+            LocalDate.of(2027, 1, 31).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
         val results = repository.observeTransactionsBetween(startRange, endRange).first()
         assertTrue("La liste doit être vide après annulation", results.isEmpty())
         MarkdownReporter.log("Vérification : [OK] Plus aucune occurrence générée pour la série annulée.")
