@@ -134,12 +134,8 @@ fun TransactionRow(
                 .combinedClickableHaptic(
                     onClick = {
                         if (!isAdjustment) {
-                            if (tx.transaction.id >= 0L) onOpenTransaction(tx.transaction.id)
-                            else tx.transaction.seriesId?.let {
-                                onMaterializeAndOpen(
-                                    it.toLong(),
-                                    tx.transaction.seriesDate!!
-                                )
+                            actionVm.materializeAndOpenDetail(tx) { realId ->
+                                onOpenTransaction(realId)
                             }
                         }
                     },

@@ -76,7 +76,6 @@ import com.lop.budget.util.IconMapper
 fun TransactionDetailScreen(
     transactionId: Long,
     onBack: () -> Unit,
-    onEdit: (id: Long, scope: String?, date: Long?) -> Unit = { _, _, _ -> },
     vm: TransactionDetailViewModel = hiltViewModel(),
     actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(LocalContext.current as androidx.activity.ComponentActivity),
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
@@ -100,7 +99,6 @@ fun TransactionDetailScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showAccountSheet by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var showEditScopeChoice by remember { mutableStateOf(false) }
 
     val twr = state.transaction
     val tx = twr?.transaction
@@ -139,12 +137,8 @@ fun TransactionDetailScreen(
                                     androidx.compose.foundation.shape.CircleShape
                                 )
                                 .clickableNoRipple { 
-                                    if (!isBusy) {
-                                        if (tx.seriesId != null) {
-                                            showEditScopeChoice = true
-                                        } else {
-                                            onEdit(transactionId, null, null)
-                                        }
+                                    if (!isBusy && twr != null) {
+                                        actionVm.requestEdit(twr)
                                     }
                                 }
                                 .testTag("transaction_detail_edit_button"),
@@ -399,27 +393,6 @@ fun TransactionDetailScreen(
         }
     }
 
-    if (showEditScopeChoice && tx != null) {
-        RecurringEditSheet(
-            onDismiss = { showEditScopeChoice = false },
-            onChoose = { scope ->
-                showEditScopeChoice = false
-                when (scope) {
-                    EditScope.SINGLE -> {
-                        vm.materializeAndEdit { realId ->
-                            onEdit(realId, null, null)
-                        }
-                    }
-                    EditScope.FUTURE -> {
-                        onEdit(transactionId, "FUTURE", tx.date)
-                    }
-                    EditScope.ALL -> {
-                        onEdit(transactionId, "ALL", null)
-                    }
-                }
-            }
-        )
-    }
 
     if (showDatePicker && tx != null) {
         val pickerState = androidx.compose.material3.rememberDatePickerState(initialSelectedDateMillis = tx.date)

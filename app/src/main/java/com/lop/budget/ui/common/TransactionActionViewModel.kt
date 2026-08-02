@@ -43,6 +43,35 @@ class TransactionActionViewModel @Inject constructor(
         _deleteRequest.value = null
     }
 
+    // Edit request state for showing edit scope choice sheet globally
+    private val _editRequest = MutableStateFlow<TransactionWithRelations?>(null)
+    val editRequest = _editRequest.asStateFlow()
+
+    fun requestEdit(tx: TransactionWithRelations) {
+        _editRequest.value = tx
+    }
+
+    fun dismissEditRequest() {
+        _editRequest.value = null
+    }
+
+    /**
+     * Matérialise une occurrence virtuelle avant de l'ouvrir dans le détail.
+     */
+    fun materializeAndOpenDetail(tx: TransactionWithRelations, onDone: (Long) -> Unit) {
+        val transaction = tx.transaction
+        if (transaction.id < 0L) {
+            val seriesId = transaction.seriesId?.toLongOrNull() ?: return
+            val date = transaction.seriesDate ?: transaction.date
+            viewModelScope.launch {
+                val realId = repo.materializeOccurrence(seriesId, date)
+                if (realId >= 0L) onDone(realId)
+            }
+        } else {
+            onDone(transaction.id)
+        }
+    }
+
     // Preview state for showing the preview popup globally
     private val _previewTx = MutableStateFlow<TransactionWithRelations?>(null)
     val previewTx = _previewTx.asStateFlow()
@@ -57,6 +86,23 @@ class TransactionActionViewModel @Inject constructor(
 
     fun dismissPreview() {
         _previewTx.value = null
+    }
+
+    /**
+     * Matérialise une occurrence virtuelle si besoin avant l'édition.
+     */
+    fun materializeForEdit(tx: TransactionWithRelations, onDone: (Long) -> Unit) {
+        val transaction = tx.transaction
+        if (transaction.id < 0L) {
+            val seriesId = transaction.seriesId?.toLongOrNull() ?: return
+            val date = transaction.seriesDate ?: transaction.date
+            viewModelScope.launch {
+                val realId = repo.materializeOccurrence(seriesId, date)
+                if (realId >= 0L) onDone(realId)
+            }
+        } else {
+            onDone(transaction.id)
+        }
     }
 
     /**

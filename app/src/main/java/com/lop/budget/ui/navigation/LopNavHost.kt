@@ -70,7 +70,8 @@ fun LopNavHost(startRoute: String? = null) {
     val hazeState = rememberHazeState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
-    val actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(context as ComponentActivity)
+    val actionVm: com.lop.budget.ui.common.TransactionActionViewModel =
+        hiltViewModel(context as ComponentActivity)
 
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route?.substringBefore("/") ?: Routes.HOME
@@ -78,11 +79,13 @@ fun LopNavHost(startRoute: String? = null) {
     val globalPreviewTx by actionVm.previewTx.collectAsStateWithLifecycle()
     val globalCurrency by actionVm.previewCurrency.collectAsStateWithLifecycle()
     val deleteRequest by actionVm.deleteRequest.collectAsStateWithLifecycle()
-    
+    val editRequest by actionVm.editRequest.collectAsStateWithLifecycle()
+
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
     val undoMsg = stringResource(R.string.undo)
 
-    val showBar = (currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts")
+    val showBar =
+        (currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts")
 
     // deep link simple depuis notification
     LaunchedEffect(startRoute, navController) {
@@ -249,7 +252,13 @@ fun LopNavHost(startRoute: String? = null) {
                         CategoriesManageScreen(
                             onBack = { navController.popBackStack() },
                             onAddCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
-                            onEditCategory = { id: Long -> navController.navigate(Routes.categoryEdit(id)) }
+                            onEditCategory = { id: Long ->
+                                navController.navigate(
+                                    Routes.categoryEdit(
+                                        id
+                                    )
+                                )
+                            }
                         )
                     }
 
@@ -343,9 +352,6 @@ fun LopNavHost(startRoute: String? = null) {
                         TransactionDetailScreen(
                             transactionId = id,
                             onBack = { navController.popBackStack() },
-                            onEdit = { txId, scope, date ->
-                                navController.navigate(Routes.edit(txId, scope, date))
-                            },
                             snackbarHostState = snackbarHostState
                         )
                     }
@@ -419,10 +425,7 @@ fun LopNavHost(startRoute: String? = null) {
                     onDismiss = { actionVm.dismissPreview() },
                     onEdit = {
                         actionVm.dismissPreview()
-                        if (tx.transaction.id >= 0L) navController.navigate(Routes.edit(tx.transaction.id))
-                        else {
-                            navController.navigate(Routes.edit(tx.transaction.id, null, tx.transaction.seriesDate))
-                        }
+                        actionVm.requestEdit(tx)
                     },
                     onDelete = {
                         actionVm.dismissPreview()
@@ -446,16 +449,37 @@ fun LopNavHost(startRoute: String? = null) {
                             actionVm.dismissDeleteRequest()
                             when (choice) {
                                 RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                                    actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
+                                    actionVm.deleteWithUndo(
+                                        toDelete,
+                                        snackbarHostState,
+                                        txDeletedMsg,
+                                        undoMsg
+                                    )
                                 }
+
                                 RecurringDeleteChoice.FUTURE_ONLY -> {
                                     toDelete.transaction.seriesId.let { sid ->
-                                        actionVm.deleteSeriesWithUndo(sid, SeriesDeletionMode.FUTURE, toDelete.transaction.date, snackbarHostState, txDeletedMsg, undoMsg) 
+                                        actionVm.deleteSeriesWithUndo(
+                                            sid,
+                                            SeriesDeletionMode.FUTURE,
+                                            toDelete.transaction.date,
+                                            snackbarHostState,
+                                            txDeletedMsg,
+                                            undoMsg
+                                        )
                                     }
                                 }
+
                                 RecurringDeleteChoice.ALL_SERIES -> {
                                     toDelete.transaction.seriesId.let { sid ->
-                                        actionVm.deleteSeriesWithUndo(sid, SeriesDeletionMode.ALL, null, snackbarHostState, txDeletedMsg, undoMsg) 
+                                        actionVm.deleteSeriesWithUndo(
+                                            sid,
+                                            SeriesDeletionMode.ALL,
+                                            null,
+                                            snackbarHostState,
+                                            txDeletedMsg,
+                                            undoMsg
+                                        )
                                     }
                                 }
                             }
@@ -465,6 +489,38 @@ fun LopNavHost(startRoute: String? = null) {
                     SideEffect {
                         actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
                         actionVm.dismissDeleteRequest()
+                    }
+                }
+            }
+            // SIBLING 5: Global Edit Request Handler
+            editRequest?.let { tx ->
+                val transaction = tx.transaction
+                if (transaction.seriesId != null) {
+                    com.lop.budget.ui.components.RecurringEditSheet(
+                        onDismiss = { actionVm.dismissEditRequest() },
+                        onChoose = { scope ->
+                            actionVm.dismissEditRequest()
+                            when (scope) {
+                                com.lop.budget.domain.model.EditScope.SINGLE -> {
+                                    actionVm.materializeForEdit(tx) { realId ->
+                                        navController.navigate(Routes.edit(realId))
+                                    }
+                                }
+                                com.lop.budget.domain.model.EditScope.FUTURE -> {
+                                    navController.navigate(Routes.edit(transaction.id, "FUTURE", transaction.date))
+                                }
+                                com.lop.budget.domain.model.EditScope.ALL -> {
+                                    navController.navigate(Routes.edit(transaction.id, "ALL", null))
+                                }
+                            }
+                        }
+                    )
+                } else {
+                    SideEffect {
+                        actionVm.materializeForEdit(tx) { realId ->
+                            navController.navigate(Routes.edit(realId))
+                        }
+                        actionVm.dismissEditRequest()
                     }
                 }
             }

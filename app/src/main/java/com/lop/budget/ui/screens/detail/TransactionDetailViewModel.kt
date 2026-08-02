@@ -103,27 +103,4 @@ class TransactionDetailViewModel @Inject constructor(
         val id = txId.value ?: return
         viewModelScope.launch { repo.changeAccount(id, accountId) }
     }
-
-    /** Matérialise une occurrence virtuelle si besoin avant de naviguer vers l'édition. */
-    fun materializeAndEdit(onNavigate: (Long) -> Unit) {
-        val tx = uiState.value.transaction?.transaction ?: return
-        val seriesId = tx.seriesId?.toLongOrNull() ?: return
-        val date = tx.date
-
-        if (tx.id < 0L) {
-            viewModelScope.launch {
-                updating.value = true
-                try {
-                    val realId = repo.materializeOccurrence(seriesId, date)
-                    if (realId >= 0L) {
-                        onNavigate(realId)
-                    }
-                } finally {
-                    updating.value = false
-                }
-            }
-        } else {
-            onNavigate(tx.id)
-        }
-    }
 }
