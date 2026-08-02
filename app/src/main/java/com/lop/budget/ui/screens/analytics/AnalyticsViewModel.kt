@@ -36,12 +36,18 @@ data class AnalyticsUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
+    savedStateHandle: androidx.lifecycle.SavedStateHandle,
     private val repo: BudgetRepository,
     settings: SettingsRepository,
 ) : ViewModel() {
 
-    private val month = MutableStateFlow(YearMonth.now())
-    private val type = MutableStateFlow(TransactionType.EXPENSE)
+    private val initialType = savedStateHandle.get<String>("type")?.let { TransactionType.valueOf(it) }
+        ?: TransactionType.EXPENSE
+    private val initialMonth = savedStateHandle.get<String>("ym")?.let { YearMonth.parse(it) }
+        ?: YearMonth.now()
+
+    private val month = MutableStateFlow(initialMonth)
+    private val type = MutableStateFlow(initialType)
 
     fun setType(t: TransactionType) { type.value = t }
     fun nextMonth() { month.value = month.value.plusMonths(1) }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.DonutSlice
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -58,13 +60,85 @@ fun AnalyticsScreen(
         if (othersTotal > 0) add(DonutSlice(othersTotal, Color(0xFF9E9E9E), stringResource(R.string.others)))
     }
 
+    val title = when (state.type) {
+        TransactionType.EXPENSE -> stringResource(R.string.expense)
+        TransactionType.INCOME -> stringResource(R.string.income)
+    }
+
     LopScreenScaffold(
-        title = stringResource(R.string.nav_analytics),
+        title = title,
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack
     ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                com.lop.budget.ui.components.DonutChart(
+                    slices = slices,
+                    modifier = Modifier.size(240.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = stringResource(if (state.type == TransactionType.EXPENSE) R.string.expense else R.string.income),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = Format.money(state.total, state.currency),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                state.breakdown.forEach { item ->
+                    val color = Color(item.colorArgb)
+                    com.lop.budget.ui.components.FloatingCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        contentPadding = PaddingValues(12.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(color.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "${(item.share * 100).toInt()}%",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = color,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = item.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = Format.money(item.total, state.currency),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // Section Spent in budget period
         item {
+            Spacer(Modifier.height(24.dp))
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,

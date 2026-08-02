@@ -6,7 +6,8 @@ import java.time.YearMonth
 /** Routes de navigation de l'application. */
 object Routes {
     const val HOME = "home"
-    const val ANALYTICS = "analytics"
+    const val ANALYTICS = "analytics?type={type}&ym={ym}"
+    fun analytics(type: TransactionType, ym: YearMonth) = "analytics?type=${type.name}&ym=$ym"
     const val GOALS = "goals"
     const val ACCOUNTS = "accounts"
     const val ADD = "add"

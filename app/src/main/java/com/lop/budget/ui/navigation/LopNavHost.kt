@@ -151,7 +151,7 @@ fun LopNavHost(startRoute: String? = null) {
                             onOpenAi = { navController.navigate(Routes.AI) },
                             navController = navController,
                             onOpenMonthly = { type, ym ->
-                                navController.navigate(Routes.monthly(type, ym))
+                                navController.navigate(Routes.analytics(type, ym))
                             },
                             hazeState = hazeState,
                         )
@@ -164,7 +164,24 @@ fun LopNavHost(startRoute: String? = null) {
                         )
                     }
 
-                    composable(Routes.ANALYTICS) { AnalyticsScreen(onBack = { navController.popBackStack() }) }
+                    composableAnimated(
+                        Routes.ANALYTICS,
+                        NavAnimationType.ROOT,
+                        arguments = listOf(
+                            navArgument("type") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                            navArgument("ym") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            }
+                        )
+                    ) {
+                        AnalyticsScreen(onBack = { navController.popBackStack() })
+                    }
 
                     composable(Routes.GOALS) {
                         GoalsScreen(

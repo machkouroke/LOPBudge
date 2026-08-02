@@ -153,7 +153,12 @@ fun HomeScreen(
             state = state.copy(dashboardTransactions = txs),
             statusBarPadding = statusBarPadding,
             onOpenTransaction = onOpenTransaction,
-            onOpenMonthly = onOpenMonthly,
+            onOpenMonthly = { type, ym ->
+                navController.navigate(Routes.analytics(type, ym))
+            },
+            onSeeAllTransactions = { type, ym ->
+                navController.navigate(Routes.monthly(type, ym))
+            },
             onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
             onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },
             onPrevMonth = { vm.prevMonth() },
@@ -184,6 +189,7 @@ fun HomeContent(
     statusBarPadding: androidx.compose.ui.unit.Dp,
     onOpenTransaction: (Long) -> Unit,
     onOpenMonthly: (TransactionType, YearMonth) -> Unit,
+    onSeeAllTransactions: (TransactionType, YearMonth) -> Unit,
     onOpenAccounts: () -> Unit,
     onOpenAccountDetail: (Long) -> Unit,
     onPrevMonth: () -> Unit,
@@ -360,7 +366,7 @@ fun HomeContent(
                 TransactionsDashboardWidget(
                     transactions = state.dashboardTransactions,
                     currency = state.currency,
-                    onSeeAll = { onOpenMonthly(TransactionType.EXPENSE, targetMonth) },
+                    onSeeAll = { onSeeAllTransactions(TransactionType.EXPENSE, targetMonth) },
                     onOpenTransaction = onOpenTransaction,
                     onMaterializeAndOpen = { sid, date ->
                         vm.materializeAndOpen(
