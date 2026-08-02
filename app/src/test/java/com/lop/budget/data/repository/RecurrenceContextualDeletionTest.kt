@@ -47,6 +47,11 @@ class RecurrenceContextualDeletionTest {
         repository = BudgetRepository(
             transactionDao, recurringSeriesDao, accountDao, categoryDao, tagDao, goalDao, debtDao
         )
+        
+        // Mocks globaux pour observeTransactionsBetween (qui fait un combine de 4 flows)
+        // Si l'un de ces flows ne renvoie rien, le combine reste bloqué et .first() plante.
+        coEvery { accountDao.observeAll() } returns flowOf(emptyList())
+        coEvery { categoryDao.observeAll() } returns flowOf(emptyList())
     }
 
     /**
@@ -93,7 +98,10 @@ class RecurrenceContextualDeletionTest {
             coVerify(exactly = 1) {
                 transactionDao.upsert(match {
                     val ok = it.isException && it.seriesDate == occDate
-                    if (ok) MarkdownReporter.log("   - [OK] La transaction a bien été matérialisée comme Exception pour le 15/08.")
+                    if (ok) {
+                        MarkdownReporter.log("   - [OK] La transaction a bien été matérialisée comme Exception pour le 15/08.")
+                        MarkdownReporter.log("   - [DETAIL] Objet matérialisé : `${it.title}` de ${it.amount}€, seriesId=${it.seriesId}")
+                    }
                     ok
                 })
             }
@@ -166,29 +174,62 @@ class RecurrenceContextualDeletionTest {
             interval = 1, startDate = occDate, status = "ACTIVE"
         )
 
-        // On simule une exception déjà marquée comme supprimée en base de données
+        // --- SCÉNARIO : 3 transactions en base dans la période ---
+        // 1. Une transaction normale (doit rester visible)
+        val normalTx = TransactionEntity(
+            id = 700L, title = "Courses", amount = 45.0, type = TransactionType.EXPENSE,
+            status = TransactionStatus.PAID, date = occDate, accountId = 1, categoryId = 1
+        )
+        val twrNormal = TransactionWithRelations(normalTx, null, null, emptyList())
+
+        // 2. Une exception de série NON supprimée (doit rester visible)
+        val validException = TransactionEntity(
+            id = 501L, title = "Netflix (Exception valide)", amount = 15.99, type = TransactionType.EXPENSE,
+            status = TransactionStatus.PAID, date = occDate, accountId = 1, categoryId = 1,
+            seriesId = seriesId.toString(), seriesDate = occDate, isException = true, deleted = false
+        )
+        val twrValid = TransactionWithRelations(validException, null, null, emptyList())
+
+        // 3. L'exception marquée comme SUPPRIMÉE (doit être masquée)
         val deletedException = TransactionEntity(
-            id = 500L, title = "Netflix", amount = 15.99, type = TransactionType.EXPENSE,
+            id = 500L, title = "Netflix (À masquer)", amount = 15.99, type = TransactionType.EXPENSE,
             status = TransactionStatus.PLANNED, date = occDate, accountId = 1, categoryId = 1,
             seriesId = seriesId.toString(), seriesDate = occDate, isException = true, deleted = true
         )
         val twrDeleted = TransactionWithRelations(deletedException, null, null, emptyList())
 
         // --- Préparation des Mocks ---
+        MarkdownReporter.log("1. Préparation : On injecte 3 transactions dans le DAO (1 normale, 1 exception valide, 1 supprimée).")
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
-        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(listOf(twrDeleted))
+        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(listOf(twrNormal, twrValid, twrDeleted))
 
         // --- Action ---
-        MarkdownReporter.log("Action : Observation des transactions du mois d'Août.")
-        val results = repository.observeTransactionsBetween(0, Long.MAX_VALUE).first()
+        MarkdownReporter.log("2. Action : On appelle observeTransactionsBetween().")
+        val results = try {
+            repository.observeTransactionsBetween(0, Long.MAX_VALUE).first()
+        } catch (e: Exception) {
+            MarkdownReporter.log("ERREUR : ${e.message}")
+            throw e
+        }
 
         // --- Vérifications ---
-        assertTrue(
-            "La liste doit être vide car l'unique occurrence est marquée 'deleted'",
-            results.isEmpty()
-        )
-        MarkdownReporter.log("Vérification : [OK] La liste retournée est vide. Le masquage est opérationnel.")
-        MarkdownReporter.log("**Résultat final : Succès.**")
+        MarkdownReporter.log("3. Vérifications :")
+        
+        val containsDeleted = results.any { it.transaction.id == 500L }
+        val containsNormal = results.any { it.transaction.id == 700L }
+        val containsValidEx = results.any { it.transaction.id == 501L }
+
+        assertFalse("L'occurrence ID 500 (deleted=true) NE DOIT PAS être présente", containsDeleted)
+        if (!containsDeleted) MarkdownReporter.log("   - [OK] La transaction supprimée a bien été filtrée.")
+        
+        assertTrue("La transaction normale ID 700 DOIT être présente", containsNormal)
+        if (containsNormal) MarkdownReporter.log("   - [OK] La transaction normale est toujours visible.")
+        
+        assertTrue("L'exception valide ID 501 DOIT être présente", containsValidEx)
+        if (containsValidEx) MarkdownReporter.log("   - [OK] L'exception non-supprimée est toujours visible.")
+
+        assertEquals("On doit avoir exactement 2 transactions au final", 2, results.size)
+        MarkdownReporter.log("**Résultat final : Succès. Le filtrage est sélectif et précis.**")
     }
 
     /**
