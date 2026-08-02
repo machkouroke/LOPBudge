@@ -6,7 +6,6 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
-import com.lop.budget.domain.recurrence.RecurrenceEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -42,7 +42,26 @@ class TransactionDetailViewModel @Inject constructor(
     private val txFlow = txId.filterNotNull().flatMapLatest { repo.observeTransaction(it) }
 
     val uiState: StateFlow<DetailUiState> =
-        combine(txFlow, repo.observeCategories(), repo.observeAccounts(), updating) { tx, categories, accounts, isBusy ->
+        combine(
+            txFlow,
+            repo.observeCategories(),
+            repo.observeAccounts(),
+            updating,
+            txId.filterNotNull().flatMapLatest { id ->
+                repo.observeTransaction(id).flatMapLatest { tx ->
+                    val seriesId = tx?.transaction?.seriesId
+                    if (seriesId != null) {
+                        val startTime = tx.transaction.date + 1
+                        val endTime = startTime + (5L * 365 * 24 * 60 * 60 * 1000) // + 5 ans
+                        repo.observeTransactionsBetween(startTime, endTime).map { list ->
+                            list.filter { it.transaction.seriesId == seriesId }.take(6)
+                        }
+                    } else {
+                        kotlinx.coroutines.flow.flowOf(emptyList())
+                    }
+                }
+            }
+        ) { tx, categories, accounts, isBusy, upcoming ->
             if (tx == null) {
                 return@combine DetailUiState(
                     availableCategories = categories,
@@ -52,19 +71,9 @@ class TransactionDetailViewModel @Inject constructor(
                 )
             }
 
-            val seriesId = tx.transaction.seriesId?.toLongOrNull()
-            val series = if (seriesId != null) repo.getSeriesById(seriesId) else null
-            val upcoming = series?.let {
-                RecurrenceEngine.upcomingDates(
-                    series = it,
-                    fromMillis = tx.transaction.date,
-                    limit = 6
-                )
-            } ?: emptyList()
-
             DetailUiState(
                 transaction = tx,
-                upcomingDates = upcoming,
+                upcomingDates = upcoming.map { it.transaction.date },
                 availableCategories = categories.filter { it.type == tx.transaction.type },
                 availableAccounts = accounts,
                 isLoaded = true,
