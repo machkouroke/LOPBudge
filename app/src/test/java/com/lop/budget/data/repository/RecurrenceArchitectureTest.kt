@@ -378,41 +378,57 @@ class RecurrenceArchitectureTest {
         }
 
     /**
-     * TC_REC_05 : Gestion de maxOccurrences.
+     * TC_REC_05 : Gestion de maxOccurrences avec vérification des frontières.
      * D'après le ticket : "Une série avec maxOccurrences ne génère pas plus d’occurrences que la limite définie."
+     * On vérifie que les occurrences sont présentes dans la limite, mais absentes avant le début et après la limite.
      */
     @Test
-    fun `TC_REC_05 - should stop generating after maxOccurrences is reached`() = runBlocking {
-        MarkdownReporter.log("TC_REC_06 : Respect de la limite maxOccurrences")
+    fun `TC_REC_05 - should generate exactly maxOccurrences and respect temporal boundaries`() =
+        runBlocking {
+            MarkdownReporter.log("TC_REC_05 : Test exhaustif de maxOccurrences et frontières")
 
-        val series = RecurringSeriesEntity(
-            id = 105L,
-            title = "Abonnement 2 mois",
-            amount = 10.0,
-            type = TransactionType.EXPENSE,
-            categoryId = 1,
-            accountId = 1,
-            frequency = RecurrenceFrequency.MONTHLY,
-            interval = 1,
-            startDate = LocalDate.of(2026, 1, 1)
-                .atStartOfDay(zone).toInstant().toEpochMilli(),
-            maxOccurrences = 2, // Janvier et Février uniquement
-            status = "ACTIVE"
-        )
+            val series = RecurringSeriesEntity(
+                id = 105L,
+                title = "Abonnement 2 mois",
+                amount = 10.0,
+                type = TransactionType.EXPENSE,
+                categoryId = 1,
+                accountId = 1,
+                frequency = RecurrenceFrequency.MONTHLY,
+                interval = 1,
+                startDate = LocalDate.of(2026, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli(),
+                maxOccurrences = 2, // Janvier et Février uniquement
+                status = "ACTIVE"
+            )
 
-        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
-        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
+            coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
+            coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
 
-        // On demande Juillet
-        MarkdownReporter.log("Action : Demande de Juillet 2026 pour une série limitée à 2 occurrences (Janvier/Février)")
-        val results = repository.observeTransactionsBetween(julyStart, julyEnd).first()
+            // 1. Vérifier AVANT le début (Décembre 2025)
+            val octStart = LocalDate.of(2025, 10, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val decEnd = LocalDate.of(2025, 12, 31).atTime(23, 59, 59).atZone(zone).toInstant()
+                .toEpochMilli()
+            val txsBefore = repository.observeTransactionsBetween(octStart, decEnd).first()
+            MarkdownReporter.log("Action 1 : Demande de Décembre 2025 (Avant startDate). Obtenu : ${txsBefore.size}")
+            assertTrue("Ne doit rien générer avant startDate", txsBefore.isEmpty())
 
-        MarkdownReporter.log("Vérification : 0 occurrence attendue en Juillet. Obtenu : ${results.size}")
-        assertTrue(
-            "La série a généré trop d'occurrences par rapport au maxOccurrences",
-            results.isEmpty()
-        )
-    }
+            // 2. Vérifier PENDANT la limite (Janvier à Février 2026)
+            val janStart = LocalDate.of(2026, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val febEnd =
+                LocalDate.of(2026, 2, 28).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+            val txsDuring = repository.observeTransactionsBetween(janStart, febEnd).first()
+            MarkdownReporter.log("Action 2 : Demande de Janvier à Février 2026 (Limite maxOccurrences). Obtenu : ${txsDuring.size}")
+            assertEquals("Doit générer exactement 2 occurrences", 2, txsDuring.size)
+
+            // 3. Vérifier APRÈS la limite (Mars 2026)
+            val marchStart = LocalDate.of(2026, 3, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val txsAfter = repository.observeTransactionsBetween(marchStart, julyEnd).first()
+            MarkdownReporter.log("Action 3 : Demande de Mars 2026 (Après maxOccurrences). Obtenu : ${txsAfter.size}")
+            assertTrue(
+                "Ne doit rien générer après la n-ième occurrence (maxOccurrences)",
+                txsAfter.isEmpty()
+            )
+        }
 
     @Test
     fun z_generateReport() {
