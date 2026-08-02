@@ -54,7 +54,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
-import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.CategoryBottomSheet
@@ -64,7 +63,6 @@ import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import com.lop.budget.ui.components.RecurringDeleteSheet
-import com.lop.budget.ui.components.RecurringEditSheet
 import com.lop.budget.ui.components.SwipeDownDismissWrapper
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.LopTheme
