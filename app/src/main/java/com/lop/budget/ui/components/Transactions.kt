@@ -1,6 +1,17 @@
 package com.lop.budget.ui.components
 
-import androidx.compose.foundation.layout.*
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -13,16 +24,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.common.TransactionActionViewModel
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
@@ -31,8 +45,7 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 /**
- * Extension pour LazyListScope permettant d'afficher des groupes de transactions par jour
- * avec support du swipe et du marquage payé/non payé.
+ * Extension pour LazyListScope permettant d'afficher des groupes de transactions par jour.
  */
 fun LazyListScope.transactionDayGroups(
     dayGroups: List<DayGroup>,
@@ -40,9 +53,6 @@ fun LazyListScope.transactionDayGroups(
     txVersions: Map<Long, Int>,
     onOpenTransaction: (Long) -> Unit,
     onMaterializeAndOpen: (Long, Long) -> Unit,
-    onTogglePaid: (TransactionWithRelations) -> Unit,
-    onDeleteRequest: (TransactionWithRelations) -> Unit,
-    onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
     hazeState: HazeState? = null
 ) {
     dayGroups.forEach { day ->
@@ -72,11 +82,8 @@ fun LazyListScope.transactionDayGroups(
             key = { tx ->
                 val id = tx.transaction.id
                 if (id < 0L) {
-                    // Unique stable key for virtual transactions without heavy string concat
                     "v_${tx.transaction.seriesId}_${tx.transaction.seriesDate}"
                 } else {
-                    // For real transactions, use Long ID if versions are not changing often
-                    // If versions are needed for Undo, concat is necessary but we can use a simpler format
                     if (txVersions.isEmpty()) id else "${id}_${txVersions[id] ?: 0}"
                 }
             },
@@ -88,9 +95,6 @@ fun LazyListScope.transactionDayGroups(
                     currency = currency,
                     onOpenTransaction = onOpenTransaction,
                     onMaterializeAndOpen = onMaterializeAndOpen,
-                    onTogglePaid = onTogglePaid,
-                    onDeleteRequest = onDeleteRequest,
-                    onPreviewTransaction = onPreviewTransaction,
                     hazeState = hazeState
                 )
             }
@@ -104,10 +108,8 @@ fun TransactionRow(
     currency: String,
     onOpenTransaction: (Long) -> Unit,
     onMaterializeAndOpen: (Long, Long) -> Unit,
-    onTogglePaid: (TransactionWithRelations) -> Unit,
-    onDeleteRequest: (TransactionWithRelations) -> Unit,
-    onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
-    hazeState: HazeState? = null
+    hazeState: HazeState? = null,
+    actionVm: TransactionActionViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
 ) {
     val ext = LopTheme.extended
     val isIncome = tx.transaction.type == TransactionType.INCOME
@@ -119,10 +121,10 @@ fun TransactionRow(
     SwipeableTransactionRow(
         isPaid = isPaid,
         enabled = !isAdjustment,
-        onTogglePaid = { if (!isAdjustment) onTogglePaid(tx) },
+        onTogglePaid = { if (!isAdjustment) actionVm.togglePaid(tx) },
         onDelete = {
             if (!isAdjustment) {
-                onDeleteRequest(tx)
+                actionVm.requestDelete(tx)
             }
         }
     ) {
@@ -141,7 +143,7 @@ fun TransactionRow(
                             }
                         }
                     },
-                    onLongClick = { if (!isAdjustment) onPreviewTransaction(tx, currency) }
+                    onLongClick = { if (!isAdjustment) actionVm.showPreview(tx, currency) }
                 )
                 .graphicsLayer {
                     alpha = if (isPaid && !isAdjustment) 0.5f else 1f

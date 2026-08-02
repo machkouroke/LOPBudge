@@ -1,5 +1,6 @@
 package com.lop.budget.ui.screens.search
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -31,16 +33,15 @@ import com.lop.budget.ui.components.transactionDayGroups
 import com.lop.budget.util.Format
 import dev.chrisbanes.haze.HazeState
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     onBack: () -> Unit,
     onOpenTransaction: (Long) -> Unit,
-    onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
     snackbarHostState: SnackbarHostState,
     hazeState: HazeState? = null,
     vm: SearchViewModel = hiltViewModel(),
-    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(androidx.compose.ui.platform.LocalContext.current as androidx.activity.ComponentActivity)
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
@@ -71,9 +72,6 @@ fun SearchScreen(
     var showAccountPicker by remember { mutableStateOf(false) }
     var showCategoryPicker by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
-
-    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
-    val undoMsg = stringResource(R.string.undo)
 
     LopScreenScaffold(
         title = "Rechercher",
@@ -164,23 +162,13 @@ fun SearchScreen(
             }
         } else {
             transactionDayGroups(
-            dayGroups = filteredDayGroups,
-            currency = state.currency,
-            txVersions = txVersions,
-            onOpenTransaction = onOpenTransaction,
-            onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
-            onTogglePaid = actionVm::togglePaid,
-            onDeleteRequest = { twr ->
-                if (twr.transaction.seriesId != null) {
-                    // Pour simplifier ici (pas de sheet encore), on déclenche direct
-                    actionVm.deleteWithUndo(twr, snackbarHostState, txDeletedMsg, undoMsg)
-                } else {
-                    actionVm.deleteWithUndo(twr, snackbarHostState, txDeletedMsg, undoMsg)
-                }
-            },
-            onPreviewTransaction = { tx, cur -> onPreviewTransaction(tx, cur) },
-            hazeState = hazeState
-        )
+                dayGroups = filteredDayGroups,
+                currency = state.currency,
+                txVersions = txVersions,
+                onOpenTransaction = onOpenTransaction,
+                onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
+                hazeState = hazeState
+            )
         }
     }
 
@@ -251,4 +239,3 @@ fun AccountList(
         }
     }
 }
-

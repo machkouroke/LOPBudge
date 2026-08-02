@@ -1,10 +1,10 @@
 package com.lop.budget.ui.screens.home
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,7 +40,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,7 +58,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.lop.budget.R
-import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionType
@@ -67,8 +65,6 @@ import com.lop.budget.ui.components.BalanceDashboardWidget
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.MonthPickerBottomSheet
-import com.lop.budget.ui.components.RecurringDeleteChoice
-import com.lop.budget.ui.components.RecurringDeleteSheet
 import com.lop.budget.ui.components.TransactionsDashboardWidget
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.navigation.Routes
@@ -85,14 +81,12 @@ fun HomeScreen(
     onOpenTransaction: (Long) -> Unit,
     onOpenAi: () -> Unit,
     onOpenMonthly: (TransactionType, YearMonth) -> Unit,
-    onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
     navController: NavController,
     hazeState: HazeState? = null,
     vm: HomeViewModel = hiltViewModel(),
     actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(LocalContext.current as androidx.activity.ComponentActivity)
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val actionState by actionVm.txVersions.collectAsStateWithLifecycle()
     val pendingDeletes by actionVm.pendingDeletes.collectAsStateWithLifecycle()
     val pendingSeriesDeletes by actionVm.pendingSeriesDeletes.collectAsStateWithLifecycle()
     val pendingSeriesDates by actionVm.pendingSeriesFromDates.collectAsStateWithLifecycle()
@@ -125,7 +119,6 @@ fun HomeScreen(
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     var isMonthPickerOpen by remember { mutableStateOf(false) }
-    var showDeleteConfirmForTx by remember { mutableStateOf<TransactionWithRelations?>(null) }
 
     if (isMonthPickerOpen) {
         MonthPickerBottomSheet(
@@ -161,8 +154,6 @@ fun HomeScreen(
             onOpenMonthly = onOpenMonthly,
             onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
             onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },
-            onDeleteRequest = { showDeleteConfirmForTx = it },
-            onPreviewTransaction = onPreviewTransaction,
             onPrevMonth = { vm.prevMonth() },
             onNextMonth = { vm.nextMonth() },
             snackbarHostState = snackbarHostState,
@@ -183,44 +174,6 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)
         )
     }
-
-    if (showDeleteConfirmForTx != null) {
-        val toDelete = showDeleteConfirmForTx!!
-        val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
-        val undoMsg = stringResource(R.string.undo)
-        
-        if (toDelete.transaction.seriesId != null) {
-            RecurringDeleteSheet(
-                onDismiss = { showDeleteConfirmForTx = null },
-                showFutureOnly = true,
-                onChoose = { choice ->
-                    showDeleteConfirmForTx = null
-                    when (choice) {
-                        RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                            actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
-                        }
-                        RecurringDeleteChoice.FUTURE_ONLY -> {
-                            toDelete.transaction.seriesId?.let { 
-                                actionVm.deleteSeriesWithUndo(it, SeriesDeletionMode.FUTURE, toDelete.transaction.date, snackbarHostState, txDeletedMsg, undoMsg) 
-                            }
-                        }
-                        RecurringDeleteChoice.ALL_SERIES -> {
-                            toDelete.transaction.seriesId?.let { 
-                                actionVm.deleteSeriesWithUndo(it, SeriesDeletionMode.ALL, null, snackbarHostState, txDeletedMsg, undoMsg)
-                            }
-                        }
-                    }
-                }
-            )
-        } else {
-            // Pour les transactions simples, on déclenche directement le delete avec Undo (Snackbar)
-            // L'utilisateur a déjà swipé, le Undo est suffisant et plus fluide.
-            SideEffect {
-                actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
-                showDeleteConfirmForTx = null
-            }
-        }
-    }
 }
 
 @Composable
@@ -231,8 +184,6 @@ fun HomeContent(
     onOpenMonthly: (TransactionType, YearMonth) -> Unit,
     onOpenAccounts: () -> Unit,
     onOpenAccountDetail: (Long) -> Unit,
-    onDeleteRequest: (TransactionWithRelations) -> Unit,
-    onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
     onPrevMonth: () -> Unit,
     onNextMonth: () -> Unit,
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
@@ -241,9 +192,6 @@ fun HomeContent(
     actionVm: com.lop.budget.ui.common.TransactionActionViewModel
 ) {
     val listState = rememberLazyListState()
-
-    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
-    val undoMsg = stringResource(R.string.undo)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().testTag("home_lazy_column"),
@@ -410,7 +358,6 @@ fun HomeContent(
                 TransactionsDashboardWidget(
                     transactions = state.dashboardTransactions,
                     currency = state.currency,
-                    txVersions = txVersions,
                     onSeeAll = { onOpenMonthly(TransactionType.EXPENSE, targetMonth) },
                     onOpenTransaction = onOpenTransaction,
                     onMaterializeAndOpen = { sid, date ->
@@ -420,17 +367,8 @@ fun HomeContent(
                             onOpenTransaction
                         )
                     },
-                    onTogglePaid = actionVm::togglePaid,
-                    onDeleteRequest = onDeleteRequest,
-                    onPreviewTransaction = onPreviewTransaction,
                     hazeState = hazeState
                 )
-            }
-        }
-
-        if (state.dashboardTransactions.isEmpty() && state.dayGroups.isEmpty()) {
-            item(contentType = "empty_state") {
-                // Widget handles empty state internally now
             }
         }
     }

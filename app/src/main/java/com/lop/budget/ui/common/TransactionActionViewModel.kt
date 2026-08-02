@@ -31,6 +31,34 @@ class TransactionActionViewModel @Inject constructor(
     private val _pendingSeriesFromDates = MutableStateFlow<Map<String, Long>>(emptyMap())
     val pendingSeriesFromDates = _pendingSeriesFromDates.asStateFlow()
 
+    // Delete request state for showing recurring sheet globally
+    private val _deleteRequest = MutableStateFlow<TransactionWithRelations?>(null)
+    val deleteRequest = _deleteRequest.asStateFlow()
+
+    fun requestDelete(tx: TransactionWithRelations) {
+        _deleteRequest.value = tx
+    }
+
+    fun dismissDeleteRequest() {
+        _deleteRequest.value = null
+    }
+
+    // Preview state for showing the preview popup globally
+    private val _previewTx = MutableStateFlow<TransactionWithRelations?>(null)
+    val previewTx = _previewTx.asStateFlow()
+
+    private val _previewCurrency = MutableStateFlow("EUR")
+    val previewCurrency = _previewCurrency.asStateFlow()
+
+    fun showPreview(tx: TransactionWithRelations, currency: String) {
+        _previewTx.value = tx
+        _previewCurrency.value = currency
+    }
+
+    fun dismissPreview() {
+        _previewTx.value = null
+    }
+
     /**
      * Change le statut payé/planifié. Matérialise si virtuel.
      */

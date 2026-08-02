@@ -6,8 +6,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -28,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,8 +42,12 @@ import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.ui.components.*
-import com.lop.budget.ui.screens.search.AccountList
+import com.lop.budget.ui.components.CategoryBottomSheet
+import com.lop.budget.ui.components.LopScreenScaffold
+import com.lop.budget.ui.components.LopSearchBar
+import com.lop.budget.ui.components.RecurringDeleteChoice
+import com.lop.budget.ui.components.RecurringDeleteSheet
+import com.lop.budget.ui.components.transactionDayGroups
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import dev.chrisbanes.haze.HazeState
@@ -50,7 +59,6 @@ import java.util.Locale
 fun MonthlyTransactionsScreen(
     onBack: () -> Unit,
     onOpenTransaction: (Long) -> Unit,
-    onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
     onNavigateToSearch: (String) -> Unit, // Callback to navigate to global search
     snackbarHostState: SnackbarHostState,
     hazeState: HazeState? = null,
@@ -62,16 +70,14 @@ fun MonthlyTransactionsScreen(
     val pendingDeletes by actionVm.pendingDeletes.collectAsStateWithLifecycle()
     val pendingSeriesDeletes by actionVm.pendingSeriesDeletes.collectAsStateWithLifecycle()
     val pendingSeriesDates by actionVm.pendingSeriesFromDates.collectAsStateWithLifecycle()
-    val ext = LopTheme.extended
+    val deleteRequest by actionVm.deleteRequest.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showAccountPicker by remember { mutableStateOf(false) }
     var showCategoryPicker by remember { mutableStateOf(false) }
 
     val title = stringResource(R.string.monthly_transactions_title)
-    val accent = if (state.type == TransactionType.EXPENSE) ext.expense else if (state.type == TransactionType.INCOME) ext.income else MaterialTheme.colorScheme.primary
-
-    var showDeleteConfirmForTx by remember { mutableStateOf<TransactionWithRelations?>(null) }
+    
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
     val undoMsg = stringResource(R.string.undo)
 
@@ -83,8 +89,8 @@ fun MonthlyTransactionsScreen(
                 val seriesId = tx.seriesId
                 val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
                 val isSeriesPending = when (seriesPendingMode) {
-                    com.lop.budget.domain.model.SeriesDeletionMode.ALL -> true
-                    com.lop.budget.domain.model.SeriesDeletionMode.FUTURE -> {
+                    SeriesDeletionMode.ALL -> true
+                    SeriesDeletionMode.FUTURE -> {
                         val fromDate = pendingSeriesDates[seriesId]
                         fromDate != null && tx.date >= fromDate
                     }
@@ -248,9 +254,6 @@ fun MonthlyTransactionsScreen(
             txVersions = txVersions,
             onOpenTransaction = onOpenTransaction,
             onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
-            onTogglePaid = actionVm::togglePaid,
-            onDeleteRequest = { showDeleteConfirmForTx = it },
-            onPreviewTransaction = onPreviewTransaction,
             hazeState = hazeState
         )
 
@@ -291,14 +294,14 @@ fun MonthlyTransactionsScreen(
         )
     }
 
-    if (showDeleteConfirmForTx != null) {
-        val toDelete = showDeleteConfirmForTx!!
+    if (deleteRequest != null) {
+        val toDelete = deleteRequest!!
         if (toDelete.transaction.seriesId != null) {
             RecurringDeleteSheet(
-                onDismiss = { showDeleteConfirmForTx = null },
+                onDismiss = { actionVm.dismissDeleteRequest() },
                 showFutureOnly = true,
                 onChoose = { choice ->
-                    showDeleteConfirmForTx = null
+                    actionVm.dismissDeleteRequest()
                     when (choice) {
                         RecurringDeleteChoice.THIS_OCCURRENCE -> {
                             actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
@@ -317,9 +320,9 @@ fun MonthlyTransactionsScreen(
                 }
             )
         } else {
-            SideEffect {
+            androidx.compose.runtime.SideEffect {
                 actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
-                showDeleteConfirmForTx = null
+                actionVm.dismissDeleteRequest()
             }
         }
     }
@@ -385,7 +388,7 @@ private fun InsightToggle(
     onClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.clickableNoRipple(onClick),
+        modifier = Modifier.clickable { onClick() },
         shape = MaterialTheme.shapes.small,
         color = if (selected) accent.copy(alpha = 0.1f) else Color.Transparent,
         border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.3f)) else null
@@ -397,5 +400,31 @@ private fun InsightToggle(
             color = if (selected) accent else MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
         )
+    }
+}
+
+@Composable
+fun AccountList(
+    accounts: List<com.lop.budget.data.local.entity.AccountEntity>,
+    selectedId: Long?,
+    onSelect: (Long) -> Unit
+) {
+    LazyColumn(Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
+        item { Text("Sélectionner un compte", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge) }
+        items(accounts) { acc ->
+            ListItem(
+                headlineContent = { Text(acc.name) },
+                leadingContent = { 
+                    com.lop.budget.ui.components.CircleIcon(
+                        icon = com.lop.budget.util.IconMapper.get(acc.icon),
+                        tint = Color(acc.colorArgb),
+                        background = Color(acc.colorArgb).copy(alpha = 0.1f),
+                        size = 32.dp
+                    ) 
+                },
+                modifier = Modifier.clickable { onSelect(acc.id) },
+                trailingContent = { if (acc.id == selectedId) Icon(Icons.Default.Check, null) }
+            )
+        }
     }
 }

@@ -18,13 +18,10 @@ import dev.chrisbanes.haze.HazeState
 fun TransactionsDashboardWidget(
     transactions: List<TransactionWithRelations>,
     currency: String,
-    txVersions: Map<Long, Int>,
     onSeeAll: () -> Unit,
     onOpenTransaction: (Long) -> Unit,
     onMaterializeAndOpen: (Long, Long) -> Unit,
-    onTogglePaid: (TransactionWithRelations) -> Unit,
-    onDeleteRequest: (TransactionWithRelations) -> Unit,
-    onPreviewTransaction: (TransactionWithRelations, String) -> Unit,
+
     hazeState: HazeState? = null,
     modifier: Modifier = Modifier
 ) {
@@ -79,9 +76,7 @@ fun TransactionsDashboardWidget(
                             currency = currency,
                             onOpenTransaction = onOpenTransaction,
                             onMaterializeAndOpen = onMaterializeAndOpen,
-                            onTogglePaid = onTogglePaid,
-                            onDeleteRequest = onDeleteRequest,
-                            onPreviewTransaction = onPreviewTransaction,
+
                             hazeState = hazeState
                         )
                     }

@@ -1,41 +1,27 @@
 package com.lop.budget.ui.screens.accounts
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -50,11 +36,10 @@ fun AccountDetailScreen(
     onBack: () -> Unit,
     onEdit: (Long) -> Unit,
     onOpenTransaction: (Long) -> Unit,
-    onPreviewTransaction: (com.lop.budget.data.local.entity.TransactionWithRelations, String) -> Unit,
     snackbarHostState: SnackbarHostState,
     hazeState: HazeState? = null,
     vm: AccountDetailViewModel = hiltViewModel(),
-    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(androidx.compose.ui.platform.LocalContext.current as androidx.activity.ComponentActivity)
+    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
@@ -70,8 +55,8 @@ fun AccountDetailScreen(
             val seriesId = tx.seriesId
             val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
             val isSeriesPending = when (seriesPendingMode) {
-                com.lop.budget.domain.model.SeriesDeletionMode.ALL -> true
-                com.lop.budget.domain.model.SeriesDeletionMode.FUTURE -> {
+                SeriesDeletionMode.ALL -> true
+                SeriesDeletionMode.FUTURE -> {
                     val fromDate = pendingSeriesDates[seriesId]
                     fromDate != null && tx.date >= fromDate
                 }
@@ -88,8 +73,8 @@ fun AccountDetailScreen(
             val seriesId = tx.seriesId
             val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
             val isSeriesPending = when (seriesPendingMode) {
-                com.lop.budget.domain.model.SeriesDeletionMode.ALL -> true
-                com.lop.budget.domain.model.SeriesDeletionMode.FUTURE -> {
+                SeriesDeletionMode.ALL -> true
+                SeriesDeletionMode.FUTURE -> {
                     val fromDate = pendingSeriesDates[seriesId]
                     fromDate != null && tx.date >= fromDate
                 }
@@ -98,9 +83,6 @@ fun AccountDetailScreen(
             !isSinglePending && !isSeriesPending
         }
     }
-    
-    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
-    val undoMsg = stringResource(R.string.undo)
 
     LopScreenScaffold(
         title = "Compte",
@@ -161,16 +143,6 @@ fun AccountDetailScreen(
                         currency = state.currency,
                         onOpenTransaction = onOpenTransaction,
                         onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
-                        onTogglePaid = actionVm::togglePaid,
-                        onDeleteRequest = { twrToDelete ->
-                            if (twrToDelete.transaction.seriesId != null) {
-                                // For now, we don't have the sheet here, so let's just do single delete
-                                actionVm.deleteWithUndo(twrToDelete, snackbarHostState, txDeletedMsg, undoMsg)
-                            } else {
-                                actionVm.deleteWithUndo(twrToDelete, snackbarHostState, txDeletedMsg, undoMsg)
-                            }
-                        },
-                        onPreviewTransaction = { tx, cur -> onPreviewTransaction(tx, cur) },
                         hazeState = hazeState
                     )
                 }
@@ -184,15 +156,6 @@ fun AccountDetailScreen(
                         currency = state.currency,
                         onOpenTransaction = onOpenTransaction,
                         onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
-                        onTogglePaid = actionVm::togglePaid,
-                        onDeleteRequest = { twrToDelete ->
-                            if (twrToDelete.transaction.seriesId != null) {
-                                actionVm.deleteWithUndo(twrToDelete, snackbarHostState, txDeletedMsg, undoMsg)
-                            } else {
-                                actionVm.deleteWithUndo(twrToDelete, snackbarHostState, txDeletedMsg, undoMsg)
-                            }
-                        },
-                        onPreviewTransaction = { tx, cur -> onPreviewTransaction(tx, cur) },
                         hazeState = hazeState
                     )
                 }
@@ -229,13 +192,11 @@ fun AccountDetailScreen(
 }
 
 @Composable
-fun SectionHeader(title: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        TextButton(onClick = { /* Show all */ }) { Text("Tout montrer >") }
-    }
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(vertical = 12.dp)
+    )
 }
