@@ -22,8 +22,9 @@ class MarkdownReporter : TestWatcher() {
             val name: String, 
             val status: String, 
             val logs: List<String>,
-            val error: String? = null
-        )
+                val error: String? = null,
+                val stackTrace: String? = null
+            )
 
         fun log(message: String) {
             val timestamp = SimpleDateFormat("HH:mm:ss.SSS").format(Date())
@@ -51,7 +52,24 @@ class MarkdownReporter : TestWatcher() {
 
     override fun failed(e: Throwable, description: Description) {
         log("ERREUR : ${e.message}")
-        results.add(TestResult(description.methodName, "❌ ÉCHEC", currentLogs.toList(), e.message?.take(200)))
+        
+        // Extraire la ligne du stacktrace
+        val stackTraceElement = e.stackTrace.firstOrNull()
+        val lineInfo = if (stackTraceElement != null) {
+            "${stackTraceElement.fileName}:${stackTraceElement.lineNumber} (${stackTraceElement.methodName})"
+        } else {
+            "Ligne inconnue"
+        }
+        
+        log("Localisation : $lineInfo")
+        
+        results.add(TestResult(
+            description.methodName, 
+            "❌ ÉCHEC", 
+            currentLogs.toList(), 
+            e.message?.take(200),
+            lineInfo
+        ))
     }
 
     /**
@@ -88,7 +106,12 @@ class MarkdownReporter : TestWatcher() {
             content.append("### `${res.name}` - ${res.status}\n")
             if (res.error != null) {
                 content.append("> [!CAUTION]\n")
-                content.append("> **Erreur** : ${res.error}\n\n")
+                content.append("> **Erreur** : ${res.error}\n")
+                if (res.stackTrace != null) {
+                    content.append("> **Ligne** : `${res.stackTrace}`\n\n")
+                } else {
+                    content.append("\n")
+                }
             }
             
             content.append("#### 📝 Logs du test\n")
