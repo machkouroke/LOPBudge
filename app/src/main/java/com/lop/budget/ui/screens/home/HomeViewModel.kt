@@ -9,7 +9,6 @@ import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.DayGroup
-import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,7 +22,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -88,100 +86,6 @@ class HomeViewModel @Inject constructor(
     fun nextMonth() { month.value = month.value.plusMonths(1) }
     fun prevMonth() { month.value = month.value.minusMonths(1) }
 
-    /**
-     * Retourne un Flow de données pour un mois spécifique.
-     * Optimisé avec distinctUntilChanged pour éviter des recompositions inutiles du Pager.
-     */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    fun observeMonthState(
-        ym: YearMonth,
-        pending: Set<Long>,
-        pendingSeries: Map<String, SeriesDeletionMode>,
-        pendingSeriesDates: Map<String, Long>,
-        versions: Map<Long, Int>
-    ): kotlinx.coroutines.flow.Flow<HomeUiState> {
-        val (start, end) = ym.range()
-        val (prevStart, prevEnd) = ym.minusMonths(1).range()
-
-        return combine(
-            repo.observeTransactionsBetween(start, end).distinctUntilChanged(),
-            repo.observeTransactionsBetween(prevStart, prevEnd).distinctUntilChanged(),
-            settings.currency.distinctUntilChanged(),
-            repo.observeAccounts().distinctUntilChanged(),
-            repo.observeAccountBalances().distinctUntilChanged()
-        ) { args ->
-            @Suppress("UNCHECKED_CAST")
-            val txsBetween = args[0] as List<TransactionWithRelations>
-            @Suppress("UNCHECKED_CAST")
-            val prevTxsBetween = args[1] as List<TransactionWithRelations>
-            val currency = args[2] as String
-            @Suppress("UNCHECKED_CAST")
-            val allAccounts = args[3] as List<AccountEntity>
-            @Suppress("UNCHECKED_CAST")
-            val balances = args[4] as Map<Long, Double>
-            
-            // Même logique de filtrage que l'UI State principal
-            val txs = txsBetween.filter { twr ->
-                val tx = twr.transaction
-                val isSinglePending = tx.id in pending
-                val seriesId = tx.seriesId
-                val seriesPendingMode = if (seriesId != null) pendingSeries[seriesId] else null
-                val isSeriesPending = when (seriesPendingMode) {
-                    SeriesDeletionMode.ALL -> true
-                    SeriesDeletionMode.FUTURE -> {
-                        val fromDate = pendingSeriesDates[seriesId]
-                        fromDate != null && tx.date >= fromDate
-                    }
-                    null -> false
-                }
-                !isSinglePending && !isSeriesPending
-            }
-
-            val income = txs.filter { it.transaction.type == TransactionType.INCOME }.sumOf { it.transaction.amount }
-            val expense = txs.filter { it.transaction.type == TransactionType.EXPENSE }.sumOf { it.transaction.amount }
-            val prevExpense = prevTxsBetween.filter { it.transaction.type == TransactionType.EXPENSE }.sumOf { it.transaction.amount }
-
-            val plannedExpense = txs
-                .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.type == TransactionType.EXPENSE }
-                .sumOf { it.transaction.amount }
-            val projected = income - expense - plannedExpense
-
-            val zone = ZoneId.systemDefault()
-            val dayGroups = txs
-                .sortedByDescending { it.transaction.date }
-                .groupBy { Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate() }
-                .toSortedMap(compareByDescending { it })
-                .map { (date, list) ->
-                    DayGroup(
-                        date = date,
-                        total = list.sumOf { tx -> if (tx.transaction.type == TransactionType.INCOME) tx.transaction.amount else -tx.transaction.amount },
-                        transactions = list.sortedByDescending { it.transaction.date },
-                    )
-                }
-            
-            val accountBalances = allAccounts.map { acc ->
-                AccountBalance(acc, balances[acc.id] ?: acc.initialBalance)
-            }
-
-            val dashboardTxs = getDashboardTransactions(txs)
-
-            HomeUiState(
-                month = ym,
-                isCurrentMonth = ym == YearMonth.now(),
-                currency = currency,
-                monthIncome = income,
-                monthExpense = expense,
-                previousPeriodExpense = prevExpense,
-                projectedBalance = projected,
-                dayGroups = dayGroups,
-                dashboardTransactions = dashboardTxs,
-                accounts = accountBalances.sortedByDescending { it.balance }.take(3),
-                txVersions = emptyMap(), // On délègue au SharedViewModel dans le Screen
-                // On omet les données globales comme detectedCount qui sont gérées par l'Overlay
-            )
-        }.flowOn(Dispatchers.Default)
-    }
-
     private fun YearMonth.range(): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()
         val start = atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -212,10 +116,6 @@ class HomeViewModel @Inject constructor(
             monthData,
             settings.currency,
             month,
-            // pendingDeletes,  <-- REMOVE
-            // pendingSeriesDeletes, <-- REMOVE
-            // pendingSeriesFromDates, <-- REMOVE
-            // txVersions, <-- REMOVE
             repo.observeAccounts(),
             repo.observeAccountBalances(),
             detectedCount,
