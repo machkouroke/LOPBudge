@@ -435,12 +435,12 @@ class RecurrenceContextualDeletionTest {
 
     /**
      * UT-06 : Supprimer avec portée "Toutes les occurrences"
+     * Valide
      */
     @Test
     fun `UT-06 - deleting ALL should cancel the whole series`() = runBlocking {
         MarkdownReporter.log("### UT-06 : Annulation complète (Portée : ALL)")
-        MarkdownReporter.log("Objectif : Vérifier l'arrêt total de la série et" +
-                " le masquage de l'historique.")
+        MarkdownReporter.log("Objectif : Vérifier que le flag isCancelled passe bien à TRUE.")
 
         val seriesId = 300L
 
@@ -450,15 +450,22 @@ class RecurrenceContextualDeletionTest {
 
         // --- Vérifications ---
         MarkdownReporter.log("Vérifications :")
-        coVerify(exactly = 1) {
-            recurringSeriesDao.updateCancelled(seriesId, true)
-            MarkdownReporter.log("   - [OK] Le flag isCancelled de la série est passé à true.")
+
+        // On capture le paramètre passé à updateCancelled pour vérifier sa valeur réelle
+        val cancelledSlot = slot<Boolean>()
+        coVerify(exactly = 1) { 
+            recurringSeriesDao.updateCancelled(seriesId, capture(cancelledSlot)) 
         }
+
+        // C'est cette assertion qui prouve que l'attendu est le bon
+        assertTrue("La série devrait être marquée comme annulée (isCancelled = true)", cancelledSlot.captured)
+        MarkdownReporter.log("   - [OK] Le flag isCancelled a bien été mis à TRUE en base de données.")
+
         coVerify(exactly = 1) {
             transactionDao.softDeleteSeries(seriesId.toString())
             MarkdownReporter.log("   - [OK] Toutes les transactions passées/futures de la série ont été marquées 'deleted'.")
         }
-        MarkdownReporter.log("**Résultat final : Succès.**")
+        MarkdownReporter.log("**Résultat final : Succès. L'état métier est correct.**")
     }
 
     /**
