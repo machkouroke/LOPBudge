@@ -439,7 +439,8 @@ class RecurrenceContextualDeletionTest {
     @Test
     fun `UT-06 - deleting ALL should cancel the whole series`() = runBlocking {
         MarkdownReporter.log("### UT-06 : Annulation complète (Portée : ALL)")
-        MarkdownReporter.log("Objectif : Vérifier l'arrêt total de la série et le masquage de l'historique.")
+        MarkdownReporter.log("Objectif : Vérifier l'arrêt total de la série et" +
+                " le masquage de l'historique.")
 
         val seriesId = 300L
 
