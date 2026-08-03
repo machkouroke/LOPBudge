@@ -496,8 +496,8 @@ class RecurrenceContextualDeletionTest {
             // Comportement fidèle : on garde la série mais on change son flag isCancelled
             val cancelledSeries = series.copy(isCancelled = true)
             
-            // On simule le filtre du DAO (observeActiveSeries ne renvoie que si isCancelled == false)
-            dbState.value = listOf(cancelledSeries).filter { !it.isCancelled }
+            // On simule l'état de la base de données après mise à jour
+            dbState.value = listOf(cancelledSeries)
         }
 
         // On définit une plage large de 2 mois

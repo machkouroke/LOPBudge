@@ -32,7 +32,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         DebtEntity::class,
         DetectedTransactionProposalEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -48,6 +48,32 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        val MIGRATION_13_14 = object : androidx.room.migration.Migration(13, 14) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // 1. RecurringSeriesEntity update: add isCancelled, remove status (if it existed)
+                // In migration 2_3, status was added. In current entity it's gone.
+                // Room migration requires the table to match the entity EXACTLY.
+                
+                // SQLite doesn't support DROP COLUMN in older versions easily, 
+                // but Room's expected schema for version 14 has isCancelled and NOT status.
+                
+                // Add isCancelled
+                db.execSQL("ALTER TABLE recurring_series ADD COLUMN isCancelled INTEGER NOT NULL DEFAULT 0")
+                
+                // To remove 'status' and match entity exactly, we must recreate the table
+                db.execSQL("CREATE TABLE IF NOT EXISTS `recurring_series_new` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `amount` REAL NOT NULL, `type` TEXT NOT NULL, `categoryId` INTEGER NOT NULL, `accountId` INTEGER NOT NULL, `subCategoryId` INTEGER, `frequency` TEXT NOT NULL, `interval` INTEGER NOT NULL, `startDate` INTEGER NOT NULL, `endDate` INTEGER, `maxOccurrences` INTEGER, `daysOfWeek` TEXT, `isCancelled` INTEGER NOT NULL, `note` TEXT, `linkedGoalId` INTEGER, `linkedDebtId` INTEGER)")
+                
+                // Copy data (ignoring status)
+                db.execSQL("""
+                    INSERT INTO recurring_series_new (id, title, amount, type, categoryId, accountId, subCategoryId, frequency, interval, startDate, endDate, maxOccurrences, daysOfWeek, isCancelled, note, linkedGoalId, linkedDebtId)
+                    SELECT id, title, amount, type, categoryId, accountId, subCategoryId, frequency, interval, startDate, endDate, maxOccurrences, daysOfWeek, isCancelled, note, linkedGoalId, linkedDebtId FROM recurring_series
+                """.trimIndent())
+                
+                db.execSQL("DROP TABLE recurring_series")
+                db.execSQL("ALTER TABLE recurring_series_new RENAME TO recurring_series")
+            }
+        }
 
         val MIGRATION_12_13 = object : androidx.room.migration.Migration(12, 13) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {

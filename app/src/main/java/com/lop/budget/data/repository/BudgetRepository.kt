@@ -150,6 +150,9 @@ class BudgetRepository @Inject constructor(
             val finalResult = allInPeriod.filter { !it.transaction.deleted }.toMutableList()
 
             for (series in seriesList) {
+                // Barrière de sécurité : on ne génère rien pour une série annulée
+                if (series.isCancelled) continue
+
                 // 1. Calculer les occurrences virtuelles de cette série qui tombent dans ce mois
                 val occurrences = generateOccurrencesForMonth(series, startLocalDate, endLocalDate, zone)
                 
@@ -432,7 +435,7 @@ class BudgetRepository @Inject constructor(
 
     suspend fun updateSeriesFrom(seriesId: Long, fromDate: Long, updatedSeries: RecurringSeriesEntity) {
         // 1. Tronquer l'ancienne série (arrête à la veille de fromDate)
-        cancelSeries(seriesId.toString(), com.lop.budget.domain.model.SeriesDeletionMode.FUTURE, fromDate)
+        cancelSeries(seriesId.toString(), SeriesDeletionMode.FUTURE, fromDate)
         
         // 2. Sauvegarder la nouvelle série (ID = 0 pour auto-générer)
         recurringSeriesDao.upsert(updatedSeries.copy(id = 0, startDate = fromDate))
