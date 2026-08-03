@@ -470,6 +470,7 @@ class RecurrenceContextualDeletionTest {
 
     /**
      * UT-07 : Recharger un mois futur après annulation de série
+     * Valide
      */
     @Test
     fun `UT-07 - no occurrences should be generated for a CANCELLED series`() = runBlocking {
@@ -526,15 +527,46 @@ class RecurrenceContextualDeletionTest {
 
     /**
      * UT-08 : Annuler la suppression (Action UI simulée)
+     * Scénario : L'utilisateur ouvre la feuille de choix mais la referme sans choisir (Dismiss).
+     * Attendu : Aucun changement dans le Repository, les données restent visibles et intactes.
      */
     @Test
     fun `UT-08 - dismissing the choice sheet should not trigger any DAO calls`() = runBlocking {
-        MarkdownReporter.log("### UT-08 : Simulation annulation UI")
-        MarkdownReporter.log("Objectif : S'assurer qu'aucune action n'est prise si l'utilisateur annule son geste.")
+        MarkdownReporter.log("### UT-08 : Simulation annulation UI (Dismiss)")
+        MarkdownReporter.log("Objectif : Prouver que l'état reste 100% identique si aucune action n'est confirmée.")
 
-        // confirmVerified s'assure qu'aucune fonction n'a été appelée sur les clones
-        confirmVerified(transactionDao, recurringSeriesDao)
-        MarkdownReporter.log("Vérification : [OK] Aucun appel DAO détecté. Intégrité de la base préservée.")
+        val seriesId = 400L
+        val occDate = LocalDate.of(2026, 8, 15).atStartOfDay(zone).toInstant().toEpochMilli()
+        val series = RecurringSeriesEntity(
+            id = seriesId, title = "Abonnement", amount = 10.0, type = TransactionType.EXPENSE,
+            categoryId = 1, accountId = 1, frequency = RecurrenceFrequency.MONTHLY,
+            interval = 1, startDate = occDate
+        )
+
+        // 1. Préparation de l'état initial
+        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
+        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
+
+        // 2. Observation de l'état AVANT (Simule l'affichage de la liste avant le clic)
+        val resultsBefore = repository.observeTransactionsBetween(0, Long.MAX_VALUE).first()
+        assertFalse("La transaction doit être visible au départ", resultsBefore.isEmpty())
+
+        // 3. Simulation du DISMISS (Action UI qui ne fait AUCUN appel au Repository)
+        MarkdownReporter.log("Action : L'utilisateur ferme la popup (Dismiss). Aucune fonction du Repo n'est appelée.")
+
+        // 4. Observation de l'état APRÈS
+        val resultsAfter = repository.observeTransactionsBetween(0, Long.MAX_VALUE).first()
+
+        // --- Vérifications ---
+        assertEquals("L'état final doit être identique à l'état initial", resultsBefore.size, resultsAfter.size)
+        MarkdownReporter.log("   - [OK] La transaction est toujours présente dans la liste.")
+
+        // On vérifie qu'AUCUNE fonction de modification n'a été appelée sur les clones
+        coVerify(exactly = 0) { transactionDao.softDelete(any()) }
+        coVerify(exactly = 0) { recurringSeriesDao.updateCancelled(any(), any()) }
+        coVerify(exactly = 0) { recurringSeriesDao.upsert(any()) }
+        
+        MarkdownReporter.log("Vérification technique : [OK] Aucun appel de modification détecté sur les DAOs. Intégrité préservée.")
         MarkdownReporter.log("**Résultat final : Succès.**")
     }
 
