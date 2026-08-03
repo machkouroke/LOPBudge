@@ -23,6 +23,7 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.TransactionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
@@ -32,6 +33,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.abs
 
 /**
  * Point d'accès unique aux données. Les ViewModels dépendent de ce repository,
@@ -47,6 +49,26 @@ class BudgetRepository @Inject constructor(
     private val goalDao: GoalDao,
     private val debtDao: DebtDao,
 ) {
+    // État local des suppressions en cours (période "Undo") pour filtrage temps réel à la source
+    private val _pendingDeletes = MutableStateFlow<Set<Long>>(emptySet())
+    private val _pendingSeriesDeletes = MutableStateFlow<Map<String, SeriesDeletionMode>>(emptyMap())
+    private val _pendingSeriesFromDates = MutableStateFlow<Map<String, Long>>(emptyMap())
+
+    fun setPendingDelete(txId: Long, isPending: Boolean) {
+        if (isPending) _pendingDeletes.value += txId
+        else _pendingDeletes.value -= txId
+    }
+
+    fun setPendingSeriesDelete(seriesId: String, mode: SeriesDeletionMode?, fromDate: Long? = null) {
+        if (mode == null) {
+            _pendingSeriesDeletes.value -= seriesId
+            _pendingSeriesFromDates.value -= seriesId
+        } else {
+            _pendingSeriesDeletes.value += (seriesId to mode)
+            if (fromDate != null) _pendingSeriesFromDates.value += (seriesId to fromDate)
+        }
+    }
+
     // Transactions
     fun observeTransactions(): Flow<List<TransactionWithRelations>> = transactionDao.observeAll()
     fun observeTransactionsByAccount(accountId: Long) = transactionDao.observeByAccount(accountId)
@@ -72,7 +94,7 @@ class BudgetRepository @Inject constructor(
         if (delta == 0.0) return
         
         val type = if (delta > 0) TransactionType.INCOME else TransactionType.EXPENSE
-        val absAmount = Math.abs(delta)
+        val absAmount = abs(delta)
         
         val adjustmentTx = TransactionEntity(
             title = "Ajustement de solde",
@@ -84,7 +106,7 @@ class BudgetRepository @Inject constructor(
             paidAt = System.currentTimeMillis(),
             accountId = accountId,
             categoryId = 0L, // Catégorie technique ou racine
-            note = "Ajustement automatique du solde"
+            note = "Ajustement automatique du solde",
         )
         
         transactionDao.upsert(adjustmentTx)
@@ -133,6 +155,7 @@ class BudgetRepository @Inject constructor(
     /**
      * Retourne toutes les transactions d'un mois : les transactions ponctuelles, les exceptions,
      * et les occurrences virtuelles générées à la volée à partir des séries actives.
+     * Intègre le filtrage en temps réel des suppressions en attente (Undo).
      */
     fun observeTransactionsBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>> {
         val allTransactionsFlow = transactionDao.observeBetween(start, end)
@@ -140,18 +163,56 @@ class BudgetRepository @Inject constructor(
         val accountsFlow = accountDao.observeAll()
         val categoriesFlow = categoryDao.observeAll()
 
-        return combine(allTransactionsFlow, seriesFlow, accountsFlow, categoriesFlow) { allInPeriod, seriesList, accounts, categories ->
+        return combine(
+            allTransactionsFlow, 
+            seriesFlow, 
+            accountsFlow, 
+            categoriesFlow,
+            _pendingDeletes,
+            _pendingSeriesDeletes,
+            _pendingSeriesFromDates
+        ) { args ->
+            @Suppress("UNCHECKED_CAST")
+            val allInPeriod = args[0] as List<TransactionWithRelations>
+            @Suppress("UNCHECKED_CAST")
+            val seriesList = args[1] as List<RecurringSeriesEntity>
+            @Suppress("UNCHECKED_CAST")
+            val accounts = args[2] as List<AccountEntity>
+            @Suppress("UNCHECKED_CAST")
+            val categories = args[3] as List<CategoryEntity>
+            @Suppress("UNCHECKED_CAST")
+            val pending = args[4] as Set<Long>
+            @Suppress("UNCHECKED_CAST")
+            val pendingSeries = args[5] as Map<String, SeriesDeletionMode>
+            @Suppress("UNCHECKED_CAST")
+            val pendingDates = args[6] as Map<String, Long>
+
             val zone = ZoneId.systemDefault()
             val startLocalDate = Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
             val endLocalDate = Instant.ofEpochMilli(end).atZone(zone).toLocalDate()
 
             // On garde les transactions réelles (non supprimées) pour l'affichage final
-            // On affiche tout (Standard + Ajustements) dans cette vue de liste chronologique
-            val finalResult = allInPeriod.filter { !it.transaction.deleted }.toMutableList()
+            // On applique le filtrage des suppressions en attente (Undo)
+            val finalResult = allInPeriod.filter { twr -> 
+                val tx = twr.transaction
+                if (tx.deleted || tx.id in pending) return@filter false
+                
+                val seriesPendingMode = if (tx.seriesId != null) pendingSeries[tx.seriesId] else null
+                val isSeriesPending = when (seriesPendingMode) {
+                    SeriesDeletionMode.ALL -> true
+                    SeriesDeletionMode.FUTURE -> {
+                        val fromDate = pendingDates[tx.seriesId]
+                        fromDate != null && tx.date >= fromDate
+                    }
+                    null -> false
+                }
+                !isSeriesPending
+            }.toMutableList()
 
             for (series in seriesList) {
-                // Barrière de sécurité : on ne génère rien pour une série annulée
-                if (series.isCancelled) continue
+                val sIdStr = series.id.toString()
+                // Barrière de sécurité : on ne génère rien pour une série annulée ou en cours de suppression ALL
+                if (series.isCancelled || pendingSeries[sIdStr] == SeriesDeletionMode.ALL) continue
 
                 // 1. Calculer les occurrences virtuelles de cette série qui tombent dans ce mois
                 val occurrences = generateOccurrencesForMonth(series, startLocalDate, endLocalDate, zone)
@@ -160,14 +221,24 @@ class BudgetRepository @Inject constructor(
                 for (occDate in occurrences) {
                     val occEpoch = occDate.atStartOfDay(zone).toInstant().toEpochMilli()
                     
+                    // Vérifier si cette occurrence virtuelle spécifique est en cours de suppression FUTURE
+                    val seriesPendingMode = pendingSeries[sIdStr]
+                    if (seriesPendingMode == SeriesDeletionMode.FUTURE) {
+                        val fromDate = pendingDates[sIdStr]
+                        if (fromDate != null && occEpoch >= fromDate) continue
+                    }
+
                     // Une exception (matérialisée ou supprimée) bloque la génération du virtuel
                     val hasExistingEntry = allInPeriod.any { 
-                        it.transaction.seriesId == series.id.toString() && it.transaction.seriesDate == occEpoch 
+                        it.transaction.seriesId == sIdStr && it.transaction.seriesDate == occEpoch 
                     }
                     
                     if (!hasExistingEntry) {
-                        val virtualId = -Math.abs("${series.id}_$occEpoch".hashCode().toLong()) - 1L
+                        val virtualId = -abs("${series.id}_$occEpoch".hashCode().toLong()) - 1L
                         
+                        // Sécurité finale : ne pas afficher si le virtuel vient d'être supprimé (même si pas encore en base)
+                        if (virtualId in pending) continue
+
                         val virtualTx = TransactionEntity(
                             id = virtualId,
                             title = series.title,
@@ -178,7 +249,7 @@ class BudgetRepository @Inject constructor(
                             accountId = series.accountId,
                             categoryId = series.categoryId,
                             note = series.note,
-                            seriesId = series.id.toString(),
+                            seriesId = sIdStr,
                             seriesDate = occEpoch,
                             isException = false,
                             linkedGoalId = series.linkedGoalId,
@@ -321,13 +392,13 @@ class BudgetRepository @Inject constructor(
                     title = title,
                     amount = amount,
                     type = type,
-                    status = currentTwr?.transaction?.status ?: TransactionStatus.PLANNED,
+                    status = currentTwr.transaction.status,
                     date = date,
                     accountId = accountId,
                     categoryId = categoryId,
                     subCategoryId = subCategoryId,
                     note = note,
-                    paidAt = currentTwr?.transaction?.paidAt, // Préserver la date de paiement existante
+                    paidAt = currentTwr.transaction.paidAt, // Préserver la date de paiement existante
                     seriesId = null, // Débranchée
                     seriesDate = null,
                     isException = false,
@@ -386,7 +457,7 @@ class BudgetRepository @Inject constructor(
                         title = title,
                         amount = amount,
                         type = type,
-                        status = currentTwr?.transaction?.status ?: TransactionStatus.PLANNED,
+                        status = currentTwr.transaction.status,
                         date = date,
                         accountId = accountId,
                         categoryId = categoryId,

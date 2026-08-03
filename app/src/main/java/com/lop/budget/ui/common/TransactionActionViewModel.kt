@@ -125,8 +125,9 @@ class TransactionActionViewModel @Inject constructor(
     ) {
         val txId = transaction.transaction.id
         
-        // On masque immédiatement la transaction de l'UI
+        // On masque immédiatement la transaction de l'UI (centralisé dans le Repository)
         _pendingDeletes.value = _pendingDeletes.value + txId
+        repo.setPendingDelete(txId, true)
 
         viewModelScope.launch {
             val result = snackbarHostState.showSnackbar(
@@ -140,10 +141,12 @@ class TransactionActionViewModel @Inject constructor(
                 val currentVersion = _txVersions.value[txId] ?: 0
                 _txVersions.value = _txVersions.value + (txId to currentVersion + 1)
                 _pendingDeletes.value = _pendingDeletes.value - txId
+                repo.setPendingDelete(txId, false)
             } else {
                 // Confirmation : exécution réelle via le repository
                 repo.softDeleteTransactionOccurrence(transaction)
                 _pendingDeletes.value = _pendingDeletes.value - txId
+                repo.setPendingDelete(txId, false)
             }
         }
     }
@@ -159,10 +162,12 @@ class TransactionActionViewModel @Inject constructor(
         message: String,
         actionLabel: String
     ) {
+        // On masque immédiatement la série de l'UI (centralisé dans le Repository)
         _pendingSeriesDeletes.value = _pendingSeriesDeletes.value + (seriesId to mode)
         if (fromDate != null) {
             _pendingSeriesFromDates.value = _pendingSeriesFromDates.value + (seriesId to fromDate)
         }
+        repo.setPendingSeriesDelete(seriesId, mode, fromDate)
 
         viewModelScope.launch {
             val result = snackbarHostState.showSnackbar(
@@ -174,10 +179,12 @@ class TransactionActionViewModel @Inject constructor(
             if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
                 _pendingSeriesDeletes.value = _pendingSeriesDeletes.value - seriesId
                 _pendingSeriesFromDates.value = _pendingSeriesFromDates.value - seriesId
+                repo.setPendingSeriesDelete(seriesId, null)
             } else {
                 repo.cancelSeries(seriesId, mode, fromDate)
                 _pendingSeriesDeletes.value = _pendingSeriesDeletes.value - seriesId
                 _pendingSeriesFromDates.value = _pendingSeriesFromDates.value - seriesId
+                repo.setPendingSeriesDelete(seriesId, null)
             }
         }
     }
