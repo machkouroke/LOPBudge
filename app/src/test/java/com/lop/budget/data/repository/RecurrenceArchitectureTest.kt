@@ -83,7 +83,7 @@ class RecurrenceArchitectureTest {
                 interval = 1,
                 startDate = LocalDate.of(2026, 1, 5)
                     .atStartOfDay(zone).toInstant().toEpochMilli(),
-                status = "ACTIVE"
+                isCancelled = false
             )
 
             coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
@@ -165,7 +165,7 @@ class RecurrenceArchitectureTest {
             interval = 1,
             startDate = start,
             endDate = end,
-            status = "ACTIVE"
+            isCancelled = false
         )
 
         coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
@@ -233,7 +233,7 @@ class RecurrenceArchitectureTest {
                 frequency = RecurrenceFrequency.MONTHLY,
                 interval = 1,
                 startDate = julyOccDate,
-                status = "ACTIVE"
+                isCancelled = false
             )
 
             // Marqueur d'exception en DB uniquement pour JUILLET (ID positif, isException = true)
@@ -331,7 +331,7 @@ class RecurrenceArchitectureTest {
                 frequency = RecurrenceFrequency.MONTHLY,
                 interval = 1,
                 startDate = occDate,
-                status = "ACTIVE"
+                isCancelled = false
             )
 
             // Exception marquée comme supprimée (deleted = true)
@@ -398,7 +398,7 @@ class RecurrenceArchitectureTest {
                 interval = 1,
                 startDate = LocalDate.of(2026, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli(),
                 maxOccurrences = 2, // Janvier et Février uniquement
-                status = "ACTIVE"
+                isCancelled = false
             )
 
             coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))

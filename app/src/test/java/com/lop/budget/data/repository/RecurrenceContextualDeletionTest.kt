@@ -71,7 +71,7 @@ class RecurrenceContextualDeletionTest {
             val series = RecurringSeriesEntity(
                 id = seriesId, title = "Netflix", amount = 15.99, type = TransactionType.EXPENSE,
                 categoryId = 1, accountId = 1, frequency = RecurrenceFrequency.MONTHLY,
-                interval = 1, startDate = occDate, status = "ACTIVE"
+                interval = 1, startDate = occDate
             )
 
             // --- PHASE 1 : coEvery (On programme les ordres de nos clones) ---
@@ -181,7 +181,7 @@ class RecurrenceContextualDeletionTest {
         val series = RecurringSeriesEntity(
             id = seriesId, title = "Netflix", amount = 15.99, type = TransactionType.EXPENSE,
             categoryId = 1, accountId = 1, frequency = RecurrenceFrequency.MONTHLY,
-            interval = 1, startDate = occDate, status = "ACTIVE"
+            interval = 1, startDate = occDate
         )
 
         // --- SCÉNARIO : 3 transactions en base dans la période ---
@@ -295,7 +295,7 @@ class RecurrenceContextualDeletionTest {
         val series = RecurringSeriesEntity(
             id = seriesId, title = "Loyer", amount = 800.0, type = TransactionType.EXPENSE,
             categoryId = 2, accountId = 1, frequency = RecurrenceFrequency.MONTHLY,
-            interval = 1, startDate = originalStart, status = "ACTIVE"
+            interval = 1, startDate = originalStart
         )
 
         coEvery { recurringSeriesDao.getSeriesById(seriesId) } returns series
@@ -314,7 +314,7 @@ class RecurrenceContextualDeletionTest {
         // ET surtout qu'elle reste "ACTIVE" car elle a encore des occurrences avant la date cible.
         coVerify(exactly = 1) {
             recurringSeriesDao.upsert(match {
-                val ok = it.id == seriesId && it.endDate == targetDate - 1 && it.status == "ACTIVE"
+                val ok = it.id == seriesId && it.endDate == targetDate - 1 && !it.isCancelled
                 if (ok) MarkdownReporter.log("   - [OK] La série a été arrêtée au ${targetDate - 1} (veille de la cible) mais est restée ACTIVE.")
                 ok
             })
@@ -340,7 +340,10 @@ class RecurrenceContextualDeletionTest {
     @Test
     fun `UT-05 - checking visible occurrences before and after truncation`() = runBlocking {
         MarkdownReporter.log("### UT-05 : Vérification de la fenêtre de troncature complexe")
-        MarkdownReporter.log("Objectif : S'assurer que la troncature coupe le virtuel ET nettoie le réel futur.")
+        MarkdownReporter.log(
+            "Objectif : S'assurer que la troncature coupe le virtuel " +
+                    "ET nettoie le réel futur."
+        )
 
         val seriesId = 200L
         val originalStart = LocalDate.of(2026, 1, 1)
@@ -356,7 +359,7 @@ class RecurrenceContextualDeletionTest {
         val series = RecurringSeriesEntity(
             id = seriesId, title = "Loyer", amount = 800.0, type = TransactionType.EXPENSE,
             categoryId = 2, accountId = 1, frequency = RecurrenceFrequency.MONTHLY,
-            interval = 1, startDate = originalStart, endDate = decEnd, status = "ACTIVE"
+            interval = 1, startDate = originalStart, endDate = decEnd
         )
 
         // 2. L'exception d'août déjà matérialisée (ID 801)
@@ -374,7 +377,8 @@ class RecurrenceContextualDeletionTest {
             isException = true,
             deleted = true
         )
-        val twrAugust = TransactionWithRelations(augustRealTx, null, null, emptyList())
+        val twrAugust = TransactionWithRelations(augustRealTx,
+            null, null, emptyList())
 
         // --- PHASE 1 : Simulation de l'état APRÈS Action du Repository ---
         // A. La série a maintenant une endDate au 31 Mai
@@ -446,8 +450,8 @@ class RecurrenceContextualDeletionTest {
         // --- Vérifications ---
         MarkdownReporter.log("Vérifications :")
         coVerify(exactly = 1) {
-            recurringSeriesDao.updateStatus(seriesId, "CANCELLED")
-            MarkdownReporter.log("   - [OK] Le statut de la série est bien passé à CANCELLED.")
+            recurringSeriesDao.updateCancelled(seriesId, true)
+            MarkdownReporter.log("   - [OK] Le flag isCancelled de la série est passé à true.")
         }
         coVerify(exactly = 1) {
             transactionDao.softDeleteSeries(seriesId.toString())
@@ -532,9 +536,9 @@ class RecurrenceContextualDeletionTest {
 
         // --- Vérifications ---
         MarkdownReporter.log("Vérifications :")
-        coVerify(exactly = 1) { recurringSeriesDao.updateStatus(seriesA, "CANCELLED") }
+        coVerify(exactly = 1) { recurringSeriesDao.updateCancelled(seriesA, true) }
         coVerify(exactly = 0) {
-            recurringSeriesDao.updateStatus(seriesB, any())
+            recurringSeriesDao.updateCancelled(seriesB, any())
             MarkdownReporter.log("   - [OK] La série B est restée intacte.")
         }
         MarkdownReporter.log("**Résultat final : Succès.**")

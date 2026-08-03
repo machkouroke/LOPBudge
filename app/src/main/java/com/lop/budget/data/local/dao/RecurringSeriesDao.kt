@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RecurringSeriesDao {
-    @Query("SELECT * FROM recurring_series WHERE status = 'ACTIVE' OR (status = 'CANCELLED' AND endDate IS NOT NULL)")
+    @Query("SELECT * FROM recurring_series WHERE isCancelled = 0")
     fun observeActiveSeries(): Flow<List<RecurringSeriesEntity>>
 
     @Query("SELECT * FROM recurring_series WHERE id = :id")
@@ -24,6 +24,6 @@ interface RecurringSeriesDao {
     @Update
     suspend fun update(series: RecurringSeriesEntity)
 
-    @Query("UPDATE recurring_series SET status = :status WHERE id = :id")
-    suspend fun updateStatus(id: Long, status: String)
+    @Query("UPDATE recurring_series SET isCancelled = :isCancelled WHERE id = :id")
+    suspend fun updateCancelled(id: Long, isCancelled: Boolean)
 }

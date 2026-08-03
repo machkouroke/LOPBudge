@@ -310,7 +310,7 @@ class BudgetRepository @Inject constructor(
             if (currentSeriesId != null) {
                 // On passe de série à ponctuel : 
                 // 1. On arrête la série parente pour le futur (conserve le passé)
-                cancelSeries(currentSeriesId.toString(), com.lop.budget.domain.model.SeriesDeletionMode.FUTURE, date)
+                cancelSeries(currentSeriesId.toString(), SeriesDeletionMode.FUTURE, date)
                 
                 // 2. On transforme l'occurrence éditée en transaction isolée
                 val singleTx = TransactionEntity(
@@ -369,7 +369,7 @@ class BudgetRepository @Inject constructor(
                     endDate = endDate,
                     maxOccurrences = maxOccurrences,
                     daysOfWeek = daysOfWeek,
-                    status = "ACTIVE",
+                    isCancelled = false,
                     note = note,
                     linkedGoalId = linkedGoalId,
                     linkedDebtId = linkedDebtId
@@ -416,7 +416,7 @@ class BudgetRepository @Inject constructor(
                     endDate = endDate,
                     maxOccurrences = maxOccurrences,
                     daysOfWeek = daysOfWeek,
-                    status = "ACTIVE",
+                    isCancelled = false,
                     note = note,
                     linkedGoalId = linkedGoalId,
                     linkedDebtId = linkedDebtId
@@ -452,7 +452,7 @@ class BudgetRepository @Inject constructor(
         when (mode) {
             SeriesDeletionMode.ALL -> {
                 // 1. Annuler la série
-                recurringSeriesDao.updateStatus(seriesId, "CANCELLED")
+                recurringSeriesDao.updateCancelled(seriesId, true)
                 // 2. Supprimer TOUTES les transactions matérialisées
                 transactionDao.softDeleteSeries(seriesIdStr)
             }
@@ -460,10 +460,10 @@ class BudgetRepository @Inject constructor(
                 // 1. Mettre à jour la date de fin de la série pour arrêter la génération future
                 val series = recurringSeriesDao.getSeriesById(seriesId)
                 if (series != null && fromDate != null) {
-                    // On met une date de fin juste avant l'occurrence sélectionnée, mais on garde le statut actuel (ex: ACTIVE)
+                    // On met une date de fin juste avant l'occurrence sélectionnée, mais on garde isCancelled = false
                     recurringSeriesDao.upsert(series.copy(endDate = fromDate - 1))
                 } else {
-                    recurringSeriesDao.updateStatus(seriesId, "CANCELLED")
+                    recurringSeriesDao.updateCancelled(seriesId, true)
                 }
                 // 2. Supprimer les transactions matérialisées à partir de la date
                 if (fromDate != null) {

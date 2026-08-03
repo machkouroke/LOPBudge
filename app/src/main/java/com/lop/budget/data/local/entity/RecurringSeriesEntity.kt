@@ -20,7 +20,7 @@ data class RecurringSeriesEntity(
     val endDate: Long? = null,
     val maxOccurrences: Int? = null,
     val daysOfWeek: String? = null, // pour WEEKLY, ex: "1,3,5"
-    val status: String = "ACTIVE", // ACTIVE, PAUSED, CANCELLED
+    val isCancelled: Boolean = false,
     val note: String? = null,
     val linkedGoalId: Long? = null,
     val linkedDebtId: Long? = null
