@@ -473,17 +473,55 @@ class RecurrenceContextualDeletionTest {
      */
     @Test
     fun `UT-07 - no occurrences should be generated for a CANCELLED series`() = runBlocking {
-        MarkdownReporter.log("### UT-07 : Vérification post-annulation totale")
+        MarkdownReporter.log("### UT-07 : Vérification post-annulation totale (Vraie chaîne d'appel)")
 
-        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(emptyList())
+        val seriesId = 300L
+        val startDate = LocalDate.of(2027, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val series = RecurringSeriesEntity(
+            id = seriesId, title = "Netflix", amount = 15.99, type = TransactionType.EXPENSE,
+            categoryId = 1, accountId = 1, frequency = RecurrenceFrequency.MONTHLY,
+            interval = 1, startDate = startDate
+        )
 
+        // On utilise un StateFlow local pour simuler la base de données réactive
+        // Au début, la série est présente dans le flux des séries actives
+        val dbState = kotlinx.coroutines.flow.MutableStateFlow(listOf(series))
+
+        // On branche le DAO sur ce StateFlow
+        coEvery { recurringSeriesDao.observeActiveSeries() } returns dbState
+        coEvery { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
+
+        // Mock du cancel : quand on appelle updateCancelled(true), on met à jour l'objet dans notre "base" fictive
+        coEvery { recurringSeriesDao.updateCancelled(seriesId, true) } coAnswers {
+            // Comportement fidèle : on garde la série mais on change son flag isCancelled
+            val cancelledSeries = series.copy(isCancelled = true)
+            
+            // On simule le filtre du DAO (observeActiveSeries ne renvoie que si isCancelled == false)
+            dbState.value = listOf(cancelledSeries).filter { !it.isCancelled }
+        }
+
+        // On définit une plage large de 2 mois
         val startRange = LocalDate.of(2027, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val endRange =
-            LocalDate.of(2027, 1, 31).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
-        val results = repository.observeTransactionsBetween(startRange, endRange).first()
-        assertTrue("La liste doit être vide après annulation", results.isEmpty())
-        MarkdownReporter.log("Vérification : [OK] Plus aucune occurrence générée pour la série annulée.")
-        MarkdownReporter.log("**Résultat final : Succès.**")
+        val endRange = LocalDate.of(2027, 2, 28).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+
+        // --- ÉTAPE 1 : AVANT ---
+        MarkdownReporter.log("1. Action : Observation AVANT annulation.")
+        val resultsBefore = repository.observeTransactionsBetween(startRange, endRange).first()
+        assertEquals("On doit avoir 2 occurrences au départ", 2, resultsBefore.size)
+        MarkdownReporter.log("   - [OK] La série génère bien ses occurrences.")
+
+        // --- ÉTAPE 2 : L'APPEL RÉEL ---
+        MarkdownReporter.log("2. Action : Appel de repository.cancelSeries(ALL).")
+        repository.cancelSeries(seriesId.toString(), SeriesDeletionMode.ALL)
+
+        // --- ÉTAPE 3 : APRÈS ---
+        MarkdownReporter.log("3. Action : Observation APRÈS l'appel réel d'annulation.")
+        val resultsAfter = repository.observeTransactionsBetween(startRange, endRange).first()
+        
+        assertTrue("La liste doit être vide car la série a été annulée par l'appel précédent", resultsAfter.isEmpty())
+        MarkdownReporter.log("   - [OK] Plus aucune occurrence. L'appel au Repo a bien stoppé la génération via le DAO.")
+        
+        MarkdownReporter.log("**Résultat final : Succès. La chaîne complète (Repo -> DAO -> Repo) est validée.**")
     }
 
     /**
