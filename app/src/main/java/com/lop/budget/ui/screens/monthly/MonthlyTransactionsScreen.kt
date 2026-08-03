@@ -67,9 +67,6 @@ fun MonthlyTransactionsScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
-    val pendingDeletes by actionVm.pendingDeletes.collectAsStateWithLifecycle()
-    val pendingSeriesDeletes by actionVm.pendingSeriesDeletes.collectAsStateWithLifecycle()
-    val pendingSeriesDates by actionVm.pendingSeriesFromDates.collectAsStateWithLifecycle()
     val deleteRequest by actionVm.deleteRequest.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -81,25 +78,6 @@ fun MonthlyTransactionsScreen(
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
     val undoMsg = stringResource(R.string.undo)
 
-    val filteredDayGroups = remember(state.dayGroups, pendingDeletes, pendingSeriesDeletes, pendingSeriesDates) {
-        state.dayGroups.map { group ->
-            group.copy(transactions = group.transactions.filter { twr ->
-                val tx = twr.transaction
-                val isSinglePending = tx.id in pendingDeletes
-                val seriesId = tx.seriesId
-                val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
-                val isSeriesPending = when (seriesPendingMode) {
-                    SeriesDeletionMode.ALL -> true
-                    SeriesDeletionMode.FUTURE -> {
-                        val fromDate = pendingSeriesDates[seriesId]
-                        fromDate != null && tx.date >= fromDate
-                    }
-                    null -> false
-                }
-                !isSinglePending && !isSeriesPending
-            })
-        }.filter { it.transactions.isNotEmpty() }
-    }
 
     val ext = LopTheme.extended
     val accent = if (state.type == TransactionType.INCOME) ext.income else ext.expense
@@ -321,7 +299,7 @@ fun MonthlyTransactionsScreen(
 
         // Liste centralisée
         transactionDayGroups(
-            dayGroups = filteredDayGroups,
+            dayGroups = state.dayGroups,
             currency = state.currency,
             txVersions = txVersions,
             onOpenTransaction = onOpenTransaction,

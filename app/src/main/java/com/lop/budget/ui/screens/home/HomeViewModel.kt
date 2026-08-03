@@ -132,9 +132,6 @@ class HomeViewModel @Inject constructor(
             @Suppress("UNCHECKED_CAST")
             val allTxs = data[0] as List<TransactionWithRelations>
             
-            // On ne filtre plus ici car on va le faire dynamiquement dans le Screen 
-            // ou on laisse HomeViewModel observer le shared ViewModel si on veut garder le filtrage ici.
-            // Pour l'instant, on laisse tout passer pour éviter les incohérences si on ne branche pas le Screen.
             val txs = allTxs
 
             val income = data[1] as Double

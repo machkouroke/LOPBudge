@@ -130,7 +130,6 @@ class MonthlyTransactionsViewModel @Inject constructor(
             val categories = args[10] as List<com.lop.budget.data.local.entity.CategoryEntity>
             val analytics = args[11] as Boolean
 
-            // On ne filtre plus les pendingDeletes ici car c'est fait dans le Screen
             val filtered = allTxs
                 .filter { if (t == null) true else it.transaction.type == t }
                 .filter {

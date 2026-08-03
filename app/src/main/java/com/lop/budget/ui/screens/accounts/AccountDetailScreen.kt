@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
-import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -43,46 +42,7 @@ fun AccountDetailScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
-    val pendingDeletes by actionVm.pendingDeletes.collectAsStateWithLifecycle()
-    val pendingSeriesDeletes by actionVm.pendingSeriesDeletes.collectAsStateWithLifecycle()
-    val pendingSeriesDates by actionVm.pendingSeriesFromDates.collectAsStateWithLifecycle()
     val account = state.account
-    
-    val upcomingTransactions = remember(state.upcomingTransactions, pendingDeletes, pendingSeriesDeletes, pendingSeriesDates) {
-        state.upcomingTransactions.filter { twr ->
-            val tx = twr.transaction
-            val isSinglePending = tx.id in pendingDeletes
-            val seriesId = tx.seriesId
-            val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
-            val isSeriesPending = when (seriesPendingMode) {
-                SeriesDeletionMode.ALL -> true
-                SeriesDeletionMode.FUTURE -> {
-                    val fromDate = pendingSeriesDates[seriesId]
-                    fromDate != null && tx.date >= fromDate
-                }
-                null -> false
-            }
-            !isSinglePending && !isSeriesPending
-        }
-    }
-
-    val recentTransactions = remember(state.recentTransactions, pendingDeletes, pendingSeriesDeletes, pendingSeriesDates) {
-        state.recentTransactions.filter { twr ->
-            val tx = twr.transaction
-            val isSinglePending = tx.id in pendingDeletes
-            val seriesId = tx.seriesId
-            val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
-            val isSeriesPending = when (seriesPendingMode) {
-                SeriesDeletionMode.ALL -> true
-                SeriesDeletionMode.FUTURE -> {
-                    val fromDate = pendingSeriesDates[seriesId]
-                    fromDate != null && tx.date >= fromDate
-                }
-                null -> false
-            }
-            !isSinglePending && !isSeriesPending
-        }
-    }
 
     LopScreenScaffold(
         title = "Compte",
@@ -135,9 +95,9 @@ fun AccountDetailScreen(
                 }
             }
 
-            if (upcomingTransactions.isNotEmpty()) {
+            if (state.upcomingTransactions.isNotEmpty()) {
                 item { SectionHeader("Transactions à venir") }
-                items(upcomingTransactions, key = { tx -> "${tx.transaction.id}_${txVersions[tx.transaction.id] ?: 0}" }) { twr ->
+                items(state.upcomingTransactions, key = { tx -> "${tx.transaction.id}_${txVersions[tx.transaction.id] ?: 0}" }) { twr ->
                     TransactionRow(
                         tx = twr,
                         currency = state.currency,
@@ -148,9 +108,9 @@ fun AccountDetailScreen(
                 }
             }
 
-            if (recentTransactions.isNotEmpty()) {
+            if (state.recentTransactions.isNotEmpty()) {
                 item { SectionHeader("Transactions récentes") }
-                items(recentTransactions, key = { tx -> "${tx.transaction.id}_${txVersions[tx.transaction.id] ?: 0}" }) { twr ->
+                items(state.recentTransactions, key = { tx -> "${tx.transaction.id}_${txVersions[tx.transaction.id] ?: 0}" }) { twr ->
                     TransactionRow(
                         tx = twr,
                         currency = state.currency,

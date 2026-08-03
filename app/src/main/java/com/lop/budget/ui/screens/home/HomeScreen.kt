@@ -59,7 +59,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.lop.budget.R
 import com.lop.budget.domain.model.AccountBalance
-import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.BalanceDashboardWidget
 import com.lop.budget.ui.components.CircleIcon
@@ -87,9 +86,6 @@ fun HomeScreen(
     actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(LocalContext.current as androidx.activity.ComponentActivity)
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val pendingDeletes by actionVm.pendingDeletes.collectAsStateWithLifecycle()
-    val pendingSeriesDeletes by actionVm.pendingSeriesDeletes.collectAsStateWithLifecycle()
-    val pendingSeriesDates by actionVm.pendingSeriesFromDates.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // Vérification de la permission au lancement
@@ -130,27 +126,9 @@ fun HomeScreen(
         )
     }
 
-    val txs = remember(state.dashboardTransactions, pendingDeletes, pendingSeriesDeletes, pendingSeriesDates) {
-        state.dashboardTransactions.filter { twr ->
-            val tx = twr.transaction
-            val isSinglePending = tx.id in pendingDeletes
-            val seriesId = tx.seriesId
-            val seriesPendingMode = if (seriesId != null) pendingSeriesDeletes[seriesId] else null
-            val isSeriesPending = when (seriesPendingMode) {
-                SeriesDeletionMode.ALL -> true
-                SeriesDeletionMode.FUTURE -> {
-                    val fromDate = pendingSeriesDates[seriesId]
-                    fromDate != null && tx.date >= fromDate
-                }
-                null -> false
-            }
-            !isSinglePending && !isSeriesPending
-        }
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
         HomeContent(
-            state = state.copy(dashboardTransactions = txs),
+            state = state,
             statusBarPadding = statusBarPadding,
             onOpenTransaction = onOpenTransaction,
             onOpenMonthly = { type, ym ->
