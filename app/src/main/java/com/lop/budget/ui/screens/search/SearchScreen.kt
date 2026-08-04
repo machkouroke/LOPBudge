@@ -2,7 +2,14 @@ package com.lop.budget.ui.screens.search
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -13,22 +20,36 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Wallet
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDateRangePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lop.budget.R
-import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopSearchBar
-import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.ui.components.transactionDayGroups
 import com.lop.budget.util.Format
 import dev.chrisbanes.haze.HazeState
@@ -45,7 +66,7 @@ fun SearchScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
-    
+
     var showAccountPicker by remember { mutableStateOf(false) }
     var showCategoryPicker by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -54,7 +75,12 @@ fun SearchScreen(
         title = "Rechercher",
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = {
+            SnackbarHost(
+                snackbarHostState,
+                modifier = Modifier.testTag("snackbar_host")
+            )
+        }
     ) {
         item {
             Column {
@@ -74,13 +100,25 @@ fun SearchScreen(
                         FilterChip(
                             selected = state.selectedAccountId != null,
                             onClick = { showAccountPicker = true },
-                            label = { 
-                                val acc = state.availableAccounts.find { it.id == state.selectedAccountId }
-                                Text(acc?.name ?: "Compte") 
+                            label = {
+                                val acc =
+                                    state.availableAccounts.find { it.id == state.selectedAccountId }
+                                Text(acc?.name ?: "Compte")
                             },
-                            leadingIcon = { Icon(Icons.Default.Wallet, null, modifier = Modifier.size(18.dp)) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Wallet,
+                                    null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
                             trailingIcon = if (state.selectedAccountId != null) {
-                                { IconButton(onClick = { vm.onAccountFilterChange(null) }, modifier = Modifier.size(18.dp)) { Icon(Icons.Default.Close, null) } }
+                                {
+                                    IconButton(
+                                        onClick = { vm.onAccountFilterChange(null) },
+                                        modifier = Modifier.size(18.dp)
+                                    ) { Icon(Icons.Default.Close, null) }
+                                }
                             } else null
                         )
                     }
@@ -88,13 +126,25 @@ fun SearchScreen(
                         FilterChip(
                             selected = state.selectedCategoryId != null,
                             onClick = { showCategoryPicker = true },
-                            label = { 
-                                val cat = state.availableCategories.find { it.id == state.selectedCategoryId }
-                                Text(cat?.name ?: "Catégorie") 
+                            label = {
+                                val cat =
+                                    state.availableCategories.find { it.id == state.selectedCategoryId }
+                                Text(cat?.name ?: "Catégorie")
                             },
-                            leadingIcon = { Icon(Icons.Default.Category, null, modifier = Modifier.size(18.dp)) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Category,
+                                    null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
                             trailingIcon = if (state.selectedCategoryId != null) {
-                                { IconButton(onClick = { vm.onCategoryFilterChange(null) }, modifier = Modifier.size(18.dp)) { Icon(Icons.Default.Close, null) } }
+                                {
+                                    IconButton(
+                                        onClick = { vm.onCategoryFilterChange(null) },
+                                        modifier = Modifier.size(18.dp)
+                                    ) { Icon(Icons.Default.Close, null) }
+                                }
                             } else null
                         )
                     }
@@ -102,14 +152,25 @@ fun SearchScreen(
                         FilterChip(
                             selected = state.startDate != null,
                             onClick = { showDatePicker = true },
-                            label = { 
+                            label = {
                                 if (state.startDate != null) {
                                     Text("${Format.shortDate(state.startDate!!)} - ...")
                                 } else Text("Période")
                             },
-                            leadingIcon = { Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.size(18.dp)) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.CalendarMonth,
+                                    null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
                             trailingIcon = if (state.startDate != null) {
-                                { IconButton(onClick = { vm.onDateRangeChange(null, null) }, modifier = Modifier.size(18.dp)) { Icon(Icons.Default.Close, null) } }
+                                {
+                                    IconButton(
+                                        onClick = { vm.onDateRangeChange(null, null) },
+                                        modifier = Modifier.size(18.dp)
+                                    ) { Icon(Icons.Default.Close, null) }
+                                }
                             } else null
                         )
                     }
@@ -143,7 +204,13 @@ fun SearchScreen(
                 currency = state.currency,
                 txVersions = txVersions,
                 onOpenTransaction = onOpenTransaction,
-                onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
+                onMaterializeAndOpen = { sid, date ->
+                    vm.materializeAndOpen(
+                        sid,
+                        date,
+                        onOpenTransaction
+                    )
+                },
                 hazeState = hazeState
             )
         }
@@ -181,7 +248,10 @@ fun SearchScreen(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.onDateRangeChange(datePickerState.selectedStartDateMillis, datePickerState.selectedEndDateMillis)
+                    vm.onDateRangeChange(
+                        datePickerState.selectedStartDateMillis,
+                        datePickerState.selectedEndDateMillis
+                    )
                     showDatePicker = false
                 }) { Text("OK") }
             }
@@ -197,18 +267,26 @@ fun AccountList(
     selectedId: Long?,
     onSelect: (Long) -> Unit
 ) {
-    LazyColumn(Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
-        item { Text("Sélectionner un compte", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge) }
+    LazyColumn(Modifier
+        .fillMaxWidth()
+        .padding(bottom = 32.dp)) {
+        item {
+            Text(
+                "Sélectionner un compte",
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.titleLarge
+            )
+        }
         items(accounts) { acc ->
             ListItem(
                 headlineContent = { Text(acc.name) },
-                leadingContent = { 
+                leadingContent = {
                     com.lop.budget.ui.components.CircleIcon(
                         icon = com.lop.budget.util.IconMapper.get(acc.icon),
                         tint = Color(acc.colorArgb),
                         background = Color(acc.colorArgb).copy(alpha = 0.1f),
                         size = 32.dp
-                    ) 
+                    )
                 },
                 modifier = Modifier.clickable { onSelect(acc.id) },
                 trailingContent = { if (acc.id == selectedId) Icon(Icons.Default.Check, null) }

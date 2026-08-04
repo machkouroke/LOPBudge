@@ -134,7 +134,7 @@ fun TransactionDetailScreen(
                                     MaterialTheme.colorScheme.surfaceVariant,
                                     androidx.compose.foundation.shape.CircleShape
                                 )
-                                .clickableNoRipple { 
+                                .clickableNoRipple {
                                     if (!isBusy && twr != null) {
                                         actionVm.requestEdit(twr)
                                     }
@@ -156,7 +156,8 @@ fun TransactionDetailScreen(
                                     MaterialTheme.colorScheme.surfaceVariant,
                                     androidx.compose.foundation.shape.CircleShape
                                 )
-                                .clickableNoRipple { if (!isBusy) showDeleteConfirm = true },
+                                .clickableNoRipple { if (!isBusy) showDeleteConfirm = true }
+                                .testTag("transaction_delete_button"),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -338,7 +339,10 @@ fun TransactionDetailScreen(
                                             .padding(vertical = 6.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                     ) {
-                                        Text(Format.fullDate(d), style = MaterialTheme.typography.bodyLarge)
+                                        Text(
+                                            Format.fullDate(d),
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
                                         Text(
                                             (if (isIncome) "+" else "−") + Format.money(tx.amount),
                                             color = accent,
@@ -354,9 +358,11 @@ fun TransactionDetailScreen(
                 val isPaid = tx.status == TransactionStatus.PAID
                 if (tx.status == TransactionStatus.PLANNED || isPaid) {
                     item {
-                        val buttonColor = if (isPaid) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                        else ext.incomeContainer.copy(alpha = 0.4f)
-                        val tintColor = if (isPaid) MaterialTheme.colorScheme.onSurfaceVariant else ext.income
+                        val buttonColor =
+                            if (isPaid) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                            else ext.incomeContainer.copy(alpha = 0.4f)
+                        val tintColor =
+                            if (isPaid) MaterialTheme.colorScheme.onSurfaceVariant else ext.income
 
                         FloatingCard(
                             modifier = Modifier
@@ -393,7 +399,8 @@ fun TransactionDetailScreen(
 
 
     if (showDatePicker && tx != null) {
-        val pickerState = androidx.compose.material3.rememberDatePickerState(initialSelectedDateMillis = tx.date)
+        val pickerState =
+            androidx.compose.material3.rememberDatePickerState(initialSelectedDateMillis = tx.date)
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
@@ -454,13 +461,27 @@ fun TransactionDetailScreen(
 
                         RecurringDeleteChoice.FUTURE_ONLY -> {
                             tx.seriesId?.let { sid ->
-                                actionVm.deleteSeriesWithUndo(sid, com.lop.budget.domain.model.SeriesDeletionMode.FUTURE, tx.date, snackbarHostState, txDeletedMsg, undoMsg)
+                                actionVm.deleteSeriesWithUndo(
+                                    sid,
+                                    com.lop.budget.domain.model.SeriesDeletionMode.FUTURE,
+                                    tx.date,
+                                    snackbarHostState,
+                                    txDeletedMsg,
+                                    undoMsg
+                                )
                             }
                         }
 
                         RecurringDeleteChoice.ALL_SERIES -> {
                             tx.seriesId?.let { sid ->
-                                actionVm.deleteSeriesWithUndo(sid, com.lop.budget.domain.model.SeriesDeletionMode.ALL, null, snackbarHostState, txDeletedMsg, undoMsg)
+                                actionVm.deleteSeriesWithUndo(
+                                    sid,
+                                    com.lop.budget.domain.model.SeriesDeletionMode.ALL,
+                                    null,
+                                    snackbarHostState,
+                                    txDeletedMsg,
+                                    undoMsg
+                                )
                             }
                         }
                     }
@@ -537,7 +558,8 @@ private fun AccountBottomSheet(
     onSelect: (Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState =
+        androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -572,7 +594,10 @@ private fun AccountBottomSheet(
                         .clip(RoundedCornerShape(16.dp))
                         .clickableNoRipple { onSelect(account.id) },
                     color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f))
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+                    )
                 ) {
                     Row(
                         modifier = Modifier.padding(14.dp),

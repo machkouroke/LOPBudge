@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -184,6 +185,7 @@ fun TransactionPreviewPopup(
                         icon = Icons.Default.Delete,
                         label = "Supprimer",
                         iconColor = LopTheme.extended.expense,
+                        testTag = "preview_delete_button",
                         onClick = { onDelete(); onDismiss() }
                     )
                 }
@@ -198,11 +200,14 @@ private fun PreviewActionButton(
     icon: ImageVector,
     label: String,
     iconColor: Color = Color.Black,
-    onClick: () -> Unit
+    testTag: String? = null,
+    onClick: () -> Unit,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickableNoRipple(onClick)
+        modifier = Modifier
+            .clickableNoRipple(onClick)
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
     ) {
         Surface(
             shape = RoundedCornerShape(16.dp),
