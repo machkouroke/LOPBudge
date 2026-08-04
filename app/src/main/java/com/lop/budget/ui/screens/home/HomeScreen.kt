@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -462,7 +463,12 @@ fun HomeOverlay(
                 if (!isCurrentMonth) {
                     IconButton(Icons.Filled.Today, onTodayClick)
                 }
-                IconButton(Icons.Default.Search, onSearchClick)
+                IconButton(
+                    icon = Icons.Default.Search, 
+                    onClick = onSearchClick, 
+                    contentDescription = "Rechercher",
+                    modifier = Modifier.testTag("nav_search")
+                )
                 DetectedIcon(state.detectedCount, onDetectedClick)
                 IconButton(Icons.Filled.Settings, onSettingsClick)
             }
@@ -471,9 +477,20 @@ fun HomeOverlay(
 }
 
 @Composable
-fun IconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Box(modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).clickableNoRipple { onClick() }, contentAlignment = Alignment.Center) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
+fun IconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector, 
+    onClick: () -> Unit,
+    contentDescription: String? = null,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(40.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+            .clickableNoRipple { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
     }
 }
 

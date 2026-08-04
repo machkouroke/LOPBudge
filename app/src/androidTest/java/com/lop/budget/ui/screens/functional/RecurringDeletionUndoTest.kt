@@ -38,10 +38,14 @@ class RecurringDeletionUndoTest {
     @get:Rule(order = 1)
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
-    @Inject lateinit var accountDao: AccountDao
-    @Inject lateinit var categoryDao: CategoryDao
-    @Inject lateinit var seriesDao: RecurringSeriesDao
-    @Inject lateinit var transactionDao: TransactionDao
+    @Inject
+    lateinit var accountDao: AccountDao
+    @Inject
+    lateinit var categoryDao: CategoryDao
+    @Inject
+    lateinit var seriesDao: RecurringSeriesDao
+    @Inject
+    lateinit var transactionDao: TransactionDao
 
     private lateinit var searchRobot: SearchRobot
     private lateinit var deleteRobot: RecurringDeleteRobot
@@ -58,19 +62,25 @@ class RecurringDeletionUndoTest {
         runBlocking {
             val accountId = accountDao.upsert(
                 AccountEntity(
-                    name = "Compte Courant", 
-                    type = AccountType.CHECKING, 
+                    name = "Compte Courant",
+                    type = AccountType.CHECKING,
                     initialBalance = 1000.0,
                     colorArgb = 0,
                     icon = ""
                 )
             )
             val categoryId = categoryDao.upsert(
-                CategoryEntity(name = "Abonnements", icon = "sub", colorArgb = 0, type = TransactionType.EXPENSE)
+                CategoryEntity(
+                    name = "Abonnements",
+                    icon = "sub",
+                    colorArgb = 0,
+                    type = TransactionType.EXPENSE
+                )
             )
-            
+
             // Création d'une série mensuelle commençant aujourd'hui
-            val today = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val today =
+                LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             seriesDao.upsert(
                 RecurringSeriesEntity(
                     title = "Netflix",
@@ -117,13 +127,13 @@ class RecurringDeletionUndoTest {
     fun testUndoDeletion_AllSeries() = runBlocking {
         // Navigation vers la recherche
         composeTestRule.onNodeWithTag("nav_search").performClick()
-        
+
         searchRobot.searchFor("Netflix")
         searchRobot.assertTransactionVisible("Netflix")
-        
+
         // Clic pour ouvrir le détail
         searchRobot.clickOnTransaction("Netflix")
-        
+
         // Clic sur l'icône supprimer dans l'écran détail
         composeTestRule.onNodeWithTag("transaction_delete_button").performClick()
 
