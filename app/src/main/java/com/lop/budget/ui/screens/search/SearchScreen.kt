@@ -67,6 +67,27 @@ fun SearchScreen(
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
 
+    // Logique de regroupement global Masterclass (en dehors de la LazyColumn)
+    val allTxs = remember(state.dayGroups) { state.dayGroups.flatMap { it.transactions } }
+    val seriesGroups = remember(allTxs) { allTxs.groupBy { it.transaction.seriesId } }
+    val multiOccurrencesSeries = remember(seriesGroups) { 
+        seriesGroups.filter { it.key != null && it.value.size > 1 } 
+    }
+    
+    val dayGroupItems = remember(state.dayGroups, multiOccurrencesSeries) {
+        val displayedSeries = mutableSetOf<String>()
+        state.dayGroups.map { group ->
+            val items = group.transactions.filter { twr ->
+                val sid = twr.transaction.seriesId
+                if (sid != null && multiOccurrencesSeries.containsKey(sid)) {
+                    if (displayedSeries.contains(sid)) false
+                    else { displayedSeries.add(sid); true }
+                } else true
+            }
+            group.date to items
+        }.filter { it.second.isNotEmpty() }
+    }
+
     var showAccountPicker by remember { mutableStateOf(false) }
     var showCategoryPicker by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -199,20 +220,44 @@ fun SearchScreen(
                 }
             }
         } else {
-            transactionDayGroups(
-                dayGroups = state.dayGroups,
-                currency = state.currency,
-                txVersions = txVersions,
-                onOpenTransaction = onOpenTransaction,
-                onMaterializeAndOpen = { sid, date ->
-                    vm.materializeAndOpen(
-                        sid,
-                        date,
-                        onOpenTransaction
+            dayGroupItems.forEach { (date, itemsToDisplay) ->
+                item {
+                    Text(
+                        text = Format.fullDate(date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(vertical = 8.dp)
                     )
-                },
-                hazeState = hazeState
-            )
+                }
+
+                items(itemsToDisplay, key = { twr ->
+                    val sid = twr.transaction.seriesId
+                    if (sid != null && multiOccurrencesSeries.containsKey(sid)) "stack_$sid"
+                    else "${twr.transaction.id}_${txVersions[twr.transaction.id] ?: 0}"
+                }) { twr ->
+                    val sid = twr.transaction.seriesId
+                    if (sid != null && multiOccurrencesSeries.containsKey(sid)) {
+                        com.lop.budget.ui.components.StackedTransactionGroup(
+                            transactions = multiOccurrencesSeries[sid]!!,
+                            currency = state.currency,
+                            onOpenTransaction = onOpenTransaction,
+                            onMaterializeAndOpen = { seriesId, d ->
+                                vm.materializeAndOpen(seriesId, d, onOpenTransaction)
+                            }
+                        )
+                    } else {
+                        com.lop.budget.ui.components.TransactionRow(
+                            tx = twr,
+                            currency = state.currency,
+                            onOpenTransaction = onOpenTransaction,
+                            onMaterializeAndOpen = { seriesId, d ->
+                                vm.materializeAndOpen(seriesId, d, onOpenTransaction)
+                            },
+                            hazeState = hazeState
+                        )
+                    }
+                }
+            }
         }
     }
 

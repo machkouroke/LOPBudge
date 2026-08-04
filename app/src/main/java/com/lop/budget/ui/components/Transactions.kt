@@ -108,6 +108,8 @@ fun TransactionRow(
     currency: String,
     onOpenTransaction: (Long) -> Unit,
     onMaterializeAndOpen: (Long, Long) -> Unit,
+    modifier: Modifier = Modifier,
+    showDate: Boolean = false,
     hazeState: HazeState? = null,
     actionVm: TransactionActionViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
 ) {
@@ -126,7 +128,8 @@ fun TransactionRow(
             if (!isAdjustment) {
                 actionVm.requestDelete(tx)
             }
-        }
+        },
+        modifier = modifier
     ) {
         FloatingCard(
             modifier = Modifier
@@ -173,7 +176,8 @@ fun TransactionRow(
                         }
                     }
                     Text(
-                        tx.account?.name ?: "",
+                        if (showDate) Format.dayMonth(tx.transaction.date) + " • " + (tx.account?.name ?: "")
+                        else tx.account?.name ?: "",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -19,4 +19,12 @@ class SearchRobot(private val composeTestRule: ComposeTestRule) {
     fun clickOnTransaction(title: String) {
         composeTestRule.onNodeWithText(title).performClick()
     }
+
+    fun clickExpandStack(seriesId: String) {
+        composeTestRule.onNodeWithTag("transaction_stack_$seriesId").performClick()
+    }
+
+    fun assertStackExpanded(seriesId: String) {
+        composeTestRule.onNodeWithTag("transaction_stack_expanded_$seriesId").assertIsDisplayed()
+    }
 }

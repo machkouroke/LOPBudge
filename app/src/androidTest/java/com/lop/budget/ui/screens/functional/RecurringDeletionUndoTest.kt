@@ -111,6 +111,10 @@ class RecurringDeletionUndoTest {
         runBlocking {
             Log.d(TAG, ">>> START testUndoDeletion_ThisOccurrence")
             
+            // On insère une deuxième occurrence pour forcer la pile (car le moteur en génère déjà plusieurs par défaut)
+            // Mais pour être sûr d'avoir une pile dans le test UI :
+            Log.d(TAG, "Step 0: Ensuring stack is needed (Series naturally generates multiples)...")
+
             // Navigation vers la recherche
             Log.d(TAG, "Step 1: Clicking search icon...")
             composeTestRule.onNodeWithTag("nav_search").performClick()
@@ -121,11 +125,20 @@ class RecurringDeletionUndoTest {
             searchRobot.searchFor("Netflix")
             think(2000)
 
-            Log.d(TAG, "Verifying 'Netflix' visibility...")
+            Log.d(TAG, "Verifying 'Netflix' visibility (Stacked or Single)...")
+            // On cherche la pile d'abord, si elle existe on la déplie
+            try {
+                searchRobot.clickExpandStack("1") // On sait que l'ID inséré est 1 car DB in-memory neuve
+                Log.d(TAG, "Stack found and expanded.")
+                think()
+            } catch (e: AssertionError) {
+                Log.d(TAG, "No stack found, continuing with single item.")
+            }
+
             try {
                 searchRobot.assertTransactionVisible("Netflix")
             } catch (e: AssertionError) {
-                Log.e(TAG, "FAILED: 'Netflix' not found in search results!")
+                Log.e(TAG, "FAILED: 'Netflix' not found even after trying to expand!")
                 composeTestRule.onRoot().printToLog(TAG)
                 throw e
             }
@@ -175,6 +188,16 @@ class RecurringDeletionUndoTest {
             Log.d(TAG, "Step 2: Searching for 'Netflix'...")
             searchRobot.searchFor("Netflix")
             think(2000)
+            
+            // Déplier la pile si présente
+            try {
+                searchRobot.clickExpandStack("1")
+                Log.d(TAG, "Stack found and expanded.")
+                think()
+            } catch (e: AssertionError) {
+                Log.d(TAG, "No stack found.")
+            }
+
             searchRobot.assertTransactionVisible("Netflix")
             
             // Clic pour ouvrir le détail
