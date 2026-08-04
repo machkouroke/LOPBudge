@@ -82,6 +82,8 @@ class RecurringDeletionUndoTest {
             )
 
             // Création d'une série mensuelle commençant aujourd'hui
+            // Note: le moteur génère automatiquement plusieurs occurrences (M, M+1, etc.)
+            // ce qui va forcer l'affichage en "Stack" dans la recherche.
             val today =
                 LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             Log.d(TAG, "Inserting recurring series 'Netflix' starting at $today")
@@ -111,10 +113,6 @@ class RecurringDeletionUndoTest {
         runBlocking {
             Log.d(TAG, ">>> START testUndoDeletion_ThisOccurrence")
             
-            // On insère une deuxième occurrence pour forcer la pile (car le moteur en génère déjà plusieurs par défaut)
-            // Mais pour être sûr d'avoir une pile dans le test UI :
-            Log.d(TAG, "Step 0: Ensuring stack is needed (Series naturally generates multiples)...")
-
             // Navigation vers la recherche
             Log.d(TAG, "Step 1: Clicking search icon...")
             composeTestRule.onNodeWithTag("nav_search").performClick()
@@ -125,49 +123,52 @@ class RecurringDeletionUndoTest {
             searchRobot.searchFor("Netflix")
             think(2000)
 
-            Log.d(TAG, "Verifying 'Netflix' visibility (Stacked or Single)...")
-            // On cherche la pile d'abord, si elle existe on la déplie
+            Log.d(TAG, "Step 3: Handling the Stack UX...")
+            // Puisqu'on a plusieurs occurrences, elles sont empilées.
+            // On doit déplier la pile (ID de série est 1 en DB in-memory neuve)
             try {
-                searchRobot.clickExpandStack("1") // On sait que l'ID inséré est 1 car DB in-memory neuve
+                searchRobot.clickExpandStack("1") 
                 Log.d(TAG, "Stack found and expanded.")
                 think()
             } catch (e: AssertionError) {
-                Log.d(TAG, "No stack found, continuing with single item.")
+                Log.d(TAG, "No stack found (maybe only 1 result), continuing with single item.")
             }
 
+            Log.d(TAG, "Verifying 'Netflix' visibility...")
             try {
                 searchRobot.assertTransactionVisible("Netflix")
             } catch (e: AssertionError) {
-                Log.e(TAG, "FAILED: 'Netflix' not found even after trying to expand!")
+                Log.e(TAG, "FAILED: 'Netflix' not found even after expansion check!")
                 composeTestRule.onRoot().printToLog(TAG)
                 throw e
             }
 
-            // 3. Déclencher la suppression via appui long
-            Log.d(TAG, "Step 3: Triggering long click on 'Netflix'...")
-            composeTestRule.onNodeWithText("Netflix").performTouchInput { longClick() }
+            // 4. Déclencher la suppression via appui long
+            Log.d(TAG, "Step 4: Triggering long click on 'Netflix'...")
+            composeTestRule.onAllNodesWithText("Netflix").onFirst().performTouchInput { longClick() }
             think()
             
             Log.d(TAG, "Clicking delete button in preview...")
             composeTestRule.onNodeWithTag("preview_delete_button").performClick()
             think()
 
-            // 4. Choisir "Cette occurrence uniquement"
-            Log.d(TAG, "Step 4: Choosing 'Cette occurrence'...")
+            // 5. Choisir "Cette occurrence uniquement"
+            Log.d(TAG, "Step 5: Choosing 'Cette occurrence'...")
             deleteRobot.chooseOccurrenceOnly()
             think()
 
-            // 5. VÉRIFICATION : L'occurrence doit disparaître IMMÉDIATEMENT
-            Log.d(TAG, "Step 5: Verifying disappearance...")
+            // 6. VÉRIFICATION : L'occurrence doit disparaître IMMÉDIATEMENT
+            Log.d(TAG, "Step 6: Verifying disappearance...")
             searchRobot.assertTransactionHidden("Netflix")
 
-            // 6. Cliquer sur ANNULER dans la Snackbar
-            Log.d(TAG, "Step 6: Clicking UNDO...")
+            // 7. Cliquer sur ANNULER dans la Snackbar
+            Log.d(TAG, "Step 7: Clicking UNDO...")
             commonRobot.clickUndo()
             think()
 
-            // 7. VÉRIFICATION : L'occurrence doit réapparaître IMMÉDIATEMENT
-            Log.d(TAG, "Step 7: Verifying reappearance...")
+            // 8. VÉRIFICATION : L'occurrence doit réapparaître IMMÉDIATEMENT
+            // Note: après Undo, elle revient dans la pile dépliée
+            Log.d(TAG, "Step 8: Verifying reappearance...")
             searchRobot.assertTransactionVisible("Netflix")
             
             Log.d(TAG, "<<< SUCCESS testUndoDeletion_ThisOccurrence")
@@ -189,7 +190,7 @@ class RecurringDeletionUndoTest {
             searchRobot.searchFor("Netflix")
             think(2000)
             
-            // Déplier la pile si présente
+            // Déplier la pile
             try {
                 searchRobot.clickExpandStack("1")
                 Log.d(TAG, "Stack found and expanded.")
@@ -202,7 +203,7 @@ class RecurringDeletionUndoTest {
             
             // Clic pour ouvrir le détail
             Log.d(TAG, "Step 3: Opening transaction detail...")
-            searchRobot.clickOnTransaction("Netflix")
+            composeTestRule.onAllNodesWithText("Netflix").onFirst().performClick()
             think()
             
             // Clic sur l'icône supprimer dans l'écran détail
