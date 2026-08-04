@@ -221,13 +221,22 @@ fun SearchScreen(
             }
         } else {
             dayGroupItems.forEach { (date, itemsToDisplay) ->
-                item {
-                    Text(
-                        text = Format.fullDate(date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
+                // On n'affiche l'en-tête de date que s'il n'y a pas de pile en premier élément
+                // Si le premier élément est une pile, elle gère ses propres dates internes.
+                val firstIsStack = itemsToDisplay.firstOrNull()?.let { twr ->
+                    val sid = twr.transaction.seriesId
+                    sid != null && multiOccurrencesSeries.containsKey(sid)
+                } ?: false
+
+                if (!firstIsStack) {
+                    item {
+                        Text(
+                            text = Format.fullDate(date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
                 }
 
                 items(itemsToDisplay, key = { twr ->
