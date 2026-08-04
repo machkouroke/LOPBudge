@@ -141,6 +141,7 @@ class RecurringDeletionUndoTest {
             }
 
             Log.d(TAG, "Verifying 'Netflix' visibility...")
+            Log.d(TAG, "Verifying 'Netflix' visibility...")
             try {
                 searchRobot.assertTransactionVisible("Netflix")
             } catch (e: AssertionError) {
@@ -149,32 +150,38 @@ class RecurringDeletionUndoTest {
                 throw e
             }
 
-            // 4. Déclencher la suppression via appui long
-            Log.d(TAG, "Step 4: Triggering long click on 'Netflix'...")
-            composeTestRule.onAllNodesWithText("Netflix").onFirst().performTouchInput { longClick() }
+            // 4. Ouvrir le détail (appui simple)
+            Log.d(TAG, "Step 4: Opening transaction detail...")
+            composeTestRule.onAllNodes(hasText("Netflix"), useUnmergedTree = true)
+                .onFirst()
+                .performClick()
             think()
             
-            Log.d(TAG, "Clicking delete button in preview...")
-            composeTestRule.onNodeWithTag("preview_delete_button").performClick()
+            // 5. Cliquer sur l'icône de suppression dans l'écran détail
+            Log.d(TAG, "Step 5: Clicking delete button in detail screen...")
+            composeTestRule.waitUntil(3000) {
+                composeTestRule.onAllNodesWithTag("transaction_delete_button").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithTag("transaction_delete_button").performClick()
             think()
 
-            // 5. Choisir "Cette occurrence uniquement"
-            Log.d(TAG, "Step 5: Choosing 'Cette occurrence'...")
+            // 6. Choisir "Cette occurrence uniquement"
+            Log.d(TAG, "Step 6: Choosing 'Cette occurrence'...")
             deleteRobot.chooseOccurrenceOnly()
             think()
 
-            // 6. VÉRIFICATION : L'occurrence doit disparaître IMMÉDIATEMENT
-            Log.d(TAG, "Step 6: Verifying disappearance...")
+            // 7. VÉRIFICATION : L'occurrence doit disparaître IMMÉDIATEMENT
+            // (La suppression nous ramène automatiquement sur l'écran recherche)
+            Log.d(TAG, "Step 7: Verifying disappearance...")
             searchRobot.assertTransactionHidden("Netflix")
 
-            // 7. Cliquer sur ANNULER dans la Snackbar
-            Log.d(TAG, "Step 7: Clicking UNDO...")
+            // 8. Cliquer sur ANNULER dans la Snackbar
+            Log.d(TAG, "Step 8: Clicking UNDO...")
             commonRobot.clickUndo()
             think()
 
-            // 8. VÉRIFICATION : L'occurrence doit réapparaître IMMÉDIATEMENT
-            // Note: après Undo, elle revient dans la pile dépliée
-            Log.d(TAG, "Step 8: Verifying reappearance...")
+            // 9. VÉRIFICATION : L'occurrence doit réapparaître
+            Log.d(TAG, "Step 9: Verifying reappearance...")
             searchRobot.assertTransactionVisible("Netflix")
             
             Log.d(TAG, "<<< SUCCESS testUndoDeletion_ThisOccurrence")
@@ -221,6 +228,9 @@ class RecurringDeletionUndoTest {
             
             // Clic sur l'icône supprimer dans l'écran détail
             Log.d(TAG, "Step 4: Clicking delete in detail screen...")
+            composeTestRule.waitUntil(3000) {
+                composeTestRule.onAllNodesWithTag("transaction_delete_button").fetchSemanticsNodes().isNotEmpty()
+            }
             composeTestRule.onNodeWithTag("transaction_delete_button").performClick()
             think()
 

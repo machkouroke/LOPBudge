@@ -6,6 +6,8 @@ import androidx.compose.ui.test.junit4.ComposeTestRule
 class SearchRobot(private val composeTestRule: ComposeTestRule) {
     fun searchFor(text: String) {
         composeTestRule.onNodeWithTag("search_bar").performTextReplacement(text)
+        // On ferme le clavier pour éviter les recouvrements (Masterclass UI testing)
+        composeTestRule.onNodeWithTag("search_bar").performImeAction()
     }
 
     fun assertTransactionVisible(title: String) {
