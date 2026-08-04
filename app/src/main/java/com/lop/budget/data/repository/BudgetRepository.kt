@@ -114,13 +114,127 @@ class BudgetRepository @Inject constructor(
 
     fun searchTransactions(query: String) = transactionDao.search(query)
 
+    /**
+     * Recherche Universelle : combine les transactions réelles et les occurrences virtuelles
+     * générées par les séries récurrentes.
+     */
     fun searchTransactionsAdvanced(
         query: String,
         accountId: Long?,
         categoryId: Long?,
         startDate: Long?,
         endDate: Long?
-    ) = transactionDao.searchAdvanced(query, accountId, categoryId, startDate, endDate)
+    ): Flow<List<TransactionWithRelations>> {
+        // 1. Filtrer les transactions réelles via DAO
+        val realTxsFlow = transactionDao.searchAdvanced(query, accountId, categoryId, startDate, endDate)
+        
+        // 2. Observer les séries actives pour le virtuel
+        val seriesFlow = recurringSeriesDao.observeActiveSeries()
+        val accountsFlow = accountDao.observeAll()
+        val categoriesFlow = categoryDao.observeAll()
+
+        return combine(
+            realTxsFlow,
+            seriesFlow,
+            accountsFlow,
+            categoriesFlow,
+            _pendingDeletes,
+            _pendingSeriesDeletes,
+            _pendingSeriesFromDates
+        ) { args ->
+            @Suppress("UNCHECKED_CAST")
+            val realTxs = args[0] as List<TransactionWithRelations>
+            @Suppress("UNCHECKED_CAST")
+            val seriesList = args[1] as List<RecurringSeriesEntity>
+            @Suppress("UNCHECKED_CAST")
+            val allAccounts = args[2] as List<AccountEntity>
+            @Suppress("UNCHECKED_CAST")
+            val allCategories = args[3] as List<CategoryEntity>
+            @Suppress("UNCHECKED_CAST")
+            val pending = args[4] as Set<Long>
+            @Suppress("UNCHECKED_CAST")
+            val pendingSeries = args[5] as Map<String, SeriesDeletionMode>
+            @Suppress("UNCHECKED_CAST")
+            val pendingDates = args[6] as Map<String, Long>
+
+            val zone = ZoneId.systemDefault()
+            
+            // Fenêtre de recherche par défaut pour le virtuel : M-1 à M+6
+            val searchStart = startDate ?: (LocalDate.now().minusMonths(1).atStartOfDay(zone).toInstant().toEpochMilli())
+            val searchEnd = endDate ?: (LocalDate.now().plusMonths(6).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli())
+            val searchStartLocal = Instant.ofEpochMilli(searchStart).atZone(zone).toLocalDate()
+            val searchEndLocal = Instant.ofEpochMilli(searchEnd).atZone(zone).toLocalDate()
+
+            // Résultat final : commencer par les réels déjà filtrés par DAO (Undo déjà géré car on filtre au final)
+            val finalResult = realTxs.filter { twr ->
+                val tx = twr.transaction
+                if (tx.id in pending) return@filter false
+                val seriesPendingMode = if (tx.seriesId != null) pendingSeries[tx.seriesId] else null
+                when (seriesPendingMode) {
+                    SeriesDeletionMode.ALL -> false
+                    SeriesDeletionMode.FUTURE -> {
+                        val fromDate = pendingDates[tx.seriesId]
+                        fromDate == null || tx.date < fromDate
+                    }
+                    null -> true
+                }
+            }.toMutableList()
+
+            // 3. Ajouter les occurrences virtuelles des séries qui matchent
+            for (series in seriesList) {
+                val sIdStr = series.id.toString()
+                
+                // Filtre sur les critères de recherche (Texte, Compte, Catégorie)
+                val matchesText = query.isBlank() || series.title.contains(query, ignoreCase = true) || series.note?.contains(query, ignoreCase = true) == true
+                val matchesAccount = accountId == null || series.accountId == accountId
+                val matchesCategory = categoryId == null || series.categoryId == categoryId
+                
+                if (matchesText && matchesAccount && matchesCategory) {
+                    // Barrière de sécurité Undo
+                    if (pendingSeries[sIdStr] == SeriesDeletionMode.ALL) continue
+
+                    val occurrences = generateOccurrencesForMonth(series, searchStartLocal, searchEndLocal, zone)
+                    for (occDate in occurrences) {
+                        val occEpoch = occDate.atStartOfDay(zone).toInstant().toEpochMilli()
+
+                        // Filtre Undo Future
+                        if (pendingSeries[sIdStr] == SeriesDeletionMode.FUTURE) {
+                            val fromDate = pendingDates[sIdStr]
+                            if (fromDate != null && occEpoch >= fromDate) continue
+                        }
+
+                        // Vérifier si une exception existe déjà (matérialisée ou supprimée)
+                        val hasExisting = realTxs.any { it.transaction.seriesId == sIdStr && it.transaction.seriesDate == occEpoch }
+                        if (!hasExisting) {
+                            val virtualId = -abs("${series.id}_$occEpoch".hashCode().toLong()) - 1L
+                            if (virtualId in pending) continue
+
+                            val virtualTx = TransactionEntity(
+                                id = virtualId,
+                                title = series.title,
+                                amount = series.amount,
+                                type = series.type,
+                                status = TransactionStatus.PLANNED,
+                                date = occEpoch,
+                                accountId = series.accountId,
+                                categoryId = series.categoryId,
+                                note = series.note,
+                                seriesId = sIdStr,
+                                seriesDate = occEpoch,
+                                isException = false,
+                                linkedGoalId = series.linkedGoalId,
+                                linkedDebtId = series.linkedDebtId
+                            )
+                            val account = allAccounts.find { it.id == series.accountId }
+                            val category = allCategories.find { it.id == series.categoryId }
+                            finalResult.add(TransactionWithRelations(virtualTx, category, account, emptyList()))
+                        }
+                    }
+                }
+            }
+            finalResult.sortedByDescending { it.transaction.date }
+        }.flowOn(Dispatchers.Default)
+    }
 
     /**
      * Matérialise une occurrence virtuelle d'une série récurrente en une véritable exception persistée en DB.
