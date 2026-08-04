@@ -2,6 +2,8 @@ package com.lop.budget.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -9,7 +11,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 
 /**
@@ -22,6 +26,8 @@ fun LopSearchBar(
     modifier: Modifier = Modifier,
     placeholder: String = "Rechercher...",
 ) {
+    val focusManager = LocalFocusManager.current
+
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -44,6 +50,8 @@ fun LopSearchBar(
             }
         },
         singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
         shape = RoundedCornerShape(32.dp), // Hautement arrondi comme demandé
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedBorderColor = Color.Transparent, // Bordure invisible pour un look plus "pilule"
