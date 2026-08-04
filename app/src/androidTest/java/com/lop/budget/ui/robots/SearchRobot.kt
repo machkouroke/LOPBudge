@@ -9,22 +9,39 @@ class SearchRobot(private val composeTestRule: ComposeTestRule) {
     }
 
     fun assertTransactionVisible(title: String) {
-        composeTestRule.onNodeWithText(title).assertIsDisplayed()
+        // On attend que l'élément soit affiché (Wait Selector)
+        composeTestRule.waitUntil(3000) {
+            composeTestRule.onAllNodesWithText(title).fetchSemanticsNodes().isNotEmpty()
+        }
+        // Utilisation de onFirst() pour gérer les occurrences multiples (Stack)
+        composeTestRule.onAllNodesWithText(title).onFirst().assertIsDisplayed()
     }
 
     fun assertTransactionHidden(title: String) {
-        composeTestRule.onNodeWithText(title).assertDoesNotExist()
+        // On attend que l'élément disparaisse
+        composeTestRule.waitUntil(3000) {
+            composeTestRule.onAllNodesWithText(title).fetchSemanticsNodes().isEmpty()
+        }
+        composeTestRule.onAllNodesWithText(title).assertCountEquals(0)
     }
 
     fun clickOnTransaction(title: String) {
-        composeTestRule.onNodeWithText(title).performClick()
+        composeTestRule.onAllNodesWithText(title).onFirst().performClick()
     }
 
     fun clickExpandStack(seriesId: String) {
-        composeTestRule.onNodeWithTag("transaction_stack_$seriesId").performClick()
+        val tag = "transaction_stack_$seriesId"
+        composeTestRule.waitUntil(3000) {
+            composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag(tag).performClick()
     }
 
     fun assertStackExpanded(seriesId: String) {
-        composeTestRule.onNodeWithTag("transaction_stack_expanded_$seriesId").assertIsDisplayed()
+        val tag = "transaction_stack_expanded_$seriesId"
+        composeTestRule.waitUntil(3000) {
+            composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag(tag).assertIsDisplayed()
     }
 }

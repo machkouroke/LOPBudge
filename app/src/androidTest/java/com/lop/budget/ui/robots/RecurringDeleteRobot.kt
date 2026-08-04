@@ -1,19 +1,31 @@
 package com.lop.budget.ui.robots
 
+import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.ComposeTestRule
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 
 class RecurringDeleteRobot(private val composeTestRule: ComposeTestRule) {
     fun chooseOccurrenceOnly() {
-        composeTestRule.onNodeWithText("Cette occurrence", ignoreCase = true).performClick()
+        val text = "Cette occurrence"
+        composeTestRule.waitUntil(3000) {
+            composeTestRule.onAllNodesWithText(text, ignoreCase = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(text, ignoreCase = true).performClick()
     }
 
     fun chooseFutureOnly() {
-        composeTestRule.onNodeWithText("Les suivantes uniquement", ignoreCase = true).performClick()
+        val text = "Les suivantes uniquement"
+        composeTestRule.waitUntil(3000) {
+            composeTestRule.onAllNodesWithText(text, ignoreCase = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(text, ignoreCase = true).performClick()
     }
 
     fun chooseAllSeries() {
-        composeTestRule.onNodeWithText("Toute la série", ignoreCase = true).performClick()
+        val text = "Toute la série"
+        composeTestRule.waitUntil(3000) {
+            composeTestRule.onAllNodesWithText(text, ignoreCase = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(text, ignoreCase = true).performClick()
     }
 }

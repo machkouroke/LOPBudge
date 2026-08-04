@@ -115,15 +115,21 @@ class RecurringDeletionUndoTest {
             
             // Navigation vers la recherche
             Log.d(TAG, "Step 1: Clicking search icon...")
+            composeTestRule.waitUntil(3000) {
+                composeTestRule.onAllNodesWithTag("nav_search").fetchSemanticsNodes().isNotEmpty()
+            }
             composeTestRule.onNodeWithTag("nav_search").performClick()
             think()
 
             // 2. Rechercher l'occurrence
             Log.d(TAG, "Step 2: Searching for 'Netflix'...")
             searchRobot.searchFor("Netflix")
-            think(2000)
-
+            
             Log.d(TAG, "Step 3: Handling the Stack UX...")
+            // On attend que l'élément apparaisse
+            composeTestRule.waitUntil(5000) {
+                composeTestRule.onAllNodesWithText("Netflix").fetchSemanticsNodes().isNotEmpty()
+            }
             // Puisqu'on a plusieurs occurrences, elles sont empilées.
             // On doit déplier la pile (ID de série est 1 en DB in-memory neuve)
             try {
@@ -182,13 +188,20 @@ class RecurringDeletionUndoTest {
             
             // Navigation vers la recherche
             Log.d(TAG, "Step 1: Clicking search icon...")
+            composeTestRule.waitUntil(3000) {
+                composeTestRule.onAllNodesWithTag("nav_search").fetchSemanticsNodes().isNotEmpty()
+            }
             composeTestRule.onNodeWithTag("nav_search").performClick()
             think()
             
             // 2. Rechercher l'occurrence
             Log.d(TAG, "Step 2: Searching for 'Netflix'...")
             searchRobot.searchFor("Netflix")
-            think(2000)
+
+            // Attendre les résultats
+            composeTestRule.waitUntil(5000) {
+                composeTestRule.onAllNodesWithText("Netflix").fetchSemanticsNodes().isNotEmpty()
+            }
             
             // Déplier la pile
             try {
