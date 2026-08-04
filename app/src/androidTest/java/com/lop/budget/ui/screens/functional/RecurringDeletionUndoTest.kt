@@ -1,5 +1,6 @@
 package com.lop.budget.ui.screens.functional
 
+import android.util.Log
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,6 +20,7 @@ import com.lop.budget.ui.robots.RecurringDeleteRobot
 import com.lop.budget.ui.robots.SearchRobot
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
@@ -32,20 +34,18 @@ import javax.inject.Inject
 @RunWith(AndroidJUnit4::class)
 class RecurringDeletionUndoTest {
 
+    private val TAG = "RecurringDeletionUndoTest"
+
     @get:Rule(order = 0)
     var hiltRule = HiltAndroidRule(this)
 
     @get:Rule(order = 1)
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
-    @Inject
-    lateinit var accountDao: AccountDao
-    @Inject
-    lateinit var categoryDao: CategoryDao
-    @Inject
-    lateinit var seriesDao: RecurringSeriesDao
-    @Inject
-    lateinit var transactionDao: TransactionDao
+    @Inject lateinit var accountDao: AccountDao
+    @Inject lateinit var categoryDao: CategoryDao
+    @Inject lateinit var seriesDao: RecurringSeriesDao
+    @Inject lateinit var transactionDao: TransactionDao
 
     private lateinit var searchRobot: SearchRobot
     private lateinit var deleteRobot: RecurringDeleteRobot
@@ -53,6 +53,7 @@ class RecurringDeletionUndoTest {
 
     @Before
     fun setup() {
+        Log.d(TAG, "--- SETUP START ---")
         hiltRule.inject()
         searchRobot = SearchRobot(composeTestRule)
         deleteRobot = RecurringDeleteRobot(composeTestRule)
@@ -60,6 +61,7 @@ class RecurringDeletionUndoTest {
 
         // Préparation des données réelles en DB in-memory
         runBlocking {
+            Log.d(TAG, "Inserting test account...")
             val accountId = accountDao.upsert(
                 AccountEntity(
                     name = "Compte Courant",
@@ -69,6 +71,7 @@ class RecurringDeletionUndoTest {
                     icon = ""
                 )
             )
+            Log.d(TAG, "Inserting test category...")
             val categoryId = categoryDao.upsert(
                 CategoryEntity(
                     name = "Abonnements",
@@ -81,6 +84,7 @@ class RecurringDeletionUndoTest {
             // Création d'une série mensuelle commençant aujourd'hui
             val today =
                 LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            Log.d(TAG, "Inserting recurring series 'Netflix' starting at $today")
             seriesDao.upsert(
                 RecurringSeriesEntity(
                     title = "Netflix",
@@ -94,59 +98,114 @@ class RecurringDeletionUndoTest {
                 )
             )
         }
+        Log.d(TAG, "--- SETUP COMPLETE ---")
+    }
+
+    private fun think(ms: Long = 1000) {
+        Log.d(TAG, "Thinking for ${ms}ms...")
+        runBlocking { delay(ms) }
     }
 
     @Test
-    fun testUndoDeletion_ThisOccurrence() = runBlocking {
-        // Navigation vers la recherche
-        composeTestRule.onNodeWithTag("nav_search").performClick()
+    fun testUndoDeletion_ThisOccurrence() {
+        runBlocking {
+            Log.d(TAG, ">>> START testUndoDeletion_ThisOccurrence")
+            
+            // Navigation vers la recherche
+            Log.d(TAG, "Step 1: Clicking search icon...")
+            composeTestRule.onNodeWithTag("nav_search").performClick()
+            think()
 
-        // 2. Rechercher l'occurrence
-        searchRobot.searchFor("Netflix")
-        searchRobot.assertTransactionVisible("Netflix")
+            // 2. Rechercher l'occurrence
+            Log.d(TAG, "Step 2: Searching for 'Netflix'...")
+            searchRobot.searchFor("Netflix")
+            think(2000)
 
-        // 3. Déclencher la suppression via appui long
-        composeTestRule.onNodeWithText("Netflix").performTouchInput { longClick() }
-        // Clic sur l'icône de suppression dans la preview via son testTag
-        composeTestRule.onNodeWithTag("preview_delete_button").performClick()
+            Log.d(TAG, "Verifying 'Netflix' visibility...")
+            try {
+                searchRobot.assertTransactionVisible("Netflix")
+            } catch (e: AssertionError) {
+                Log.e(TAG, "FAILED: 'Netflix' not found in search results!")
+                composeTestRule.onRoot().printToLog(TAG)
+                throw e
+            }
 
-        // 4. Choisir "Cette occurrence uniquement"
-        deleteRobot.chooseOccurrenceOnly()
+            // 3. Déclencher la suppression via appui long
+            Log.d(TAG, "Step 3: Triggering long click on 'Netflix'...")
+            composeTestRule.onNodeWithText("Netflix").performTouchInput { longClick() }
+            think()
+            
+            Log.d(TAG, "Clicking delete button in preview...")
+            composeTestRule.onNodeWithTag("preview_delete_button").performClick()
+            think()
 
-        // 5. VÉRIFICATION : L'occurrence doit disparaître IMMÉDIATEMENT
-        searchRobot.assertTransactionHidden("Netflix")
+            // 4. Choisir "Cette occurrence uniquement"
+            Log.d(TAG, "Step 4: Choosing 'Cette occurrence'...")
+            deleteRobot.chooseOccurrenceOnly()
+            think()
 
-        // 6. Cliquer sur ANNULER dans la Snackbar
-        commonRobot.clickUndo()
+            // 5. VÉRIFICATION : L'occurrence doit disparaître IMMÉDIATEMENT
+            Log.d(TAG, "Step 5: Verifying disappearance...")
+            searchRobot.assertTransactionHidden("Netflix")
 
-        // 7. VÉRIFICATION : L'occurrence doit réapparaître IMMÉDIATEMENT
-        searchRobot.assertTransactionVisible("Netflix")
+            // 6. Cliquer sur ANNULER dans la Snackbar
+            Log.d(TAG, "Step 6: Clicking UNDO...")
+            commonRobot.clickUndo()
+            think()
+
+            // 7. VÉRIFICATION : L'occurrence doit réapparaître IMMÉDIATEMENT
+            Log.d(TAG, "Step 7: Verifying reappearance...")
+            searchRobot.assertTransactionVisible("Netflix")
+            
+            Log.d(TAG, "<<< SUCCESS testUndoDeletion_ThisOccurrence")
+        }
     }
 
     @Test
-    fun testUndoDeletion_AllSeries() = runBlocking {
-        // Navigation vers la recherche
-        composeTestRule.onNodeWithTag("nav_search").performClick()
+    fun testUndoDeletion_AllSeries() {
+        runBlocking {
+            Log.d(TAG, ">>> START testUndoDeletion_AllSeries")
+            
+            // Navigation vers la recherche
+            Log.d(TAG, "Step 1: Clicking search icon...")
+            composeTestRule.onNodeWithTag("nav_search").performClick()
+            think()
+            
+            // 2. Rechercher l'occurrence
+            Log.d(TAG, "Step 2: Searching for 'Netflix'...")
+            searchRobot.searchFor("Netflix")
+            think(2000)
+            searchRobot.assertTransactionVisible("Netflix")
+            
+            // Clic pour ouvrir le détail
+            Log.d(TAG, "Step 3: Opening transaction detail...")
+            searchRobot.clickOnTransaction("Netflix")
+            think()
+            
+            // Clic sur l'icône supprimer dans l'écran détail
+            Log.d(TAG, "Step 4: Clicking delete in detail screen...")
+            composeTestRule.onNodeWithTag("transaction_delete_button").performClick()
+            think()
 
-        searchRobot.searchFor("Netflix")
-        searchRobot.assertTransactionVisible("Netflix")
+            // Choisir "Toute la série"
+            Log.d(TAG, "Step 5: Choosing 'Toute la série'...")
+            deleteRobot.chooseAllSeries()
+            think()
 
-        // Clic pour ouvrir le détail
-        searchRobot.clickOnTransaction("Netflix")
+            // VÉRIFICATION : L'occurrence doit être masquée (on est revenu sur l'écran recherche par le Undo)
+            Log.d(TAG, "Step 6: Verifying disappearance...")
+            searchRobot.assertTransactionHidden("Netflix")
 
-        // Clic sur l'icône supprimer dans l'écran détail
-        composeTestRule.onNodeWithTag("transaction_delete_button").performClick()
+            // Annuler
+            Log.d(TAG, "Step 7: Clicking UNDO...")
+            commonRobot.clickUndo()
+            think()
 
-        // Choisir "Toute la série"
-        deleteRobot.chooseAllSeries()
-
-        // VÉRIFICATION : L'occurrence doit être masquée (on est revenu sur l'écran recherche par le Undo)
-        searchRobot.assertTransactionHidden("Netflix")
-
-        // Annuler
-        commonRobot.clickUndo()
-
-        // Réapparition
-        searchRobot.assertTransactionVisible("Netflix")
+            // Réapparition
+            Log.d(TAG, "Step 8: Verifying reappearance...")
+            searchRobot.assertTransactionVisible("Netflix")
+            
+            Log.d(TAG, "<<< SUCCESS testUndoDeletion_AllSeries")
+        }
     }
 }
