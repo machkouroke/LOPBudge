@@ -41,10 +41,15 @@ class AnalyticsViewModel @Inject constructor(
     settings: SettingsRepository,
 ) : ViewModel() {
 
-    private val initialType = savedStateHandle.get<String>("type")?.let { TransactionType.valueOf(it) }
-        ?: TransactionType.EXPENSE
-    private val initialMonth = savedStateHandle.get<String>("ym")?.let { YearMonth.parse(it) }
-        ?: YearMonth.now()
+    private val initialType = savedStateHandle.get<String>("type")?.let { raw ->
+        if (raw == "{type}") null 
+        else runCatching { TransactionType.valueOf(raw) }.getOrNull()
+    } ?: TransactionType.EXPENSE
+
+    private val initialMonth = savedStateHandle.get<String>("ym")?.let { raw ->
+        if (raw == "{ym}") null 
+        else runCatching { YearMonth.parse(raw) }.getOrNull()
+    } ?: YearMonth.now()
 
     private val month = MutableStateFlow(initialMonth)
     private val type = MutableStateFlow(initialType)
