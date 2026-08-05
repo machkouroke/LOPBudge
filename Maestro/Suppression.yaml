@@ -1,0 +1,17 @@
+appId: com.lop.budget
+---
+- launchApp:
+    clearState: true
+- tapOn: "Rechercher"
+- tapOn: "Titre, notes..."
+- inputText: "Loyer"
+- tapOn: "Récurrent"
+- tapOn:
+    text: "Loyer"
+    index: 1
+- tapOn: "Supprimer"
+- tapOn: "Cette occurrence"
+
+
+
+
