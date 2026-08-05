@@ -140,6 +140,12 @@ class RecurringDeletionUndoTest {
                 Log.d(TAG, "No stack found (maybe only 1 result), continuing with single item.")
             }
 
+            // Vérification de la visibilité APRÈS expansion (Wait for animation)
+            Log.d(TAG, "Step 3.1: Waiting for expansion animation to stabilize...")
+            composeTestRule.waitUntil(5000) {
+                composeTestRule.onAllNodesWithTag("transaction_stack_expanded_1").fetchSemanticsNodes().isNotEmpty()
+            }
+
             Log.d(TAG, "Verifying 'Netflix' visibility...")
             try {
                 searchRobot.assertTransactionVisible("Netflix")
@@ -151,6 +157,7 @@ class RecurringDeletionUndoTest {
 
             // 4. Ouvrir le détail (appui simple)
             Log.d(TAG, "Step 4: Opening transaction detail...")
+            // On clique explicitement sur le texte "Netflix" avec useUnmergedTree
             composeTestRule.onAllNodes(hasText("Netflix"), useUnmergedTree = true)
                 .onFirst()
                 .performClick()
@@ -216,6 +223,11 @@ class RecurringDeletionUndoTest {
                 think()
             } catch (e: AssertionError) {
                 Log.d(TAG, "No stack found.")
+            }
+
+            Log.d(TAG, "Step 3.1: Waiting for expansion animation...")
+            composeTestRule.waitUntil(5000) {
+                composeTestRule.onAllNodesWithTag("transaction_stack_expanded_1").fetchSemanticsNodes().isNotEmpty()
             }
 
             searchRobot.assertTransactionVisible("Netflix")
