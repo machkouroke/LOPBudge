@@ -1,33 +1,35 @@
-# Walkthrough - Optimisation Performance & Fiabilité
+# Walkthrough - Résolution du Problème de Détection (Rechercher)
 
-Cette mise à jour résout les problèmes de connexion prématurée de Maestro et optimise le temps de démarrage global de l'infrastructure de test.
+J'ai identifié et corrigé la raison pour laquelle Maestro ne trouvait pas le bouton "Rechercher" sur l'émulateur.
 
-## Améliorations de Performance
+## Analyse du Problème
 
-1.  **Accélération GPU Matérielle** :
-    - Le script force l'utilisation de votre puce **Intel Iris Xe** (`-gpu host`).
-    - Le rendu graphique n'est plus calculé par le processeur, ce qui rend l'interface Android beaucoup plus fluide et rapide à charger.
-2.  **Profil Pixel 6** :
-    - Utilisation d'un profil matériel plus récent, mieux adapté aux images système Android 14/15.
-3.  **Fermeture Accélérée** :
-    - Utilisation de `-no-snapshot-save` pour quitter instantanément l'émulateur sans attendre l'enregistrement de l'état (inutile puisque nous faisons un reset à chaque fois).
+- **La Cause** : Bien que le bouton ait une description "Rechercher", Maestro peinait à le faire correspondre uniquement par texte sur l'émulateur (probablement dû à une différence de rendu ou de focus par rapport à votre smartphone).
+- **Le Bouton** : Dans le code (`HomeScreen.kt`), ce bouton possède un **testTag** dédié nommé `nav_search`.
 
-## Fiabilité du Démarrage (Triple Check)
+## Solution Appliquée
 
-Le script ne donne plus le "feu vert" à Maestro tant que ces 3 conditions ne sont pas remplies :
-1.  **ADB Ready** : L'appareil est visible par les outils de développement.
-2.  **Boot Completed** : Le système Android signale que son initialisation est finie.
-3.  **Package Manager Ready** : Le script vérifie qu'il peut lister les applications installées (`pm list packages`). C'est la preuve que le système est **totalement interactif** et prêt à installer votre APK.
+J'ai modifié le fichier de test [Suppression.yaml](file:///C:/Users/machk.GALAXYBOOKPRO.000/Downloads/LOPBudge/LOPBudge/Maestro/Suppression.yaml) pour utiliser l'identifiant technique plutôt que le texte :
+
+```diff
+- - tapOn: "Rechercher"
++ - tapOn:
++     id: "nav_search"
+```
+
+**Pourquoi c'est mieux ?**
+L'identifiant (`id`) est une cible "invisible" et immuable dans le code. Contrairement au texte qui peut changer selon la langue ou la police, l'identifiant technique est le moyen le plus fiable et le plus rapide pour Maestro de trouver un élément, surtout sur un émulateur.
 
 ## Utilisation
 
-La commande reste identique :
+Relancez simplement le script. Le test devrait maintenant cliquer instantanément sur la loupe de recherche :
 ```powershell
 .\scripts\run_tests.ps1
 ```
 
 ---
 
-## Notes Techniques
-- **Cold Boot** : Comme nous utilisons `-wipe-data` pour garantir un environnement propre, le premier démarrage reste un "démarrage à froid". Grâce au GPU host, ce temps est réduit au minimum possible.
-- **Auto-Réparation** : Si l'AVD `Maestro_Test_API_36` est corrompu ou supprimé, le script le recréera proprement au prochain lancement.
+## Résumé technique
+- **Ciblage** : Passage de `text` à `id` (`testTag`).
+- **Fiabilité** : Élimine les erreurs de détection liées à la reconnaissance de texte (regex).
+- **Stabilité** : Moins sensible aux délais d'affichage de l'UI.

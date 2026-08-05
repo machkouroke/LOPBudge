@@ -2,16 +2,29 @@ appId: com.lop.budget
 ---
 - launchApp:
     clearState: true
-- tapOn: "Rechercher"
-- tapOn: "Titre, notes..."
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn:
+    text: "Rechercher"
+    retryTapIfNoChange: true
+    waitToSettleTimeoutMs: 10000
+- tapOn: 
+    text: "Titre, notes..."
+    waitToSettleTimeoutMs: 10000
 - inputText: "Loyer"
-- tapOn: "Récurrent"
+- tapOn: 
+    text: "Récurrent"
+    waitToSettleTimeoutMs: 10000
 - tapOn:
     text: "Loyer"
     index: 1
-- tapOn: "Supprimer"
-- tapOn: "Cette occurrence"
-
-
-
+    waitToSettleTimeoutMs: 10000
+- tapOn: 
+    text: "Supprimer"
+    waitToSettleTimeoutMs: 10000
+- tapOn: 
+    text: "Cette occurrence"
+    waitToSettleTimeoutMs: 10000
+- killApp:
+      appId: "com.lop.budget"
 
