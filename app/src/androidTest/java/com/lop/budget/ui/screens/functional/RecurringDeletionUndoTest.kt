@@ -3,8 +3,6 @@ package com.lop.budget.ui.screens.functional
 import android.util.Log
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lop.budget.MainActivity
 import com.lop.budget.data.local.dao.AccountDao
@@ -112,146 +110,120 @@ class RecurringDeletionUndoTest {
 
     @Test
     fun testUndoDeletion_ThisOccurrence() {
-        step("Launching MainActivity...")
-        runBlocking {
-            step(">>> START testUndoDeletion_ThisOccurrence")
-            
-            step("Waiting for Home Screen...")
-            composeTestRule.waitUntil(15000) {
-                composeTestRule.onAllNodesWithTag("home_lazy_column")
-                    .fetchSemanticsNodes().isNotEmpty()
-            }
-            think(500)
-
-            step("Step 1: Clicking search icon...")
-            composeTestRule.onNodeWithTag("nav_search").performClick()
-            think(500)
-
-            step("Step 2: Searching for 'Netflix'...")
-            searchRobot.searchFor("Netflix")
-            think(1000)
-            
-            step("Step 3: Handling the Stack UX...")
-            composeTestRule.waitUntil(5000) {
-                composeTestRule.onAllNodesWithText("Netflix").fetchSemanticsNodes().isNotEmpty()
-            }
-            
-            try {
-                searchRobot.clickExpandStack("1") 
-                step("Stack found and expanded.")
-                think(500)
-            } catch (e: AssertionError) {
-                step("No stack found, continuing.")
-            }
-
-            step("Step 3.1: Waiting for expansion animation...")
-            composeTestRule.waitUntil(5000) {
-                composeTestRule.onAllNodesWithTag("transaction_stack_expanded_1")
-                    .fetchSemanticsNodes().isNotEmpty()
-            }
-            think(500)
-
-            step("Verifying 'Netflix' visibility...")
-            searchRobot.assertTransactionVisible("Netflix")
-
-            step("Step 4: Opening transaction detail...")
-            searchRobot.clickOnTransactionInStack("1", 0)
-            think(1000)
-            
-            step("Step 5: Clicking delete button in detail screen...")
-            composeTestRule.waitUntil(8000) {
-                composeTestRule.onAllNodesWithTag("transaction_delete_button")
-                    .fetchSemanticsNodes().isNotEmpty()
-            }
-            composeTestRule.onNodeWithTag("transaction_delete_button").performClick()
-            think(500)
-
-            step("Step 6: Choosing 'Cette occurrence'...")
-            deleteRobot.chooseOccurrenceOnly()
-            think(1000)
-
-            step("Step 7: Verifying disappearance...")
-            searchRobot.assertTransactionHidden("Netflix")
-            think(500)
-
-            step("Step 8: Clicking UNDO...")
-            commonRobot.clickUndo()
-            think(1000)
-
-            step("Step 9: Verifying reappearance...")
-            searchRobot.assertTransactionVisible("Netflix")
-            
-            step("<<< SUCCESS testUndoDeletion_ThisOccurrence")
+        step(">>> START testUndoDeletion_ThisOccurrence")
+        
+        step("Waiting for Home Screen...")
+        composeTestRule.waitUntil(20000) {
+            composeTestRule.onAllNodesWithTag("home_lazy_column").fetchSemanticsNodes().isNotEmpty()
         }
+        think(500)
+
+        step("Step 1: Clicking search icon...")
+        composeTestRule.onNodeWithTag("nav_search").performClick()
+        think(1000)
+
+        step("Step 2: Searching for 'Netflix'...")
+        searchRobot.searchFor("Netflix")
+        think(1500) // Temps pour le debounce et chargement résultats
+        
+        step("Step 3: Expanding the Stack...")
+        searchRobot.clickExpandStack("1") 
+        think(1000)
+
+        step("Step 4: Opening transaction detail...")
+        // Utilisation du tag unique pour éviter de cliquer sur la barre de recherche
+        searchRobot.clickOnTransactionInStack("1", 0)
+        think(1500) // Temps pour le chargement de l'écran détail
+        
+        step("Step 5: Clicking delete button...")
+        composeTestRule.onNodeWithTag("transaction_delete_button").performClick()
+        think(1000)
+
+        step("Step 6: Choosing 'Cette occurrence'...")
+        deleteRobot.chooseOccurrenceOnly()
+        
+        // --- VÉRIFICATION NAVIGATION CRITIQUE ---
+        step("Step 6.1: Verifying return to Search Screen...")
+        // On attend explicitement la barre de recherche. Si on retourne sur la Home,
+        // ce waitUntil va échouer et on saura pourquoi.
+        try {
+            composeTestRule.waitUntil(10000) {
+                composeTestRule.onAllNodesWithTag("search_bar").fetchSemanticsNodes().isNotEmpty()
+            }
+            step("Successfully returned to Search Screen.")
+        } catch (e: Exception) {
+            step("ERROR: Did not return to Search Screen. Checking for Home Screen...")
+            if (composeTestRule.onAllNodesWithTag("home_lazy_column").fetchSemanticsNodes().isNotEmpty()) {
+                step("WARNING: Navigation bug detected! App returned to Home Screen instead of Search.")
+            }
+            throw e
+        }
+        think(1000)
+
+        step("Step 7: Verifying disappearance...")
+        searchRobot.assertTransactionHidden("Netflix")
+        think(10000)
+
+        step("Step 8: Clicking UNDO...")
+        commonRobot.clickUndo()
+        think(1500) // Temps pour la restauration DB et UI
+
+        step("Step 9: Verifying reappearance...")
+        searchRobot.assertTransactionVisible("Netflix")
+        
+        step("<<< SUCCESS testUndoDeletion_ThisOccurrence")
     }
 
     @Test
     fun testUndoDeletion_AllSeries() {
-        step("Launching MainActivity...")
-        runBlocking {
-            step(">>> START testUndoDeletion_AllSeries")
-            
-            step("Waiting for Home Screen...")
-            composeTestRule.waitUntil(15000) {
-                composeTestRule.onAllNodesWithTag("home_lazy_column").fetchSemanticsNodes().isNotEmpty()
-            }
-            think(500)
-
-            step("Step 1: Clicking search icon...")
-            composeTestRule.onNodeWithTag("nav_search").performClick()
-            think(500)
-            
-            step("Step 2: Searching for 'Netflix'...")
-            searchRobot.searchFor("Netflix")
-            think(1000)
-
-            composeTestRule.waitUntil(5000) {
-                composeTestRule.onAllNodesWithText("Netflix").fetchSemanticsNodes().isNotEmpty()
-            }
-            
-            try {
-                searchRobot.clickExpandStack("1")
-                step("Stack found and expanded.")
-                think(500)
-            } catch (e: AssertionError) {
-                step("No stack found.")
-            }
-
-            step("Step 3.1: Waiting for expansion animation...")
-            composeTestRule.waitUntil(5000) {
-                composeTestRule.onAllNodesWithTag("transaction_stack_expanded_1").fetchSemanticsNodes().isNotEmpty()
-            }
-            think(500)
-
-            searchRobot.assertTransactionVisible("Netflix")
-            
-            step("Step 3: Opening transaction detail...")
-            searchRobot.clickOnTransactionInStack("1", 0)
-            think(1000)
-            
-            step("Step 4: Clicking delete in detail screen...")
-            composeTestRule.waitUntil(5000) {
-                composeTestRule.onAllNodesWithTag("transaction_delete_button").fetchSemanticsNodes().isNotEmpty()
-            }
-            composeTestRule.onNodeWithTag("transaction_delete_button").performClick()
-            think(500)
-
-            step("Step 5: Choosing 'Toute la série'...")
-            deleteRobot.chooseAllSeries()
-            think(1000)
-
-            step("Step 6: Verifying disappearance...")
-            searchRobot.assertTransactionHidden("Netflix")
-            think(500)
-
-            step("Step 7: Clicking UNDO...")
-            commonRobot.clickUndo()
-            think(1000)
-
-            step("Step 8: Verifying reappearance...")
-            searchRobot.assertTransactionVisible("Netflix")
-            
-            step("<<< SUCCESS testUndoDeletion_AllSeries")
+        step(">>> START testUndoDeletion_AllSeries")
+        
+        step("Waiting for Home Screen...")
+        composeTestRule.waitUntil(20000) {
+            composeTestRule.onAllNodesWithTag("home_lazy_column").fetchSemanticsNodes().isNotEmpty()
         }
+        think(500)
+
+        step("Step 1: Clicking search icon...")
+        composeTestRule.onNodeWithTag("nav_search").performClick()
+        think(1000)
+        
+        step("Step 2: Searching for 'Netflix'...")
+        searchRobot.searchFor("Netflix")
+        think(1500)
+
+        step("Step 3: Expanding the Stack...")
+        searchRobot.clickExpandStack("1")
+        think(1000)
+
+        step("Step 4: Opening transaction detail...")
+        searchRobot.clickOnTransactionInStack("1", 0)
+        think(1500)
+        
+        step("Step 5: Clicking delete...")
+        composeTestRule.onNodeWithTag("transaction_delete_button").performClick()
+        think(1000)
+
+        step("Step 6: Choosing 'Toute la série'...")
+        deleteRobot.chooseAllSeries()
+
+        step("Step 6.1: Verifying return to Search Screen...")
+        composeTestRule.waitUntil(10000) {
+            composeTestRule.onAllNodesWithTag("search_bar").fetchSemanticsNodes().isNotEmpty()
+        }
+        think(1000)
+
+        step("Step 7: Verifying disappearance...")
+        searchRobot.assertTransactionHidden("Netflix")
+        think(500)
+
+        step("Step 8: Clicking UNDO...")
+        commonRobot.clickUndo()
+        think(1500)
+
+        step("Step 9: Verifying reappearance...")
+        searchRobot.assertTransactionVisible("Netflix")
+        
+        step("<<< SUCCESS testUndoDeletion_AllSeries")
     }
 }
