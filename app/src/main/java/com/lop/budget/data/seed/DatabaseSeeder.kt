@@ -15,11 +15,16 @@ import java.time.ZoneId
  */
 object DatabaseSeeder {
 
+    private var isSeeding = false
+
     private fun LocalDate.millis(): Long =
         atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
     suspend fun seed(db: LopDatabase) {
-        val accountDao = db.accountDao()
+        if (isSeeding) return
+        isSeeding = true
+        try {
+            val accountDao = db.accountDao()
         val categoryDao = db.categoryDao()
         val tagDao = db.tagDao()
         val goalDao = db.goalDao()
@@ -480,5 +485,7 @@ object DatabaseSeeder {
             catFood,
             groceryCat
         )
+    } finally {
+        isSeeding = false
     }
-}
+}}

@@ -3,6 +3,7 @@ package com.lop.budget.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.lop.budget.data.local.dao.AccountDao
 import com.lop.budget.data.local.dao.CategoryDao
 import com.lop.budget.data.local.dao.DebtDao
@@ -32,7 +33,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         DebtEntity::class,
         DetectedTransactionProposalEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -48,6 +49,23 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        val MIGRATION_14_15 = object : androidx.room.migration.Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Remove duplicates before adding index (optional but safer)
+                // Actually, SQLite CREATE UNIQUE INDEX will fail if duplicates exist.
+                // We should clean them up.
+                db.execSQL("""
+                    DELETE FROM categories 
+                    WHERE id NOT IN (
+                        SELECT MIN(id) 
+                        FROM categories 
+                        GROUP BY name, parentCategoryId
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_categories_name_parentCategoryId` ON `categories` (`name`, `parentCategoryId`)")
+            }
+        }
 
         val MIGRATION_13_14 = object : androidx.room.migration.Migration(13, 14) {
             override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {

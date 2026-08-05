@@ -38,10 +38,6 @@ object AppModule {
                     super.onCreate(db)
                     scope.launch { DatabaseSeeder.seed(dbRef) }
                 }
-                override fun onOpen(db: SupportSQLiteDatabase) {
-                    super.onOpen(db)
-                    scope.launch { DatabaseSeeder.seed(dbRef) }
-                }
             })
             .addMigrations(
                 LopDatabase.MIGRATION_1_2,
@@ -57,6 +53,7 @@ object AppModule {
                 LopDatabase.MIGRATION_11_12,
                 LopDatabase.MIGRATION_12_13,
                 LopDatabase.MIGRATION_13_14,
+                LopDatabase.MIGRATION_14_15,
             )
             .fallbackToDestructiveMigration()
             .build()
