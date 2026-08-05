@@ -1,5 +1,12 @@
 # ==============================================================================
-# LOPBudge - Automated Build, Deploy, and Maestro Test Script (INSTANT-RELOAD)
+# LOPBudge - Automated Build, Deploy, and Maestro Test Script
+# ==============================================================================
+# PARAMÈTRES
+# ==============================================================================
+param (
+    [switch]$Close # Option pour fermer l'émulateur à la fin
+)
+
 # ==============================================================================
 # CONFIGURATION
 # ==============================================================================
@@ -14,6 +21,9 @@ $Serial        = "emulator-5554"
 $PackageName   = "com.lop.budget"
 $OutputDir     = "maestro_results"
 $AvdDir        = "$HOME\.android\avd\$AvdName.avd"
+
+# --- HELPER : Chronomètre ---
+$Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
 # ==============================================================================
 # 0. PRÉPARATION DE L'AVD (Si manquant)
@@ -37,7 +47,11 @@ if ($avdList -notmatch "Name: $AvdName") {
 # ==============================================================================
 Write-Host "[1/5] Build de l'application..." -ForegroundColor Cyan
 if (Test-Path ".\gradlew.bat") { .\gradlew.bat assembleDebug } else { ./gradlew assembleDebug }
-if ($LASTEXITCODE -ne 0) { Write-Error "Build échoué."; exit $LASTEXITCODE }
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Build échoué."
+    $Stopwatch.Stop()
+    exit $LASTEXITCODE
+}
 
 $global:ExitCode = 0
 
@@ -51,12 +65,10 @@ try {
     } else {
         Write-Host "[2/5] Démarrage de l'émulateur (Ceci ne sera fait qu'une fois)..." -ForegroundColor Cyan
 
-        # Nettoyage des verrous si un plantage précédent a eu lieu
         if (Test-Path $AvdDir) { Get-ChildItem -Path $AvdDir -Filter "*.lock" -Recurse | Remove-Item -Force -ErrorAction SilentlyContinue }
 
         Start-Process -FilePath $EmulatorPath -ArgumentList "-avd $AvdName -gpu host -no-snapshot-save -no-audio -port 5554" -NoNewWindow
 
-        # Attente du boot
         Write-Host "[3/5] Attente du boot Android..." -ForegroundColor Cyan
         adb -s $Serial wait-for-device
         $ready = $false
@@ -76,9 +88,7 @@ try {
     if (Test-Path $OutputDir) { Remove-Item "$OutputDir\*" -Recurse -Force }
     else { New-Item -ItemType Directory -Path $OutputDir }
 
-    # On vide les données de l'app SANS redémarrer l'émulateur (Clean State ultra-rapide)
     adb -s $Serial shell pm clear $PackageName 2>$null
-
     adb -s $Serial install -r $ApkPath
     if ($LASTEXITCODE -ne 0) { throw "Échec de l'installation." }
 
@@ -96,11 +106,24 @@ try {
     $global:ExitCode = 1
 } finally {
     # ==========================================================================
-    # 6. ON LAISSE L'ÉMULATEUR OUVERT POUR LE PROCHAIN TEST
+    # 6. NETTOYAGE / FERMETURE OPTIONNELLE
     # ==========================================================================
+    if ($Close) {
+        Write-Host "Fermeture demandée de l'émulateur..." -ForegroundColor Cyan
+        adb -s $Serial emu kill 2>$null | Out-Null
+        Start-Sleep -Seconds 3
+        Get-Process qemu-system-x86_64, emulator -ErrorAction SilentlyContinue | Stop-Process -Force
+        Write-Host "Émulateur fermé." -ForegroundColor DarkGray
+    } else {
+        Write-Host "L'émulateur reste ouvert (utiliser -Close pour le fermer)." -ForegroundColor Yellow
+    }
+
+    $Stopwatch.Stop()
+    $ElapsedTime = $Stopwatch.Elapsed
+    $TimeDisplay = [string]::Format("{0:00} min {1:00} sec", $ElapsedTime.TotalMinutes, $ElapsedTime.Seconds)
+
     Write-Host "--- TEST TERMINÉ ---" -ForegroundColor Cyan
-    Write-Host "L'émulateur reste ouvert pour vos prochains tests (gain de 2-3 min par run)." -ForegroundColor Yellow
-    Write-Host "Vous pouvez le fermer manuellement si vous avez fini votre journée." -ForegroundColor DarkGray
+    Write-Host "Temps total d'exécution : $TimeDisplay" -ForegroundColor Magenta
 
     if ($global:ExitCode -ne 0) { exit $global:ExitCode }
 }

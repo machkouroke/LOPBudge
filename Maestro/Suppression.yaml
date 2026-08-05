@@ -11,7 +11,7 @@ appId: com.lop.budget
 - tapOn: 
     text: "Titre, notes..."
     waitToSettleTimeoutMs: 10000
-# On efface d'abord au cas où le focus aurait déclenché un remplissage partiel (lag émulateur)
+# On efface d'abord au cas où le bégaiement aurait déjà écrit des lettres
 - eraseText: 10
 - inputText: "Loyer"
 - hideKeyboard
