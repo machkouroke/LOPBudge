@@ -8,6 +8,15 @@ class SearchRobot(private val composeTestRule: ComposeTestRule) {
         composeTestRule.onNodeWithTag("search_bar").performTextReplacement(text)
         // On ferme le clavier pour éviter les recouvrements (Masterclass UI testing)
         composeTestRule.onNodeWithTag("search_bar").performImeAction()
+        composeTestRule.waitForIdle()
+    }
+
+    fun clickOnTransactionInStack(seriesId: String, index: Int) {
+        val tag = "stack_item_${seriesId}_$index"
+        composeTestRule.waitUntil(3000) {
+            composeTestRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag(tag).performClick()
     }
 
     fun assertTransactionVisible(title: String) {
@@ -25,10 +34,6 @@ class SearchRobot(private val composeTestRule: ComposeTestRule) {
             composeTestRule.onAllNodesWithText(title).fetchSemanticsNodes().isEmpty()
         }
         composeTestRule.onAllNodesWithText(title).assertCountEquals(0)
-    }
-
-    fun clickOnTransaction(title: String) {
-        composeTestRule.onAllNodesWithText(title).onFirst().performClick()
     }
 
     fun clickExpandStack(seriesId: String) {

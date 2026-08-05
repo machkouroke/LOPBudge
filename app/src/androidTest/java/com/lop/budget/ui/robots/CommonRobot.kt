@@ -6,9 +6,14 @@ import androidx.compose.ui.test.performClick
 
 class CommonRobot(private val composeTestRule: ComposeTestRule) {
     fun clickUndo() {
-        composeTestRule.onNodeWithTag("snackbar_host")
+        // Attendre que la snackbar apparaisse
+        composeTestRule.waitUntil(5000) {
+            composeTestRule.onAllNodesWithTag("snackbar_host").fetchSemanticsNodes().isNotEmpty()
+        }
+        
+        composeTestRule.onNodeWithTag("snackbar_host", useUnmergedTree = true)
             .onChildren()
-            .filter(hasText("ANNULER", ignoreCase = true))
+            .filter(hasText("ANNULER", ignoreCase = true).or(hasText("UNDO", ignoreCase = true)))
             .onFirst()
             .performClick()
     }
