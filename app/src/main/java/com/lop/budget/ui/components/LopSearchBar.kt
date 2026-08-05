@@ -51,7 +51,10 @@ fun LopSearchBar(
         },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+        keyboardActions = KeyboardActions(
+            onSearch = { focusManager.clearFocus() },
+            onDone = { focusManager.clearFocus() }
+        ),
         shape = RoundedCornerShape(32.dp), // Hautement arrondi comme demandé
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedBorderColor = Color.Transparent, // Bordure invisible pour un look plus "pilule"

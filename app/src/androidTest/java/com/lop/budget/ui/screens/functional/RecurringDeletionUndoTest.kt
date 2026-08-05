@@ -141,7 +141,6 @@ class RecurringDeletionUndoTest {
             }
 
             Log.d(TAG, "Verifying 'Netflix' visibility...")
-            Log.d(TAG, "Verifying 'Netflix' visibility...")
             try {
                 searchRobot.assertTransactionVisible("Netflix")
             } catch (e: AssertionError) {
