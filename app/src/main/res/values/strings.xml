@@ -212,6 +212,11 @@
     <string name="tx_deleted_snackbar">Transaction supprimée</string>
     <string name="series_deleted_snackbar">Série supprimée</string>
     <string name="undo">Annuler</string>
+    <string name="delete_confirm_title">Supprimer la transaction ?</string>
+    <string name="delete_confirm_msg_normal">Cette transaction sera supprimée. Cette action peut être annulée en choisissant Annuler maintenant.</string>
+    <string name="delete_confirm_msg_single">Seule cette occurrence sera supprimée. Les autres occurrences de la série resteront visibles.</string>
+    <string name="delete_confirm_msg_future">Cette occurrence et toutes les occurrences suivantes seront supprimées. Les occurrences précédentes resteront visibles.</string>
+    <string name="delete_confirm_msg_all">Toute la série récurrente sera supprimée. Les occurrences futures ne seront plus affichées.</string>
     <string name="tx_default_title">Transaction</string>
     <string name="payment_detected_default">Paiement détecté</string>
     <string name="notif_listener_missing_msg">L\'accès aux notifications est désactivé. LOPBudge ne peut pas détecter vos transactions.</string>

@@ -67,17 +67,9 @@ fun MonthlyTransactionsScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
-    val deleteRequest by actionVm.deleteRequest.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     var showAccountPicker by remember { mutableStateOf(false) }
     var showCategoryPicker by remember { mutableStateOf(false) }
-
-    val title = stringResource(R.string.monthly_transactions_title)
-    
-    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
-    val undoMsg = stringResource(R.string.undo)
-
 
     val ext = LopTheme.extended
     val accent = if (state.type == TransactionType.INCOME) ext.income else ext.expense
@@ -342,39 +334,6 @@ fun MonthlyTransactionsScreen(
             },
             onDismiss = { showCategoryPicker = false }
         )
-    }
-
-    if (deleteRequest != null) {
-        val toDelete = deleteRequest!!
-        if (toDelete.transaction.seriesId != null) {
-            RecurringDeleteSheet(
-                onDismiss = { actionVm.dismissDeleteRequest() },
-                showFutureOnly = true,
-                onChoose = { choice ->
-                    actionVm.dismissDeleteRequest()
-                    when (choice) {
-                        RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                            actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
-                        }
-                        RecurringDeleteChoice.FUTURE_ONLY -> {
-                            toDelete.transaction.seriesId?.let { 
-                                actionVm.deleteSeriesWithUndo(it, SeriesDeletionMode.FUTURE, toDelete.transaction.date, snackbarHostState, txDeletedMsg, undoMsg) 
-                            }
-                        }
-                        RecurringDeleteChoice.ALL_SERIES -> {
-                            toDelete.transaction.seriesId?.let { 
-                                actionVm.deleteSeriesWithUndo(it, SeriesDeletionMode.ALL, null, snackbarHostState, txDeletedMsg, undoMsg) 
-                            }
-                        }
-                    }
-                }
-            )
-        } else {
-            androidx.compose.runtime.SideEffect {
-                actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
-                actionVm.dismissDeleteRequest()
-            }
-        }
     }
 }
 

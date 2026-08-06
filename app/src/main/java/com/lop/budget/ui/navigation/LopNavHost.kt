@@ -35,6 +35,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.lop.budget.R
 import com.lop.budget.domain.model.SeriesDeletionMode
+import com.lop.budget.ui.components.DeleteConfirmationDialog
 import com.lop.budget.ui.components.FloatingBottomBar
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import com.lop.budget.ui.components.RecurringDeleteSheet
@@ -79,6 +80,7 @@ fun LopNavHost(startRoute: String? = null) {
     val globalPreviewTx by actionVm.previewTx.collectAsStateWithLifecycle()
     val globalCurrency by actionVm.previewCurrency.collectAsStateWithLifecycle()
     val deleteRequest by actionVm.deleteRequest.collectAsStateWithLifecycle()
+    val pendingConfirmation by actionVm.pendingConfirmation.collectAsStateWithLifecycle()
     val editRequest by actionVm.editRequest.collectAsStateWithLifecycle()
 
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
@@ -468,50 +470,24 @@ fun LopNavHost(startRoute: String? = null) {
                         showFutureOnly = true,
                         onChoose = { choice ->
                             actionVm.dismissDeleteRequest()
-                            when (choice) {
-                                RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                                    actionVm.deleteWithUndo(
-                                        toDelete,
-                                        snackbarHostState,
-                                        txDeletedMsg,
-                                        undoMsg
-                                    )
-                                }
-
-                                RecurringDeleteChoice.FUTURE_ONLY -> {
-                                    toDelete.transaction.seriesId.let { sid ->
-                                        actionVm.deleteSeriesWithUndo(
-                                            sid,
-                                            SeriesDeletionMode.FUTURE,
-                                            toDelete.transaction.date,
-                                            snackbarHostState,
-                                            txDeletedMsg,
-                                            undoMsg
-                                        )
-                                    }
-                                }
-
-                                RecurringDeleteChoice.ALL_SERIES -> {
-                                    toDelete.transaction.seriesId.let { sid ->
-                                        actionVm.deleteSeriesWithUndo(
-                                            sid,
-                                            SeriesDeletionMode.ALL,
-                                            null,
-                                            snackbarHostState,
-                                            txDeletedMsg,
-                                            undoMsg
-                                        )
-                                    }
-                                }
-                            }
+                            actionVm.requestConfirmation(toDelete, choice)
                         }
                     )
                 } else {
                     SideEffect {
-                        actionVm.deleteWithUndo(toDelete, snackbarHostState, txDeletedMsg, undoMsg)
                         actionVm.dismissDeleteRequest()
+                        actionVm.requestConfirmation(toDelete, null)
                     }
                 }
+            }
+
+            // SIBLING 4b: Delete Confirmation Dialog
+            pendingConfirmation?.let { request ->
+                DeleteConfirmationDialog(
+                    choice = request.choice,
+                    onDismiss = { actionVm.dismissConfirmation() },
+                    onConfirm = { actionVm.confirmDelete() }
+                )
             }
             // SIBLING 5: Global Edit Request Handler
             editRequest?.let { tx ->

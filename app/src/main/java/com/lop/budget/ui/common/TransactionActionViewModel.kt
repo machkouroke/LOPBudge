@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.domain.model.SeriesDeletionMode
+import com.lop.budget.ui.components.RecurringDeleteChoice
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,12 +36,54 @@ class TransactionActionViewModel @Inject constructor(
     private val _deleteRequest = MutableStateFlow<TransactionWithRelations?>(null)
     val deleteRequest = _deleteRequest.asStateFlow()
 
+    // Confirmation request state
+    private val _pendingConfirmation = MutableStateFlow<DeleteConfirmationRequest?>(null)
+    val pendingConfirmation = _pendingConfirmation.asStateFlow()
+
     fun requestDelete(tx: TransactionWithRelations) {
         _deleteRequest.value = tx
     }
 
     fun dismissDeleteRequest() {
         _deleteRequest.value = null
+    }
+
+    fun requestConfirmation(tx: TransactionWithRelations, choice: RecurringDeleteChoice?) {
+        _pendingConfirmation.value = DeleteConfirmationRequest(tx, choice)
+    }
+
+    fun dismissConfirmation() {
+        _pendingConfirmation.value = null
+    }
+
+    fun confirmDelete() {
+        val request = _pendingConfirmation.value ?: return
+        _pendingConfirmation.value = null
+        
+        val tx = request.transaction
+        val choice = request.choice
+
+        viewModelScope.launch {
+            if (tx.transaction.seriesId != null && choice != null) {
+                when (choice) {
+                    RecurringDeleteChoice.THIS_OCCURRENCE -> {
+                        repo.softDeleteTransactionOccurrence(tx)
+                    }
+                    RecurringDeleteChoice.FUTURE_ONLY -> {
+                        tx.transaction.seriesId.let { sid ->
+                            repo.cancelSeries(sid, SeriesDeletionMode.FUTURE, tx.transaction.date)
+                        }
+                    }
+                    RecurringDeleteChoice.ALL_SERIES -> {
+                        tx.transaction.seriesId.let { sid ->
+                            repo.cancelSeries(sid, SeriesDeletionMode.ALL, null)
+                        }
+                    }
+                }
+            } else {
+                repo.softDeleteTransactionOccurrence(tx)
+            }
+        }
     }
 
     // Edit request state for showing edit scope choice sheet globally
@@ -113,79 +156,12 @@ class TransactionActionViewModel @Inject constructor(
             repo.toggleTransactionStatus(transaction)
         }
     }
-
-    /**
-     * Suppression avec Undo (Snackbar).
-     */
-    fun deleteWithUndo(
-        transaction: TransactionWithRelations,
-        snackbarHostState: SnackbarHostState,
-        message: String,
-        actionLabel: String
-    ) {
-        val txId = transaction.transaction.id
-        
-        // On masque immédiatement la transaction de l'UI (centralisé dans le Repository)
-        _pendingDeletes.value = _pendingDeletes.value + txId
-        repo.setPendingDelete(txId, true)
-
-        viewModelScope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = message,
-                actionLabel = actionLabel,
-                duration = androidx.compose.material3.SnackbarDuration.Short
-            )
-
-            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                // Restauration : on incrémente la version pour notifier l'UI et on enlève de pending
-                val currentVersion = _txVersions.value[txId] ?: 0
-                _txVersions.value = _txVersions.value + (txId to currentVersion + 1)
-                _pendingDeletes.value = _pendingDeletes.value - txId
-                repo.setPendingDelete(txId, false)
-            } else {
-                // Confirmation : exécution réelle via le repository
-                repo.softDeleteTransactionOccurrence(transaction)
-                _pendingDeletes.value = _pendingDeletes.value - txId
-                repo.setPendingDelete(txId, false)
-            }
-        }
-    }
-
-    /**
-     * Suppression de série avec Undo.
-     */
-    fun deleteSeriesWithUndo(
-        seriesId: String,
-        mode: SeriesDeletionMode,
-        fromDate: Long? = null,
-        snackbarHostState: SnackbarHostState,
-        message: String,
-        actionLabel: String
-    ) {
-        // On masque immédiatement la série de l'UI (centralisé dans le Repository)
-        _pendingSeriesDeletes.value = _pendingSeriesDeletes.value + (seriesId to mode)
-        if (fromDate != null) {
-            _pendingSeriesFromDates.value = _pendingSeriesFromDates.value + (seriesId to fromDate)
-        }
-        repo.setPendingSeriesDelete(seriesId, mode, fromDate)
-
-        viewModelScope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = message,
-                actionLabel = actionLabel,
-                duration = androidx.compose.material3.SnackbarDuration.Short
-            )
-
-            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                _pendingSeriesDeletes.value = _pendingSeriesDeletes.value - seriesId
-                _pendingSeriesFromDates.value = _pendingSeriesFromDates.value - seriesId
-                repo.setPendingSeriesDelete(seriesId, null)
-            } else {
-                repo.cancelSeries(seriesId, mode, fromDate)
-                _pendingSeriesDeletes.value = _pendingSeriesDeletes.value - seriesId
-                _pendingSeriesFromDates.value = _pendingSeriesFromDates.value - seriesId
-                repo.setPendingSeriesDelete(seriesId, null)
-            }
-        }
-    }
 }
+
+/**
+ * Request for deletion confirmation.
+ */
+data class DeleteConfirmationRequest(
+    val transaction: TransactionWithRelations,
+    val choice: RecurringDeleteChoice? = null
+)

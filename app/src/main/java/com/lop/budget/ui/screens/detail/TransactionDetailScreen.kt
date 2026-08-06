@@ -96,7 +96,6 @@ fun TransactionDetailScreen(
     var showCategorySheet by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showAccountSheet by remember { mutableStateOf(false) }
-    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val twr = state.transaction
     val tx = twr?.transaction
@@ -156,7 +155,11 @@ fun TransactionDetailScreen(
                                     MaterialTheme.colorScheme.surfaceVariant,
                                     androidx.compose.foundation.shape.CircleShape
                                 )
-                                .clickableNoRipple { if (!isBusy) showDeleteConfirm = true }
+                                .clickableNoRipple {
+                                    if (!isBusy && twr != null) {
+                                        actionVm.requestDelete(twr)
+                                    }
+                                }
                                 .testTag("transaction_delete_button"),
                             contentAlignment = Alignment.Center
                         ) {
@@ -444,58 +447,6 @@ fun TransactionDetailScreen(
             },
             onDismiss = { showAccountSheet = false },
         )
-    }
-
-    if (showDeleteConfirm && twr != null) {
-        val tx = twr.transaction
-        if (tx.seriesId != null) {
-            RecurringDeleteSheet(
-                onDismiss = { showDeleteConfirm = false },
-                showFutureOnly = true,
-                onChoose = { choice ->
-                    showDeleteConfirm = false
-                    when (choice) {
-                        RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                            actionVm.deleteWithUndo(twr, snackbarHostState, txDeletedMsg, undoMsg)
-                        }
-
-                        RecurringDeleteChoice.FUTURE_ONLY -> {
-                            tx.seriesId?.let { sid ->
-                                actionVm.deleteSeriesWithUndo(
-                                    sid,
-                                    com.lop.budget.domain.model.SeriesDeletionMode.FUTURE,
-                                    tx.date,
-                                    snackbarHostState,
-                                    txDeletedMsg,
-                                    undoMsg
-                                )
-                            }
-                        }
-
-                        RecurringDeleteChoice.ALL_SERIES -> {
-                            tx.seriesId?.let { sid ->
-                                actionVm.deleteSeriesWithUndo(
-                                    sid,
-                                    com.lop.budget.domain.model.SeriesDeletionMode.ALL,
-                                    null,
-                                    snackbarHostState,
-                                    txDeletedMsg,
-                                    undoMsg
-                                )
-                            }
-                        }
-                    }
-                    onBack() // On ferme l'écran après la demande de suppression
-                },
-            )
-        } else {
-            // Déclenchement de la suppression
-            LaunchedEffect(Unit) {
-                actionVm.deleteWithUndo(twr, snackbarHostState, txDeletedMsg, undoMsg)
-                showDeleteConfirm = false
-                onBack()
-            }
-        }
     }
 }
 
