@@ -22,12 +22,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopTextField
@@ -46,11 +48,13 @@ fun GoalEditScreen(
         title = if (form.name.isEmpty()) stringResource(R.string.goal_new_title) else stringResource(R.string.goal_edit_title),
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
-        bottomBar = {
+        modifier = Modifier.testTag(TestTags.SCREEN_EDIT)
+    ) {
+        item {
             Box(Modifier.fillMaxWidth().padding(20.dp)) {
                 Button(
                     onClick = { vm.save(onBack) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp).testTag(TestTags.BTN_SAVE),
                     shape = MaterialTheme.shapes.medium,
                     enabled = form.name.isNotBlank() && form.targetAmount > 0
                 ) {
@@ -58,7 +62,6 @@ fun GoalEditScreen(
                 }
             }
         }
-    ) {
         item {
             FloatingCard {
                 Column {
@@ -66,7 +69,8 @@ fun GoalEditScreen(
                         label = stringResource(R.string.goal_name_label),
                         value = form.name,
                         onValueChange = vm::updateName,
-                        placeholder = "Ex: Vacances au Japon"
+                        placeholder = "Ex: Vacances au Japon",
+                        modifier = Modifier.testTag("goal.edit.name")
                     )
                 }
             }
@@ -80,7 +84,8 @@ fun GoalEditScreen(
                         value = if (form.targetAmount == 0.0) "" else form.targetAmount.toString(),
                         onValueChange = { it.toDoubleOrNull()?.let { vm.updateTargetAmount(it) } ?: vm.updateTargetAmount(0.0) },
                         keyboardType = KeyboardType.Decimal,
-                        placeholder = "0.00"
+                        placeholder = "0.00",
+                        modifier = Modifier.testTag("goal.edit.target")
                     )
 
                     LopTextField(
@@ -89,7 +94,7 @@ fun GoalEditScreen(
                         onValueChange = { it.toDoubleOrNull()?.let { vm.updateStartingBalance(it) } ?: vm.updateStartingBalance(0.0) },
                         keyboardType = KeyboardType.Decimal,
                         placeholder = "0.00",
-                        modifier = Modifier.padding(top = 16.dp)
+                        modifier = Modifier.padding(top = 16.dp).testTag("goal.edit.starting")
                     )
                 }
             }
@@ -121,7 +126,8 @@ fun GoalEditScreen(
                 label = stringResource(R.string.due_date_label),
                 value = form.dueDate?.let { Format.fullDate(it) } ?: stringResource(R.string.none),
                 icon = Icons.Default.DateRange,
-                onClick = { showDatePicker = true }
+                onClick = { showDatePicker = true },
+                modifier = Modifier.testTag("goal.edit.date")
             )
         }
         

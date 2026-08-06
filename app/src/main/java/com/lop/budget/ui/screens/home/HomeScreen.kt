@@ -240,7 +240,10 @@ fun HomeContent(
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            TextButton(onClick = onOpenAccounts) {
+                            TextButton(
+                                onClick = onOpenAccounts,
+                                modifier = Modifier.testTag(TestTags.HOME_SEE_ALL_ACCOUNTS)
+                            ) {
                                 Text(stringResource(R.string.see_all))
                                 Icon(
                                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -370,7 +373,10 @@ fun AccountWidgetCard(
 ) {
     val color = Color(balance.account.colorArgb)
     FloatingCard(
-        modifier = Modifier.width(160.dp).clickableNoRipple(onClick),
+        modifier = Modifier
+            .width(160.dp)
+            .clickableNoRipple(onClick)
+            .testTag("${TestTags.HOME_ACCOUNT_CARD}_${balance.account.id}"),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         contentPadding = PaddingValues(12.dp)
     ) {
@@ -447,6 +453,7 @@ fun HomeOverlay(
                     )
                     .clickableNoRipple { onMonthClick() }
                     .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .testTag(TestTags.HOME_MONTH_PICKER)
             ) {
                 Icon(
                     Icons.Filled.CalendarMonth,
@@ -462,7 +469,11 @@ fun HomeOverlay(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (!isCurrentMonth) {
-                    IconButton(Icons.Filled.Today, onTodayClick)
+                    IconButton(
+                        icon = Icons.Filled.Today, 
+                        onClick = onTodayClick,
+                        modifier = Modifier.testTag(TestTags.HOME_GO_TO_TODAY)
+                    )
                 }
                 IconButton(
                     icon = Icons.Default.Search, 
@@ -490,7 +501,7 @@ fun IconButton(
     modifier: Modifier = Modifier,
 ) {
     Box(
-        
+
         modifier = modifier
             .size(40.dp)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp))

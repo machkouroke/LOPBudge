@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.lop.budget.ui.common.TestTags
 
 /**
  * Composant de recherche moderne et hautement arrondi, utilisé partout dans l'app.
@@ -33,7 +34,7 @@ fun LopSearchBar(
         onValueChange = onValueChange,
         modifier = modifier
             .fillMaxWidth()
-            .testTag("search_bar"),
+            .testTag(TestTags.SEARCH_BAR),
         placeholder = { Text(placeholder) },
         leadingIcon = {
             Icon(
@@ -44,7 +45,10 @@ fun LopSearchBar(
         },
         trailingIcon = {
             if (value.isNotEmpty()) {
-                IconButton(onClick = { onValueChange("") }) {
+                IconButton(
+                    onClick = { onValueChange("") },
+                    modifier = Modifier.testTag("search.bar.clear")
+                ) {
                     Icon(Icons.Default.Close, null)
                 }
             }

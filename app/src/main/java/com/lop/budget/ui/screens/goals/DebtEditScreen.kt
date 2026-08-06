@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -32,6 +33,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.domain.model.DebtType
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopTextField
@@ -50,11 +52,13 @@ fun DebtEditScreen(
         title = if (form.name.isEmpty()) stringResource(R.string.debt_new_title) else stringResource(R.string.debt_edit_title),
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
-        bottomBar = {
+        modifier = Modifier.testTag(TestTags.SCREEN_EDIT)
+    ) {
+        item {
             Box(Modifier.fillMaxWidth().padding(20.dp)) {
                 Button(
                     onClick = { vm.save(onBack) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp).testTag(TestTags.BTN_SAVE),
                     shape = MaterialTheme.shapes.medium,
                     enabled = form.name.isNotBlank() && form.totalAmount > 0
                 ) {
@@ -62,7 +66,6 @@ fun DebtEditScreen(
                 }
             }
         }
-    ) {
         item {
             FloatingCard {
                 Column {
@@ -101,7 +104,7 @@ fun DebtEditScreen(
                         value = form.name,
                         onValueChange = vm::updateName,
                         placeholder = "Ex: Prêt voiture",
-                        modifier = Modifier.padding(top = 16.dp)
+                        modifier = Modifier.padding(top = 16.dp).testTag("debt.edit.name")
                     )
 
                     LopTextField(
@@ -109,7 +112,7 @@ fun DebtEditScreen(
                         value = form.creditorName,
                         onValueChange = vm::updateCreditor,
                         placeholder = "Ex: Boursorama",
-                        modifier = Modifier.padding(top = 16.dp)
+                        modifier = Modifier.padding(top = 16.dp).testTag("debt.edit.creditor")
                     )
                 }
             }
@@ -123,7 +126,8 @@ fun DebtEditScreen(
                         value = if (form.totalAmount == 0.0) "" else form.totalAmount.toString(),
                         onValueChange = { it.toDoubleOrNull()?.let { vm.updateTotalAmount(it) } ?: vm.updateTotalAmount(0.0) },
                         keyboardType = KeyboardType.Decimal,
-                        placeholder = "0.00"
+                        placeholder = "0.00",
+                        modifier = Modifier.testTag("debt.edit.total")
                     )
 
                     LopTextField(
@@ -132,7 +136,7 @@ fun DebtEditScreen(
                         onValueChange = { it.toDoubleOrNull()?.let { vm.updateStartingBalance(it) } ?: vm.updateStartingBalance(0.0) },
                         keyboardType = KeyboardType.Decimal,
                         placeholder = "0.00",
-                        modifier = Modifier.padding(top = 16.dp)
+                        modifier = Modifier.padding(top = 16.dp).testTag("debt.edit.starting")
                     )
 
                     LopTextField(
@@ -173,7 +177,8 @@ fun DebtEditScreen(
                 label = stringResource(R.string.due_date_label),
                 value = form.dueDate?.let { Format.fullDate(it) } ?: stringResource(R.string.none),
                 icon = Icons.Default.DateRange,
-                onClick = { showDatePicker = true }
+                onClick = { showDatePicker = true },
+                modifier = Modifier.testTag("debt.edit.date")
             )
         }
     }

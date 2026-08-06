@@ -6,8 +6,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.lop.budget.ui.navigation.LopNavHost
 import com.lop.budget.ui.screens.settings.SettingsViewModel
@@ -31,7 +37,17 @@ class MainActivity : ComponentActivity() {
                 themeMode = settings.themeMode,
                 dynamicColor = settings.dynamicColor,
             ) {
-                LopNavHost(startRoute = intent.getStringExtra("route"))
+                @OptIn(ExperimentalComposeUiApi::class)
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .semantics {
+                            // Expose all Modifier.testTag() values as resource-id for Maestro
+                            testTagsAsResourceId = true
+                        }
+                ) {
+                    LopNavHost(startRoute = intent.getStringExtra("route"))
+                }
             }
         }
     }}

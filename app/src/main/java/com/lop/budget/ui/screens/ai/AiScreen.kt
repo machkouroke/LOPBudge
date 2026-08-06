@@ -31,11 +31,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.clickableNoRipple
 
 @Composable
@@ -51,12 +53,24 @@ fun AiScreen(
         if (state.messages.isNotEmpty()) listState.animateScrollToItem(state.messages.size - 1)
     }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .testTag(TestTags.SCREEN_AI)
+    ) {
         Row(
             Modifier.fillMaxWidth().padding(vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.ai_back), modifier = Modifier.size(26.dp).clickableNoRipple(onBack))
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack, 
+                stringResource(R.string.ai_back), 
+                modifier = Modifier
+                    .size(26.dp)
+                    .clickableNoRipple(onBack)
+                    .testTag(TestTags.BTN_BACK)
+            )
             Spacer(Modifier.width(12.dp))
             Text(stringResource(R.string.ai_title), style = MaterialTheme.typography.titleLarge)
         }
@@ -93,10 +107,15 @@ fun AiScreen(
             Surface(
                 shape = RoundedCornerShape(26.dp),
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(52.dp).clickableNoRipple {
-                    val msg = input.trim()
-                    if (msg.isNotEmpty()) { vm.send(msg); input = "" }
-                },
+                modifier = Modifier
+                    .size(52.dp)
+                    .clickableNoRipple {
+                        val msg = input.trim()
+                        if (msg.isNotEmpty()) {
+                            vm.send(msg); input = ""
+                        }
+                    }
+                    .testTag(TestTags.AI_BTN_SEND),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(Icons.AutoMirrored.Filled.Send, stringResource(R.string.ai_send), tint = MaterialTheme.colorScheme.onPrimary)

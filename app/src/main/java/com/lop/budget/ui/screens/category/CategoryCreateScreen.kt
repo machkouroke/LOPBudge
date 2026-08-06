@@ -19,11 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -55,11 +57,12 @@ fun CategoryCreateScreen(
         title = if (state.isEdit) "Modifier la catégorie" else "Nouvelle catégorie",
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_EDIT),
         bottomBar = {
             Box(Modifier.fillMaxWidth().padding(20.dp)) {
                 Button(
                     onClick = { vm.save(onBack) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp).testTag(TestTags.BTN_SAVE),
                     shape = MaterialTheme.shapes.medium,
                     enabled = state.name.isNotBlank() && !state.isSaving
                 ) {
@@ -80,7 +83,7 @@ fun CategoryCreateScreen(
                                 value = state.name,
                                 onValueChange = vm::onNameChange,
                                 label = { Text("Nom") },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().testTag("category.edit.name"),
                                 singleLine = true
                             )
 
@@ -90,12 +93,14 @@ fun CategoryCreateScreen(
                                     FilterChip(
                                         selected = state.type == TransactionType.EXPENSE,
                                         onClick = { vm.onTypeChange(TransactionType.EXPENSE) },
-                                        label = { Text("Dépense") }
+                                        label = { Text("Dépense") },
+                                        modifier = Modifier.testTag("category.edit.type.expense")
                                     )
                                     FilterChip(
                                         selected = state.type == TransactionType.INCOME,
                                         onClick = { vm.onTypeChange(TransactionType.INCOME) },
-                                        label = { Text("Revenu") }
+                                        label = { Text("Revenu") },
+                                        modifier = Modifier.testTag("category.edit.type.income")
                                     )
                                 }
                             }
@@ -106,7 +111,10 @@ fun CategoryCreateScreen(
                                 Spacer(Modifier.height(8.dp))
                                 val parentName = state.availableParents.find { it.id == state.parentCategoryId }?.name ?: "Aucune"
                                 Surface(
-                                    modifier = Modifier.fillMaxWidth().clickableNoRipple { showParentSheet = true },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickableNoRipple { showParentSheet = true }
+                                        .testTag("category.edit.parent.selector"),
                                     shape = MaterialTheme.shapes.small,
                                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
                                     color = Color.Transparent
@@ -135,7 +143,8 @@ fun CategoryCreateScreen(
                                             .clip(CircleShape)
                                             .background(Color(c.toInt()))
                                             .border(2.dp, if (state.colorArgb == c.toInt()) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
-                                            .clickable { vm.onColorChange(c.toInt()) },
+                                            .clickable { vm.onColorChange(c.toInt()) }
+                                            .testTag("category.edit.color.${c}"),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (state.colorArgb == c.toInt()) Icon(Icons.Default.Check, null, tint = Color.White)
@@ -152,7 +161,8 @@ fun CategoryCreateScreen(
                                             .size(48.dp)
                                             .clip(MaterialTheme.shapes.small)
                                             .background(if (state.icon == iconName) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                            .clickable { vm.onIconChange(iconName) },
+                                            .clickable { vm.onIconChange(iconName) }
+                                            .testTag("category.edit.icon.${iconName}"),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
@@ -169,7 +179,7 @@ fun CategoryCreateScreen(
                     if (state.isEdit) {
                         Button(
                             onClick = { vm.delete(onBack) },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            modifier = Modifier.fillMaxWidth().height(56.dp).testTag(TestTags.CAT_BTN_DELETE),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer),
                             shape = MaterialTheme.shapes.medium
                         ) {

@@ -13,9 +13,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -37,6 +39,7 @@ fun CategoriesManageScreen(
         title = "Gérer les catégories",
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_CATEGORIES),
         bottomBar = {
             Box(
                 modifier = Modifier
@@ -47,7 +50,8 @@ fun CategoriesManageScreen(
                 FloatingActionButton(
                     onClick = onAddCategory,
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.testTag(TestTags.CAT_BTN_ADD)
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Ajouter une catégorie")
                 }
@@ -109,7 +113,8 @@ fun CategoryExpandableRow(
                 .clickableNoRipple { 
                     if (catWithSubs.subCategories.isNotEmpty()) expanded = !expanded
                     else onEdit(cat.id)
-                },
+                }
+                .testTag("${TestTags.CAT_ROW}_${cat.id}"),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -131,7 +136,10 @@ fun CategoryExpandableRow(
                 }
 
                 if (catWithSubs.subCategories.isNotEmpty()) {
-                    IconButton(onClick = { expanded = !expanded }) {
+                    IconButton(
+                        onClick = { expanded = !expanded },
+                        modifier = Modifier.testTag("${TestTags.CAT_EXPAND}_${cat.id}")
+                    ) {
                         Icon(
                             if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
                             null,
@@ -140,7 +148,10 @@ fun CategoryExpandableRow(
                     }
                 }
 
-                IconButton(onClick = { onEdit(cat.id) }) {
+                IconButton(
+                    onClick = { onEdit(cat.id) },
+                    modifier = Modifier.testTag("category.edit.${cat.id}")
+                ) {
                     Icon(
                         Icons.Default.ChevronRight,
                         null,
@@ -156,7 +167,8 @@ fun CategoryExpandableRow(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 32.dp, top = 8.dp)
-                        .clickable { onEdit(sub.id) },
+                        .clickable { onEdit(sub.id) }
+                        .testTag("${TestTags.CAT_ROW}_${sub.id}"),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val subColor = Color(sub.colorArgb)

@@ -73,6 +73,7 @@ import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
@@ -141,7 +142,7 @@ fun TransactionEditScreen(
             Box(Modifier.fillMaxWidth().padding(20.dp)) {
                 Button(
                     onClick = { vm.save(onBack) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp).testTag("transaction_save_button"),
+                    modifier = Modifier.fillMaxWidth().height(56.dp).testTag(TestTags.BTN_SAVE),
                     shape = MaterialTheme.shapes.medium,
                     enabled = form.amount > 0.0 && form.categoryId != null && form.accountId != null
                 ) {
@@ -167,14 +168,14 @@ fun TransactionEditScreen(
                             label = stringResource(R.string.tx_type_expense),
                             selected = form.type == TransactionType.EXPENSE,
                             color = LopTheme.extended.expense,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).testTag(TestTags.TX_EDIT_TYPE_EXPENSE)
                         ) { vm.setType(TransactionType.EXPENSE) }
 
                         TypeSegment(
                             label = stringResource(R.string.tx_type_income),
                             selected = form.type == TransactionType.INCOME,
                             color = LopTheme.extended.income,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).testTag(TestTags.TX_EDIT_TYPE_INCOME)
                         ) { vm.setType(TransactionType.INCOME) }
                     }
 
@@ -215,7 +216,8 @@ fun TransactionEditScreen(
                             checked = form.status == TransactionStatus.PAID,
                             onCheckedChange = { isChecked -> 
                                 vm.setStatus(if (isChecked) TransactionStatus.PAID else TransactionStatus.PLANNED)
-                            }
+                            },
+                            modifier = Modifier.testTag(TestTags.TRANSACTION_DETAIL_TOGGLE_PAID)
                         )
                     }
                 }
@@ -234,6 +236,7 @@ fun TransactionEditScreen(
                         icon = selectedCat?.let { IconMapper.get(it.icon) } ?: Icons.Filled.Category,
                         iconTint = selectedCat?.let { Color(it.colorArgb) },
                         onClick = { showCategorySheet = true },
+                        modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_CATEGORY)
                     )
 
                     if (selectedCat != null) {
@@ -256,6 +259,7 @@ fun TransactionEditScreen(
                         value = selectedAcc?.name ?: stringResource(R.string.tx_select_account),
                         onClick = { showAccountSheet = true },
                         trailingChevron = true,
+                        modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_ACCOUNT)
                     )
 
                     if (form.type == TransactionType.EXPENSE) {
@@ -344,7 +348,8 @@ fun TransactionEditScreen(
                         label = stringResource(R.string.tx_date_label),
                         value = com.lop.budget.util.Format.fullDate(form.date),
                         icon = Icons.Default.DateRange,
-                        onClick = { showDatePickerInternal = true }
+                        onClick = { showDatePickerInternal = true },
+                        modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_DATE)
                     )
                 }
             }
@@ -525,10 +530,11 @@ fun SelectorRow(
     icon: Any? = null,
     iconTint: Color? = null,
     trailingChevron: Boolean = true,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),

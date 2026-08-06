@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -42,6 +43,7 @@ import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopSearchBar
@@ -90,6 +92,7 @@ fun MonthlyTransactionsScreen(
         title = pageTitle,
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_MONTHLY),
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) {
         item {
@@ -114,9 +117,9 @@ fun MonthlyTransactionsScreen(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    InsightToggle("Tous", state.filter == PaidFilter.ALL, accent, modifier = Modifier.weight(1f)) { vm.setFilter(PaidFilter.ALL) }
-                    InsightToggle("Payé", state.filter == PaidFilter.PAID, accent, modifier = Modifier.weight(1f)) { vm.setFilter(PaidFilter.PAID) }
-                    InsightToggle("Non payé", state.filter == PaidFilter.PLANNED, accent, modifier = Modifier.weight(1f)) { vm.setFilter(PaidFilter.PLANNED) }
+                    InsightToggle("Tous", state.filter == PaidFilter.ALL, accent, modifier = Modifier.weight(1f).testTag("monthly.insight.toggle.all")) { vm.setFilter(PaidFilter.ALL) }
+                    InsightToggle("Payé", state.filter == PaidFilter.PAID, accent, modifier = Modifier.weight(1f).testTag("monthly.insight.toggle.paid")) { vm.setFilter(PaidFilter.PAID) }
+                    InsightToggle("Non payé", state.filter == PaidFilter.PLANNED, accent, modifier = Modifier.weight(1f).testTag("monthly.insight.toggle.planned")) { vm.setFilter(PaidFilter.PLANNED) }
                 }
             }
 
@@ -149,7 +152,7 @@ fun MonthlyTransactionsScreen(
                     percentage = (b.share * 100).toInt(),
                     color = Color(b.colorArgb),
                     currency = state.currency,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp).testTag("monthly.breakdown.${b.name}")
                 )
             }
 
@@ -181,6 +184,7 @@ fun MonthlyTransactionsScreen(
                                     }
                                     vm.setType(next)
                                 },
+                                modifier = Modifier.testTag("monthly.filter.type"),
                                 label = { 
                                     Text(when(state.type) {
                                         null -> "Tous les types"
@@ -212,6 +216,7 @@ fun MonthlyTransactionsScreen(
                                     }
                                     vm.setFilter(next)
                                 },
+                                modifier = Modifier.testTag("monthly.filter.status"),
                                 label = { 
                                     Text(when(state.filter) {
                                         PaidFilter.ALL -> "Tous les statuts"
@@ -225,6 +230,7 @@ fun MonthlyTransactionsScreen(
                             FilterChip(
                                 selected = state.selectedAccountId != null,
                                 onClick = { showAccountPicker = true },
+                                modifier = Modifier.testTag("monthly.filter.account"),
                                 label = { 
                                     val acc = state.availableAccounts.find { it.id == state.selectedAccountId }
                                     Text(acc?.name ?: "Compte") 
@@ -239,6 +245,7 @@ fun MonthlyTransactionsScreen(
                             FilterChip(
                                 selected = state.selectedCategoryId != null,
                                 onClick = { showCategoryPicker = true },
+                                modifier = Modifier.testTag("monthly.filter.category"),
                                 label = { 
                                     val cat = state.availableCategories.find { it.id == state.selectedCategoryId }
                                     Text(cat?.name ?: "Catégorie") 
@@ -275,7 +282,10 @@ fun MonthlyTransactionsScreen(
                                 Text("Aucun résultat ce mois-ci", style = MaterialTheme.typography.titleSmall)
                                 Text("Des transactions correspondantes existent dans d'autres mois.", style = MaterialTheme.typography.bodySmall)
                             }
-                            TextButton(onClick = { onNavigateToSearch(state.searchQuery) }) {
+                            TextButton(
+                                onClick = { onNavigateToSearch(state.searchQuery) },
+                                modifier = Modifier.testTag("monthly.suggestion.see_all")
+                            ) {
                                 Text("Voir tout")
                             }
                         }
@@ -433,7 +443,9 @@ fun AccountList(
                         size = 32.dp
                     ) 
                 },
-                modifier = Modifier.clickable { onSelect(acc.id) },
+                modifier = Modifier
+                    .clickable { onSelect(acc.id) }
+                    .testTag("monthly.account.item.${acc.id}"),
                 trailingContent = { if (acc.id == selectedId) Icon(Icons.Default.Check, null) }
             )
         }

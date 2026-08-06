@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.DebtEntity
 import com.lop.budget.data.local.entity.GoalEntity
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -63,6 +65,7 @@ fun GoalsScreen(
         title = stringResource(R.string.nav_goals),
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_GOALS)
     ) {
         item {
             Row(
@@ -77,13 +80,13 @@ fun GoalsScreen(
                 TabItem(
                     text = stringResource(R.string.goals_title),
                     selected = selectedTab == 0,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).testTag(TestTags.GOAL_TAB_OBJECTIVES)
                 ) { selectedTab = 0 }
                 
                 TabItem(
                     text = stringResource(R.string.debts_title),
                     selected = selectedTab == 1,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).testTag(TestTags.GOAL_TAB_DEBTS)
                 ) { selectedTab = 1 }
             }
         }
@@ -100,7 +103,10 @@ fun GoalsScreen(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
-                IconButton(onClick = { if (selectedTab == 0) onAddGoal() else onAddDebt() }) {
+                IconButton(
+                    onClick = { if (selectedTab == 0) onAddGoal() else onAddDebt() },
+                    modifier = Modifier.testTag(TestTags.GOAL_BTN_ADD)
+                ) {
                     Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
@@ -166,7 +172,13 @@ private fun EmptyState(text: String) {
 @Composable
 private fun GoalCard(goal: GoalEntity, currency: String, color: Color, onClick: () -> Unit) {
     val progress = (goal.savedAmount / goal.targetAmount).coerceIn(0.0, 1.0)
-    FloatingCard(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).clickable { onClick() }) {
+    FloatingCard(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .clickable { onClick() }
+            .testTag("${TestTags.GOAL_CARD}_${goal.id}")
+    ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CircleIcon(IconMapper.get(goal.icon), Color(goal.colorArgb), Color(goal.colorArgb).copy(alpha = 0.18f))
@@ -186,7 +198,13 @@ private fun GoalCard(goal: GoalEntity, currency: String, color: Color, onClick: 
 @Composable
 private fun DebtCard(debt: DebtEntity, currency: String, color: Color, onClick: () -> Unit) {
     val progress = (debt.repaidAmount / debt.totalAmount).coerceIn(0.0, 1.0)
-    FloatingCard(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).clickable { onClick() }) {
+    FloatingCard(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .clickable { onClick() }
+            .testTag("${TestTags.DEBT_CARD}_${debt.id}")
+    ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CircleIcon(IconMapper.get(debt.icon), Color(debt.colorArgb), Color(debt.colorArgb).copy(alpha = 0.18f))

@@ -44,6 +44,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.screens.settings.SettingsViewModel
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.ui.theme.ThemeMode
@@ -174,18 +175,20 @@ fun TransactionPreviewPopup(
                     PreviewActionButton(
                         icon = if (status == TransactionStatus.PAID) Icons.AutoMirrored.Filled.Undo else Icons.Default.Check,
                         label = if (status == TransactionStatus.PAID) "Annuler" else "Payer",
-                        onClick = { onTogglePaid(); onDismiss() }
+                        onClick = { onTogglePaid(); onDismiss() },
+                        testTag = TestTags.TRANSACTION_DETAIL_TOGGLE_PAID
                     )
                     PreviewActionButton(
                         icon = Icons.Default.Edit,
                         label = "Éditer",
-                        onClick = { onEdit(); onDismiss() }
+                        onClick = { onEdit(); onDismiss() },
+                        testTag = TestTags.TRANSACTION_DETAIL_EDIT
                     )
                     PreviewActionButton(
                         icon = Icons.Default.Delete,
                         label = "Supprimer",
                         iconColor = LopTheme.extended.expense,
-                        testTag = "preview_delete_button",
+                        testTag = TestTags.TRANSACTION_DETAIL_DELETE,
                         onClick = { onDelete(); onDismiss() }
                     )
                 }

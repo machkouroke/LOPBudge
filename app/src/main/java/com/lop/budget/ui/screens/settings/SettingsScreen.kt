@@ -16,12 +16,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.notifications.QwenDownloadManager
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.*
 import com.lop.budget.ui.theme.ThemeMode
 
@@ -67,7 +69,9 @@ fun SettingsScreen(
                             PillTag(
                                 text = stringResource(labelRes),
                                 color = if (state.themeMode == mode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.clickableNoRipple { vm.setThemeMode(mode) },
+                                modifier = Modifier
+                                    .clickableNoRipple { vm.setThemeMode(mode) }
+                                    .testTag("${TestTags.SETTINGS_THEME_PREFIX}${mode.name}"),
                             )
                         }
                     }
@@ -88,7 +92,11 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Switch(checked = state.dynamicColor, onCheckedChange = vm::setDynamicColor)
+                        Switch(
+                            checked = state.dynamicColor, 
+                            onCheckedChange = vm::setDynamicColor,
+                            modifier = Modifier.testTag(TestTags.SETTINGS_SWITCH_DYNAMIC_COLOR)
+                        )
                     }
 
                     Spacer(Modifier.height(14.dp))
@@ -99,7 +107,10 @@ fun SettingsScreen(
                     Spacer(Modifier.height(12.dp))
 
                     Row(
-                        Modifier.fillMaxWidth().clickableNoRipple(onNavigateToAccounts),
+                        Modifier
+                            .fillMaxWidth()
+                            .clickableNoRipple(onNavigateToAccounts)
+                            .testTag(TestTags.SETTINGS_NAV_ACCOUNTS),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -112,7 +123,10 @@ fun SettingsScreen(
                     Spacer(Modifier.height(14.dp))
 
                     Row(
-                        Modifier.fillMaxWidth().clickableNoRipple(onNavigateToCategories),
+                        Modifier
+                            .fillMaxWidth()
+                            .clickableNoRipple(onNavigateToCategories)
+                            .testTag(TestTags.SETTINGS_NAV_CATEGORIES),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -125,7 +139,10 @@ fun SettingsScreen(
                     Spacer(Modifier.height(14.dp))
 
                     Row(
-                        Modifier.fillMaxWidth().clickableNoRipple(onNavigateToTags),
+                        Modifier
+                            .fillMaxWidth()
+                            .clickableNoRipple(onNavigateToTags)
+                            .testTag(TestTags.SETTINGS_NAV_TAGS),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -166,6 +183,7 @@ fun SettingsScreen(
                         Switch(
                             checked = state.notificationDetectionEnabled,
                             onCheckedChange = vm::setNotificationDetectionEnabled,
+                            modifier = Modifier.testTag(TestTags.SETTINGS_SWITCH_NOTIF_DETECTION)
                         )
                     }
 
@@ -194,6 +212,7 @@ fun SettingsScreen(
                                     vm.setUseLocalLlm(it)
                                 }
                             },
+                            modifier = Modifier.testTag(TestTags.SETTINGS_SWITCH_LOCAL_AI)
                         )
                     }
 
@@ -233,6 +252,7 @@ fun SettingsScreen(
                                 )
                             )
                         },
+                        modifier = Modifier.testTag(TestTags.SETTINGS_BTN_ALLOW_NOTIF)
                     ) {
                         Text(stringResource(R.string.settings_allow_notif_access))
                     }

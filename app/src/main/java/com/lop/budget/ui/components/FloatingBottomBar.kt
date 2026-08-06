@@ -89,19 +89,22 @@ fun FloatingBottomBar(
                     icon = Icons.Filled.Home,
                     label = stringResource(R.string.nav_home),
                     selected = current == Routes.HOME,
-                    onClick = { onSelect(Routes.HOME) }
+                    onClick = { onSelect(Routes.HOME) },
+                    modifier = Modifier.testTag(TestTags.NAV_HOME)
                 )
                 GalaxyNavItem(
                     icon = Icons.Filled.Assessment,
                     label = stringResource(R.string.nav_analytics),
                     selected = current == Routes.ANALYTICS,
-                    onClick = { onSelect(Routes.ANALYTICS) }
+                    onClick = { onSelect(Routes.ANALYTICS) },
+                    modifier = Modifier.testTag(TestTags.NAV_ANALYTICS)
                 )
                 GalaxyNavItem(
                     icon = Icons.Filled.Flag,
                     label = stringResource(R.string.nav_goals),
                     selected = current == Routes.GOALS,
-                    onClick = { onSelect(Routes.GOALS) }
+                    onClick = { onSelect(Routes.GOALS) },
+                    modifier = Modifier.testTag(TestTags.NAV_GOALS)
                 )
             }
         }
@@ -133,6 +136,7 @@ private fun GalaxyNavItem(
     icon: ImageVector,
     label: String,
     selected: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -145,7 +149,7 @@ private fun GalaxyNavItem(
     )
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .width(80.dp)
             .fillMaxHeight(fraction = 0.8F)
             .clickable(

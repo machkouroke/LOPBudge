@@ -33,10 +33,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.data.local.entity.AccountEntity
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -57,6 +59,7 @@ fun AccountsManageScreen(
     if (accountToDelete != null) {
         AlertDialog(
             onDismissRequest = { accountToDelete = null },
+            modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_DIALOG),
             title = { Text("Supprimer le compte ?") },
             text = { Text("Cette action est irréversible. Toutes les transactions liées seront orphelines.") },
             confirmButton = {
@@ -65,13 +68,17 @@ fun AccountsManageScreen(
                         vm.deleteAccount(accountToDelete!!.id)
                         accountToDelete = null
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_SUBMIT)
                 ) {
                     Text("Supprimer")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { accountToDelete = null }) {
+                TextButton(
+                    onClick = { accountToDelete = null },
+                    modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_CANCEL)
+                ) {
                     Text("Annuler")
                 }
             }
@@ -82,6 +89,7 @@ fun AccountsManageScreen(
         title = "Gérer les comptes",
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_ACCOUNTS),
         bottomBar = {
             Box(
                 modifier = Modifier
@@ -92,7 +100,8 @@ fun AccountsManageScreen(
                 FloatingActionButton(
                     onClick = onAddAccount,
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.testTag(TestTags.ACC_BTN_ADD)
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Ajouter un compte")
                 }
@@ -167,7 +176,8 @@ fun AccountManageRow(
     FloatingCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickableNoRipple(onEdit),
+            .clickableNoRipple(onEdit)
+            .testTag("${TestTags.ACC_ROW}_${account.id}"),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isArchived) 0.2f else 0.4f)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -192,7 +202,10 @@ fun AccountManageRow(
                 }
             }
 
-            IconButton(onClick = onArchive) {
+            IconButton(
+                onClick = onArchive,
+                modifier = Modifier.testTag("${TestTags.ACC_BTN_ARCHIVE}_${account.id}")
+            ) {
                 Icon(
                     imageVector = if (isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
                     contentDescription = if (isArchived) "Désarchiver" else "Archiver",
@@ -201,7 +214,10 @@ fun AccountManageRow(
                 )
             }
 
-            IconButton(onClick = onDelete) {
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.testTag("${TestTags.ACC_BTN_DELETE}_${account.id}")
+            ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "Supprimer",

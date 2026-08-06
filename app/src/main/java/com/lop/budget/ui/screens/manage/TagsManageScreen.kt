@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,6 +50,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TagEntity
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.ConfirmDeleteSheet
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -67,13 +69,15 @@ fun TagsManageScreen(
         title = "Gestion des tags",
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_TAGS),
         bottomBar = {
             Button(
                 onClick = { showCreateSheet = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp)
-                    .height(56.dp),
+                    .height(56.dp)
+                    .testTag(TestTags.TAG_BTN_ADD),
                 shape = RoundedCornerShape(16.dp),
             ) {
                 Icon(Icons.Default.Add, null)
@@ -168,10 +172,16 @@ private fun TagItem(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            IconButton(onClick = onEdit) {
+            IconButton(
+                onClick = onEdit,
+                modifier = Modifier.testTag("${TestTags.TAG_ITEM_EDIT}_${tag.id}")
+            ) {
                 Icon(Icons.Default.Edit, "Modifier", tint = MaterialTheme.colorScheme.primary)
             }
-            IconButton(onClick = onDelete) {
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.testTag("${TestTags.TAG_ITEM_DELETE}_${tag.id}")
+            ) {
                 Icon(Icons.Default.Delete, "Supprimer", tint = MaterialTheme.colorScheme.error)
             }
         }
@@ -239,7 +249,8 @@ private fun TagEditSheet(
                                 if (isSelected) 3.dp else 0.dp,
                                 MaterialTheme.colorScheme.onSurface,
                                 CircleShape
-                            ),
+                            )
+                            .testTag("${TestTags.TAG_COLOR_PICKER}_${color.toArgb()}"),
                         contentAlignment = Alignment.Center
                     ) {
                         if (isSelected) {
@@ -255,7 +266,8 @@ private fun TagEditSheet(
                 onClick = { onSave(name, selectedColor.toArgb()) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
+                    .height(56.dp)
+                    .testTag(TestTags.BTN_SAVE),
                 enabled = name.isNotBlank(),
                 shape = RoundedCornerShape(16.dp)
             ) {

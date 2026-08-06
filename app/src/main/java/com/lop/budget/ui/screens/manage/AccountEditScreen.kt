@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -28,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.data.repository.IconResult
 import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -140,6 +142,7 @@ fun AccountEditScreen(
         title = if (state.isEdit) "Modifier le compte" else "Nouveau compte",
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_EDIT),
         bottomBar = {
             Box(Modifier
                 .fillMaxWidth()
@@ -148,7 +151,8 @@ fun AccountEditScreen(
                     onClick = { vm.save(onBack) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
+                        .height(56.dp)
+                        .testTag(TestTags.BTN_SAVE),
                     shape = MaterialTheme.shapes.medium,
                     enabled = state.name.isNotBlank() && !state.isSaving
                 ) {
@@ -181,7 +185,7 @@ fun AccountEditScreen(
                                 value = state.name,
                                 onValueChange = vm::onNameChange,
                                 label = { Text("Nom du compte") },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().testTag("account.edit.name.field"),
                                 singleLine = true
                             )
 
@@ -197,14 +201,16 @@ fun AccountEditScreen(
                                     AccountType.INVESTMENT -> "Investissement"
                                     AccountType.OTHER -> "Autre"
                                 },
-                                onClick = { showTypeSheet = true }
+                                onClick = { showTypeSheet = true },
+                                modifier = Modifier.testTag("account.edit.type.selector")
                             )
 
                             if (state.type == AccountType.CHECKING) {
                                 SelectorField(
                                     label = "Établissement bancaire",
                                     value = state.bankName.ifBlank { "Choisir une banque..." },
-                                    onClick = { showBankSheet = true }
+                                    onClick = { showBankSheet = true },
+                                    modifier = Modifier.testTag("account.edit.bank.selector")
                                 )
                             }
                         }
@@ -217,7 +223,7 @@ fun AccountEditScreen(
                                 value = state.initialBalance,
                                 onValueChange = vm::onInitialBalanceChange,
                                 label = { Text("Solde du compte") },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().testTag("account.edit.balance.field"),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true
                             )
@@ -226,7 +232,8 @@ fun AccountEditScreen(
                             SelectorField(
                                 label = "Date du solde de référence",
                                 value = balanceDateLabel,
-                                onClick = { showDatePicker = true }
+                                onClick = { showDatePicker = true },
+                                modifier = Modifier.testTag("account.edit.date.selector")
                             )
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -243,7 +250,8 @@ fun AccountEditScreen(
                                 }
                                 Switch(
                                     checked = state.includeInTotal,
-                                    onCheckedChange = vm::onIncludeInTotalChange
+                                    onCheckedChange = vm::onIncludeInTotalChange,
+                                    modifier = Modifier.testTag("account.edit.include.switch")
                                 )
                             }
                         }
@@ -279,7 +287,8 @@ fun AccountEditScreen(
                                                 if (state.colorArgb == c.toInt()) MaterialTheme.colorScheme.primary else Color.Transparent,
                                                 CircleShape
                                             )
-                                            .clickableNoRipple { vm.onColorChange(c.toInt()) },
+                                            .clickableNoRipple { vm.onColorChange(c.toInt()) }
+                                            .testTag("account.edit.color.${c}"),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (state.colorArgb == c.toInt()) Icon(
@@ -295,7 +304,10 @@ fun AccountEditScreen(
                             // Icône (Clickable preview)
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickableNoRipple { showIconSheet = true }) {
+                                modifier = Modifier
+                                    .clickableNoRipple { showIconSheet = true }
+                                    .testTag("account.edit.icon.selector")
+                            ) {
                                 CircleIcon(
                                     icon = IconMapper.get(state.iconName),
                                     tint = Color(state.colorArgb),
@@ -337,7 +349,7 @@ fun AccountEditScreen(
                         
                         Button(
                             onClick = { showDeleteDialog = true },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            modifier = Modifier.fillMaxWidth().height(56.dp).testTag(TestTags.ACC_BTN_DELETE),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
                                 contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -356,8 +368,13 @@ fun AccountEditScreen(
 }
 
 @Composable
-fun SelectorField(label: String, value: String, onClick: () -> Unit) {
-    Column {
+fun SelectorField(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(modifier = modifier) {
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,

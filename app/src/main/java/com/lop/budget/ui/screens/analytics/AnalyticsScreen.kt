@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,6 +38,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.DonutSlice
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -68,7 +70,8 @@ fun AnalyticsScreen(
     LopScreenScaffold(
         title = title,
         onBack = onBack,
-        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack
+        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_ANALYTICS)
     ) {
         item {
             Row(
@@ -100,7 +103,9 @@ fun AnalyticsScreen(
                 state.breakdown.forEach { item ->
                     val color = Color(item.colorArgb)
                     com.lop.budget.ui.components.FloatingCard(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("analytics.breakdown.${item.name}"),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                         contentPadding = PaddingValues(12.dp)
                     ) {
