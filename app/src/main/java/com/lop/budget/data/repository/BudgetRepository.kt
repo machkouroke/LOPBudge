@@ -165,19 +165,14 @@ class BudgetRepository @Inject constructor(
             val searchStartLocal = Instant.ofEpochMilli(searchStart).atZone(zone).toLocalDate()
             val searchEndLocal = Instant.ofEpochMilli(searchEnd).atZone(zone).toLocalDate()
 
-            // Résultat final : commencer par les réels déjà filtrés par DAO (Undo déjà géré car on filtre au final)
+            // Résultat final : commencer par les réels déjà filtrés par DAO
             val finalResult = realTxs.filter { twr ->
-                val tx = twr.transaction
-                if (tx.id in pending) return@filter false
-                val seriesPendingMode = if (tx.seriesId != null) pendingSeries[tx.seriesId] else null
-                when (seriesPendingMode) {
-                    SeriesDeletionMode.ALL -> false
-                    SeriesDeletionMode.FUTURE -> {
-                        val fromDate = pendingDates[tx.seriesId]
-                        fromDate == null || tx.date < fromDate
-                    }
-                    null -> true
-                }
+                isTransactionVisible(
+                    twr.transaction,
+                    pending,
+                    pendingSeries,
+                    pendingDates
+                )
             }.toMutableList()
 
             // 3. Ajouter les occurrences virtuelles des séries qui matchent
@@ -190,14 +185,14 @@ class BudgetRepository @Inject constructor(
                 val matchesCategory = categoryId == null || series.categoryId == categoryId
                 
                 if (matchesText && matchesAccount && matchesCategory) {
-                    // Barrière de sécurité Undo
-                    if (pendingSeries[sIdStr] == SeriesDeletionMode.ALL) continue
+                    // Barrière de sécurité : on ne génère rien pour une série annulée ou en cours de suppression ALL
+                    if (series.isCancelled || pendingSeries[sIdStr] == SeriesDeletionMode.ALL) continue
 
                     val occurrences = generateOccurrencesForMonth(series, searchStartLocal, searchEndLocal, zone)
                     for (occDate in occurrences) {
                         val occEpoch = occDate.atStartOfDay(zone).toInstant().toEpochMilli()
 
-                        // Filtre Undo Future
+                        // Vérifier si cette occurrence virtuelle spécifique est en cours de suppression FUTURE
                         if (pendingSeries[sIdStr] == SeriesDeletionMode.FUTURE) {
                             val fromDate = pendingDates[sIdStr]
                             if (fromDate != null && occEpoch >= fromDate) continue
@@ -207,6 +202,8 @@ class BudgetRepository @Inject constructor(
                         val hasExisting = realTxs.any { it.transaction.seriesId == sIdStr && it.transaction.seriesDate == occEpoch }
                         if (!hasExisting) {
                             val virtualId = -abs("${series.id}_$occEpoch".hashCode().toLong()) - 1L
+                            
+                            // Sécurité finale : ne pas afficher si le virtuel vient d'être supprimé (même si pas encore en base)
                             if (virtualId in pending) continue
 
                             val virtualTx = TransactionEntity(
@@ -308,19 +305,12 @@ class BudgetRepository @Inject constructor(
             // On garde les transactions réelles (non supprimées) pour l'affichage final
             // On applique le filtrage des suppressions en attente (Undo)
             val finalResult = allInPeriod.filter { twr -> 
-                val tx = twr.transaction
-                if (tx.deleted || tx.id in pending) return@filter false
-                
-                val seriesPendingMode = if (tx.seriesId != null) pendingSeries[tx.seriesId] else null
-                val isSeriesPending = when (seriesPendingMode) {
-                    SeriesDeletionMode.ALL -> true
-                    SeriesDeletionMode.FUTURE -> {
-                        val fromDate = pendingDates[tx.seriesId]
-                        fromDate != null && tx.date >= fromDate
-                    }
-                    null -> false
-                }
-                !isSeriesPending
+                isTransactionVisible(
+                    twr.transaction,
+                    pending,
+                    pendingSeries,
+                    pendingDates
+                )
             }.toMutableList()
 
             for (series in seriesList) {
@@ -780,6 +770,26 @@ class BudgetRepository @Inject constructor(
     suspend fun saveDebt(d: DebtEntity) = debtDao.upsert(d)
     suspend fun getDebtById(id: Long) = debtDao.getById(id)
     suspend fun deleteDebt(id: Long) = debtDao.delete(id)
+
+    private fun isTransactionVisible(
+        tx: TransactionEntity,
+        pendingDeletes: Set<Long>,
+        pendingSeriesDeletes: Map<String, SeriesDeletionMode>,
+        pendingSeriesFromDates: Map<String, Long>
+    ): Boolean {
+        if (tx.deleted || tx.id in pendingDeletes) return false
+
+        val seriesPendingMode = if (tx.seriesId != null) pendingSeriesDeletes[tx.seriesId] else null
+        val isSeriesPending = when (seriesPendingMode) {
+            SeriesDeletionMode.ALL -> true
+            SeriesDeletionMode.FUTURE -> {
+                val fromDate = pendingSeriesFromDates[tx.seriesId]
+                fromDate != null && tx.date >= fromDate
+            }
+            null -> false
+        }
+        return !isSeriesPending
+    }
 
     suspend fun getDefaultExpenseCategoryId(): Long {
         // Cherche "Alimentation" ou "Autre" ou la première dépense
