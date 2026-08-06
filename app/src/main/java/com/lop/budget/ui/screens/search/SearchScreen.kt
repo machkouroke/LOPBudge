@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopSearchBar
@@ -96,6 +97,7 @@ fun SearchScreen(
         title = "Rechercher",
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_SEARCH),
         snackbarHost = {
             SnackbarHost(
                 snackbarHostState,
@@ -108,7 +110,7 @@ fun SearchScreen(
                 LopSearchBar(
                     value = state.query,
                     onValueChange = vm::onQueryChange,
-                    modifier = Modifier.padding(vertical = 8.dp),
+                    modifier = Modifier.padding(vertical = 8.dp).testTag(TestTags.SEARCH_BAR),
                     placeholder = "Titre, notes..."
                 )
 
@@ -121,6 +123,7 @@ fun SearchScreen(
                         FilterChip(
                             selected = state.selectedAccountId != null,
                             onClick = { showAccountPicker = true },
+                            modifier = Modifier.testTag(TestTags.SEARCH_CHIP_ACCOUNT),
                             label = {
                                 val acc =
                                     state.availableAccounts.find { it.id == state.selectedAccountId }
@@ -147,6 +150,7 @@ fun SearchScreen(
                         FilterChip(
                             selected = state.selectedCategoryId != null,
                             onClick = { showCategoryPicker = true },
+                            modifier = Modifier.testTag(TestTags.SEARCH_CHIP_CATEGORY),
                             label = {
                                 val cat =
                                     state.availableCategories.find { it.id == state.selectedCategoryId }
@@ -173,6 +177,7 @@ fun SearchScreen(
                         FilterChip(
                             selected = state.startDate != null,
                             onClick = { showDatePicker = true },
+                            modifier = Modifier.testTag(TestTags.SEARCH_CHIP_DATE),
                             label = {
                                 if (state.startDate != null) {
                                     Text("${Format.shortDate(state.startDate!!)} - ...")

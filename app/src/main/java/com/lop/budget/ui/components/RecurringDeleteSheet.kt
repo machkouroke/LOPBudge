@@ -30,8 +30,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.lop.budget.ui.common.TestTags
 
 enum class RecurringDeleteChoice {
     THIS_OCCURRENCE,
@@ -57,7 +59,7 @@ fun RecurringDeleteSheet(
         sheetState = sheetState,
         containerColor = container,
         scrimColor = Color.Black.copy(alpha = 0.55f),
-        modifier = modifier,
+        modifier = modifier.testTag(TestTags.RECURRING_DELETE_SHEET),
     ) {
         Column(
             modifier = Modifier
@@ -110,6 +112,7 @@ fun RecurringDeleteSheet(
                 subtitle = "Supprime uniquement ce paiement",
                 tone = ActionTone.Danger,
                 onClick = { onChoose(RecurringDeleteChoice.THIS_OCCURRENCE) },
+                modifier = Modifier.testTag(TestTags.RECURRING_DELETE_SINGLE)
             )
 
             if (showFutureOnly) {
@@ -119,6 +122,7 @@ fun RecurringDeleteSheet(
                     subtitle = "Conserve le passé, annule le futur",
                     tone = ActionTone.Danger,
                     onClick = { onChoose(RecurringDeleteChoice.FUTURE_ONLY) },
+                    modifier = Modifier.testTag(TestTags.RECURRING_DELETE_FUTURE)
                 )
             }
 
@@ -128,6 +132,7 @@ fun RecurringDeleteSheet(
                 subtitle = "Supprime passé + futur",
                 tone = ActionTone.Danger,
                 onClick = { onChoose(RecurringDeleteChoice.ALL_SERIES) },
+                modifier = Modifier.testTag(TestTags.RECURRING_DELETE_ALL)
             )
 
             Spacer(Modifier.height(4.dp))
@@ -139,6 +144,7 @@ fun RecurringDeleteSheet(
                 subtitle = null,
                 tone = ActionTone.Neutral,
                 onClick = onDismiss,
+                modifier = Modifier.testTag(TestTags.RECURRING_DELETE_CANCEL)
             )
 
             Spacer(Modifier.height(18.dp))
@@ -155,6 +161,7 @@ private fun ActionRow(
     subtitle: String?,
     tone: ActionTone,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(22.dp)
     val border = when (tone) {
@@ -177,7 +184,7 @@ private fun ActionRow(
         border = BorderStroke(1.dp, border),
         shadowElevation = 6.dp,
         tonalElevation = 0.dp,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(Brush.verticalGradient(listOf(top, bottom)))

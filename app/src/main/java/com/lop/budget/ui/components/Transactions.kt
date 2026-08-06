@@ -36,6 +36,7 @@ import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.common.TransactionActionViewModel
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
@@ -89,7 +90,7 @@ fun LazyListScope.transactionDayGroups(
             },
             contentType = { "transaction" }
         ) { tx ->
-            Box(modifier = Modifier.animateItem()) {
+            Box(modifier = Modifier.animateItem().testTag(TestTags.TRANSACTION_ITEM)) {
                 TransactionRow(
                     tx = tx,
                     currency = currency,
@@ -163,7 +164,7 @@ fun TransactionRow(
                             text = tx.transaction.title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = if (isAdjustment) FontWeight.Bold else FontWeight.Normal,
-                            modifier = Modifier.testTag("transaction_title_${tx.transaction.id}")
+                            modifier = Modifier.testTag(TestTags.TRANSACTION_ITEM_TITLE)
                         )
                         if (tx.transaction.seriesId != null) {
                             Spacer(Modifier.width(6.dp))

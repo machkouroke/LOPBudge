@@ -56,6 +56,7 @@ import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
@@ -107,6 +108,7 @@ fun TransactionDetailScreen(
             title = scaffoldTitle,
             onBack = onBack,
             navigationIcon = Icons.Filled.Close,
+            modifier = Modifier.testTag(TestTags.SCREEN_DETAIL),
             snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) }
         ) {
             if (tx == null) {
@@ -138,7 +140,7 @@ fun TransactionDetailScreen(
                                         actionVm.requestEdit(twr)
                                     }
                                 }
-                                .testTag("transaction_detail_edit_button"),
+                                .testTag(TestTags.TRANSACTION_DETAIL_EDIT),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -160,7 +162,7 @@ fun TransactionDetailScreen(
                                         actionVm.requestDelete(twr)
                                     }
                                 }
-                                .testTag("transaction_delete_button"),
+                                .testTag(TestTags.TRANSACTION_DETAIL_DELETE),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(

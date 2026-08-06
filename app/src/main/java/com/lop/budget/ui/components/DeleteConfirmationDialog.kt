@@ -23,11 +23,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.lop.budget.R
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.theme.LopBudgeTheme
 
 @Composable
@@ -48,6 +50,7 @@ fun DeleteConfirmationDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(28.dp),
         containerColor = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_DIALOG),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
@@ -86,7 +89,8 @@ fun DeleteConfirmationDialog(
                     containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError
                 ),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_SUBMIT)
             ) {
                 Text(stringResource(R.string.delete))
             }
@@ -95,7 +99,8 @@ fun DeleteConfirmationDialog(
             OutlinedButton(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_CANCEL)
             ) {
                 Text(
                     stringResource(R.string.cancel),

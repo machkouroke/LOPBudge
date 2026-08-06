@@ -29,8 +29,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.lop.budget.ui.common.TestTags
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -120,7 +122,8 @@ fun SwipeableTransactionRow(
             modifier = Modifier
                 .matchParentSize()
                 .background(bgColor, RoundedCornerShape(24.dp))
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 20.dp)
+                .testTag(if (swipeDirection == SwipeDir.Left) TestTags.TRANSACTION_ITEM_DELETE else ""),
             contentAlignment = bgAlignment,
         ) {
             if (bgIcon != null) {

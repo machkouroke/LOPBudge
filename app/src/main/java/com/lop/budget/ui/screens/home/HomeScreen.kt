@@ -61,6 +61,7 @@ import androidx.navigation.NavController
 import com.lop.budget.R
 import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.BalanceDashboardWidget
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
@@ -127,7 +128,7 @@ fun HomeScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().testTag(TestTags.SCREEN_HOME)) {
         HomeContent(
             state = state,
             statusBarPadding = statusBarPadding,
@@ -467,10 +468,15 @@ fun HomeOverlay(
                     icon = Icons.Default.Search, 
                     onClick = onSearchClick, 
                     contentDescription = "Rechercher",
-                    modifier = Modifier.testTag("nav_search")
+                    modifier = Modifier.testTag(TestTags.NAV_SEARCH_BUTTON)
                 )
                 DetectedIcon(state.detectedCount, onDetectedClick)
-                IconButton(Icons.Filled.Settings, onSettingsClick)
+                IconButton(
+                    icon = Icons.Filled.Settings, 
+                    onClick = onSettingsClick,
+                    contentDescription = "Réglages",
+                    modifier = Modifier.testTag(TestTags.NAV_SETTINGS_BUTTON)
+                )
             }
         }
     }
@@ -484,6 +490,7 @@ fun IconButton(
     modifier: Modifier = Modifier,
 ) {
     Box(
+        
         modifier = modifier
             .size(40.dp)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
@@ -496,7 +503,7 @@ fun IconButton(
 
 @Composable
 fun DetectedIcon(count: Int, onClick: () -> Unit) {
-    Box(modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).clickableNoRipple { onClick() }, contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).clickableNoRipple { onClick() }.testTag(TestTags.NAV_DETECTED_BUTTON), contentAlignment = Alignment.Center) {
         Icon(Icons.Filled.NotificationsActive, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
         if (count > 0) {
             Surface(color = MaterialTheme.colorScheme.error, shape = androidx.compose.foundation.shape.CircleShape, modifier = Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp).size(16.dp)) {

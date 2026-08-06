@@ -23,12 +23,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lop.budget.R
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.navigation.Routes
 import com.lop.budget.ui.screens.settings.SettingsViewModel
 import com.lop.budget.ui.theme.ThemeMode
@@ -58,7 +60,8 @@ fun FloatingBottomBar(
             .fillMaxWidth(fraction = 0.95F)
             .padding(horizontal = 24.dp)
             .padding(bottom = 12.dp)
-            .navigationBarsPadding(),
+            .navigationBarsPadding()
+            .testTag(TestTags.NAV_BOTTOM_BAR),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
@@ -110,7 +113,7 @@ fun FloatingBottomBar(
             onClick = onAdd,
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier.size(56.dp).testTag(TestTags.NAV_ADD_BUTTON),
             shadowElevation = 8.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
