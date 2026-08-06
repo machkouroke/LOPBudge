@@ -17,6 +17,7 @@ import com.lop.budget.data.local.dao.RecurringSeriesDao
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.BalanceEngine
+import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionType
@@ -188,9 +189,9 @@ class BudgetRepository @Inject constructor(
                     // Barrière de sécurité : on ne génère rien pour une série annulée ou en cours de suppression ALL
                     if (series.isCancelled || pendingSeries[sIdStr] == SeriesDeletionMode.ALL) continue
 
-                    val occurrences = generateOccurrencesForMonth(series, searchStartLocal, searchEndLocal, zone)
-                    for (occDate in occurrences) {
-                        val occEpoch = occDate.atStartOfDay(zone).toInstant().toEpochMilli()
+                    val occurrences = RecurrenceEngine.generateOccurrences(series, searchStart, searchEnd)
+                    for (virtualTx in occurrences) {
+                        val occEpoch = virtualTx.date
 
                         // Vérifier si cette occurrence virtuelle spécifique est en cours de suppression FUTURE
                         if (pendingSeries[sIdStr] == SeriesDeletionMode.FUTURE) {
@@ -201,27 +202,9 @@ class BudgetRepository @Inject constructor(
                         // Vérifier si une exception existe déjà (matérialisée ou supprimée)
                         val hasExisting = realTxs.any { it.transaction.seriesId == sIdStr && it.transaction.seriesDate == occEpoch }
                         if (!hasExisting) {
-                            val virtualId = -abs("${series.id}_$occEpoch".hashCode().toLong()) - 1L
-                            
                             // Sécurité finale : ne pas afficher si le virtuel vient d'être supprimé (même si pas encore en base)
-                            if (virtualId in pending) continue
+                            if (virtualTx.id in pending) continue
 
-                            val virtualTx = TransactionEntity(
-                                id = virtualId,
-                                title = series.title,
-                                amount = series.amount,
-                                type = series.type,
-                                status = TransactionStatus.PLANNED,
-                                date = occEpoch,
-                                accountId = series.accountId,
-                                categoryId = series.categoryId,
-                                note = series.note,
-                                seriesId = sIdStr,
-                                seriesDate = occEpoch,
-                                isException = false,
-                                linkedGoalId = series.linkedGoalId,
-                                linkedDebtId = series.linkedDebtId
-                            )
                             val account = allAccounts.find { it.id == series.accountId }
                             val category = allCategories.find { it.id == series.categoryId }
                             finalResult.add(TransactionWithRelations(virtualTx, category, account, emptyList()))
@@ -318,12 +301,12 @@ class BudgetRepository @Inject constructor(
                 // Barrière de sécurité : on ne génère rien pour une série annulée ou en cours de suppression ALL
                 if (series.isCancelled || pendingSeries[sIdStr] == SeriesDeletionMode.ALL) continue
 
-                // 1. Calculer les occurrences virtuelles de cette série qui tombent dans ce mois
-                val occurrences = generateOccurrencesForMonth(series, startLocalDate, endLocalDate, zone)
+                // 1. Calculer les occurrences virtuelles de cette série via le moteur
+                val occurrences = RecurrenceEngine.generateOccurrences(series, start, end)
                 
                 // 2. Pour chaque date prévue, on vérifie si une exception (même supprimée) existe déjà
-                for (occDate in occurrences) {
-                    val occEpoch = occDate.atStartOfDay(zone).toInstant().toEpochMilli()
+                for (virtualTx in occurrences) {
+                    val occEpoch = virtualTx.date
                     
                     // Vérifier si cette occurrence virtuelle spécifique est en cours de suppression FUTURE
                     val seriesPendingMode = pendingSeries[sIdStr]
@@ -338,27 +321,9 @@ class BudgetRepository @Inject constructor(
                     }
                     
                     if (!hasExistingEntry) {
-                        val virtualId = -abs("${series.id}_$occEpoch".hashCode().toLong()) - 1L
-                        
                         // Sécurité finale : ne pas afficher si le virtuel vient d'être supprimé (même si pas encore en base)
-                        if (virtualId in pending) continue
+                        if (virtualTx.id in pending) continue
 
-                        val virtualTx = TransactionEntity(
-                            id = virtualId,
-                            title = series.title,
-                            amount = series.amount,
-                            type = series.type,
-                            status = TransactionStatus.PLANNED,
-                            date = occEpoch,
-                            accountId = series.accountId,
-                            categoryId = series.categoryId,
-                            note = series.note,
-                            seriesId = sIdStr,
-                            seriesDate = occEpoch,
-                            isException = false,
-                            linkedGoalId = series.linkedGoalId,
-                            linkedDebtId = series.linkedDebtId
-                        )
                         val account = accounts.find { it.id == series.accountId }
                         val category = categories.find { it.id == series.categoryId }
                         
@@ -371,48 +336,6 @@ class BudgetRepository @Inject constructor(
         }.flowOn(Dispatchers.Default)
     }
 
-    private fun generateOccurrencesForMonth(
-        series: RecurringSeriesEntity, 
-        monthStart: LocalDate, 
-        monthEnd: LocalDate, 
-        zone: ZoneId
-    ): List<LocalDate> {
-        val occurrences = mutableListOf<LocalDate>()
-        val seriesStart = Instant.ofEpochMilli(series.startDate).atZone(zone).toLocalDate()
-        val seriesEnd = series.endDate?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
-        
-        // Si la série se termine avant le début du mois, ou commence après la fin du mois
-        if (seriesEnd != null && seriesEnd.isBefore(monthStart)) return occurrences
-        if (seriesStart.isAfter(monthEnd)) return occurrences
-        
-        var current = seriesStart
-        var count = 0
-        val max = series.maxOccurrences ?: Int.MAX_VALUE
-        
-        while (count < max) {
-            if (seriesEnd != null && current.isAfter(seriesEnd)) break
-            
-            // Si l'occurrence est dans le mois ciblé, on l'ajoute
-            if (!current.isBefore(monthStart) && !current.isAfter(monthEnd)) {
-                occurrences.add(current)
-            }
-            
-            // Si on a dépassé le mois, on peut s'arrêter (optimisation)
-            if (current.isAfter(monthEnd)) break
-            
-            // Prochaine occurrence
-            current = when (series.frequency) {
-                com.lop.budget.domain.model.RecurrenceFrequency.DAILY -> current.plusDays(series.interval.toLong())
-                com.lop.budget.domain.model.RecurrenceFrequency.WEEKLY -> current.plusWeeks(series.interval.toLong())
-                com.lop.budget.domain.model.RecurrenceFrequency.MONTHLY -> current.plusMonths(series.interval.toLong())
-                com.lop.budget.domain.model.RecurrenceFrequency.YEARLY -> current.plusYears(series.interval.toLong())
-                else -> break
-            }
-            count++
-        }
-        
-        return occurrences
-    }
     fun observeTransaction(id: Long) = transactionDao.observeById(id)
     // observePaidSum est supprimé car le calcul se fait désormais en mémoire dans le ViewModel
     // à partir de observeTransactionsBetween() qui inclut les occurrences virtuelles.
