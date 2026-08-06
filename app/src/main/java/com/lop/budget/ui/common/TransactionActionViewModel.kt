@@ -1,6 +1,5 @@
 package com.lop.budget.ui.common
 
-import androidx.compose.material3.SnackbarHostState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.TransactionWithRelations
@@ -18,19 +17,13 @@ class TransactionActionViewModel @Inject constructor(
     private val repo: BudgetRepository
 ) : ViewModel() {
 
-    // On suit les versions des transactions pour forcer le rafraîchissement UI si besoin (Undo)
+    // On suit les versions des transactions pour forcer le rafraîchissement UI
     private val _txVersions = MutableStateFlow<Map<Long, Int>>(emptyMap())
     val txVersions = _txVersions.asStateFlow()
 
-    // Transactions en cours de suppression (masquées de l'UI pendant le Snackbar)
+    // Transactions en cours de suppression
     private val _pendingDeletes = MutableStateFlow<Set<Long>>(emptySet())
     val pendingDeletes = _pendingDeletes.asStateFlow()
-
-    private val _pendingSeriesDeletes = MutableStateFlow<Map<String, SeriesDeletionMode>>(emptyMap())
-    val pendingSeriesDeletes = _pendingSeriesDeletes.asStateFlow()
-
-    private val _pendingSeriesFromDates = MutableStateFlow<Map<String, Long>>(emptyMap())
-    val pendingSeriesFromDates = _pendingSeriesFromDates.asStateFlow()
 
     // Delete request state for showing recurring sheet globally
     private val _deleteRequest = MutableStateFlow<TransactionWithRelations?>(null)
