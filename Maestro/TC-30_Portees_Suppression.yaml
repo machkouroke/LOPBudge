@@ -20,6 +20,7 @@ name: "TC-30: Impact des Portées de Suppression"
 - assertNotVisible: "Loyer"
 
 # Vérifier le mois suivant
+- tapOn: "Retour"
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Sept."
@@ -43,6 +44,7 @@ name: "TC-30: Impact des Portées de Suppression"
 - assertNotVisible: "Loyer"
 
 # Vérifier Septembre
+- tapOn: "Retour"
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Sept."
@@ -51,6 +53,7 @@ name: "TC-30: Impact des Portées de Suppression"
 - assertNotVisible: "Loyer"
 
 # Vérifier Juillet
+- tapOn: "Retour"
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Juil."

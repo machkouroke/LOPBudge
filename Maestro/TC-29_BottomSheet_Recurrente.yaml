@@ -9,13 +9,19 @@ name: "TC-29: Validation Bottom Sheet Suppression"
 - runFlow: .maestro/subflows/open_monthly_history.yaml
 
 # Étape 1 : Vérification via Swipe
+# On swipe depuis l'élément "Loyer" vers la GAUCHE.
+# On augmente la durée à 1000ms pour s'assurer que le mouvement est bien détecté 
+# et parcourt assez de distance pour dépasser les 40% du seuil Compose.
 - swipe:
     from: 
       id: "transaction.item.title"
       text: "Loyer"
-    direction: LEFT
+    start: 90%, 50%
+    end: 10%, 40%
+    duration: 1000
+
 - tapOn:
-    id: "transaction.item.delete"
+    id: "Supprimer"
 - assertVisible:
     id: "recurring.delete.scope.sheet"
 - tapOn: "Annuler"
