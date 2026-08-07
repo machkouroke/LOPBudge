@@ -11,11 +11,13 @@ import java.util.Calendar
 /**
  * Test JUnit — Stockage série et génération virtuelle.
  * Couvre les CA-01, CA-02, CA-03, CA-04, CA-05.
+ * 
+ * Référence Notion : https://app.notion.com/p/89d083d6f5fb491795dbc96523adc69e
  */
 class RecurrenceEngineTest {
 
     @Test
-    fun `generateOccurrences should generate correct number of virtual transactions`() {
+    fun `TC-24 - generateOccurrences should generate correct number of virtual transactions`() {
         // Given: Une série mensuelle commençant le 1er Janvier
         val startCalendar = Calendar.getInstance().apply {
             set(2024, Calendar.JANUARY, 1, 10, 0, 0)
