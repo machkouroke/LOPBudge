@@ -1,17 +1,14 @@
 appId: com.lop.budget
+name: "TC-29: Validation Bottom Sheet Suppression"
 ---
 # TC-29 - Gherkin UI — Bottom sheet suppression récurrente
 # Vérifier que toutes les entrées ouvrent la bottom sheet et que l'annulation fonctionne.
 
-- runScript: 
-    file: scripts/seed.js
-    env:
-      scenario: TC_29
 - launchApp:
-    clearState: false
+    clearState: true
 
 # Étape 1 : Vérification via Swipe
-- tapOn: "Loyer"
+- tapOn: "Loyer" # On s'assure qu'il est là
 - swipe:
     from: 
       id: "transaction.item.title"

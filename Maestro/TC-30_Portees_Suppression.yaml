@@ -1,14 +1,11 @@
 appId: com.lop.budget
+name: "TC-30: Impact des Portées de Suppression"
 ---
 # TC-30 - Gherkin UI — Portées suppression récurrente
 # Vérifier l'impact réel des 3 portées sur l'affichage.
 
-- runScript: 
-    file: scripts/seed.js
-    env:
-      scenario: TC_30
 - launchApp:
-    clearState: false
+    clearState: true
 
 # --- CAS 1 : "Cette occurrence" ---
 - tapOn: "Loyer"
@@ -18,24 +15,17 @@ appId: com.lop.budget
 - tapOn:
     id: "transaction.delete.confirm.submit"
 - assertNotVisible: "Loyer"
-- assertVisible: "Salaire"
+- assertVisible: "Salaire" # Contrôle : Autre série non impactée
 
 # Vérifier le mois suivant (Septembre si on est en Août)
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Sept." # Abréviation FR
-- assertVisible: "Loyer"
+- assertVisible: "Loyer" # Le futur doit être présent
 
 # --- CAS 2 : "Les suivantes uniquement" ---
-- runScript: 
-    file: scripts/seed.js
-    env:
-      scenario: TC_30
 - launchApp:
-    clearState: false
-- tapOn:
-    id: "home.month.picker"
-- tapOn: "Août"
+    clearState: true
 - tapOn: "Loyer"
 - tapOn:
     id: "transaction.detail.delete"
@@ -43,29 +33,21 @@ appId: com.lop.budget
 - tapOn:
     id: "transaction.delete.confirm.submit"
 - assertNotVisible: "Loyer"
-
-# Vérifier le mois suivant (Septembre)
+# Vérifier le mois suivant
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Sept."
-- assertNotVisible: "Loyer"
-
-# Vérifier le mois précédent (Juillet)
+- assertNotVisible: "Loyer" # Le futur est tronqué
+# Vérifier le mois précédent
 - tapOn:
     id: "home.month.picker"
+    index: 0
 - tapOn: "Juil."
-- assertVisible: "Loyer"
+- assertVisible: "Loyer" # Le passé reste visible
 
 # --- CAS 3 : "Toute la série" ---
-- runScript: 
-    file: scripts/seed.js
-    env:
-      scenario: TC_30
 - launchApp:
-    clearState: false
-- tapOn:
-    id: "home.month.picker"
-- tapOn: "Août"
+    clearState: true
 - tapOn: "Loyer"
 - tapOn:
     id: "transaction.detail.delete"
@@ -73,9 +55,7 @@ appId: com.lop.budget
 - tapOn:
     id: "transaction.delete.confirm.submit"
 - assertNotVisible: "Loyer"
-
-# Vérifier Juillet
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Juil."
-- assertNotVisible: "Loyer"
+- assertNotVisible: "Loyer" # Même le passé disparait

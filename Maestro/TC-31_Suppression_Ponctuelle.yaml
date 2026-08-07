@@ -1,14 +1,11 @@
 appId: com.lop.budget
+name: "TC-31: Suppression Transaction Ponctuelle"
 ---
 # TC-31 - Gherkin UI — Transaction ponctuelle sans portée
 # Vérifier qu'une transaction normale se supprime sans proposer de portées.
 
-- runScript: 
-    file: scripts/seed.js
-    env:
-      scenario: TC_31
 - launchApp:
-    clearState: false
+    clearState: true
 
 - tapOn: "Courses Hebdomadaires"
 - tapOn:

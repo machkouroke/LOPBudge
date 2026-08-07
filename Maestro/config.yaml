@@ -1,0 +1,8 @@
+# Configuration globale pour Maestro Cloud
+# Force l'utilisation de l'API 36 et la langue Française
+appId: com.lop.budget
+
+# Configuration de l'appareil par défaut
+android:
+  apiLevel: 36
+  locale: "fr_FR"
