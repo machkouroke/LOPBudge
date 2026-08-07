@@ -56,5 +56,18 @@
             </intent-filter>
         </receiver>
 
+        <!-- Deep Link pour le seeding (Compatibilité Maestro Cloud) -->
+        <activity
+            android:name=".data.seed.SeederActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="lopbudge" android:host="seed" />
+            </intent-filter>
+        </activity>
+
     </application>
 </manifest>

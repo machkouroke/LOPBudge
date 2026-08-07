@@ -88,12 +88,19 @@ object DatabaseSeeder {
                 )
             }
 
-            // --- JDD COMMUN ---
+            // --- JDD COMMUN (TOUJOURS INSÉRÉ) ---
             val checking = getOrUpsertAccount("Compte courant", AccountType.CHECKING, 1850.0, 0xFFB69DF8.toInt(), "account_balance")
+            
+            // Catégories de base
             val catFood = getOrUpsertCat("Alimentation", TransactionType.EXPENSE, 0xFFFF9800.toInt(), "restaurant")
             val groceryCat = getOrUpsertCat("Courses", TransactionType.EXPENSE, 0xFFFFB74D.toInt(), "shopping_cart", catFood)
+            getOrUpsertCat("Restaurant", TransactionType.EXPENSE, 0xFFFFCC80.toInt(), "restaurant", catFood)
+            getOrUpsertCat("Café / Bar", TransactionType.EXPENSE, 0xFFFFE0B2.toInt(), "local_cafe", catFood)
+            
             val catHouse = getOrUpsertCat("Logement", TransactionType.EXPENSE, 0xFFF44336.toInt(), "home")
             val rentCat = getOrUpsertCat("Loyer", TransactionType.EXPENSE, 0xFFEF5350.toInt(), "home", catHouse)
+            getOrUpsertCat("Charges / Eau", TransactionType.EXPENSE, 0xFFE57373.toInt(), "bolt", catHouse)
+
             val catIncome = getOrUpsertCat("Revenus", TransactionType.INCOME, 0xFF4CAF50.toInt(), "trending_up")
             val salaryCat = getOrUpsertCat("Salaire", TransactionType.INCOME, 0xFF4CAF50.toInt(), "work", catIncome)
 

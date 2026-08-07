@@ -32,6 +32,7 @@ appId: com.lop.budget
     env:
       scenario: TC_30
 - launchApp:
+    clearState: false
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Août"
@@ -61,6 +62,7 @@ appId: com.lop.budget
     env:
       scenario: TC_30
 - launchApp:
+    clearState: false
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Août"

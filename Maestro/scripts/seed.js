@@ -1,8 +1,10 @@
 // seed.js
-// Déclenche le seeding de la base de données via ADB
+// Déclenche le seeding de la base de données via Deep Link (compatible Local et Cloud)
 // Usage dans Maestro : - runScript: scripts/seed.js { scenario: 'TC_30' }
 
-runShell('am broadcast -a com.lop.budget.ACTION_SEED --es scenario ' + scenario);
+// Utilisation d'un deep link car plus fiable sur toutes les plateformes Maestro
+maestro.openApp("lopbudge://seed?scenario=" + scenario);
+
 // Laisser un peu de temps pour que le seeding se termine
-output.status = "Seeded " + scenario;
+output.status = "Seeded via Deep Link: " + scenario;
 maestro.sleep(2000);
