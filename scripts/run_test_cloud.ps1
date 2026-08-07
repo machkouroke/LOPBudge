@@ -33,12 +33,11 @@ $ApkPath = "app/build/outputs/apk/debug/app-debug.apk"
 $MaestroFlows = "Maestro/"
 
 # 3. Envoi sur Maestro Cloud
-Write-Host "[2/3] Upload et exécution sur Maestro Cloud (Android 36 / fr_FR)..." -ForegroundColor Cyan
+Write-Host "[2/3] Upload et exécution sur Maestro Cloud via config.yaml..." -ForegroundColor Cyan
 
-# On utilise les options conformes à l'aide de la CLI :
-# --device-os : android-36
-# --device-locale : fr_FR
-maestro cloud --apiKey $ApiKey --device-os android-36 --device-locale fr_FR $ApkPath $MaestroFlows
+# On utilise uniquement le fichier de configuration pour les paramètres d'appareil
+# Maestro lira automatiquement Maestro/config.yaml pour appId, OS, locale et model
+maestro cloud --apiKey $ApiKey --config Maestro/config.yaml $ApkPath $MaestroFlows
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "[3/3] Succès : Les tests Cloud sont terminés !" -ForegroundColor Green
