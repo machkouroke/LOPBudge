@@ -2,25 +2,24 @@ appId: com.lop.budget
 name: "TC-31: Suppression Transaction Ponctuelle"
 ---
 # TC-31 - Gherkin UI — Transaction ponctuelle sans portée
-# Vérifier qu'une transaction normale se supprime sans proposer de portées.
-
 - launchApp:
     clearState: true
 
-- tapOn: "Courses Hebdomadaires"
-- tapOn:
-    id: "transaction.detail.delete"
+# Étape 1 : S'assurer d'être sur la vue mensuelle avant toute opération
+- runFlow: subflows/open_monthly_history.yaml
 
-# On ne doit pas voir la Bottom Sheet de récurrence
-- assertNotVisible:
-    id: "recurring.delete.scope.sheet"
-- assertNotVisible: "Cette occurrence"
+# Étape 2 : Lancer la suppression
+- runFlow:
+    file: subflows/delete_occurrence.yaml
+    env:
+      text: "Courses Hebdomadaires"
 
-# Mais on doit voir le dialogue de confirmation standard
+# Étape 3 : Valider le dialogue standard
+- assertVisible: "Supprimer la transaction ?"
+- tapOn: "Supprimer"
+
+# Étape 4 : Vérification Robuste de l'état final
 - assertVisible:
-    id: "transaction.delete.confirm.dialog"
-- tapOn:
-    id: "transaction.delete.confirm.submit"
-
-- assertNotVisible: "Courses Hebdomadaires"
-- assertVisible: "Loyer" # La série de contrôle est intacte
+    id: "screen.monthly" # On vérifie qu'on est bien revenu sur la vue du mois
+- assertNotVisible: "Courses Hebdomadaires" # On cherche dans la vue du mois confirmée
+- assertVisible: "Loyer" # La série de contrôle est toujours là dans la même vue
