@@ -31,6 +31,8 @@ name: "TC-29: Validation Bottom Sheet Suppression"
 - tapOn: "Annuler"
 - tapOn:
     id: "common.btn.back"
+- assertVisible:
+    id: "screen.monthly"
 
 # Étape 3 : Vérification via Appui long (Popup)
 - longPressOn: "Loyer"

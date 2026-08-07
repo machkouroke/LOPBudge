@@ -74,9 +74,10 @@ name: "TC-30: Impact des Portées de Suppression"
 - assertNotVisible: "Loyer"
 
 # Vérifier Juillet
+- tapOn: "Retour"
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Juil."
-- assertVisible:
-    id: "screen.monthly"
+- assertVisible: "Solde de Juillet"
+- runFlow: .maestro/subflows/open_monthly_history.yaml
 - assertNotVisible: "Loyer"

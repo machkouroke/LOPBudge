@@ -1,8 +1,18 @@
 appId: com.lop.budget
 ---
 # Subflow pour ouvrir l'historique complet des transactions
-# Et VERIFIER que nous sommes sur le bon écran avant de continuer
-- tapOn: "Voir tout"
+# Étape 1 : Faire défiler pour sortir le bouton de derrière le bouton "+"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "recent_transactions_see_all"
+    direction: DOWN
+
+# Étape 2 : Cliquer sur le bouton une fois qu'il est dégagé
+- tapOn:
+    id: "recent_transactions_see_all"
+
+# Étape 3 : Confirmer la navigation
 - assertVisible:
     id: "screen.monthly"
 - waitForAnimationToEnd:
