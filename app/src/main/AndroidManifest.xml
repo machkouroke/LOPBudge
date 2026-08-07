@@ -47,5 +47,14 @@
                 android:resource="@xml/balance_widget_info" />
         </receiver>
 
+        <!-- Receiver pour les tests Maestro (Seeding) -->
+        <receiver
+            android:name=".data.seed.TestSeederReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.lop.budget.ACTION_SEED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 </manifest>

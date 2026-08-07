@@ -20,6 +20,7 @@ interface AccountDao {
     suspend fun getById(id: Long): AccountEntity?
     @Upsert suspend fun upsert(account: AccountEntity): Long
     @Query("DELETE FROM accounts WHERE id = :id") suspend fun delete(id: Long)
+    @Query("DELETE FROM accounts") fun deleteAll()
 }
 
 @Dao
@@ -34,6 +35,7 @@ interface CategoryDao {
     fun observeByType(type: String): Flow<List<CategoryEntity>>
     @Upsert suspend fun upsert(category: CategoryEntity): Long
     @Query("DELETE FROM categories WHERE id = :id") suspend fun delete(id: Long)
+    @Query("DELETE FROM categories") fun deleteAll()
 }
 
 @Dao
@@ -48,6 +50,7 @@ interface TagDao {
 
     @Upsert suspend fun upsert(tag: TagEntity): Long
     @Query("DELETE FROM tags WHERE id = :id") suspend fun delete(id: Long)
+    @Query("DELETE FROM tags") fun deleteAll()
 }
 
 @Dao
@@ -62,6 +65,7 @@ interface GoalDao {
     @Query("UPDATE goals SET savedAmount = :amount WHERE id = :id")
     suspend fun updateSavedAmount(id: Long, amount: Double)
     @Query("DELETE FROM goals WHERE id = :id") suspend fun delete(id: Long)
+    @Query("DELETE FROM goals") fun deleteAll()
 }
 
 @Dao
@@ -74,4 +78,5 @@ interface DebtDao {
     @Query("UPDATE debts SET repaidAmount = :amount WHERE id = :id")
     suspend fun updateRepaidAmount(id: Long, amount: Double)
     @Query("DELETE FROM debts WHERE id = :id") suspend fun delete(id: Long)
+    @Query("DELETE FROM debts") fun deleteAll()
 }

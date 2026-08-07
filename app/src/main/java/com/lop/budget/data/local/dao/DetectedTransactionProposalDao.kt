@@ -31,4 +31,7 @@ interface DetectedTransactionProposalDao {
 
     @Query("DELETE FROM detected_transaction_proposals WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("DELETE FROM detected_transaction_proposals")
+    fun deleteAll()
 }

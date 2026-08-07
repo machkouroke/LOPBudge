@@ -1,0 +1,79 @@
+appId: com.lop.budget
+---
+# TC-30 - Gherkin UI — Portées suppression récurrente
+# Vérifier l'impact réel des 3 portées sur l'affichage.
+
+- runScript: 
+    file: scripts/seed.js
+    env:
+      scenario: TC_30
+- launchApp:
+    clearState: false
+
+# --- CAS 1 : "Cette occurrence" ---
+- tapOn: "Loyer"
+- tapOn:
+    id: "transaction.detail.delete"
+- tapOn: "Cette occurrence"
+- tapOn:
+    id: "transaction.delete.confirm.submit"
+- assertNotVisible: "Loyer"
+- assertVisible: "Salaire"
+
+# Vérifier le mois suivant (Septembre si on est en Août)
+- tapOn:
+    id: "home.month.picker"
+- tapOn: "Sept." # Abréviation FR
+- assertVisible: "Loyer"
+
+# --- CAS 2 : "Les suivantes uniquement" ---
+- runScript: 
+    file: scripts/seed.js
+    env:
+      scenario: TC_30
+- launchApp:
+- tapOn:
+    id: "home.month.picker"
+- tapOn: "Août"
+- tapOn: "Loyer"
+- tapOn:
+    id: "transaction.detail.delete"
+- tapOn: "Les suivantes uniquement"
+- tapOn:
+    id: "transaction.delete.confirm.submit"
+- assertNotVisible: "Loyer"
+
+# Vérifier le mois suivant (Septembre)
+- tapOn:
+    id: "home.month.picker"
+- tapOn: "Sept."
+- assertNotVisible: "Loyer"
+
+# Vérifier le mois précédent (Juillet)
+- tapOn:
+    id: "home.month.picker"
+- tapOn: "Juil."
+- assertVisible: "Loyer"
+
+# --- CAS 3 : "Toute la série" ---
+- runScript: 
+    file: scripts/seed.js
+    env:
+      scenario: TC_30
+- launchApp:
+- tapOn:
+    id: "home.month.picker"
+- tapOn: "Août"
+- tapOn: "Loyer"
+- tapOn:
+    id: "transaction.detail.delete"
+- tapOn: "Toute la série"
+- tapOn:
+    id: "transaction.delete.confirm.submit"
+- assertNotVisible: "Loyer"
+
+# Vérifier Juillet
+- tapOn:
+    id: "home.month.picker"
+- tapOn: "Juil."
+- assertNotVisible: "Loyer"

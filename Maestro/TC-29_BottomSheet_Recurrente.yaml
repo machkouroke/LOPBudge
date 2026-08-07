@@ -1,0 +1,50 @@
+appId: com.lop.budget
+---
+# TC-29 - Gherkin UI — Bottom sheet suppression récurrente
+# Vérifier que toutes les entrées ouvrent la bottom sheet et que l'annulation fonctionne.
+
+- runScript: 
+    file: scripts/seed.js
+    env:
+      scenario: TC_29
+- launchApp:
+    clearState: false
+
+# Étape 1 : Vérification via Swipe
+- tapOn: "Loyer"
+- swipe:
+    from: 
+      id: "transaction.item.title"
+      text: "Loyer"
+    direction: LEFT
+- tapOn:
+    id: "transaction.item.delete"
+- assertVisible:
+    id: "recurring.delete.scope.sheet"
+- assertVisible: "Cette occurrence"
+- assertVisible: "Les suivantes uniquement"
+- assertVisible: "Toute la série"
+- tapOn: "Annuler"
+- assertVisible: "Loyer"
+
+# Étape 2 : Vérification via Détail
+- tapOn: "Loyer"
+- assertVisible:
+    id: "screen.transaction.detail"
+- tapOn:
+    id: "transaction.detail.delete"
+- assertVisible:
+    id: "recurring.delete.scope.sheet"
+- tapOn: "Annuler"
+- tapOn:
+    id: "common.btn.back"
+
+# Étape 3 : Vérification via Appui long (Popup)
+- longPressOn: "Loyer"
+- assertVisible: "Supprimer"
+- tapOn:
+    id: "transaction.detail.delete"
+- assertVisible:
+    id: "recurring.delete.scope.sheet"
+- tapOn: "Annuler"
+- assertVisible: "Loyer"

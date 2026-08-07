@@ -36,7 +36,10 @@ object AppModule {
             .addCallback(object : androidx.room.RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
-                    scope.launch { DatabaseSeeder.seed(dbRef) }
+                    // Seeding automatique uniquement si on n'est pas en mode test forcé
+                    if (System.getProperty("maestro.test.mode") != "true") {
+                        scope.launch { DatabaseSeeder.seed(dbRef) }
+                    }
                 }
             })
             .addMigrations(

@@ -119,6 +119,9 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun hardDelete(id: Long)
 
+    @Query("DELETE FROM transactions")
+    fun hardDeleteAll()
+
     // --- Tags ---
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun addTagCrossRef(ref: TransactionTagCrossRef)

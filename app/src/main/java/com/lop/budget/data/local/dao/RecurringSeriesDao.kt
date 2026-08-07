@@ -26,4 +26,7 @@ interface RecurringSeriesDao {
 
     @Query("UPDATE recurring_series SET isCancelled = :isCancelled WHERE id = :id")
     suspend fun updateCancelled(id: Long, isCancelled: Boolean)
+
+    @Query("DELETE FROM recurring_series")
+    fun deleteAll()
 }
