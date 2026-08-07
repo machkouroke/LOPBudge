@@ -25,14 +25,8 @@ import org.junit.Test
 import java.util.Calendar
 
 /**
- * Test JUnit — Fusion exceptions et centralisation.
- * Couvre CA-06, CA-07, CA-08, CA-09, CA-10, CA-11.
- * 
- * Références Notion :
- * - Fusion exceptions : https://app.notion.com/p/cad301e3ead640f084caf34e3aee6b2e
- * - Transactions ponctuelles : https://app.notion.com/p/d8f107bdc198499e818bc5cac030c2a8
- * 
- * Utilise MockK pour simuler les DAO.
+ * Suite de tests d'intégration technique pour le repository BudgetRepository.
+ * Focalisée sur la fusion des données (Réelles + Virtuelles + Exceptions) et la centralisation.
  */
 class BudgetRepositoryRecurrenceTest {
 
@@ -48,14 +42,21 @@ class BudgetRepositoryRecurrenceTest {
 
     @Before
     fun setup() {
+        // Initialisation du repository avec les mocks des DAOs
         repository = BudgetRepository(
             transactionDao, recurringSeriesDao, accountDao, categoryDao, tagDao, goalDao, debtDao
         )
     }
 
+    /**
+     * TC-26 - JUnit — Transactions ponctuelles et centralisation.
+     * Objectif : Vérifier que les transactions ponctuelles restent indépendantes des séries 
+     * et que la génération/fusion passe par une logique centrale (observeTransactionsBetween).
+     * Référence Notion : https://app.notion.com/p/d8f107bdc198499e818bc5cac030c2a8
+     */
     @Test
     fun `TC-26 - JUnit Transactions ponctuelles et centralisation`() = runBlocking {
-        // Given: Une période et une transaction ponctuelle (seriesId == null)
+        // Étape 1 : Créer une transaction ponctuelle (seriesId == null) dans la période testée (Janvier 2024)
         val start = Calendar.getInstance().apply { set(2024, Calendar.JANUARY, 1, 0, 0, 0) }.timeInMillis
         val end = Calendar.getInstance().apply { set(2024, Calendar.JANUARY, 31, 23, 59, 59) }.timeInMillis
         
@@ -71,6 +72,7 @@ class BudgetRepositoryRecurrenceTest {
             seriesId = null // CA-09
         )
 
+        // Étape 2 : Simuler le retour des DAOs via MockK
         every { transactionDao.observeBetween(start, end) } returns flowOf(listOf(
             TransactionWithRelations(ponctuelle, null, null, emptyList())
         ))
@@ -78,18 +80,25 @@ class BudgetRepositoryRecurrenceTest {
         every { accountDao.observeAll() } returns flowOf(emptyList())
         every { categoryDao.observeAll() } returns flowOf(emptyList())
 
-        // When: Appeler observeTransactionsBetween (CA-11)
+        // Étape 3 : Appeler la méthode centrale observeTransactionsBetween sur la période (CA-11)
         val result = repository.observeTransactionsBetween(start, end).first()
 
-        // Then: La transaction ponctuelle est présente et inchangée
+        // Étape 4 : Vérifier que la transaction ponctuelle est présente dans la liste finale
         assertTrue("La transaction ponctuelle doit être présente", result.any { it.transaction.id == 1L })
+        
+        // Étape 5 : Vérifier que la transaction ponctuelle n'est pas altérée (seriesId reste null)
         val tx = result.first { it.transaction.id == 1L }.transaction
-        assertTrue("seriesId doit être null", tx.seriesId == null)
+        assertTrue("seriesId doit rester null pour une transaction ponctuelle", tx.seriesId == null)
     }
 
+    /**
+     * TC-25 - JUnit — Fusion exceptions et remplacement virtuel.
+     * Objectif : Vérifier que les exceptions matérialisées remplacent correctement les occurrences virtuelles.
+     * Référence Notion : https://app.notion.com/p/cad301e3ead640f084caf34e3aee6b2e
+     */
     @Test
     fun `TC-25 - JUnit Fusion exceptions`() = runBlocking {
-        // Given: Une série et une exception matérialisée le même jour
+        // Étape 1 : Créer une série active avec une occurrence au 1er Janvier
         val start = Calendar.getInstance().apply { 
             set(2024, Calendar.JANUARY, 1, 0, 0, 0)
             set(Calendar.MILLISECOND, 0)
@@ -99,7 +108,7 @@ class BudgetRepositoryRecurrenceTest {
         val seriesId = 100L
         val series = RecurringSeriesEntity(id = seriesId, title = "Loyer", amount = 800.0, type = TransactionType.EXPENSE, categoryId = 1L, accountId = 1L, frequency = RecurrenceFrequency.MONTHLY, interval = 1, startDate = start)
 
-        // L'exception remplace le virtuel du 1er Janvier
+        // Étape 2 : Créer une exception matérialisée (ID 2) pour la même date (seriesId + seriesDate)
         val exception = TransactionEntity(
             id = 2L, 
             title = "Loyer Janvier (Modifié)", 
@@ -111,9 +120,10 @@ class BudgetRepositoryRecurrenceTest {
             categoryId = 1L, 
             seriesId = seriesId.toString(), 
             seriesDate = start, 
-            isException = true
+            isException = true // CA-06
         )
 
+        // Étape 3 : Simuler les DAOs retournant l'exception physique et la série
         every { transactionDao.observeBetween(start, end) } returns flowOf(listOf(
             TransactionWithRelations(exception, null, null, emptyList())
         ))
@@ -121,27 +131,31 @@ class BudgetRepositoryRecurrenceTest {
         every { accountDao.observeAll() } returns flowOf(emptyList())
         every { categoryDao.observeAll() } returns flowOf(emptyList())
 
-        // When: Récupérer la liste fusionnée
+        // Étape 4 : Récupérer la liste fusionnée via observeTransactionsBetween
         val result = repository.observeTransactionsBetween(start, end).first()
 
-        // Then:
-        // CA-07: L'exception remplace l'occurrence virtuelle correspondante sans doublon
+        // Étape 5 : Vérifier que l'exception remplace l'occurrence virtuelle sans doublon (CA-07)
         val occurrences = result.filter { it.transaction.seriesId == seriesId.toString() && it.transaction.seriesDate == start }
-        assertEquals("Il ne doit y avoir qu'une seule occurrence pour cette date", 1, occurrences.size)
-        assertEquals("L'exception doit avoir priorité sur le virtuel", 2L, occurrences[0].transaction.id)
+        assertEquals("Il ne doit y avoir qu'une seule occurrence pour cette date (fusion)", 1, occurrences.size)
         
-        // CA-10: Vérifier aussi qu'on exclut les transactions supprimées
-        // (Simulé par le fait qu'elles ne seraient pas retournées par le DAO ou filtrées par le Repository)
+        // Étape 6 : Vérifier que c'est bien l'ID physique (2) qui est présent et non un ID virtuel négatif
+        assertEquals("L'exception doit avoir priorité sur le virtuel", 2L, occurrences[0].transaction.id)
     }
 
+    /**
+     * TC-27 - JUnit — Exclusion des transactions supprimées.
+     * Objectif : Vérifier qu'une transaction (ou occurrence) supprimée est exclue de l'affichage.
+     * Référence Notion (Page dédiée créée) : https://app.notion.com/p/3b450f34a8c581c5a615e5d63a29ba3c
+     */
     @Test
     fun `TC-27 - JUnit Exclusion des transactions supprimees`() = runBlocking {
-        // Given: Une transaction marquée comme supprimée
+        // Étape 1 : Simuler une transaction marquée comme supprimée (deleted = true)
         val start = Calendar.getInstance().apply { set(2024, Calendar.JANUARY, 1, 0, 0, 0) }.timeInMillis
         val end = Calendar.getInstance().apply { set(2024, Calendar.JANUARY, 31, 23, 59, 59) }.timeInMillis
 
         val deletedTx = TransactionEntity(id = 1L, title = "Supprimé", amount = 10.0, type = TransactionType.EXPENSE, status = TransactionStatus.PAID, date = start, accountId = 1L, categoryId = 1L, deleted = true)
 
+        // Étape 2 : Configurer les mocks
         every { transactionDao.observeBetween(start, end) } returns flowOf(listOf(
             TransactionWithRelations(deletedTx, null, null, emptyList())
         ))
@@ -149,10 +163,10 @@ class BudgetRepositoryRecurrenceTest {
         every { accountDao.observeAll() } returns flowOf(emptyList())
         every { categoryDao.observeAll() } returns flowOf(emptyList())
 
-        // When
+        // Étape 3 : Récupérer la liste fusionnée
         val result = repository.observeTransactionsBetween(start, end).first()
 
-        // Then: CA-10
+        // Étape 4 : Vérifier l'exclusion des soft-deleted (CA-10)
         assertTrue("La transaction supprimée doit être absente de la liste finale", result.isEmpty())
     }
 }
