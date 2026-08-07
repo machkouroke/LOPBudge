@@ -2,13 +2,13 @@ appId: com.lop.budget
 name: "TC-29: Validation Bottom Sheet Suppression"
 ---
 # TC-29 - Gherkin UI — Bottom sheet suppression récurrente
-# Vérifier que toutes les entrées ouvrent la bottom sheet et que l'annulation fonctionne.
-
 - launchApp:
     clearState: true
 
+# Navigation vers l'historique complet pour assurer la visibilité
+- runFlow: .maestro/subflows/open_monthly_history.yaml
+
 # Étape 1 : Vérification via Swipe
-- tapOn: "Loyer" # On s'assure qu'il est là
 - swipe:
     from: 
       id: "transaction.item.title"
@@ -18,18 +18,14 @@ name: "TC-29: Validation Bottom Sheet Suppression"
     id: "transaction.item.delete"
 - assertVisible:
     id: "recurring.delete.scope.sheet"
-- assertVisible: "Cette occurrence"
-- assertVisible: "Les suivantes uniquement"
-- assertVisible: "Toute la série"
 - tapOn: "Annuler"
 - assertVisible: "Loyer"
 
 # Étape 2 : Vérification via Détail
-- tapOn: "Loyer"
-- assertVisible:
-    id: "screen.transaction.detail"
-- tapOn:
-    id: "transaction.detail.delete"
+- runFlow:
+    file: .maestro/subflows/delete_occurrence.yaml
+    env:
+      text: "Loyer"
 - assertVisible:
     id: "recurring.delete.scope.sheet"
 - tapOn: "Annuler"

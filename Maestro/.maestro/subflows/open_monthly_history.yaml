@@ -1,0 +1,9 @@
+appId: com.lop.budget
+---
+# Subflow pour ouvrir l'historique complet des transactions
+# Et VERIFIER que nous sommes sur le bon écran avant de continuer
+- tapOn: "Voir tout"
+- assertVisible:
+    id: "screen.monthly"
+- waitForAnimationToEnd:
+    timeout: 5000

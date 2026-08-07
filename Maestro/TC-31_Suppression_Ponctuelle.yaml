@@ -6,11 +6,11 @@ name: "TC-31: Suppression Transaction Ponctuelle"
     clearState: true
 
 # Étape 1 : S'assurer d'être sur la vue mensuelle avant toute opération
-- runFlow: subflows/open_monthly_history.yaml
+- runFlow: .maestro/subflows/open_monthly_history.yaml
 
 # Étape 2 : Lancer la suppression
 - runFlow:
-    file: subflows/delete_occurrence.yaml
+    file: .maestro/subflows/delete_occurrence.yaml
     env:
       text: "Courses Hebdomadaires"
 

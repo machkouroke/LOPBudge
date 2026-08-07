@@ -1,0 +1,8 @@
+appId: com.lop.budget
+---
+# Subflow pour déclencher la suppression d'une occurrence par son texte
+- tapOn: ${text}
+- assertVisible:
+    id: "screen.transaction.detail"
+- tapOn:
+    id: "transaction.detail.delete"

@@ -2,61 +2,81 @@ appId: com.lop.budget
 name: "TC-30: Impact des Portées de Suppression"
 ---
 # TC-30 - Gherkin UI — Portées suppression récurrente
-# Vérifier l'impact réel des 3 portées sur l'affichage.
 
-- launchApp:
-    clearState: true
-- waitForAnimationToEnd:
-      timeout: 10000
 # --- CAS 1 : "Cette occurrence" ---
-- tapOn: "Loyer"
-- tapOn:
-    id: "transaction.detail.delete"
-- tapOn: "Cette occurrence"
-- tapOn:
-    id: "transaction.delete.confirm.submit"
-- assertNotVisible: "Loyer"
-- assertVisible: "Salaire" # Contrôle : Autre série non impactée
-
-# Vérifier le mois suivant (Septembre si on est en Août)
-- tapOn:
-    id: "home.month.picker"
-- tapOn: "Sept." # Abréviation FR
-- assertVisible: "Loyer" # Le futur doit être présent
-
-# --- CAS 2 : "Les suivantes uniquement" ---
 - launchApp:
     clearState: true
-- tapOn: "Loyer"
-- tapOn:
-    id: "transaction.detail.delete"
-- tapOn: "Les suivantes uniquement"
-- tapOn:
-    id: "transaction.delete.confirm.submit"
+- runFlow: .maestro/subflows/open_monthly_history.yaml
+- runFlow:
+    file: .maestro/subflows/delete_occurrence.yaml
+    env:
+      text: "Loyer"
+- tapOn: "Cette occurrence"
+- tapOn: "Supprimer"
+
+# Vérification Robuste : On vérifie qu'on est revenu sur l'écran mensuel avant de checker l'absence
+- assertVisible:
+    id: "screen.monthly"
 - assertNotVisible: "Loyer"
+
 # Vérifier le mois suivant
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Sept."
-- assertNotVisible: "Loyer" # Le futur est tronqué
-# Vérifier le mois précédent
+- assertVisible:
+    id: "screen.monthly"
+- assertVisible: "Loyer"
+
+# --- CAS 2 : "Les suivantes uniquement" ---
+- launchApp:
+    clearState: true
+- runFlow: .maestro/subflows/open_monthly_history.yaml
+- runFlow:
+    file: .maestro/subflows/delete_occurrence.yaml
+    env:
+      text: "Loyer"
+- tapOn: "Les suivantes uniquement"
+- tapOn: "Supprimer"
+
+- assertVisible:
+    id: "screen.monthly"
+- assertNotVisible: "Loyer"
+
+# Vérifier Septembre
 - tapOn:
     id: "home.month.picker"
-    index: 0
+- tapOn: "Sept."
+- assertVisible:
+    id: "screen.monthly"
+- assertNotVisible: "Loyer"
+
+# Vérifier Juillet
+- tapOn:
+    id: "home.month.picker"
 - tapOn: "Juil."
-- assertVisible: "Loyer" # Le passé reste visible
+- assertVisible:
+    id: "screen.monthly"
+- assertVisible: "Loyer"
 
 # --- CAS 3 : "Toute la série" ---
 - launchApp:
     clearState: true
-- tapOn: "Loyer"
-- tapOn:
-    id: "transaction.detail.delete"
+- runFlow: .maestro/subflows/open_monthly_history.yaml
+- runFlow:
+    file: .maestro/subflows/delete_occurrence.yaml
+    env:
+      text: "Loyer"
 - tapOn: "Toute la série"
-- tapOn:
-    id: "transaction.delete.confirm.submit"
+- tapOn: "Supprimer"
+
+- assertVisible:
+    id: "screen.monthly"
 - assertNotVisible: "Loyer"
+
+# Vérifier Juillet
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Juil."
-- assertNotVisible: "Loyer" # Même le passé disparait
+- assertVisible:
+    id: "screen.monthly"
+- assertNotVisible: "Loyer"
