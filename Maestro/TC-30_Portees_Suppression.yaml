@@ -6,7 +6,8 @@ name: "TC-30: Impact des Portées de Suppression"
 
 - launchApp:
     clearState: true
-
+- waitForAnimationToEnd:
+      timeout: 10000
 # --- CAS 1 : "Cette occurrence" ---
 - tapOn: "Loyer"
 - tapOn:

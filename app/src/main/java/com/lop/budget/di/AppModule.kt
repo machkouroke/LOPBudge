@@ -3,6 +3,7 @@ package com.lop.budget.di
 import android.content.Context
 import androidx.room.Room
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.lop.budget.BuildConfig
 import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.dao.AccountDao
 import com.lop.budget.data.local.dao.CategoryDao
@@ -36,8 +37,9 @@ object AppModule {
             .addCallback(object : androidx.room.RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
-                    // Seeding automatique uniquement si on n'est pas en mode test forcé
-                    if (System.getProperty("maestro.test.mode") != "true") {
+                    // Seeding automatique uniquement en mode DEBUG (Dev/Tests)
+                    // En PROD (Release), l'app démarre avec une base vide.
+                    if (BuildConfig.DEBUG) {
                         scope.launch { DatabaseSeeder.seed(dbRef) }
                     }
                 }
@@ -58,7 +60,7 @@ object AppModule {
                 LopDatabase.MIGRATION_13_14,
                 LopDatabase.MIGRATION_14_15,
             )
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
         return dbRef
     }
