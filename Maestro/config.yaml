@@ -1,9 +1,0 @@
-# Configuration globale pour Maestro Cloud
-appId: com.lop.budget
-
-# Paramètres de l'appareil Cloud
-# Maestro Cloud utilise ces paramètres pour provisionner l'appareil de test
-android:
-  deviceOs: android-36
-  deviceLocale: fr_FR
-  deviceModel: pixel_9

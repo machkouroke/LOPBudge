@@ -164,8 +164,6 @@ class BudgetRepository @Inject constructor(
             // Fenêtre de recherche par défaut pour le virtuel : M-1 à M+6
             val searchStart = startDate ?: (LocalDate.now().minusMonths(1).atStartOfDay(zone).toInstant().toEpochMilli())
             val searchEnd = endDate ?: (LocalDate.now().plusMonths(6).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli())
-            val searchStartLocal = Instant.ofEpochMilli(searchStart).atZone(zone).toLocalDate()
-            val searchEndLocal = Instant.ofEpochMilli(searchEnd).atZone(zone).toLocalDate()
 
             // Résultat final : commencer par les réels déjà filtrés par DAO
             val finalResult = realTxs.filter { twr ->
@@ -282,10 +280,6 @@ class BudgetRepository @Inject constructor(
             @Suppress("UNCHECKED_CAST")
             val pendingDates = args[6] as Map<String, Long>
 
-            val zone = ZoneId.systemDefault()
-            val startLocalDate = Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
-            val endLocalDate = Instant.ofEpochMilli(end).atZone(zone).toLocalDate()
-
             // On garde les transactions réelles (non supprimées) pour l'affichage final
             // On applique le filtrage des suppressions en attente (Undo)
             val finalResult = allInPeriod.filter { twr -> 
@@ -338,8 +332,6 @@ class BudgetRepository @Inject constructor(
     }
 
     fun observeTransaction(id: Long) = transactionDao.observeById(id)
-    // observePaidSum est supprimé car le calcul se fait désormais en mémoire dans le ViewModel
-    // à partir de observeTransactionsBetween() qui inclut les occurrences virtuelles.
 
     suspend fun saveTransaction(tx: TransactionEntity, tagIds: List<Long> = emptyList()): Long {
         // Gérer le champ paidAt si absent
@@ -369,7 +361,6 @@ class BudgetRepository @Inject constructor(
         val sum = transactionDao.getSumForGoal(goalId)
         val totalSaved = goal.startingBalance + sum
         goalDao.updateSavedAmount(goalId, totalSaved)
-        // Optionnel : Mettre à jour isCompleted si totalSaved >= targetAmount
     }
 
     suspend fun recalculateDebtProgress(debtId: Long) {
@@ -377,7 +368,6 @@ class BudgetRepository @Inject constructor(
         val sum = transactionDao.getSumForDebt(debtId)
         val totalRepaid = debt.startingBalance + sum
         debtDao.updateRepaidAmount(debtId, totalRepaid)
-        // Optionnel : Mettre à jour isFullyRepaid si totalRepaid >= totalAmount
     }
 
     /**
@@ -403,7 +393,8 @@ class BudgetRepository @Inject constructor(
         linkedGoalId: Long?,
         linkedDebtId: Long?,
         tagIds: List<Long>,
-        scope: EditScope = EditScope.SINGLE // Portée de la modification
+        scope: EditScope = EditScope.SINGLE, // Portée de la modification
+        status: TransactionStatus? = null // Nouveau statut optionnel (ex: pour togglePaid)
     ) {
         // 1. Gérer la matérialisation si on édite une occurrence virtuelle
         var finalEditingId = editingId
@@ -421,6 +412,7 @@ class BudgetRepository @Inject constructor(
         }
         
         val currentSeriesId = currentTwr?.transaction?.seriesId?.toLongOrNull()
+        val finalStatus = status ?: currentTwr?.transaction?.status ?: TransactionStatus.PLANNED
 
         // Branchement selon la portée
         when (scope) {
@@ -438,13 +430,13 @@ class BudgetRepository @Inject constructor(
                             title = title,
                             amount = amount,
                             type = type,
-                            status = currentTwr.transaction.status,
+                            status = finalStatus,
                             date = date,
                             accountId = accountId,
                             categoryId = categoryId,
                             subCategoryId = subCategoryId,
                             note = note,
-                            paidAt = currentTwr.transaction.paidAt,
+                            paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr?.transaction?.paidAt ?: System.currentTimeMillis()) else null,
                             seriesId = null, // Débranchée
                             seriesDate = null,
                             isException = false,
@@ -459,13 +451,13 @@ class BudgetRepository @Inject constructor(
                             title = title,
                             amount = amount,
                             type = type,
-                            status = currentTwr?.transaction?.status ?: TransactionStatus.PLANNED,
+                            status = finalStatus,
                             date = date,
                             accountId = accountId,
                             categoryId = categoryId,
                             subCategoryId = subCategoryId,
                             note = note,
-                            paidAt = currentTwr?.transaction?.paidAt,
+                            paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr?.transaction?.paidAt ?: System.currentTimeMillis()) else null,
                             linkedGoalId = linkedGoalId,
                             linkedDebtId = linkedDebtId
                         )
@@ -480,13 +472,13 @@ class BudgetRepository @Inject constructor(
                             title = title,
                             amount = amount,
                             type = type,
-                            status = currentTwr?.transaction?.status ?: TransactionStatus.PLANNED,
+                            status = finalStatus,
                             date = date,
                             accountId = accountId,
                             categoryId = categoryId,
                             subCategoryId = subCategoryId,
                             note = note,
-                            paidAt = currentTwr?.transaction?.paidAt,
+                            paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr?.transaction?.paidAt ?: System.currentTimeMillis()) else null,
                             seriesId = currentSeriesId.toString(),
                             seriesDate = currentTwr?.transaction?.seriesDate ?: date,
                             isException = true,
@@ -496,10 +488,8 @@ class BudgetRepository @Inject constructor(
                         saveTransaction(tx, tagIds)
                     } else {
                         // Conversion ponctuel -> série
-                        // 1. Supprimer l'ancienne transaction isolée si elle existait
                         finalEditingId?.let { hardDeleteTransaction(it) }
                         
-                        // 2. Créer la nouvelle série
                         val series = RecurringSeriesEntity(
                             title = title,
                             amount = amount,
@@ -575,9 +565,12 @@ class BudgetRepository @Inject constructor(
                         saveTransaction(currentTwr.transaction.copy(
                             title = title,
                             amount = amount,
+                            type = type,
+                            status = finalStatus,
                             categoryId = categoryId,
                             accountId = accountId,
-                            note = note
+                            note = note,
+                            paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr.transaction.paidAt ?: System.currentTimeMillis()) else null
                         ), tagIds)
                     }
                 }
@@ -632,23 +625,43 @@ class BudgetRepository @Inject constructor(
         }
     }
 
+    /** Modifie la catégorie même si la transaction est déjà payée. */
+    suspend fun changeCategory(transactionId: Long, categoryId: Long) =
+        transactionDao.updateCategory(transactionId, categoryId)
 
-    /**
-     * Bascule le statut d'une transaction entre PAID et PLANNED.
-     * Matérialise l'occurrence si elle est virtuelle.
-     */
+    suspend fun changeDate(transactionId: Long, date: Long) =
+        transactionDao.updateDate(transactionId, date)
+
+    suspend fun changeAccount(transactionId: Long, accountId: Long) =
+        transactionDao.updateAccount(transactionId, accountId)
+
+    /** Bascule le statut d'une transaction entre PAID et PLANNED. */
     suspend fun toggleTransactionStatus(twr: TransactionWithRelations) {
         val tx = twr.transaction
-        val realId = if (tx.id < 0L && tx.seriesId != null && tx.seriesDate != null) {
-            materializeOccurrence(tx.seriesId.toLong(), tx.seriesDate)
-        } else {
-            tx.id
-        }
-
-        if (realId >= 0L) {
-            val newStatus = if (tx.status == TransactionStatus.PAID) TransactionStatus.PLANNED else TransactionStatus.PAID
-            setStatus(realId, newStatus.name)
-        }
+        val newStatus = if (tx.status == TransactionStatus.PAID) TransactionStatus.PLANNED else TransactionStatus.PAID
+        
+        // On délègue maintenant à saveWithTransition pour garantir l'unification et la matérialisation
+        saveWithTransition(
+            editingId = tx.id,
+            title = tx.title,
+            amount = tx.amount,
+            type = tx.type,
+            date = tx.date,
+            accountId = tx.accountId,
+            categoryId = tx.categoryId,
+            subCategoryId = tx.subCategoryId,
+            note = tx.note,
+            frequency = com.lop.budget.domain.model.RecurrenceFrequency.NONE, // Ce n'est pas un changement de règle
+            interval = 1,
+            daysOfWeek = null,
+            endDate = null,
+            maxOccurrences = null,
+            linkedGoalId = tx.linkedGoalId,
+            linkedDebtId = tx.linkedDebtId,
+            tagIds = twr.tags.map { it.id },
+            scope = EditScope.SINGLE,
+            status = newStatus
+        )
     }
 
     /**
@@ -684,6 +697,12 @@ class BudgetRepository @Inject constructor(
         twr?.transaction?.linkedDebtId?.let { recalculateDebtProgress(it) }
     }
 
+    suspend fun restoreTransaction(id: Long) {
+        transactionDao.restore(id)
+        val twr = transactionDao.getById(id)
+        twr?.transaction?.linkedGoalId?.let { recalculateGoalProgress(it) }
+        twr?.transaction?.linkedDebtId?.let { recalculateDebtProgress(it) }
+    }
 
     suspend fun hardDeleteTransaction(id: Long) {
         val twr = transactionDao.getById(id)

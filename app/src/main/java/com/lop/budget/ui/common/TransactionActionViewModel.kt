@@ -90,6 +90,7 @@ class TransactionActionViewModel @Inject constructor(
         updatedTitle: String = tx.transaction.title,
         updatedAmount: Double = tx.transaction.amount,
         updatedType: com.lop.budget.domain.model.TransactionType = tx.transaction.type,
+        updatedStatus: com.lop.budget.domain.model.TransactionStatus = tx.transaction.status,
         updatedDate: Long = tx.transaction.date,
         updatedAccountId: Long = tx.transaction.accountId,
         updatedCategoryId: Long = tx.transaction.categoryId,
@@ -109,6 +110,7 @@ class TransactionActionViewModel @Inject constructor(
                 title = updatedTitle,
                 amount = updatedAmount,
                 type = updatedType,
+                status = updatedStatus,
                 date = updatedDate,
                 accountId = updatedAccountId,
                 categoryId = updatedCategoryId,
@@ -191,12 +193,21 @@ class TransactionActionViewModel @Inject constructor(
     }
 
     /**
-     * Change le statut payé/planifié. Matérialise si virtuel.
+     * Change le statut payé/planifié.
+     * Utilise désormais l'orchestrateur central confirmEdit pour garantir l'unification.
      */
-    fun togglePaid(transaction: TransactionWithRelations) {
-        viewModelScope.launch {
-            repo.toggleTransactionStatus(transaction)
+    fun togglePaid(tx: TransactionWithRelations) {
+        val newStatus = if (tx.transaction.status == com.lop.budget.domain.model.TransactionStatus.PAID) {
+            com.lop.budget.domain.model.TransactionStatus.PLANNED
+        } else {
+            com.lop.budget.domain.model.TransactionStatus.PAID
         }
+
+        confirmEdit(
+            tx = tx,
+            scope = EditScope.SINGLE,
+            updatedStatus = newStatus
+        )
     }
 }
 

@@ -37,7 +37,7 @@ Write-Host "[2/3] Upload et exécution sur Maestro Cloud via config.yaml..." -Fo
 
 # On utilise uniquement le fichier de configuration pour les paramètres d'appareil
 # Maestro lira automatiquement Maestro/config.yaml pour appId, OS, locale et model
-maestro cloud --apiKey $ApiKey --config Maestro/config.yaml $ApkPath $MaestroFlows
+maestro cloud --apiKey $ApiKey $ApkPath $MaestroFlows
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "[3/3] Succès : Les tests Cloud sont terminés !" -ForegroundColor Green
