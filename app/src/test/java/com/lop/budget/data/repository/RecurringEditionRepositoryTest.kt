@@ -188,7 +188,7 @@ class RecurringEditionRepositoryTest {
         )
 
         val finalResult = repository.observeTransactionsBetween(jan1, mar1).first()
-        
+
         println("Log : Assertion Janvier (M-1)")
         assertEquals(
             "Janvier doit rester à 800 (Série)",
@@ -196,7 +196,7 @@ class RecurringEditionRepositoryTest {
             finalResult.first { it.transaction.date == jan1 }.transaction.amount,
             0.0
         )
-        
+
         println("Log : Assertion Février (M)")
         assertEquals(
             "Février doit être à 850 (Exception)",
@@ -204,7 +204,7 @@ class RecurringEditionRepositoryTest {
             finalResult.first { it.transaction.date == feb1 }.transaction.amount,
             0.0
         )
-        
+
         println("Log : Assertion Mars (M+1)")
         assertEquals(
             "Mars doit rester à 800 (Série)",
@@ -314,23 +314,52 @@ class RecurringEditionRepositoryTest {
 
     /**
      * Test de la portée ALL (Toute la série).
-     * Vérifie la mise à jour globale.
+     * Vérifie la mise à jour globale et le scan large (M-1, M, M+1).
      */
     @Test
     fun `TC-38 - Edition ALL should update the global series rule`() = runBlocking {
         println("\n--- [START] TC-38 - Edition ALL ---")
+
+        // --- PRÉPARATION ---
+        // Étape 1 : Configurer une série 'Netflix' (Janvier - Mars) à 10€
+        // BUT : Préparer un environnement global pour vérifier la propagation
         val jan1 = Calendar.getInstance().apply {
             set(2024, Calendar.JANUARY, 1, 10, 0, 0); set(
             Calendar.MILLISECOND,
             0
         )
         }.timeInMillis
+        val feb1 = Calendar.getInstance().apply {
+            set(2024, Calendar.FEBRUARY, 1, 10, 0, 0); set(
+            Calendar.MILLISECOND,
+            0
+        )
+        }.timeInMillis
+        val mar1 = Calendar.getInstance().apply {
+            set(2024, Calendar.MARCH, 1, 10, 0, 0); set(
+            Calendar.MILLISECOND,
+            0
+        )
+        }.timeInMillis
+
         val seriesId = 200L
+        val oldSeries = RecurringSeriesEntity(
+            id = seriesId,
+            title = "Netflix",
+            amount = 10.0,
+            type = TransactionType.EXPENSE,
+            categoryId = 1L,
+            accountId = 1L,
+            frequency = RecurrenceFrequency.MONTHLY,
+            startDate = jan1
+        )
+
+        // Configuration pour que le repo trouve l'origine
         val virtualId = -456L
         val virtualTx = TransactionEntity(
             id = virtualId, title = "Netflix", amount = 10.0, type = TransactionType.EXPENSE,
-            status = TransactionStatus.PLANNED, date = jan1, accountId = 1, categoryId = 1,
-            seriesId = seriesId.toString(), seriesDate = jan1
+            status = TransactionStatus.PLANNED, date = feb1, accountId = 1, categoryId = 1,
+            seriesId = seriesId.toString(), seriesDate = feb1
         )
 
         coEvery { repository.getTransactionById(virtualId) } returns TransactionWithRelations(
@@ -339,16 +368,41 @@ class RecurringEditionRepositoryTest {
             null,
             emptyList()
         )
+        every { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(oldSeries))
+
+        // Étape 2 : Vérification Large Pré-Edit
+        // BUT : Confirmer l'état global à 10€
+        println("Étape 2 : Vérification de l'état initial global (Scan M-1, M, M+1)")
+        val initialResult = repository.observeTransactionsBetween(jan1, mar1).first()
+        assertEquals(
+            "Janvier initial à 10",
+            10.0,
+            initialResult.first { it.transaction.date == jan1 }.transaction.amount,
+            0.0
+        )
+        assertEquals(
+            "Février initial à 10",
+            10.0,
+            initialResult.first { it.transaction.date == feb1 }.transaction.amount,
+            0.0
+        )
+        assertEquals(
+            "Mars initial à 10",
+            10.0,
+            initialResult.first { it.transaction.date == mar1 }.transaction.amount,
+            0.0
+        )
 
         // --- ACTION ---
-        // Étape 1 : Modifier toute la série à 'Netflix 4K'
-        println("Étape 1 : Action - Modification globale à 'Netflix 4K' (ALL)")
+        // Étape 3 : Modifier toute la série à 'Netflix 4K' (18€)
+        // BUT : Tester la modification de la règle parente
+        println("Étape 3 : Action - Modification globale à 'Netflix 4K' (18€) (Portée ALL)")
         repository.saveWithTransition(
             editingId = virtualId,
             title = "Netflix 4K",
             amount = 18.0,
             type = TransactionType.EXPENSE,
-            date = jan1,
+            date = feb1,
             accountId = 1L,
             categoryId = 1L,
             note = null,
@@ -364,11 +418,42 @@ class RecurringEditionRepositoryTest {
         )
 
         // --- VALIDATION ---
-        // Étape 2 : Vérifier la mise à jour de la règle mère (CA-07)
-        // BUT : Confirmer la propagation globale du changement
-        println("Étape 2 : Vérification de la mise à jour de la règle mère")
+        // Étape 4 : Vérifier la mise à jour de la règle mère (CA-07)
+        // BUT : Confirmer la modification de l'entité RecurringSeries parente
+        println("Étape 4 : Vérification de la mise à jour de la règle mère")
         coVerify { recurringSeriesDao.update(match { it.id == seriesId && it.title == "Netflix 4K" && it.amount == 18.0 }) }
-        println("Log : Mise à jour globale confirmée")
+
+        // Étape 5 : Vérification Large Post-Edit (Scan M-1, M, M+1)
+        // BUT : Prouver que TOUTES les occurrences suivent la nouvelle règle
+        println("Étape 5 : Vérification de la propagation globale post-modification")
+        val updatedSeries = oldSeries.copy(title = "Netflix 4K", amount = 18.0)
+        every { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(updatedSeries))
+
+        val finalResult = repository.observeTransactionsBetween(jan1, mar1).first()
+
+        println("Log : Assertion Janvier (Passé)")
+        assertEquals(
+            "Janvier doit être à 18",
+            18.0,
+            finalResult.first { it.transaction.date == jan1 }.transaction.amount,
+            0.0
+        )
+
+        println("Log : Assertion Février (Présent)")
+        assertEquals(
+            "Février doit être à 18",
+            18.0,
+            finalResult.first { it.transaction.date == feb1 }.transaction.amount,
+            0.0
+        )
+
+        println("Log : Assertion Mars (Futur)")
+        assertEquals(
+            "Mars doit être à 18",
+            18.0,
+            finalResult.first { it.transaction.date == mar1 }.transaction.amount,
+            0.0
+        )
 
         println("--- [END] TC-38 - Edition ALL SUCCESS ---")
     }
