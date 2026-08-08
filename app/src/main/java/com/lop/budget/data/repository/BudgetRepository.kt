@@ -396,22 +396,25 @@ class BudgetRepository @Inject constructor(
         scope: EditScope = EditScope.SINGLE, // Portée de la modification
         status: TransactionStatus? = null // Nouveau statut optionnel (ex: pour togglePaid)
     ) {
-        // 1. Gérer la matérialisation si on édite une occurrence virtuelle
+        // 1. Déterminer l'origine (Série parente) AVANT toute transformation
+        // On récupère la transaction (physique ou virtuelle) pour extraire son seriesId
+        val initialTwr = editingId?.let { getTransactionById(it) }
+        val seriesIdFromSource = initialTwr?.transaction?.seriesId?.toLongOrNull()
+
+        // 2. Gérer la matérialisation si on édite une occurrence virtuelle
         var finalEditingId = editingId
-        val currentTwr = finalEditingId?.let { id ->
-            if (id < 0L) {
-                // Occurrence virtuelle : on la matérialise d'abord
-                val seriesIdFromVirtual = getTransactionById(id)?.transaction?.seriesId?.toLongOrNull()
-                if (seriesIdFromVirtual != null) {
-                    finalEditingId = materializeOccurrence(seriesIdFromVirtual, date)
-                    transactionDao.getById(finalEditingId!!)
-                } else null
-            } else {
-                transactionDao.getById(id)
+        var currentTwr = initialTwr
+
+        if (finalEditingId != null && finalEditingId < 0L) {
+            // C'est une occurrence virtuelle : on la matérialise physiquement en base
+            if (seriesIdFromSource != null) {
+                finalEditingId = materializeOccurrence(seriesIdFromSource, date)
+                currentTwr = transactionDao.getById(finalEditingId!!)
             }
         }
         
-        val currentSeriesId = currentTwr?.transaction?.seriesId?.toLongOrNull()
+        // On utilise la source la plus fiable pour le seriesId (le virtuel d'origine ou le Twr rechargé)
+        val currentSeriesId = seriesIdFromSource ?: currentTwr?.transaction?.seriesId?.toLongOrNull()
         val finalStatus = status ?: currentTwr?.transaction?.status ?: TransactionStatus.PLANNED
 
         // Branchement selon la portée
