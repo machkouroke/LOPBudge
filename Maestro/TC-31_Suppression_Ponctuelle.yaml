@@ -6,19 +6,27 @@ name: "TC-31: Suppression Transaction Ponctuelle"
     clearState: true
 
 # Étape 1 : S'assurer d'être sur la vue mensuelle avant toute opération
+- evalScript: |
+    console.log("S'assurer d'être sur la vue mensuelle avant toute opération")
 - runFlow: .maestro/subflows/open_monthly_history.yaml
 
 # Étape 2 : Lancer la suppression
+- evalScript: |
+    console.log("Lancer la suppression")
 - runFlow:
     file: .maestro/subflows/delete_occurrence.yaml
     env:
       text: "Courses Hebdomadaires"
 
 # Étape 3 : Valider le dialogue standard
+- evalScript: |
+    console.log("Valider le dialogue standard")
 - assertVisible: "Supprimer la transaction ?"
 - tapOn: "Supprimer"
 
 # Étape 4 : Vérification Robuste de l'état final
+- evalScript: |
+    console.log("Vérification Robuste de l'état final")
 - assertVisible:
     id: "screen.monthly" # On vérifie qu'on est bien revenu sur la vue du mois
 - assertNotVisible: "Courses Hebdomadaires" # On cherche dans la vue du mois confirmée
