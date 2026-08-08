@@ -1,274 +1,213 @@
 package com.lop.budget.ui.screens.transaction
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
-import com.lop.budget.data.local.entity.DebtEntity
 import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.local.entity.TagEntity
+import com.lop.budget.data.local.entity.TransactionEntity
+import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import com.lop.budget.data.local.entity.TransactionWithRelations
-import com.lop.budget.domain.model.TransactionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.ZoneId
 import javax.inject.Inject
 
 data class TransactionForm(
     val type: TransactionType = TransactionType.EXPENSE,
-    val amountInput: String = "0",
+    val amountInput: String = "",
     val title: String = "",
-    val date: Long = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+    val date: Long = System.currentTimeMillis(),
     val categoryId: Long? = null,
     val subCategoryId: Long? = null,
     val accountId: Long? = null,
     val tagIds: Set<Long> = emptySet(),
     val note: String = "",
     val status: TransactionStatus = TransactionStatus.PLANNED,
-
+    
     val linkedGoalId: Long? = null,
     val linkedDebtId: Long? = null,
-
-    // recurrence (series)
+    
+    // Récurrence
     val frequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
     val interval: Int = 1,
     val daysOfWeek: Set<Int> = emptySet(),
-    /** null = never */
     val endDate: Long? = null,
-    /** null = unlimited */
     val maxOccurrences: Int? = null,
 ) {
-    val amount: Double get() = amountInput.replace(',', '.').toDoubleOrNull() ?: 0.0
+    val amount: Double get() = amountInput.toDoubleOrNull() ?: 0.0
 }
 
 @HiltViewModel
 class TransactionEditViewModel @Inject constructor(
     private val repo: BudgetRepository,
     private val settings: SettingsRepository,
-    private val savedStateHandle: androidx.lifecycle.SavedStateHandle,
-    @ApplicationContext private val context: Context,
+    private val savedStateHandle: SavedStateHandle,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _form = MutableStateFlow(TransactionForm())
     val form: StateFlow<TransactionForm> = _form.asStateFlow()
 
     private val _showBalanceImpactAlert = MutableStateFlow(false)
-    val showBalanceImpactAlert: StateFlow<Boolean> = _showBalanceImpactAlert.asStateFlow()
+    val showBalanceImpactAlert = _showBalanceImpactAlert.asStateFlow()
 
     private var originalTransaction: TransactionWithRelations? = null
     private var originalAccount: AccountEntity? = null
-    private var editingTransactionId: Long? = null
-    private var editScope: EditScope = EditScope.SINGLE
-    private var seriesDate: Long? = null
-    private var isLoaded = false
+    private val editingTransactionId: Long? = savedStateHandle["transactionId"]
+    val editScope: EditScope = savedStateHandle.get<String>("scope")?.let { EditScope.valueOf(it) } ?: EditScope.SINGLE
+    private val seriesDate: Long? = savedStateHandle["seriesDate"]
+    var isLoaded = false
 
-    val isEditing: Boolean
-        get() = editingTransactionId != null
+    val isEditing: Boolean get() = editingTransactionId != null && editingTransactionId != 0L
 
     init {
-        val txId = savedStateHandle.get<Long>("id")
-        val scopeStr = savedStateHandle.get<String>("scope")
-        val dateVal = savedStateHandle.get<Long>("date") ?: -1L
-        
-        editScope = when(scopeStr) {
-            "FUTURE" -> EditScope.FUTURE
-            "ALL" -> EditScope.ALL
-            else -> EditScope.SINGLE
-        }
-        if (dateVal > 0) seriesDate = dateVal
-
-        if (txId != null && !isLoaded) {
-            editingTransactionId = txId
-            loadTransaction(txId)
-        } else {
-            // Creation flow: preselect last used account
-            viewModelScope.launch {
-                val lastAcc = settings.lastAccountIdOnce()
-                if (lastAcc != null) {
-                    _form.value = _form.value.copy(accountId = lastAcc)
-                }
-            }
-        }
-    }
-
-    private fun loadTransaction(id: Long) {
         viewModelScope.launch {
-            repo.observeTransaction(id).collect { twr ->
-                if (twr != null && !isLoaded) {
-                    val tx = twr.transaction
-                    originalTransaction = twr
-                    
-                    // On charge le compte associé pour avoir sa date de référence
-                    viewModelScope.launch {
-                        originalAccount = repo.getAccountById(tx.accountId)
-                    }
-
-                    val seriesId = tx.seriesId?.toLongOrNull()
-                    val series = if (seriesId != null) repo.getSeriesById(seriesId) else null
-
-                    val initialForm = if (editScope == EditScope.ALL && series != null) {
-                        // On charge les données de la série
-                        TransactionForm(
-                            type = series.type,
-                            amountInput = series.amount.toString(),
-                            title = series.title,
-                            date = series.startDate,
-                            categoryId = series.categoryId,
-                            subCategoryId = series.subCategoryId,
-                            accountId = series.accountId,
-                            tagIds = emptySet(),
-                            note = series.note ?: "",
-                            status = TransactionStatus.PAID,
-                            linkedGoalId = series.linkedGoalId,
-                            linkedDebtId = series.linkedDebtId,
-                            frequency = series.frequency,
-                            interval = series.interval,
-                            daysOfWeek = series.daysOfWeek?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet(),
-                            endDate = series.endDate,
-                            maxOccurrences = series.maxOccurrences,
-                        )
-                    } else {
-                        // Mode SINGLE ou FUTURE (basé sur l'occurrence)
-                        TransactionForm(
-                            type = tx.type,
-                            amountInput = tx.amount.toString(),
-                            title = tx.title,
-                            date = seriesDate ?: tx.date,
-                            categoryId = tx.categoryId,
-                            subCategoryId = tx.subCategoryId,
-                            accountId = tx.accountId,
-                            tagIds = twr.tags.map { it.id }.toSet(),
-                            note = tx.note ?: "",
-                            status = tx.status,
-                            linkedGoalId = tx.linkedGoalId,
-                            linkedDebtId = tx.linkedDebtId,
-                            frequency = series?.frequency ?: RecurrenceFrequency.NONE,
-                            interval = series?.interval ?: 1,
-                            daysOfWeek = series?.daysOfWeek?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet(),
-                            endDate = series?.endDate,
-                            maxOccurrences = series?.maxOccurrences,
-                        )
-                    }
-                    _form.value = initialForm
-                    isLoaded = true
+            if (isEditing) {
+                loadTransaction(editingTransactionId!!)
+            } else {
+                // Nouvelle transaction : présélectionner le compte par défaut ou le premier
+                val accounts = repo.observeAccounts().first()
+                if (accounts.isNotEmpty()) {
+                    _form.value = _form.value.copy(accountId = accounts.first().id)
                 }
+                isLoaded = true
             }
         }
     }
 
-    val categories: StateFlow<List<CategoryEntity>> =
-        repo.observeCategories().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val accounts: StateFlow<List<AccountEntity>> =
-        repo.observeAccounts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val tags: StateFlow<List<TagEntity>> =
-        repo.observeTags().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val goals: StateFlow<List<GoalEntity>> =
-        repo.observeGoals().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val debts: StateFlow<List<DebtEntity>> =
-        repo.observeDebts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // --- mutations du formulaire ---
-    fun setType(t: TransactionType) {
-        _form.value = _form.value.copy(type = t, categoryId = null)
+    private suspend fun loadTransaction(id: Long) {
+        val twr = repo.getTransactionById(id) ?: return
+        originalTransaction = twr
+        val tx = twr.transaction
+        
+        // Si on édite une série (FUTURE ou ALL), on va chercher la règle de la série
+        val series = tx.seriesId?.toLongOrNull()?.let { repo.getSeriesById(it) }
+        
+        _form.value = TransactionForm(
+            type = tx.type,
+            amountInput = tx.amount.toString(),
+            title = tx.title,
+            date = seriesDate ?: tx.date,
+            categoryId = tx.categoryId,
+            subCategoryId = tx.subCategoryId,
+            accountId = tx.accountId,
+            tagIds = twr.tags.map { it.id }.toSet(),
+            note = tx.note ?: "",
+            status = tx.status,
+            linkedGoalId = tx.linkedGoalId,
+            linkedDebtId = tx.linkedDebtId,
+            frequency = series?.frequency ?: RecurrenceFrequency.NONE,
+            interval = series?.interval ?: 1,
+            daysOfWeek = series?.daysOfWeek?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet(),
+            endDate = series?.endDate,
+            maxOccurrences = series?.maxOccurrences
+        )
+        originalAccount = twr.account
+        isLoaded = true
     }
 
-    fun setAmountRaw(raw: String) {
-        // 1. Autoriser le champ vide (permet de tout effacer proprement)
-        if (raw.isEmpty()) {
-            _form.value = _form.value.copy(amountInput = "")
-            return
-        }
+    val categories: StateFlow<List<CategoryEntity>> = _form.flatMapLatest { f ->
+        repo.observeCategoriesByType(f.type)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-        // 2. Un seul séparateur décimal autorisé (point ou virgule)
-        val clean = raw.replace(',', '.')
-        if (clean.count { it == '.' } > 1) return
+    val accounts: StateFlow<List<AccountEntity>> = repo.observeAccounts()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-        // 3. Suppression du zéro initial si suivi d'un autre chiffre (ex: "05" -> "5")
-        // Mais on garde "0." (ex: "0.5")
-        val finalValue = if (clean.length > 1 && clean.startsWith("0") && clean[1] != '.') {
-            clean.substring(1)
-        } else {
-            clean
-        }
+    val tags: StateFlow<List<TagEntity>> = repo.observeTags()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-        _form.value = _form.value.copy(amountInput = finalValue)
+    val goals: StateFlow<List<GoalEntity>> = repo.observeGoals()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val debts: StateFlow<List<com.lop.budget.data.local.entity.DebtEntity>> = repo.observeDebts()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun setType(type: TransactionType) {
+        _form.value = _form.value.copy(type = type)
     }
 
-    fun setTitle(v: String) { _form.value = _form.value.copy(title = v) }
-    fun setStatus(s: TransactionStatus) { _form.value = _form.value.copy(status = s) }
+    fun setAmountRaw(amount: String) {
+        // Nettoyage basique
+        val cleaned = amount.replace(",", ".")
+        if (cleaned.isEmpty() || cleaned.toDoubleOrNull() != null || cleaned == ".") {
+            _form.value = _form.value.copy(amountInput = cleaned)
+        }
+    }
+
+    fun setTitle(title: String) { _form.value = _form.value.copy(title = title) }
+    fun setStatus(status: TransactionStatus) { _form.value = _form.value.copy(status = status) }
 
     fun setCategory(id: Long) { _form.value = _form.value.copy(categoryId = id, subCategoryId = null) }
     fun setSubCategory(id: Long?) { _form.value = _form.value.copy(subCategoryId = id) }
 
     fun setAccount(id: Long) {
         _form.value = _form.value.copy(accountId = id)
-        viewModelScope.launch { settings.setLastAccountId(id) }
     }
 
     fun toggleTag(id: Long) {
-        val s = _form.value.tagIds.toMutableSet().apply { if (!add(id)) remove(id) }
-        _form.value = _form.value.copy(tagIds = s)
+        val current = _form.value.tagIds
+        _form.value = _form.value.copy(tagIds = if (current.contains(id)) current - id else current + id)
     }
 
-    fun setNote(v: String) { _form.value = _form.value.copy(note = v) }
-    fun setDate(d: Long) { _form.value = _form.value.copy(date = d) }
+    fun setNote(note: String) { _form.value = _form.value.copy(note = note) }
+    fun setDate(date: Long) { _form.value = _form.value.copy(date = date) }
 
     fun setGoal(id: Long?) { _form.value = _form.value.copy(linkedGoalId = id, linkedDebtId = null) }
     fun setDebt(id: Long?) { _form.value = _form.value.copy(linkedDebtId = id, linkedGoalId = null) }
 
-    fun setFrequency(f: RecurrenceFrequency) {
-        _form.value = if (f == RecurrenceFrequency.NONE) {
-            _form.value.copy(frequency = f, endDate = null, maxOccurrences = null, daysOfWeek = emptySet(), interval = 1)
-        } else {
-            _form.value.copy(frequency = f)
+    fun setFrequency(freq: RecurrenceFrequency) {
+        _form.value = _form.value.copy(frequency = freq)
+        if (freq == RecurrenceFrequency.WEEKLY && _form.value.daysOfWeek.isEmpty()) {
+            // Par défaut, jour de la date sélectionnée
+            _form.value = _form.value.copy(daysOfWeek = setOf(1)) 
         }
     }
 
-    fun setInterval(i: Int) { _form.value = _form.value.copy(interval = i.coerceAtLeast(1)) }
+    fun setInterval(interval: Int) { _form.value = _form.value.copy(interval = interval) }
 
     fun toggleDayOfWeek(day: Int) {
-        val s = _form.value.daysOfWeek.toMutableSet().apply { if (!add(day)) remove(day) }
-        _form.value = _form.value.copy(daysOfWeek = s)
+        val current = _form.value.daysOfWeek
+        _form.value = _form.value.copy(daysOfWeek = if (current.contains(day)) current - day else current + day)
     }
 
-    fun setEndDate(d: Long?) {
-        _form.value = _form.value.copy(endDate = d, maxOccurrences = null)
+    fun setEndDate(date: Long?) {
+        _form.value = _form.value.copy(endDate = date, maxOccurrences = null)
     }
 
-    fun setMaxOccurrences(n: Int?) {
-        _form.value = _form.value.copy(maxOccurrences = n, endDate = null)
+    fun setMaxOccurrences(count: Int?) {
+        _form.value = _form.value.copy(maxOccurrences = count, endDate = null)
     }
 
-    fun createTag(name: String, colorArgb: Int) {
-        if (name.isBlank()) return
+    fun createTag(name: String, color: Int) {
         viewModelScope.launch {
-            val newTag = TagEntity(name = name.trim(), colorArgb = colorArgb)
-            val newId = repo.saveTag(newTag)
-            val currentTags = _form.value.tagIds
-            if (currentTags.size < 3) {
-                toggleTag(newId)
-            }
+            val id = repo.saveTag(TagEntity(name = name, colorArgb = color))
+            toggleTag(id)
         }
     }
 
     fun deleteTag(id: Long) {
         viewModelScope.launch {
             repo.deleteTag(id)
-            if (id in _form.value.tagIds) {
+            if (_form.value.tagIds.contains(id)) {
                 toggleTag(id)
             }
         }
@@ -276,31 +215,16 @@ class TransactionEditViewModel @Inject constructor(
 
     fun save(onDone: () -> Unit) {
         val f = _form.value
-        val accId = f.accountId
-        if (f.amount <= 0.0 || f.categoryId == null || accId == null) return
+        if (f.amount <= 0 || f.categoryId == null || f.accountId == null) return
 
         viewModelScope.launch {
-            // --- DÉTECTION IMPACT SOLDE (US LOP-85) ---
-            val original = originalTransaction?.transaction
-            val account = originalAccount
-            
-            if (original != null && account != null && original.paidAt != null) {
-                val isOldPaid = original.paidAt < account.balanceUpdatedAt
-                
-                if (isOldPaid) {
-                    val amountChanged = original.amount != f.amount
-                    val typeChanged = original.type != f.type
-                    val accountChanged = original.accountId != accId
-                    val statusChanged = original.status != f.status
-
-                    if (amountChanged || typeChanged || accountChanged || statusChanged) {
-                        _showBalanceImpactAlert.value = true
-                        return@launch
-                    }
-                }
+            // Vérifier l'impact sur le solde si on édite une transaction payée passée
+            val account = repo.getAccountById(f.accountId)
+            if (account != null && f.status == TransactionStatus.PAID && f.date < account.balanceUpdatedAt) {
+                _showBalanceImpactAlert.value = true
+            } else {
+                performSave(onDone)
             }
-
-            performSave(onDone)
         }
     }
 
@@ -308,11 +232,11 @@ class TransactionEditViewModel @Inject constructor(
         _showBalanceImpactAlert.value = false
         viewModelScope.launch {
             if (accountNow) {
-                val originalTwr = originalTransaction
-                if (originalTwr != null) {
-                    originalTransaction = originalTwr.copy(
-                        transaction = originalTwr.transaction.copy(paidAt = System.currentTimeMillis())
-                    )
+                // Mettre à jour la date de référence du compte pour inclure cette modif
+                val f = _form.value
+                val account = repo.getAccountById(f.accountId!!)
+                if (account != null) {
+                    repo.saveAccount(account.copy(balanceUpdatedAt = f.date))
                 }
             }
             performSave(onDone)
@@ -331,80 +255,29 @@ class TransactionEditViewModel @Inject constructor(
         val note = f.note.ifBlank { null }
         val dow = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",")
 
-        when (editScope) {
-            EditScope.SINGLE -> {
-                repo.saveWithTransition(
-                    editingId = editingTransactionId,
-                    title = title,
-                    amount = f.amount,
-                    type = f.type,
-                    date = f.date,
-                    accountId = accId,
-                    categoryId = catId,
-                    subCategoryId = f.subCategoryId,
-                    note = note,
-                    frequency = f.frequency,
-                    interval = f.interval,
-                    daysOfWeek = dow,
-                    endDate = f.endDate,
-                    maxOccurrences = f.maxOccurrences,
-                    linkedGoalId = f.linkedGoalId,
-                    linkedDebtId = f.linkedDebtId,
-                    tagIds = f.tagIds.toList(),
-                )
-            }
-            EditScope.FUTURE -> {
-                val twr = editingTransactionId?.let { repo.getTransactionById(it) }
-                val seriesId = twr?.transaction?.seriesId?.toLongOrNull()
-                
-                if (seriesId != null) {
-                    val newSeries = com.lop.budget.data.local.entity.RecurringSeriesEntity(
-                        title = title,
-                        amount = f.amount,
-                        type = f.type,
-                        categoryId = catId,
-                        subCategoryId = f.subCategoryId,
-                        accountId = accId,
-                        frequency = f.frequency,
-                        interval = f.interval,
-                        startDate = f.date,
-                        endDate = f.endDate,
-                        maxOccurrences = f.maxOccurrences,
-                        daysOfWeek = dow,
-                        note = note,
-                        linkedGoalId = f.linkedGoalId,
-                        linkedDebtId = f.linkedDebtId
-                    )
-                    repo.updateSeriesFrom(seriesId, f.date, newSeries)
-                }
-            }
-            EditScope.ALL -> {
-                val twr = editingTransactionId?.let { repo.getTransactionById(it) }
-                val seriesId = twr?.transaction?.seriesId?.toLongOrNull()
+        // Toute la logique de sauvegarde (SINGLE, FUTURE, ALL) est désormais 
+        // centralisée dans BudgetRepository.saveWithTransition.
+        repo.saveWithTransition(
+            editingId = editingTransactionId,
+            title = title,
+            amount = f.amount,
+            type = f.type,
+            date = f.date,
+            accountId = accId,
+            categoryId = catId,
+            subCategoryId = f.subCategoryId,
+            note = note,
+            frequency = f.frequency,
+            interval = f.interval,
+            daysOfWeek = dow,
+            endDate = f.endDate,
+            maxOccurrences = f.maxOccurrences,
+            linkedGoalId = f.linkedGoalId,
+            linkedDebtId = f.linkedDebtId,
+            tagIds = f.tagIds.toList(),
+            scope = editScope
+        )
 
-                if (seriesId != null) {
-                    val updatedSeries = com.lop.budget.data.local.entity.RecurringSeriesEntity(
-                        id = seriesId,
-                        title = title,
-                        amount = f.amount,
-                        type = f.type,
-                        categoryId = catId,
-                        subCategoryId = f.subCategoryId,
-                        accountId = accId,
-                        frequency = f.frequency,
-                        interval = f.interval,
-                        startDate = f.date, 
-                        endDate = f.endDate,
-                        maxOccurrences = f.maxOccurrences,
-                        daysOfWeek = dow,
-                        note = note,
-                        linkedGoalId = f.linkedGoalId,
-                        linkedDebtId = f.linkedDebtId
-                    )
-                    repo.updateEntireSeries(seriesId, updatedSeries)
-                }
-            }
-        }
         onDone()
     }
 }

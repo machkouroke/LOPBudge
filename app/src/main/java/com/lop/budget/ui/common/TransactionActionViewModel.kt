@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -76,6 +77,54 @@ class TransactionActionViewModel @Inject constructor(
             } else {
                 repo.softDeleteTransactionOccurrence(tx)
             }
+        }
+    }
+
+    /**
+     * Orchestrateur central pour la modification d'une transaction.
+     * Gère toutes les portées (SINGLE, FUTURE, ALL) et la matérialisation auto.
+     */
+    fun confirmEdit(
+        tx: TransactionWithRelations,
+        scope: EditScope,
+        updatedTitle: String = tx.transaction.title,
+        updatedAmount: Double = tx.transaction.amount,
+        updatedType: com.lop.budget.domain.model.TransactionType = tx.transaction.type,
+        updatedDate: Long = tx.transaction.date,
+        updatedAccountId: Long = tx.transaction.accountId,
+        updatedCategoryId: Long = tx.transaction.categoryId,
+        updatedSubCategoryId: Long? = tx.transaction.subCategoryId,
+        updatedNote: String? = tx.transaction.note,
+        updatedFrequency: com.lop.budget.domain.model.RecurrenceFrequency = com.lop.budget.domain.model.RecurrenceFrequency.NONE,
+        updatedInterval: Int = 1,
+        updatedDaysOfWeek: String? = null,
+        updatedEndDate: Long? = null,
+        updatedMaxOccurrences: Int? = null,
+        updatedTagIds: List<Long> = tx.tags.map { it.id },
+        onDone: () -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            repo.saveWithTransition(
+                editingId = tx.transaction.id,
+                title = updatedTitle,
+                amount = updatedAmount,
+                type = updatedType,
+                date = updatedDate,
+                accountId = updatedAccountId,
+                categoryId = updatedCategoryId,
+                subCategoryId = updatedSubCategoryId,
+                note = updatedNote,
+                frequency = updatedFrequency,
+                interval = updatedInterval,
+                daysOfWeek = updatedDaysOfWeek,
+                endDate = updatedEndDate,
+                maxOccurrences = updatedMaxOccurrences,
+                linkedGoalId = tx.transaction.linkedGoalId,
+                linkedDebtId = tx.transaction.linkedDebtId,
+                tagIds = updatedTagIds,
+                scope = scope
+            )
+            onDone()
         }
     }
 

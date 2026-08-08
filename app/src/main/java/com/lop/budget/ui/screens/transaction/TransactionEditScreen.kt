@@ -355,18 +355,20 @@ fun TransactionEditScreen(
             }
         }
 
-        item { SectionTitle(stringResource(R.string.tx_repeat_label)) }
+        if (vm.editScope != com.lop.budget.domain.model.EditScope.SINGLE) {
+            item { SectionTitle(stringResource(R.string.tx_repeat_label)) }
 
-        item {
-            FloatingCard {
-                RecurrenceBlock(
-                    form = form,
-                    onSetFrequency = vm::setFrequency,
-                    onSetInterval = vm::setInterval,
-                    onToggleDow = vm::toggleDayOfWeek,
-                    onSetEndDate = vm::setEndDate,
-                    onSetMaxOccurrences = vm::setMaxOccurrences,
-                )
+            item {
+                FloatingCard {
+                    RecurrenceBlock(
+                        form = form,
+                        onSetFrequency = vm::setFrequency,
+                        onSetInterval = vm::setInterval,
+                        onToggleDow = vm::toggleDayOfWeek,
+                        onSetEndDate = vm::setEndDate,
+                        onSetMaxOccurrences = vm::setMaxOccurrences,
+                    )
+                }
             }
         }
     }

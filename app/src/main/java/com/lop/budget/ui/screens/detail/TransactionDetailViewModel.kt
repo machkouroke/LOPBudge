@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class DetailUiState(
@@ -83,35 +82,9 @@ class TransactionDetailViewModel @Inject constructor(
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DetailUiState())
 
-    /** Modifier la catégorie même si la transaction est payée (suggestion utilisateur). */
-    fun changeCategory(categoryId: Long) {
-        val id = txId.value ?: return
-        if (updating.value) return
-        viewModelScope.launch {
-            updating.value = true
-            try {
-                repo.changeCategory(id, categoryId)
-            } finally {
-                updating.value = false
-            }
-        }
-    }
-
-    fun changeDate(date: Long) {
-        val id = txId.value ?: return
-        if (updating.value) return
-        viewModelScope.launch {
-            updating.value = true
-            try {
-                repo.changeDate(id, date)
-            } finally {
-                updating.value = false
-            }
-        }
-    }
-
-    fun changeAccount(accountId: Long) {
-        val id = txId.value ?: return
-        viewModelScope.launch { repo.changeAccount(id, accountId) }
-    }
+    /** 
+     * Les modifications rapides (Quick Edits) sont désormais déléguées 
+     * au TransactionActionViewModel via l'orchestrateur central.
+     * Cette classe ne conserve que l'état local du détail.
+     */
 }

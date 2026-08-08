@@ -54,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
+import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
@@ -410,7 +411,13 @@ fun TransactionDetailScreen(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    pickerState.selectedDateMillis?.let { vm.changeDate(it) }
+                    pickerState.selectedDateMillis?.let { newDate ->
+                        actionVm.confirmEdit(
+                            tx = twr,
+                            scope = EditScope.SINGLE,
+                            updatedDate = newDate
+                        )
+                    }
                     showDatePicker = false
                 }) {
                     Text(stringResource(R.string.ok))
@@ -432,19 +439,27 @@ fun TransactionDetailScreen(
             categories = state.availableCategories,
             selectedId = tx.categoryId,
             onSelect = { categoryId ->
-                vm.changeCategory(categoryId)
+                actionVm.confirmEdit(
+                    tx = twr,
+                    scope = EditScope.SINGLE,
+                    updatedCategoryId = categoryId
+                )
                 showCategorySheet = false
             },
             onDismiss = { showCategorySheet = false }
         )
     }
 
-    if (showAccountSheet) {
+    if (showAccountSheet && twr != null) {
         AccountBottomSheet(
             accounts = state.availableAccounts,
-            selectedId = twr?.account?.id,
+            selectedId = twr.account?.id,
             onSelect = { accountId ->
-                vm.changeAccount(accountId)
+                actionVm.confirmEdit(
+                    tx = twr,
+                    scope = EditScope.SINGLE,
+                    updatedAccountId = accountId
+                )
                 showAccountSheet = false
             },
             onDismiss = { showAccountSheet = false },
