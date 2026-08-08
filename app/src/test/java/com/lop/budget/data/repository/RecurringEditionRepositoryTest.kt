@@ -50,6 +50,14 @@ class RecurringEditionRepositoryTest {
         repository = BudgetRepository(
             transactionDao, recurringSeriesDao, accountDao, categoryDao, tagDao, goalDao, debtDao
         )
+
+        // Initialisation par défaut des Flows pour éviter les blocages du combine()
+        // MockK relaxed=true sur une méthode retournant un Flow renvoie un Flow vide qui n'émet JAMAIS.
+        // Or combine() attend au moins une émission de CHAQUE Flow source.
+        every { accountDao.observeAll() } returns flowOf(emptyList())
+        every { categoryDao.observeAll() } returns flowOf(emptyList())
+        every { recurringSeriesDao.observeActiveSeries() } returns flowOf(emptyList())
+        every { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
     }
 
     /**
@@ -64,16 +72,13 @@ class RecurringEditionRepositoryTest {
         // Étape 1 : Créer une série mensuelle (Loyer 800€) commençant en Janvier
         println("Étape 1 : Configuration de la série 'Loyer' (Janvier - Mars)")
         val jan1 = Calendar.getInstance().apply {
-            set(2024, Calendar.JANUARY, 1, 10, 0,
-                0); set(Calendar.MILLISECOND, 0)
+            set(2024, Calendar.JANUARY, 1, 10, 0, 0); set(Calendar.MILLISECOND, 0)
         }.timeInMillis
         val feb1 = Calendar.getInstance().apply {
-            set(2024, Calendar.FEBRUARY, 1, 10, 0,
-                0); set(Calendar.MILLISECOND, 0)
+            set(2024, Calendar.FEBRUARY, 1, 10, 0, 0); set(Calendar.MILLISECOND, 0)
         }.timeInMillis
         val mar1 = Calendar.getInstance().apply {
-            set(2024, Calendar.MARCH, 1, 10, 0,
-                0); set(Calendar.MILLISECOND, 0)
+            set(2024, Calendar.MARCH, 1, 10, 0, 0); set(Calendar.MILLISECOND, 0)
         }.timeInMillis
 
         val series = RecurringSeriesEntity(
@@ -87,13 +92,7 @@ class RecurringEditionRepositoryTest {
             startDate = jan1
         )
 
-        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
-        coEvery {
-            transactionDao.observeBetween(
-                any(),
-                any()
-            )
-        } returns flowOf(emptyList()) // Aucune exception au départ
+        every { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
 
         // Étape 2 : Confirmer l'état initial (3 occurrences virtuelles à 800€)
         println("Étape 2 : Vérification de l'état initial (3 occurrences virtuelles)")
@@ -104,13 +103,15 @@ class RecurringEditionRepositoryTest {
         // --- ACTION ---
         // Étape 3 : Modifier le montant de l'occurrence de FEVRIER à 850€ (Portée SINGLE)
         println("Étape 3 : Action - Modification de Février à 850€ (Portée SINGLE)")
-        val febVirtualId = initialResult.first { it.transaction.seriesDate == feb1 }.transaction.id
+        val febOccurrence = initialResult.first { it.transaction.seriesDate == feb1 }
+        val febVirtualId = febOccurrence.transaction.id
 
         // Mock de la matérialisation (Simulation d'ID physique 50)
         coEvery { transactionDao.getException("100", feb1) } returns null
         coEvery { recurringSeriesDao.getSeriesById(100L) } returns series
-        val capturedTx = slot<TransactionEntity>()
-        coEvery { transactionDao.upsert(capture(capturedTx)) } returns 50L
+
+        // Mock précis pour le retour de saveTransaction qui appelle clearTags et getById
+        coEvery { transactionDao.upsert(any()) } returns 50L
         coEvery { transactionDao.getById(50L) } returns TransactionWithRelations(
             TransactionEntity(
                 id = 50L, title = "Loyer", amount = 850.0, type = TransactionType.EXPENSE,
@@ -142,9 +143,19 @@ class RecurringEditionRepositoryTest {
         // --- VÉRIFICATION LARGE POST-EDIT ---
         // Étape 4 : Simuler le DAO retournant la nouvelle exception de Février
         println("Étape 4 : Simulation du DAO avec l'exception physique")
-        val exceptionFeb = capturedTx.captured.copy(id = 50L)
-        coEvery { transactionDao.observeBetween(jan1, mar1) } returns flowOf(
-            listOf(TransactionWithRelations(exceptionFeb, null, null, emptyList()))
+        val exceptionFeb = TransactionEntity(
+            id = 50L, title = "Loyer", amount = 850.0, type = TransactionType.EXPENSE,
+            status = TransactionStatus.PLANNED, date = feb1, accountId = 1L, categoryId = 1L,
+            seriesId = "100", seriesDate = feb1, isException = true
+        )
+
+        every { transactionDao.observeBetween(any(), any()) } returns flowOf(
+            listOf(
+                TransactionWithRelations(
+                    exceptionFeb, null,
+                    null, emptyList()
+                )
+            )
         )
 
         val finalResult = repository.observeTransactionsBetween(jan1, mar1).first()
@@ -211,7 +222,9 @@ class RecurringEditionRepositoryTest {
             frequency = RecurrenceFrequency.MONTHLY,
             startDate = jan1
         )
-        coEvery { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(oldSeries))
+        every { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(oldSeries))
+
+        // Simuler la transaction virtuelle que l'utilisateur édite
         coEvery { transactionDao.getById(any()) } returns TransactionWithRelations(
             TransactionEntity(
                 id = -100, title = "Gym", amount = 30.0, type = TransactionType.EXPENSE,
