@@ -24,8 +24,8 @@ if ($LASTEXITCODE -ne 0) {
 # 2. EXÉCUTION DES TESTS UI (Maestro)
 # ==============================================================================
 Write-Host "`n[2/2] Exécution des tests UI Maestro..." -ForegroundColor Yellow
-if (Test-Path ".\scripts\run_tests.ps1") {
-    & .\scripts\run_tests.ps1
+if (Test-Path ".\scripts\run_test_cloud.ps1") {
+    & .\scripts\run_test_cloud.ps1
 } else {
     Write-Error "❌ Script .\scripts\run_tests.ps1 introuvable."
     $global:ExitCode = 1
