@@ -24,8 +24,8 @@ name: "TC-30: Impact des Portées de Suppression"
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Sept."
-- assertVisible:
-    id: "screen.monthly"
+- assertVisible: "Septembre 2026"
+- runFlow: .maestro/subflows/open_monthly_history.yaml
 - assertVisible: "Loyer"
 
 # --- CAS 2 : "Les suivantes uniquement" ---
@@ -48,8 +48,8 @@ name: "TC-30: Impact des Portées de Suppression"
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Sept."
-- assertVisible:
-    id: "screen.monthly"
+- assertVisible: "Septembre 2026"
+- runFlow: .maestro/subflows/open_monthly_history.yaml
 - assertNotVisible: "Loyer"
 
 # Vérifier Juillet
@@ -57,8 +57,8 @@ name: "TC-30: Impact des Portées de Suppression"
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Juil."
-- assertVisible:
-    id: "screen.monthly"
+- assertVisible: "Juillet 2026"
+- runFlow: .maestro/subflows/open_monthly_history.yaml
 - assertVisible: "Loyer"
 
 # --- CAS 3 : "Toute la série" ---
@@ -81,6 +81,6 @@ name: "TC-30: Impact des Portées de Suppression"
 - tapOn:
     id: "home.month.picker"
 - tapOn: "Juil."
-- assertVisible: "Solde de Juillet"
+- assertVisible: "Juillet 2026"
 - runFlow: .maestro/subflows/open_monthly_history.yaml
 - assertNotVisible: "Loyer"

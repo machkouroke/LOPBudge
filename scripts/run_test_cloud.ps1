@@ -45,3 +45,4 @@ if ($LASTEXITCODE -eq 0) {
     Write-Warning "[3/3] Échec ou erreurs pendant les tests Cloud."
     exit $LASTEXITCODE
 }
+
