@@ -72,7 +72,7 @@ class TransactionEditViewModel @Inject constructor(
 
     private var originalTransaction: TransactionWithRelations? = null
     private var originalAccount: AccountEntity? = null
-    private val editingTransactionId: Long? = savedStateHandle["transactionId"]
+    private val editingTransactionId: Long? = savedStateHandle["id"]
     val editScope: EditScope = savedStateHandle.get<String>("scope")?.let { EditScope.valueOf(it) } ?: EditScope.SINGLE
     private val seriesDate: Long? = savedStateHandle["seriesDate"]
     var isLoaded = false

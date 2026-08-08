@@ -1,14 +1,5 @@
 # config.yaml
-name: "LOPBudget - Validation Suppression & Historique" # Nom affiché sur le dashboard
-appId: "com.lop.budget"
-
-# Appareils cibles sur le Cloud
-device:
-  - "model=Pixel 7,os=13"
-  - "model=Galaxy S24 Ultra,os=14"
-
-
-# Variables d'environnement pour les scripts Maestro
-env:
-  - "ENV=staging"
-  - "DEBUG_MODE=true"
+name: "LOPBudget - API 36 (FR)"
+device-os: "android-36"       # Format attendu par Maestro (ex: android-34, android-36)
+device-locale: "fr_FR"        # Force la langue de l'appareil
+includeTags: "smoke"
