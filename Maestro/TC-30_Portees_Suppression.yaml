@@ -3,9 +3,20 @@ name: "TC-30: Impact des Portées de Suppression"
 ---
 # TC-30 - Gherkin UI — Portées suppression récurrente
 
+# Initialisation des dates relatives
+- runScript: scripts/dates.js
+
+- evalScript: |
+    console.log("Starting TC-30 with Dynamic Dates:");
+    console.log("PREV: " + output.PREV_MONTH_NAME + " " + PREV_YEAR);
+    console.log("NEXT: " + output.NEXT_MONTH_NAME + " " + NEXT_YEAR);
+
 # --- CAS 1 : "Cette occurrence" ---
+- evalScript: |
+    console.log("--- CAS 1 : 'Cette occurrence' ---")
 - launchApp:
     clearState: true
+
 - runFlow: .maestro/subflows/open_monthly_history.yaml
 - runFlow:
     file: .maestro/subflows/delete_occurrence.yaml
@@ -13,18 +24,26 @@ name: "TC-30: Impact des Portées de Suppression"
       text: "Loyer"
       scope: "Cette occurrence"
 
+- assertVisible: { id: "screen.monthly" }
 - assertNotVisible: "Loyer"
 
-# Vérifier le mois suivant via subflow (Gère le retour)
+# Vérifier le mois suivant
+- evalScript: |
+    console.log("Vérifier le mois suivant")
 - runFlow:
     file: .maestro/subflows/change_month.yaml
     env:
-      month_name: "Sept."
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- assertVisible: { id: "screen.monthly" }
 - assertVisible: "Loyer"
 
 # --- CAS 2 : "Les suivantes uniquement" ---
+- evalScript: |
+    console.log("--- CAS 2 : 'Les suivantes uniquement' ---")
 - launchApp:
     clearState: true
+
 - runFlow: .maestro/subflows/open_monthly_history.yaml
 - runFlow:
     file: .maestro/subflows/delete_occurrence.yaml
@@ -32,25 +51,37 @@ name: "TC-30: Impact des Portées de Suppression"
       text: "Loyer"
       scope: "Les suivantes uniquement"
 
+- assertVisible: { id: "screen.monthly" }
 - assertNotVisible: "Loyer"
 
-# Vérifier Septembre (doit être absent)
+# Vérifier le mois suivant (Absent)
+- evalScript: |
+    console.log("Vérifier le mois suivant (Absent)")
 - runFlow:
     file: .maestro/subflows/change_month.yaml
     env:
-      month_name: "Sept."
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- assertVisible: { id: "screen.monthly" }
 - assertNotVisible: "Loyer"
 
-# Vérifier Juillet (doit être présent)
+# Vérifier le mois précédent (Présent)
+- evalScript: |
+    console.log("Vérifier le mois suivant (Présent)")
 - runFlow:
     file: .maestro/subflows/change_month.yaml
     env:
-      month_name: "Juil."
+      month_name: ${output.PREV_MONTH_NAME}
+      year: ${output.PREV_YEAR}
+- assertVisible: { id: "screen.monthly" }
 - assertVisible: "Loyer"
 
 # --- CAS 3 : "Toute la série" ---
+- evalScript: |
+    console.log("--- CAS 3 : 'Toute la série' ---")
 - launchApp:
     clearState: true
+
 - runFlow: .maestro/subflows/open_monthly_history.yaml
 - runFlow:
     file: .maestro/subflows/delete_occurrence.yaml
@@ -58,11 +89,16 @@ name: "TC-30: Impact des Portées de Suppression"
       text: "Loyer"
       scope: "Toute la série"
 
+- assertVisible: { id: "screen.monthly" }
 - assertNotVisible: "Loyer"
 
-# Vérifier Juillet (doit être absent maintenant)
+# Vérifier le mois précédent (Absent maintenant)
+- evalScript: |
+    console.log("Vérifier le mois suivant (Absent maintenant)")
 - runFlow:
     file: .maestro/subflows/change_month.yaml
     env:
-      month_name: "Juil."
+      month_name: ${output.PREV_MONTH_NAME}
+      year: ${output.PREV_YEAR}
+- assertVisible: { id: "screen.monthly" }
 - assertNotVisible: "Loyer"
