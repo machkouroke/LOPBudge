@@ -118,13 +118,16 @@ class RecurringEditionRepositoryTest {
 
         // Étape 2 : Vérification Large Pré-Edit (Scan M-1, M, M+1)
         // BUT : Confirmer que tout est virtuel à 800€ au départ
+        println("Étape 2 : Vérification de l'état initial (Scan M-1, M, M+1)")
         val initialResult = repository.observeTransactionsBetween(jan1, mar1).first()
         assertEquals("On doit avoir 3 occurrences", 3, initialResult.size)
         assertTrue("Toutes doivent être virtuelles", initialResult.all { it.transaction.id < 0 })
+        println("Log : État initial validé (3 occurrences virtuelles à 800€)")
 
         // --- ACTION ---
         // Étape 3 : Modifier le montant de FÉVRIER à 850€ (Portée SINGLE)
         // BUT : Déclencher la matérialisation et vérifier le branchement métier
+        println("Étape 3 : Action - Modification de Février à 850€ (Portée SINGLE)")
         val febVirtualId = initialResult.first { it.transaction.seriesDate == feb1 }.transaction.id
         val virtualTx = initialResult.first { it.transaction.seriesDate == feb1 }.transaction
 
@@ -173,27 +176,36 @@ class RecurringEditionRepositoryTest {
         // --- VALIDATION ---
         // Étape 4 : Preuve de matérialisation
         // BUT : Garantir que l'appel interne a bien été fait
+        println("Étape 4 : Vérification coVerify - Appel de materializeOccurrence")
         coVerify(exactly = 1) { repository.materializeOccurrence(100L, feb1) }
+        println("Log : Appel à materializeOccurrence confirmé")
 
         // Étape 5 : Vérification Large Post-Edit (Scan M-1, M, M+1)
         // BUT : Prouver l'isolation (Seul Février a changé)
+        println("Étape 5 : Vérification de l'isolation post-modification")
         every { transactionDao.observeBetween(any(), any()) } returns flowOf(
             listOf(TransactionWithRelations(materializedTx, null, null, emptyList()))
         )
 
         val finalResult = repository.observeTransactionsBetween(jan1, mar1).first()
+        
+        println("Log : Assertion Janvier (M-1)")
         assertEquals(
             "Janvier doit rester à 800 (Série)",
             800.0,
             finalResult.first { it.transaction.date == jan1 }.transaction.amount,
             0.0
         )
+        
+        println("Log : Assertion Février (M)")
         assertEquals(
             "Février doit être à 850 (Exception)",
             850.0,
             finalResult.first { it.transaction.date == feb1 }.transaction.amount,
             0.0
         )
+        
+        println("Log : Assertion Mars (M+1)")
         assertEquals(
             "Mars doit rester à 800 (Série)",
             800.0,
@@ -202,6 +214,7 @@ class RecurringEditionRepositoryTest {
         )
 
         // Étape 6 : Vérifier l'absence de doublons
+        println("Étape 6 : Vérification de l'absence de doublons pour Février")
         assertEquals(
             "Un seul élément pour Février",
             1,
@@ -251,7 +264,7 @@ class RecurringEditionRepositoryTest {
             seriesId = seriesId.toString(), seriesDate = feb1
         )
 
-        // Configuration pour que le repo trouve l'origine de l'élément édité
+        // Configuration pour que le repo trouve l\u0027origine de l'élément édité
         coEvery { repository.getTransactionById(virtualId) } returns TransactionWithRelations(
             virtualTx,
             null,
@@ -262,6 +275,7 @@ class RecurringEditionRepositoryTest {
 
         // --- ACTION ---
         // Étape 1 : Modifier le titre à 'Crossfit' dès Février
+        println("Étape 1 : Action - Modification à 'Crossfit' dès Février (FUTURE)")
         repository.saveWithTransition(
             editingId = virtualId,
             title = "Crossfit",
@@ -285,11 +299,15 @@ class RecurringEditionRepositoryTest {
         // --- VALIDATION ---
         // Étape 2 : Vérifier la troncature de l'ancienne série (CA-06)
         // BUT : Prouver que le passé (Janvier) est préservé
+        println("Étape 2 : Vérification de la troncature de l'ancienne série")
         coVerify { recurringSeriesDao.upsert(match { it.id == seriesId && it.endDate == feb1 - 1 }) }
+        println("Log : Troncature confirmée")
 
         // Étape 3 : Vérifier la création de la nouvelle règle
         // BUT : Prouver que le futur commence avec les nouvelles données
+        println("Étape 3 : Vérification de la création de la nouvelle règle")
         coVerify { recurringSeriesDao.upsert(match { it.id == 0L && it.title == "Crossfit" && it.startDate == feb1 }) }
+        println("Log : Nouvelle règle confirmée")
 
         println("--- [END] TC-38 - Edition FUTURE SUCCESS ---")
     }
@@ -324,6 +342,7 @@ class RecurringEditionRepositoryTest {
 
         // --- ACTION ---
         // Étape 1 : Modifier toute la série à 'Netflix 4K'
+        println("Étape 1 : Action - Modification globale à 'Netflix 4K' (ALL)")
         repository.saveWithTransition(
             editingId = virtualId,
             title = "Netflix 4K",
@@ -347,7 +366,9 @@ class RecurringEditionRepositoryTest {
         // --- VALIDATION ---
         // Étape 2 : Vérifier la mise à jour de la règle mère (CA-07)
         // BUT : Confirmer la propagation globale du changement
+        println("Étape 2 : Vérification de la mise à jour de la règle mère")
         coVerify { recurringSeriesDao.update(match { it.id == seriesId && it.title == "Netflix 4K" && it.amount == 18.0 }) }
+        println("Log : Mise à jour globale confirmée")
 
         println("--- [END] TC-38 - Edition ALL SUCCESS ---")
     }
