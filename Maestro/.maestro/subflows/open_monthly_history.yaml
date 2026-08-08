@@ -1,19 +1,21 @@
 appId: com.lop.budget
 ---
 # Subflow pour ouvrir l'historique complet des transactions
-# Étape 1 : Faire défiler pour sortir le bouton de derrière le bouton "+"
-- scrollUntilVisible:
-    centerElement: true
-    element:
-      id: "recent_transactions_see_all"
-    direction: DOWN
+# Évite le clic si on est déjà sur l'écran mensuel
 
-# Étape 2 : Cliquer sur le bouton une fois qu'il est dégagé
-- tapOn:
-    id: "recent_transactions_see_all"
-
-# Étape 3 : Confirmer la navigation
-- assertVisible:
-    id: "screen.monthly"
+- runFlow:
+    when:
+      notVisible: { id: "screen.monthly" }
+    commands:
+      # S'assurer que le bouton est dégagé du FAB +
+      - scrollUntilVisible:
+          element:
+            id: "recent_transactions_see_all"
+          direction: DOWN
+          centerElement: true
+      - tapOn:
+          id: "recent_transactions_see_all"
+      - assertVisible:
+          id: "screen.monthly"
 - waitForAnimationToEnd:
     timeout: 5000

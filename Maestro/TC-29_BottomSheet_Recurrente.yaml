@@ -5,42 +5,29 @@ name: "TC-29: Validation Bottom Sheet Suppression"
 - launchApp:
     clearState: true
 
-# Navigation vers l'historique complet pour assurer la visibilité
 - runFlow: .maestro/subflows/open_monthly_history.yaml
 
-# Étape 1 : Vérification via Swipe Stand by poour le moment car problème de test du swipe
-# On swipe depuis l'élément "Loyer" vers la GAUCHE.
-# On augmente la durée à 1000ms pour s'assurer que le mouvement est bien détecté 
-# et parcourt assez de distance pour dépasser les 40% du seuil Compose.
-#- swipe:
-#    from:
-#      text: "Loyer"
-#      point: "100%, 10%" # Démarrage à 90% de la largeur de l'élément Loyer
-#    direction: LEFT
-#    duration: 50
-#
-#- tapOn: "Supprimer"
-#- assertVisible:
-#    id: "recurring.delete.scope.sheet"
-#- tapOn: "Annuler"
-#- assertVisible: "Loyer"
+# Étape 1 : Vérification via Swipe (désactivé temporairement car instable sur API 36 Cloud)
 
 # Étape 2 : Vérification via Détail
 - runFlow:
     file: .maestro/subflows/delete_occurrence.yaml
     env:
       text: "Loyer"
-- assertVisible: "Cette transaction fait partie d’une série récurrente."
+
+# Vérification présence des 3 options (CA-03)
+- assertVisible: "Cette occurrence"
+- assertVisible: "Les suivantes uniquement"
+- assertVisible: "Toute la série"
+
 - tapOn: "Annuler"
-- tapOn: "Retour"
-- assertVisible:
-    id: "screen.monthly"
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.monthly" }
 
 # Étape 3 : Vérification via Appui long (Popup)
 - longPressOn: "Loyer"
 - assertVisible: "Supprimer"
-- tapOn:
-    id: "transaction.detail.delete"
-- assertVisible: "Cette transaction fait partie d’une série récurrente."
+- tapOn: { id: "transaction.detail.delete" }
+- assertVisible: "Cette occurrence"
 - tapOn: "Annuler"
 - assertVisible: "Loyer"

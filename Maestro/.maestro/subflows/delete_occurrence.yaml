@@ -1,8 +1,22 @@
 appId: com.lop.budget
 ---
-# Subflow pour déclencher la suppression d'une occurrence par son texte
+# Subflow intelligent pour la suppression
+# Paramètres : 
+#   text : nom de la transaction à cliquer
+#   scope : (optionnel) "Cette occurrence", "Les suivantes uniquement", "Toute la série"
+
+# 1. Ouvrir le détail
 - tapOn: ${text}
-- assertVisible:
-    id: "screen.transaction.detail"
-- tapOn:
-    id: "transaction.detail.delete"
+- assertVisible: { id: "screen.transaction.detail" }
+
+# 2. Cliquer sur le bouton supprimer du détail
+- tapOn: { id: "transaction.detail.delete" }
+
+# 3. Si une portée est définie, on la sélectionne et on confirme
+- runFlow:
+    when:
+      true: ${typeof scope !== 'undefined'}
+    commands:
+      - tapOn: ${scope}
+      - tapOn: "Supprimer" # Dialogue standard
+      - assertVisible: { id: "screen.monthly" }

@@ -1,0 +1,20 @@
+appId: com.lop.budget
+---
+# Subflow pour changer de mois et revenir sur l'historique
+# Paramètre attendu : month_name (ex: "Août", "Sept.")
+
+# Si on est sur l'écran mensuel, on doit d'abord faire Retour pour voir le picker
+- runFlow:
+    when:
+      visible: { id: "screen.monthly" }
+    commands:
+      - tapOn: { id: "common.btn.back" }
+
+# On ouvre le picker sur la Home
+- tapOn: { id: "home.month.picker" }
+
+# On sélectionne le mois (Passé par paramètre)
+- tapOn: ${month_name}
+
+# On retourne sur l'historique pour la suite des tests
+- runFlow: open_monthly_history.yaml
