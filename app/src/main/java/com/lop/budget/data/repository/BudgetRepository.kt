@@ -27,7 +27,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import java.time.Instant
@@ -56,10 +58,6 @@ class BudgetRepository @Inject constructor(
     private val _pendingSeriesDeletes = MutableStateFlow<Map<String, SeriesDeletionMode>>(emptyMap())
     private val _pendingSeriesFromDates = MutableStateFlow<Map<String, Long>>(emptyMap())
 
-    fun setPendingDelete(txId: Long, isPending: Boolean) {
-        if (isPending) _pendingDeletes.value += txId
-        else _pendingDeletes.value -= txId
-    }
 
     fun setPendingSeriesDelete(seriesId: String, mode: SeriesDeletionMode?, fromDate: Long? = null) {
         if (mode == null) {
@@ -331,7 +329,16 @@ class BudgetRepository @Inject constructor(
         }.flowOn(Dispatchers.Default)
     }
 
-    fun observeTransaction(id: Long) = transactionDao.observeById(id)
+    fun observeTransaction(id: Long): Flow<TransactionWithRelations?> {
+        if (id >= 0L) return transactionDao.observeById(id)
+        
+        // --- CAS : TRANSACTION VIRTUELLE ---
+        // Pour les virtuels, on utilise getTransactionById qui reconstitue l'objet.
+        // Comme un virtuel ne change pas en base (par définition), un flow simple suffit.
+        return flow {
+            emit(getTransactionById(id))
+        }
+    }
 
     suspend fun saveTransaction(tx: TransactionEntity, tagIds: List<Long> = emptyList()): Long {
         // Gérer le champ paidAt si absent
@@ -599,7 +606,37 @@ class BudgetRepository @Inject constructor(
 
     suspend fun getSeriesById(id: Long) = recurringSeriesDao.getSeriesById(id)
 
-    suspend fun getTransactionById(id: Long) = transactionDao.getById(id)
+    suspend fun getTransactionById(id: Long): TransactionWithRelations? {
+        if (id >= 0L) return transactionDao.getById(id)
+        
+        // --- CAS : TRANSACTION VIRTUELLE (ID < 0) ---
+        // On doit reconstituer l'objet à partir de sa série parente
+        // L'ID virtuel contient indirectement le seriesId et la date, 
+        // mais pour être sûr, on scanne les séries actives sur une plage large
+        // (Ou on pourrait passer par une map de cache, mais le scan est plus robuste ici)
+        
+        val now = System.currentTimeMillis()
+        val calendar = java.util.Calendar.getInstance()
+        calendar.timeInMillis = now
+        calendar.add(java.util.Calendar.YEAR, -1)
+        val start = calendar.timeInMillis
+        calendar.add(java.util.Calendar.YEAR, 2)
+        val end = calendar.timeInMillis
+
+        val seriesList = recurringSeriesDao.observeActiveSeries().first()
+        for (series in seriesList) {
+            val occurrences = com.lop.budget.domain.RecurrenceEngine.generateOccurrences(series, start, end)
+            val match = occurrences.find { it.id == id }
+            if (match != null) {
+                // On a trouvé le virtuel, on récupère ses relations pour l'UI
+                val account = accountDao.getById(match.accountId)
+                val category = categoryDao.getById(match.categoryId)
+                return TransactionWithRelations(match, category, account, emptyList())
+            }
+        }
+        
+        return null
+    }
 
     suspend fun cancelSeries(seriesIdStr: String, mode: SeriesDeletionMode, fromDate: Long? = null) {
         val seriesId = seriesIdStr.toLongOrNull() ?: return

@@ -39,6 +39,7 @@ import com.lop.budget.ui.components.DeleteConfirmationDialog
 import com.lop.budget.ui.components.FloatingBottomBar
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import com.lop.budget.ui.components.RecurringDeleteSheet
+import com.lop.budget.ui.components.RecurringEditSheet
 import com.lop.budget.ui.components.TransactionPreviewPopup
 import com.lop.budget.ui.motion.MotionSpec
 import com.lop.budget.ui.screens.accounts.AccountsScreen
@@ -493,15 +494,13 @@ fun LopNavHost(startRoute: String? = null) {
             editRequest?.let { tx ->
                 val transaction = tx.transaction
                 if (transaction.seriesId != null) {
-                    com.lop.budget.ui.components.RecurringEditSheet(
+                   RecurringEditSheet(
                         onDismiss = { actionVm.dismissEditRequest() },
                         onChoose = { scope ->
                             actionVm.dismissEditRequest()
                             when (scope) {
                                 com.lop.budget.domain.model.EditScope.SINGLE -> {
-                                    actionVm.materializeForEdit(tx) { realId ->
-                                        navController.navigate(Routes.edit(realId))
-                                    }
+                                    navController.navigate(Routes.edit(transaction.id))
                                 }
                                 com.lop.budget.domain.model.EditScope.FUTURE -> {
                                     navController.navigate(Routes.edit(transaction.id, "FUTURE", transaction.date))
@@ -514,9 +513,7 @@ fun LopNavHost(startRoute: String? = null) {
                     )
                 } else {
                     SideEffect {
-                        actionVm.materializeForEdit(tx) { realId ->
-                            navController.navigate(Routes.edit(realId))
-                        }
+                        navController.navigate(Routes.edit(transaction.id))
                         actionVm.dismissEditRequest()
                     }
                 }

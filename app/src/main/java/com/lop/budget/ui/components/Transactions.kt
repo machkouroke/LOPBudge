@@ -138,9 +138,7 @@ fun TransactionRow(
                 .combinedClickableHaptic(
                     onClick = {
                         if (!isAdjustment) {
-                            actionVm.materializeAndOpenDetail(tx) { realId ->
-                                onOpenTransaction(realId)
-                            }
+                            onOpenTransaction(tx.transaction.id)
                         }
                     },
                     onLongClick = { if (!isAdjustment) actionVm.showPreview(tx, currency) }
