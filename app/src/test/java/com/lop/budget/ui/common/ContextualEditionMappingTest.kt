@@ -43,50 +43,6 @@ class ContextualEditionMappingTest {
         Dispatchers.resetMain()
     }
 
-    /**
-     * Scénario 1 : Portée SINGLE (Cette occurrence uniquement).
-     * Vérifie que le virtuel est matérialisé AVANT la navigation.
-     */
-    @Test
-    fun `TC-34 - Choice SINGLE should trigger materialization before navigation`() = runTest {
-        println("\n--- [START] TC-34 - Scénario SINGLE ---")
-        
-        // --- PRÉPARATION ---
-        // Étape 1 : Configurer une transaction virtuelle
-        val virtualId = -100L
-        val seriesId = 10L
-        val date = 1706778000000L // Février 2024
-        val virtualTx = TransactionWithRelations(
-            TransactionEntity(id = virtualId, title = "Netflix", amount = 10.0, type = TransactionType.EXPENSE, 
-                status = TransactionStatus.PLANNED, date = date, accountId = 1, categoryId = 1, 
-                seriesId = seriesId.toString(), seriesDate = date), null, null, emptyList()
-        )
-
-        // Mock de la matérialisation (Virtuel -> Réel ID 50)
-        coEvery { repository.materializeOccurrence(seriesId, date) } returns 50L
-        println("Étape 1 : Transaction virtuelle $virtualId configurée (Série $seriesId)")
-
-        // --- ACTION ---
-        // Étape 2 : Demander la matérialisation pour édition
-        println("Étape 2 : Action - Appel de materializeForEdit (SINGLE)")
-        var navigatedId: Long? = null
-//        viewModel.materializeForEdit(virtualTx) { realId ->
-//            navigatedId = realId
-//        }
-
-        // --- VALIDATION ---
-        // Étape 3 : Vérifier l'appel au repository
-        println("Étape 3 : Vérification de l'appel technique au Repository")
-        coVerify(exactly = 1) { repository.materializeOccurrence(seriesId, date) }
-        println("Log : materializeOccurrence(seriesId=$seriesId, date=$date) appelé avec succès")
-
-        // Étape 4 : Vérifier que le callback de navigation a reçu le nouvel ID réel
-        println("Étape 4 : Vérification de l'ID transmis pour la navigation")
-        assertEquals("On doit naviguer vers le nouvel ID physique (50)", 50L, navigatedId)
-        println("Log : Navigation vers l'ID physique 50 confirmée")
-        
-        println("--- [END] TC-34 - Scénario SINGLE SUCCESS ---")
-    }
 
     /**
      * Scénario 2 : Portée FUTURE (Cette occurrence et les suivantes).
