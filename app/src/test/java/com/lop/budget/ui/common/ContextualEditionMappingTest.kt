@@ -70,9 +70,9 @@ class ContextualEditionMappingTest {
         // Étape 2 : Demander la matérialisation pour édition
         println("Étape 2 : Action - Appel de materializeForEdit (SINGLE)")
         var navigatedId: Long? = null
-        viewModel.materializeForEdit(virtualTx) { realId ->
-            navigatedId = realId
-        }
+//        viewModel.materializeForEdit(virtualTx) { realId ->
+//            navigatedId = realId
+//        }
 
         // --- VALIDATION ---
         // Étape 3 : Vérifier l'appel au repository

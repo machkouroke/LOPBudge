@@ -52,10 +52,12 @@ class TransactionActionViewModel @Inject constructor(
 
     fun confirmDelete() {
         val request = _pendingConfirmation.value ?: return
-        _pendingConfirmation.value = null
-        
         val tx = request.transaction
         val choice = request.choice
+        _pendingConfirmation.value = null
+        
+        // On marque immédiatement l'ID comme "en cours de suppression" pour l'UI
+        _pendingDeletes.value = _pendingDeletes.value + tx.transaction.id
 
         viewModelScope.launch {
             if (tx.transaction.seriesId != null && choice != null) {
