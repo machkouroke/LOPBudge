@@ -40,6 +40,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
+import androidx.compose.ui.platform.testTag
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -57,7 +59,8 @@ fun DetectedTransactionsScreen(
     LopScreenScaffold(
         title = stringResource(R.string.detected_title),
         onBack = onBack,
-        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack
+        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_DETECTED)
     ) {
         if (pending.isEmpty()) {
             item {

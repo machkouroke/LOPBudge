@@ -17,6 +17,8 @@ object TestTags {
     const val SCREEN_TAGS = "screen.tags"
     const val SCREEN_AI = "screen.ai"
     const val SCREEN_ANALYTICS = "screen.analytics"
+    const val SCREEN_SETTINGS = "screen.settings"
+    const val SCREEN_DETECTED = "screen.detected"
 
     // Common Actions
     const val BTN_BACK = "common.btn.back"

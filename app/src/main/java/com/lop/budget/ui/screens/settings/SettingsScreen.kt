@@ -48,7 +48,8 @@ fun SettingsScreen(
     LopScreenScaffold(
         title = stringResource(R.string.settings_title),
         onBack = onBack,
-        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack
+        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_SETTINGS)
     ) {
         // Apparence et Thème
         item {

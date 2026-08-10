@@ -22,6 +22,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.ui.components.CircleIcon
+import androidx.compose.ui.platform.testTag
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.clickableNoRipple
@@ -39,7 +41,8 @@ fun AccountsScreen(
     LopScreenScaffold(
         title = stringResource(R.string.accounts_title),
         onBack = onBack,
-        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack
+        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_ACCOUNTS)
     ) {
         item {
             FloatingCard(

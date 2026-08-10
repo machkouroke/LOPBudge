@@ -138,6 +138,7 @@ fun TransactionEditScreen(
         title = if (vm.isEditing) stringResource(R.string.tx_edit_title) else stringResource(R.string.tx_new_title),
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        modifier = Modifier.testTag(TestTags.SCREEN_EDIT),
         bottomBar = {
             Box(Modifier.fillMaxWidth().padding(20.dp)) {
                 Button(
