@@ -186,7 +186,7 @@ fun TransactionEditScreen(
                         value = form.amountInput,
                         onValueChange = vm::setAmountRaw,
                         keyboardType = KeyboardType.Decimal,
-                        modifier = Modifier.testTag("transaction_amount_field"),
+                        modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_AMOUNT),
                         textStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
                         leading = { Text(if (form.type == TransactionType.EXPENSE) "−" else "+", style = MaterialTheme.typography.displaySmall) },
                         trailing = { Text("€", style = MaterialTheme.typography.titleLarge) }
@@ -198,6 +198,7 @@ fun TransactionEditScreen(
                         value = form.title,
                         onValueChange = vm::setTitle,
                         keyboardType = KeyboardType.Text,
+                        modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_TITLE),
                         textStyle = MaterialTheme.typography.bodyLarge,
                     )
 
@@ -249,7 +250,8 @@ fun TransactionEditScreen(
                                 value = selectedSub?.name ?: "Choisir une sous-catégorie...",
                                 icon = selectedSub?.let { IconMapper.get(it.icon) } ?: Icons.Filled.KeyboardArrowDown,
                                 iconTint = selectedSub?.let { Color(it.colorArgb) },
-                                onClick = { showCategorySheet = true }
+                                onClick = { showCategorySheet = true },
+                                modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_SUBCATEGORY)
                             )
                         }
                     }
@@ -269,7 +271,8 @@ fun TransactionEditScreen(
                             label = stringResource(R.string.tx_linked_goal_label),
                             value = selectedGoal?.name ?: stringResource(R.string.tx_no_goal_linked),
                             icon = selectedGoal?.let { IconMapper.get(it.icon) } ?: Icons.Default.Add,
-                            onClick = { showGoalSheet = true }
+                            onClick = { showGoalSheet = true },
+                            modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_GOAL)
                         )
 
                         val selectedDebt = debts.find { it.id == form.linkedDebtId }
@@ -277,7 +280,8 @@ fun TransactionEditScreen(
                             label = stringResource(R.string.tx_linked_debt_label),
                             value = selectedDebt?.name ?: stringResource(R.string.tx_no_debt_linked),
                             icon = selectedDebt?.let { IconMapper.get(it.icon) } ?: Icons.Default.Add,
-                            onClick = { showDebtSheet = true }
+                            onClick = { showDebtSheet = true },
+                            modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_DEBT)
                         )
                     }
 
@@ -286,7 +290,8 @@ fun TransactionEditScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
-                            .clickable { showTagsSheet = true },
+                            .clickable { showTagsSheet = true }
+                            .testTag(TestTags.TX_EDIT_FIELD_TAGS),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
                     ) {
@@ -602,7 +607,10 @@ private fun RecurrenceBlock(
                 stringResource(R.string.tx_repeat_label),
                 style = MaterialTheme.typography.titleMedium
             )
-            TextButton(onClick = { showAdvanced = !showAdvanced }) {
+            TextButton(
+                onClick = { showAdvanced = !showAdvanced },
+                modifier = Modifier.testTag(TestTags.TX_EDIT_BTN_ADVANCED)
+            ) {
                 Text(if (showAdvanced) "Moins" else stringResource(R.string.tx_repeat_advanced))
                 Icon(
                     if (showAdvanced) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
@@ -614,17 +622,26 @@ private fun RecurrenceBlock(
         // Quick frequencies
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val frequencies = listOf(
-                RecurrenceFrequency.NONE to R.string.tx_repeat_none,
-                RecurrenceFrequency.DAILY to R.string.tx_repeat_daily,
-                RecurrenceFrequency.WEEKLY to R.string.tx_repeat_weekly,
-                RecurrenceFrequency.MONTHLY to R.string.tx_repeat_monthly,
-                RecurrenceFrequency.YEARLY to R.string.tx_repeat_yearly
+                RecurrenceFrequency.NONE to R.string.tx_repeat_none to "none",
+                RecurrenceFrequency.DAILY to R.string.tx_repeat_daily to "daily",
+                RecurrenceFrequency.WEEKLY to R.string.tx_repeat_weekly to "weekly",
+                RecurrenceFrequency.MONTHLY to R.string.tx_repeat_monthly to "monthly",
+                RecurrenceFrequency.YEARLY to R.string.tx_repeat_yearly to "yearly"
             )
-            items(frequencies) { (freq, labelRes) ->
+            items(frequencies) { (data, tag) ->
+                val (freq, labelRes) = data
+                val testTag = when(freq) {
+                    RecurrenceFrequency.NONE -> TestTags.TX_EDIT_CHIP_NONE
+                    RecurrenceFrequency.DAILY -> TestTags.TX_EDIT_CHIP_DAILY
+                    RecurrenceFrequency.WEEKLY -> TestTags.TX_EDIT_CHIP_WEEKLY
+                    RecurrenceFrequency.MONTHLY -> TestTags.TX_EDIT_CHIP_MONTHLY
+                    RecurrenceFrequency.YEARLY -> TestTags.TX_EDIT_CHIP_YEARLY
+                }
                 FilterChip(
                     selected = form.frequency == freq,
                     onClick = { onSetFrequency(freq) },
-                    label = { Text(stringResource(labelRes)) }
+                    label = { Text(stringResource(labelRes)) },
+                    modifier = Modifier.testTag(testTag)
                 )
             }
         }
@@ -640,7 +657,8 @@ private fun RecurrenceBlock(
                         onValueChange = { it.toIntOrNull()?.let { v -> onSetInterval(v) } },
                         modifier = Modifier
                             .width(80.dp)
-                            .height(50.dp),
+                            .height(50.dp)
+                            .testTag(TestTags.TX_EDIT_FIELD_INTERVAL),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         textStyle = androidx.compose.ui.text.TextStyle(textAlign = TextAlign.Center)
                     )

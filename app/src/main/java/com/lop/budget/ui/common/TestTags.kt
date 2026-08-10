@@ -55,12 +55,25 @@ object TestTags {
     const val TRANSACTION_DETAIL_TOGGLE_PAID = "transaction.detail.toggle.paid"
 
     // Transaction Edit
+    const val TX_EDIT_FIELD_AMOUNT = "transaction.edit.field.amount"
+    const val TX_EDIT_FIELD_TITLE = "transaction.edit.field.title"
     const val TX_EDIT_FIELD_CATEGORY = "transaction.edit.field.category"
+    const val TX_EDIT_FIELD_SUBCATEGORY = "transaction.edit.field.subcategory"
     const val TX_EDIT_FIELD_ACCOUNT = "transaction.edit.field.account"
     const val TX_EDIT_FIELD_DATE = "transaction.edit.field.date"
+    const val TX_EDIT_FIELD_GOAL = "transaction.edit.field.goal"
+    const val TX_EDIT_FIELD_DEBT = "transaction.edit.field.debt"
+    const val TX_EDIT_FIELD_TAGS = "transaction.edit.field.tags"
     const val TX_EDIT_TYPE_INCOME = "transaction.edit.type.income"
     const val TX_EDIT_TYPE_EXPENSE = "transaction.edit.type.expense"
     const val TX_EDIT_BLOCK_RECURRENCE = "transaction.edit.block.recurrence"
+    const val TX_EDIT_BTN_ADVANCED = "transaction.edit.btn.advanced"
+    const val TX_EDIT_CHIP_DAILY = "transaction.edit.chip.daily"
+    const val TX_EDIT_CHIP_WEEKLY = "transaction.edit.chip.weekly"
+    const val TX_EDIT_CHIP_MONTHLY = "transaction.edit.chip.monthly"
+    const val TX_EDIT_CHIP_YEARLY = "transaction.edit.chip.yearly"
+    const val TX_EDIT_CHIP_NONE = "transaction.edit.chip.none"
+    const val TX_EDIT_FIELD_INTERVAL = "transaction.edit.field.interval"
 
     // Recurring Delete Sheet
     const val RECURRING_DELETE_SHEET = "recurring.delete.scope.sheet"

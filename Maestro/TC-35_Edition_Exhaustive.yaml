@@ -1,0 +1,172 @@
+appId: com.lop.budget
+name: "TC-35: Édition Exhaustive"
+---
+# TC-35 - Maestro — Édition exhaustive (Normale + Récurrente)
+# Objectif : Vérifier le pré-remplissage et la propagation selon la portée.
+
+# ==========================================
+# SCÉNARIO 1 : Transaction Normale
+# ==========================================
+- launchApp:
+    clearState: true
+
+- runFlow: .maestro/subflows/open_monthly_history.yaml
+
+- evalScript: |
+    console.log("--- CAS 1 : Transaction ponctuelle (Courses Hebdomadaires) ---")
+
+- tapOn: "Courses Hebdomadaires"
+- assertVisible: { id: "screen.transaction.detail" }
+- tapOn: { id: "transaction.detail.edit" }
+
+# Vérifier accès direct (Pas de BottomSheet)
+- assertNotVisible: "Modifier la transaction ?"
+- assertVisible: { id: "screen.transaction.edit" }
+
+# Vérifier pré-remplissage
+- assertVisible:
+    id: "transaction.edit.field.title"
+    text: "Courses Hebdomadaires"
+- assertVisible:
+    id: "transaction.edit.field.amount"
+    text: "84.2"
+
+# Modifier et enregistrer
+- tapOn: { id: "transaction.edit.field.title" }
+- inputText: "Courses Hebdo"
+- tapOn: { id: "common.btn.save" }
+
+# Vérifier retour et modification
+- extendedWaitUntil:
+    visible: { id: "screen.monthly" }
+    timeout: 5000
+- assertVisible: "Courses Hebdo"
+
+# ==========================================
+# SCÉNARIO 2 : Portée 'SINGLE' (Isolation)
+# ==========================================
+- launchApp:
+    clearState: true
+
+- runFlow: .maestro/subflows/open_monthly_history.yaml
+
+- evalScript: |
+    console.log("--- CAS 2 : Portée SINGLE (Loyer) ---")
+
+# Ouvrir Loyer du mois M (Août 2026 par défaut Seeder)
+- tapOn: "Loyer"
+- tapOn: { id: "transaction.detail.edit" }
+- tapOn: "Cette occurrence uniquement"
+
+- extendedWaitUntil:
+    visible: { id: "common.btn.save" }
+    timeout: 5000
+
+# Vérifier pré-remplissage
+- assertVisible:
+    id: "transaction.edit.field.amount"
+    text: "820.0"
+
+# Modifier montant à 950
+- tapOn: { id: "transaction.edit.field.amount" }
+- eraseText
+- inputText: "950"
+- tapOn: { id: "common.btn.save" }
+
+# Vérification Large (Isolation)
+- extendedWaitUntil:
+    visible: { id: "screen.monthly" }
+    timeout: 5000
+- assertVisible: "950,00"
+
+# Vérifier M-1 (Juillet) -> Doit rester à 820
+- runFlow:
+    file: .maestro/subflows/change_month.yaml
+    env:
+      direction: "PREVIOUS"
+- assertVisible: "820,00"
+- assertNotVisible: "950,00"
+
+# ==========================================
+# SCÉNARIO 3 : Portée 'FUTURE' (Troncature)
+# ==========================================
+- launchApp:
+    clearState: true
+
+- runFlow: .maestro/subflows/open_monthly_history.yaml
+
+- evalScript: |
+    console.log("--- CAS 3 : Portée FUTURE (Netflix) ---")
+
+- tapOn: "Netflix"
+- tapOn: { id: "transaction.detail.edit" }
+- tapOn: "Cette occurrence et les suivantes"
+
+- extendedWaitUntil:
+    visible: { id: "common.btn.save" }
+    timeout: 5000
+
+# Vérifier pré-remplissage récurrence
+- scrollUntilVisible:
+    element: { id: "transaction.edit.block.recurrence" }
+- assertVisible: "Mensuel"
+- tapOn: { id: "transaction.edit.btn.advanced" }
+- assertVisible:
+    id: "transaction.edit.field.interval"
+    text: "1"
+
+# Modifier Titre
+- tapOn: { id: "transaction.edit.field.title" }
+- eraseText
+- inputText: "Netflix Premium"
+- tapOn: { id: "common.btn.save" }
+
+# Vérification Large
+- extendedWaitUntil:
+    visible: { id: "screen.monthly" }
+    timeout: 5000
+- assertVisible: "Netflix Premium"
+
+# Vérifier M-1 (Juillet) -> Doit rester "Netflix"
+- runFlow:
+    file: .maestro/subflows/change_month.yaml
+    env:
+      direction: "PREVIOUS"
+- assertVisible: "Netflix"
+- assertNotVisible: "Netflix Premium"
+
+# ==========================================
+# SCÉNARIO 4 : Portée 'ALL' (Global)
+# ==========================================
+- launchApp:
+    clearState: true
+
+- runFlow: .maestro/subflows/open_monthly_history.yaml
+
+- evalScript: |
+    console.log("--- CAS 4 : Portée ALL (Netflix Category) ---")
+
+- tapOn: "Netflix"
+- tapOn: { id: "transaction.detail.edit" }
+- tapOn: "Toute la série"
+
+- extendedWaitUntil:
+    visible: { id: "common.btn.save" }
+    timeout: 5000
+
+# Modifier Catégorie (Simulation changement vers une autre catégorie par ID ou texte)
+- tapOn: { id: "transaction.edit.field.category" }
+- tapOn: "Santé" # Exemple arbitraire du JDD
+- tapOn: { id: "common.btn.save" }
+
+# Vérifier propagation
+- extendedWaitUntil:
+    visible: { id: "screen.monthly" }
+    timeout: 5000
+# On vérifie que Netflix est maintenant dans Santé (Visuel)
+- runFlow:
+    file: .maestro/subflows/change_month.yaml
+    env:
+      direction: "PREVIOUS"
+- assertVisible: "Netflix"
+# (La catégorie s'affiche via l'icône, on valide ici la non-disparition au moins)
