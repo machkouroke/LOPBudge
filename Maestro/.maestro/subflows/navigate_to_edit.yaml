@@ -1,0 +1,25 @@
+appId: com.lop.budget
+---
+# Subflow : Naviguer de la liste vers l'écran d'édition avec une portée choisie
+# Paramètres attendus : 
+# - transactionName : Le texte de la transaction à cliquer
+# - scopeSelection : Le libellé exact du choix dans la BottomSheet (ex: "Cette occurrence uniquement")
+
+- tapOn: ${transactionName}
+
+# Vérifier l'écran de détail avant d'aller plus loin
+- assertVisible: { id: "screen.transaction.detail" }
+
+- tapOn: { id: "transaction.detail.edit" }
+
+# Attendre que la BottomSheet de portée soit là
+- assertVisible: "Modifier la transaction ?"
+
+# Choisir la portée passée en paramètre
+- tapOn: ${scopeSelection}
+
+# Attendre la stabilisation de l'écran d'édition via son bouton principal (JIT)
+- extendedWaitUntil:
+    visible:
+      id: "common.btn.save"
+    timeout: 5000

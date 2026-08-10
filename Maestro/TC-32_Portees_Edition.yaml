@@ -14,21 +14,11 @@ name: "TC-32: Validation Portées Édition"
 - evalScript: |
     console.log("--- CAS 1 : 'Cette occurrence uniquement' ---")
 
-- tapOn: "Loyer"
-- assertVisible: { id: "screen.transaction.detail" }
-- tapOn: { id: "transaction.detail.edit" }
-
-# Attendre que la BottomSheet soit bien là
-- assertVisible: "Modifier la transaction ?"
-
-# Cliquer sur SINGLE
-- tapOn: "Cette occurrence uniquement"
-
-# Attendre l'écran d'édition (via le bouton Enregistrer, plus stable qu'un Scaffold tag)
-- extendedWaitUntil:
-    visible:
-      id: "common.btn.save"
-    timeout: 5000
+- runFlow:
+    file: .maestro/subflows/navigate_to_edit.yaml
+    env:
+      transactionName: "Loyer"
+      scopeSelection: "Cette occurrence uniquement"
 
 # Vérifier que le bloc récurrence est MASQUÉ (CA-16)
 - assertNotVisible: { id: "transaction.edit.block.recurrence" }
@@ -40,21 +30,18 @@ name: "TC-32: Validation Portées Édition"
 - evalScript: |
     console.log("--- CAS 2 : 'Cette occurrence et les suivantes' ---")
 
-- tapOn: "Loyer"
-- tapOn: { id: "transaction.detail.edit" }
-- assertVisible: "Modifier la transaction ?"
-
-# Cliquer sur FUTURE
-- tapOn: "Cette occurrence et les suivantes"
-
-# Attendre l'écran d'édition
-- extendedWaitUntil:
-    visible:
-      id: "common.btn.save"
-    timeout: 5000
+- runFlow:
+    file: .maestro/subflows/navigate_to_edit.yaml
+    env:
+      transactionName: "Loyer"
+      scopeSelection: "Cette occurrence et les suivantes"
 
 # Vérifier que le bloc récurrence est VISIBLE (CA-17)
-- assertVisible: { id: "transaction.edit.block.recurrence" }
+# Utilisation de scrollUntilVisible car le bloc est en bas de page
+- scrollUntilVisible:
+    element: { id: "transaction.edit.block.recurrence" }
+    direction: DOWN
+    timeout: 5000
 
 - tapOn: { id: "common.btn.back" }
 - tapOn: { id: "common.btn.back" }
@@ -63,21 +50,17 @@ name: "TC-32: Validation Portées Édition"
 - evalScript: |
     console.log("--- CAS 3 : 'Toute la série' ---")
 
-- tapOn: "Loyer"
-- tapOn: { id: "transaction.detail.edit" }
-- assertVisible: "Modifier la transaction ?"
-
-# Cliquer sur ALL
-- tapOn: "Toute la série"
-
-# Attendre l'écran d'édition
-- extendedWaitUntil:
-    visible:
-      id: "common.btn.save"
-    timeout: 5000
+- runFlow:
+    file: .maestro/subflows/navigate_to_edit.yaml
+    env:
+      transactionName: "Loyer"
+      scopeSelection: "Toute la série"
 
 # Vérifier que le bloc récurrence est VISIBLE (CA-17)
-- assertVisible: { id: "transaction.edit.block.recurrence" }
+- scrollUntilVisible:
+    element: { id: "transaction.edit.block.recurrence" }
+    direction: DOWN
+    timeout: 5000
 
 - tapOn: { id: "common.btn.back" }
 - tapOn: { id: "common.btn.back" }
