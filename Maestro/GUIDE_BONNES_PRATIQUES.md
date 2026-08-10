@@ -52,9 +52,10 @@ Usage dans le YAML : `text: ${output.MONTH_NAME}` (Maestro résout l'output auto
 
 Pour éviter que les tests ne cassent lors d'un changement de design mineur.
 
-- **Règle 1** : Priorité absolue aux **`id`** (issus des `Modifier.testTag` du code source).
-- **Règle 2** : Si l'ID est insuffisant (doublons), utiliser les relations de position (`rightOf`,
-  `below`, `above`, `leftOf`).
+- **Règle 1** : Privilégier la **sélection par texte unique** (`assertVisible: "Titre"`) pour valider l'ouverture d'un écran ou d'une modale.
+- **Règle 2 (Robustesse IDs)** : Utiliser les **`id`** uniquement pour les éléments interactifs précis (boutons, champs) s'ils sont stables. Éviter les IDs sur les conteneurs globaux (`Scaffold`, `Box`) car Maestro a du mal à les détecter dans la hiérarchie Compose.
+- **Règle 3 (Exception Modales & Scaffold)** : Si un ID d'écran n'est pas détecté, valider la présence d'un élément structurel fort (ex: le bouton "Enregistrer" ou le titre de la page).
+- **Règle 4** : Si l'ID est insuffisant (doublons), utiliser les relations de position (`rightOf`, `below`, `above`, `leftOf`).
 - **Règle 3** : Si un élément important n'a pas de tag, **le rajouter dans le code Kotlin** au lieu
   de bricoler un sélecteur fragile.
 

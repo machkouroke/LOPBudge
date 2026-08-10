@@ -18,13 +18,15 @@ name: "TC-32: Validation Portées Édition"
 - assertVisible: { id: "screen.transaction.detail" }
 - tapOn: { id: "transaction.detail.edit" }
 
-# Vérifier la présence de la BottomSheet (CA-16)
-- assertVisible: { id: "recurring.edit.scope.sheet" }
+# Vérifier la présence de la BottomSheet (Maestro Modal ID Fix)
+- assertVisible: "Modifier la transaction ?"
 - assertVisible: "Cette occurrence uniquement"
 
 # Cliquer sur SINGLE
-- tapOn: { id: "recurring.edit.scope.single" }
-- assertVisible: { id: "screen.transaction.edit" }
+- tapOn: "Cette occurrence uniquement"
+
+# Vérifier l'ouverture de l'écran par son titre (Maestro Scaffold Fix)
+- assertVisible: "Modifier la transaction"
 
 # Vérifier que le bloc récurrence est MASQUÉ (CA-16)
 - assertNotVisible: { id: "transaction.edit.block.recurrence" }
@@ -38,11 +40,11 @@ name: "TC-32: Validation Portées Édition"
 
 - tapOn: "Loyer"
 - tapOn: { id: "transaction.detail.edit" }
-- assertVisible: { id: "recurring.edit.scope.sheet" }
+- assertVisible: "Modifier la transaction ?"
 
 # Cliquer sur FUTURE
-- tapOn: { id: "recurring.edit.scope.future" }
-- assertVisible: { id: "screen.transaction.edit" }
+- tapOn: "Cette occurrence et les suivantes"
+- assertVisible: "Modifier la transaction"
 
 # Vérifier que le bloc récurrence est VISIBLE (CA-17)
 - assertVisible: { id: "transaction.edit.block.recurrence" }
@@ -56,11 +58,11 @@ name: "TC-32: Validation Portées Édition"
 
 - tapOn: "Loyer"
 - tapOn: { id: "transaction.detail.edit" }
-- assertVisible: { id: "recurring.edit.scope.sheet" }
+- assertVisible: "Modifier la transaction ?"
 
 # Cliquer sur ALL
-- tapOn: { id: "recurring.edit.scope.all" }
-- assertVisible: { id: "screen.transaction.edit" }
+- tapOn: "Toute la série"
+- assertVisible: "Modifier la transaction"
 
 # Vérifier que le bloc récurrence est VISIBLE (CA-17)
 - assertVisible: { id: "transaction.edit.block.recurrence" }
