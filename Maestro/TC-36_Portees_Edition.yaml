@@ -1,7 +1,7 @@
 appId: com.lop.budget
-name: "TC-32: Validation Portées Édition"
+name: "TC-36: Validation Portées Édition"
 ---
-# TC-32 - Gherkin UI — Choix de portée édition récurrente
+# TC-36 - Gherkin UI — Choix de portée édition récurrente
 # Objectif : Vérifier que l'UI adapte l'écran d'édition selon la portée choisie.
 
 - launchApp:
