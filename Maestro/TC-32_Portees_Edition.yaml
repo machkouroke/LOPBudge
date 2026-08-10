@@ -18,15 +18,17 @@ name: "TC-32: Validation Portées Édition"
 - assertVisible: { id: "screen.transaction.detail" }
 - tapOn: { id: "transaction.detail.edit" }
 
-# Vérifier la présence de la BottomSheet (Maestro Modal ID Fix)
+# Attendre que la BottomSheet soit bien là
 - assertVisible: "Modifier la transaction ?"
-- assertVisible: "Cette occurrence uniquement"
 
 # Cliquer sur SINGLE
 - tapOn: "Cette occurrence uniquement"
 
-# Vérifier l'ouverture de l'écran par son titre (Maestro Scaffold Fix)
-- assertVisible: "Modifier la transaction"
+# Attendre l'écran d'édition (via le bouton Enregistrer, plus stable qu'un Scaffold tag)
+- extendedWaitUntil:
+    visible:
+      id: "common.btn.save"
+    timeout: 5000
 
 # Vérifier que le bloc récurrence est MASQUÉ (CA-16)
 - assertNotVisible: { id: "transaction.edit.block.recurrence" }
@@ -44,7 +46,12 @@ name: "TC-32: Validation Portées Édition"
 
 # Cliquer sur FUTURE
 - tapOn: "Cette occurrence et les suivantes"
-- assertVisible: "Modifier la transaction"
+
+# Attendre l'écran d'édition
+- extendedWaitUntil:
+    visible:
+      id: "common.btn.save"
+    timeout: 5000
 
 # Vérifier que le bloc récurrence est VISIBLE (CA-17)
 - assertVisible: { id: "transaction.edit.block.recurrence" }
@@ -62,7 +69,12 @@ name: "TC-32: Validation Portées Édition"
 
 # Cliquer sur ALL
 - tapOn: "Toute la série"
-- assertVisible: "Modifier la transaction"
+
+# Attendre l'écran d'édition
+- extendedWaitUntil:
+    visible:
+      id: "common.btn.save"
+    timeout: 5000
 
 # Vérifier que le bloc récurrence est VISIBLE (CA-17)
 - assertVisible: { id: "transaction.edit.block.recurrence" }
