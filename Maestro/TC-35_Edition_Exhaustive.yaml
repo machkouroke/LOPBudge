@@ -7,6 +7,12 @@ name: "TC-35: Édition Exhaustive"
 # ==========================================
 # SCÉNARIO 1 : Transaction Normale
 # ==========================================
+- runScript: scripts/dates.js
+
+- evalScript: |
+    console.log("Starting TC-30 with Dynamic Dates:");
+    console.log("PREV: " + output.PREV_MONTH_NAME + " " + PREV_YEAR);
+    console.log("NEXT: " + output.NEXT_MONTH_NAME + " " + NEXT_YEAR);
 - launchApp:
     clearState: true
 
@@ -31,21 +37,37 @@ name: "TC-35: Édition Exhaustive"
     id: "transaction.edit.field.amount"
     text: "84.2"
 
-# Validation via Marqueur Debug Textuel ✅
+# Validation via Marqueur Debug ✅
 - assertVisible: "Dépense ✅"
 
 - assertVisible: "Courses"
 - assertVisible: "Compte courant"
 
-# Modifier et enregistrer
+# Vérifier que le bloc récurrence est MASQUÉ (car ponctuel)
+# On scrolle pour être sûr de ne pas le rater en bas
+- scrollUntilVisible:
+    element: { id: "transaction.edit.block.recurrence" }
+
+- scrollUntilVisible:
+    element: { id: "transaction.edit.field.title" }
+    direction: UP
+
+# Modifier et enregistrer (Fiabilisation Saisie)
 - tapOn: { id: "transaction.edit.field.title" }
-- eraseText
+# On efface deux fois pour garantir le champ vide (Input Safety)
+
+- repeat:
+    times: 2
+    commands:
+      - eraseText
+
 - inputText: "Courses Hebdo"
+- hideKeyboard
 - tapOn: { id: "common.btn.save" }
 
 # Vérifier retour et modification effective
 - extendedWaitUntil:
-    visible: { id: "screen.monthly" }
+    visible: { id: "screen.transaction.detail" }
     timeout: 5000
 - assertVisible: "Courses Hebdo"
 
@@ -80,22 +102,43 @@ name: "TC-35: Édition Exhaustive"
 - assertVisible: "Loyer"
 - assertVisible: "Compte courant"
 
-# Modifier montant à 950
+# Vérifier que le bloc récurrence est MASQUÉ (car portée SINGLE)
+- repeat:
+    times: 2
+    commands:
+      - scroll
+- assertNotVisible: { id: "transaction.edit.block.recurrence" }
+
+- scrollUntilVisible:
+    element: { id: "transaction.edit.field.amount" }
+    direction: UP
+
+# Modifier montant à 950 (Input Safety)
 - tapOn: { id: "transaction.edit.field.amount" }
-- eraseText
+- repeat:
+    times: 2
+    commands:
+      - eraseText
 - inputText: "950"
+- hideKeyboard
 - tapOn: { id: "common.btn.save" }
 
 # Vérification Isolation (Scan M-1)
 - extendedWaitUntil:
-    visible: { id: "screen.monthly" }
+    visible: { id: "screen.transaction.detail" }
     timeout: 5000
 - assertVisible: "950,00"
 
+
+
+# Vérifier le mois suivant
+- evalScript: |
+      console.log("Vérifier le mois suivant")
 - runFlow:
     file: .maestro/subflows/change_month.yaml
     env:
-      direction: "PREVIOUS"
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
 - assertVisible: "820,00"
 - assertNotVisible: "950,00"
 
@@ -123,7 +166,6 @@ name: "TC-35: Édition Exhaustive"
     element: { id: "transaction.edit.block.recurrence" }
 
 - assertVisible: "Dépense ✅"
-# L'ID de fréquence du Seeder pour Loyer est MONTHLY -> tx_repeat_monthly -> "Tous les mois"
 - assertVisible: "Tous les mois ✅"
 
 - tapOn: { id: "transaction.edit.btn.advanced" }
@@ -131,10 +173,12 @@ name: "TC-35: Édition Exhaustive"
     id: "transaction.edit.field.interval"
     text: "1"
 
-# Modifier Titre pour le futur
+# Modifier Titre pour le futur (Input Safety)
 - tapOn: { id: "transaction.edit.field.title" }
 - eraseText
+- eraseText
 - inputText: "Loyer Paris"
+- hideKeyboard
 - tapOn: { id: "common.btn.save" }
 
 # Vérification Troncature
@@ -172,10 +216,12 @@ name: "TC-35: Édition Exhaustive"
 - assertVisible: "Dépense ✅"
 - assertVisible: "Tous les mois ✅"
 
-# Modifier globalement
+# Modifier globalement (Input Safety)
 - tapOn: { id: "transaction.edit.field.title" }
 - eraseText
+- eraseText
 - inputText: "Loyer Total"
+- hideKeyboard
 - tapOn: { id: "common.btn.save" }
 
 # Vérifier propagation partout
