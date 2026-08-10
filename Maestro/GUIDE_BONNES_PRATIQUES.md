@@ -114,5 +114,13 @@ Les tests ne doivent pas dépendre de la date du jour "en dur".
 - **Règle** : Utiliser le script `Maestro/scripts/dates.js` pour calculer les mois relatifs.
 - **Règle** : Gérer les changements d'année via une logique de détection dans les subflows.
 
+## 10. Intégrité des Données (JDD)
+
+Les tests Maestro s'appuient sur un état stable garanti par le seeding de la base de données.
+
+- **Règle** : Ne jamais deviner les valeurs de test. Toujours se référer au fichier [**`DatabaseSeeder.kt`**](file:///C:/Users/machk.GALAXYBOOKPRO.000/Downloads/LOPBudge/LOPBudge/app/src/main/java/com/lop/budget/data/seed/DatabaseSeeder.kt) pour utiliser les titres, montants et catégories exacts (ex: "Courses Hebdomadaires" et non "Courses").
+- **Règle** : Utiliser `clearState: true` au lancement de chaque scénario critique pour repartir du JDD d'origine.
+- **Règle (Vérification Exhaustive)** : Lors de la validation d'un formulaire de modification, vérifier TOUS les champs pré-remplis (Titre, Montant, Compte, Catégorie, Fréquence) pour garantir l'absence de régression de data-binding.
+
 ---
 *Dernière mise à jour : 8 Août 2026 - Ingénieur QA LOPBudge*

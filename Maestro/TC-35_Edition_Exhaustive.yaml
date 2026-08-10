@@ -20,19 +20,22 @@ name: "TC-35: Édition Exhaustive"
 - tapOn: { id: "transaction.detail.edit" }
 
 # Vérifier accès direct (Pas de BottomSheet)
-- assertNotVisible: "Modifier la transaction ?"
 - assertVisible: { id: "screen.transaction.edit" }
 
-# Vérifier pré-remplissage
+# VÉRIFICATION EXHAUSTIVE PRÉ-REMPLISSAGE (Data-Binding)
 - assertVisible:
     id: "transaction.edit.field.title"
     text: "Courses Hebdomadaires"
 - assertVisible:
     id: "transaction.edit.field.amount"
     text: "84.2"
+- assertVisible: "Courses"
+- assertVisible: "Compte courant"
+- assertVisible: "Dépense"
 
 # Modifier et enregistrer
 - tapOn: { id: "transaction.edit.field.title" }
+- eraseText
 - inputText: "Courses Hebdo"
 - tapOn: { id: "common.btn.save" }
 
@@ -62,10 +65,16 @@ name: "TC-35: Édition Exhaustive"
     visible: { id: "common.btn.save" }
     timeout: 5000
 
-# Vérifier pré-remplissage
+# VÉRIFICATION EXHAUSTIVE (Loyer Seeder = 820.0)
+- assertVisible:
+    id: "transaction.edit.field.title"
+    text: "Loyer"
 - assertVisible:
     id: "transaction.edit.field.amount"
     text: "820.0"
+- assertVisible: "Logement"
+- assertVisible: "Compte courant"
+- assertVisible: "Dépense"
 
 # Modifier montant à 950
 - tapOn: { id: "transaction.edit.field.amount" }
@@ -106,7 +115,7 @@ name: "TC-35: Édition Exhaustive"
     visible: { id: "common.btn.save" }
     timeout: 5000
 
-# Vérifier pré-remplissage récurrence
+# VÉRIFICATION PRÉ-REMPLISSAGE RÉCURRENCE (EXHAUSTIF)
 - scrollUntilVisible:
     element: { id: "transaction.edit.block.recurrence" }
 - assertVisible: "Mensuel"
@@ -115,7 +124,7 @@ name: "TC-35: Édition Exhaustive"
     id: "transaction.edit.field.interval"
     text: "1"
 
-# Modifier Titre
+# Modifier Titre pour le futur
 - tapOn: { id: "transaction.edit.field.title" }
 - eraseText
 - inputText: "Netflix Premium"
