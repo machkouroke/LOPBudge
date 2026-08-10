@@ -61,12 +61,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.BuildConfig
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.TagEntity
@@ -168,15 +171,17 @@ fun TransactionEditScreen(
                         TypeSegment(
                             label = stringResource(R.string.tx_type_expense),
                             selected = form.type == TransactionType.EXPENSE,
+                            tag = TestTags.TX_EDIT_TYPE_EXPENSE,
                             color = LopTheme.extended.expense,
-                            modifier = Modifier.weight(1f).testTag(TestTags.TX_EDIT_TYPE_EXPENSE)
+                            modifier = Modifier.weight(1f)
                         ) { vm.setType(TransactionType.EXPENSE) }
 
                         TypeSegment(
                             label = stringResource(R.string.tx_type_income),
                             selected = form.type == TransactionType.INCOME,
+                            tag = TestTags.TX_EDIT_TYPE_INCOME,
                             color = LopTheme.extended.income,
-                            modifier = Modifier.weight(1f).testTag(TestTags.TX_EDIT_TYPE_INCOME)
+                            modifier = Modifier.weight(1f)
                         ) { vm.setType(TransactionType.INCOME) }
                     }
 
@@ -470,20 +475,23 @@ private fun SectionTitle(text: String) {
 private fun TypeSegment(
     label: String,
     selected: Boolean,
+    tag: String,
     color: Color,
     modifier: Modifier,
     onClick: () -> Unit,
 ) {
+    val text = if (selected && BuildConfig.DEBUG) "$label ✅" else label
     Surface(
         modifier = modifier
             .fillMaxHeight()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .testTag(tag),
         color = if (selected) color.copy(alpha = 0.15f) else Color.Transparent,
         shape = RoundedCornerShape(10.dp)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
-                text = label,
+                text = text,
                 style = MaterialTheme.typography.labelLarge,
                 color = if (selected) color else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
@@ -637,10 +645,12 @@ private fun RecurrenceBlock(
                     RecurrenceFrequency.MONTHLY -> TestTags.TX_EDIT_CHIP_MONTHLY
                     RecurrenceFrequency.YEARLY -> TestTags.TX_EDIT_CHIP_YEARLY
                 }
+                val label = stringResource(labelRes)
+                val text = if (form.frequency == freq && BuildConfig.DEBUG) "$label ✅" else label
                 FilterChip(
                     selected = form.frequency == freq,
                     onClick = { onSetFrequency(freq) },
-                    label = { Text(stringResource(labelRes)) },
+                    label = { Text(text) },
                     modifier = Modifier.testTag(testTag)
                 )
             }
