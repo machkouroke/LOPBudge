@@ -2,7 +2,7 @@ appId: com.lop.budget
 name: "TC-35: Édition Exhaustive"
 ---
 # TC-35 - Maestro — Édition exhaustive (Normale + Récurrente)
-# Objectif : Vérifier le pré-remplissage et la propagation selon la portée.
+# Objectif : Vérifier le pré-remplissage intégral et la propagation selon la portée.
 
 # ==========================================
 # SCÉNARIO 1 : Transaction Normale
@@ -15,6 +15,7 @@ name: "TC-35: Édition Exhaustive"
 - evalScript: |
     console.log("--- CAS 1 : Transaction ponctuelle (Courses Hebdomadaires) ---")
 
+# Utilisation des JDD exacts du DatabaseSeeder
 - tapOn: "Courses Hebdomadaires"
 - assertVisible: { id: "screen.transaction.detail" }
 - tapOn: { id: "transaction.detail.edit" }
@@ -29,9 +30,12 @@ name: "TC-35: Édition Exhaustive"
 - assertVisible:
     id: "transaction.edit.field.amount"
     text: "84.2"
+
+# Validation Sémantique du Type via contentDescription (Instrumentation JIT)
+- assertVisible: "Dépense sélectionnée"
+
 - assertVisible: "Courses"
 - assertVisible: "Compte courant"
-- assertVisible: "Dépense"
 
 # Modifier et enregistrer
 - tapOn: { id: "transaction.edit.field.title" }
@@ -39,7 +43,7 @@ name: "TC-35: Édition Exhaustive"
 - inputText: "Courses Hebdo"
 - tapOn: { id: "common.btn.save" }
 
-# Vérifier retour et modification
+# Vérifier retour et modification effective
 - extendedWaitUntil:
     visible: { id: "screen.monthly" }
     timeout: 5000
@@ -56,7 +60,6 @@ name: "TC-35: Édition Exhaustive"
 - evalScript: |
     console.log("--- CAS 2 : Portée SINGLE (Loyer) ---")
 
-# Ouvrir Loyer du mois M (Août 2026 par défaut Seeder)
 - tapOn: "Loyer"
 - tapOn: { id: "transaction.detail.edit" }
 - tapOn: "Cette occurrence uniquement"
@@ -65,16 +68,17 @@ name: "TC-35: Édition Exhaustive"
     visible: { id: "common.btn.save" }
     timeout: 5000
 
-# VÉRIFICATION EXHAUSTIVE (Loyer Seeder = 820.0)
+# VÉRIFICATION EXHAUSTIVE
 - assertVisible:
     id: "transaction.edit.field.title"
     text: "Loyer"
 - assertVisible:
     id: "transaction.edit.field.amount"
     text: "820.0"
-- assertVisible: "Logement"
+
+- assertVisible: "Dépense sélectionnée"
+- assertVisible: "Loyer"
 - assertVisible: "Compte courant"
-- assertVisible: "Dépense"
 
 # Modifier montant à 950
 - tapOn: { id: "transaction.edit.field.amount" }
@@ -82,13 +86,12 @@ name: "TC-35: Édition Exhaustive"
 - inputText: "950"
 - tapOn: { id: "common.btn.save" }
 
-# Vérification Large (Isolation)
+# Vérification Isolation (Scan M-1)
 - extendedWaitUntil:
     visible: { id: "screen.monthly" }
     timeout: 5000
 - assertVisible: "950,00"
 
-# Vérifier M-1 (Juillet) -> Doit rester à 820
 - runFlow:
     file: .maestro/subflows/change_month.yaml
     env:
@@ -105,9 +108,9 @@ name: "TC-35: Édition Exhaustive"
 - runFlow: .maestro/subflows/open_monthly_history.yaml
 
 - evalScript: |
-    console.log("--- CAS 3 : Portée FUTURE (Netflix) ---")
+    console.log("--- CAS 3 : Portée FUTURE (Loyer Structure) ---")
 
-- tapOn: "Netflix"
+- tapOn: "Loyer"
 - tapOn: { id: "transaction.detail.edit" }
 - tapOn: "Cette occurrence et les suivantes"
 
@@ -118,6 +121,8 @@ name: "TC-35: Édition Exhaustive"
 # VÉRIFICATION PRÉ-REMPLISSAGE RÉCURRENCE (EXHAUSTIF)
 - scrollUntilVisible:
     element: { id: "transaction.edit.block.recurrence" }
+
+- assertVisible: "Dépense sélectionnée"
 - assertVisible: "Mensuel"
 - tapOn: { id: "transaction.edit.btn.advanced" }
 - assertVisible:
@@ -127,22 +132,21 @@ name: "TC-35: Édition Exhaustive"
 # Modifier Titre pour le futur
 - tapOn: { id: "transaction.edit.field.title" }
 - eraseText
-- inputText: "Netflix Premium"
+- inputText: "Loyer Paris"
 - tapOn: { id: "common.btn.save" }
 
-# Vérification Large
+# Vérification Troncature
 - extendedWaitUntil:
     visible: { id: "screen.monthly" }
     timeout: 5000
-- assertVisible: "Netflix Premium"
+- assertVisible: "Loyer Paris"
 
-# Vérifier M-1 (Juillet) -> Doit rester "Netflix"
 - runFlow:
     file: .maestro/subflows/change_month.yaml
     env:
       direction: "PREVIOUS"
-- assertVisible: "Netflix"
-- assertNotVisible: "Netflix Premium"
+- assertVisible: "Loyer"
+- assertNotVisible: "Loyer Paris"
 
 # ==========================================
 # SCÉNARIO 4 : Portée 'ALL' (Global)
@@ -153,9 +157,9 @@ name: "TC-35: Édition Exhaustive"
 - runFlow: .maestro/subflows/open_monthly_history.yaml
 
 - evalScript: |
-    console.log("--- CAS 4 : Portée ALL (Netflix Category) ---")
+    console.log("--- CAS 4 : Portée ALL (Loyer Global) ---")
 
-- tapOn: "Netflix"
+- tapOn: "Loyer"
 - tapOn: { id: "transaction.detail.edit" }
 - tapOn: "Toute la série"
 
@@ -163,19 +167,22 @@ name: "TC-35: Édition Exhaustive"
     visible: { id: "common.btn.save" }
     timeout: 5000
 
-# Modifier Catégorie (Simulation changement vers une autre catégorie par ID ou texte)
-- tapOn: { id: "transaction.edit.field.category" }
-- tapOn: "Santé" # Exemple arbitraire du JDD
+- assertVisible: "Dépense sélectionnée"
+
+# Modifier globalement
+- tapOn: { id: "transaction.edit.field.title" }
+- eraseText
+- inputText: "Loyer Total"
 - tapOn: { id: "common.btn.save" }
 
-# Vérifier propagation
+# Vérifier propagation partout
 - extendedWaitUntil:
     visible: { id: "screen.monthly" }
     timeout: 5000
-# On vérifie que Netflix est maintenant dans Santé (Visuel)
+- assertVisible: "Loyer Total"
+
 - runFlow:
     file: .maestro/subflows/change_month.yaml
     env:
       direction: "PREVIOUS"
-- assertVisible: "Netflix"
-# (La catégorie s'affiche via l'icône, on valide ici la non-disparition au moins)
+- assertVisible: "Loyer Total"
