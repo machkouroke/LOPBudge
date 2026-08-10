@@ -1,0 +1,69 @@
+appId: com.lop.budget
+name: "TC-32: Validation Portées Édition"
+---
+# TC-32 - Gherkin UI — Choix de portée édition récurrente
+# Objectif : Vérifier que l'UI adapte l'écran d'édition selon la portée choisie.
+
+- launchApp:
+    clearState: true
+
+# Préparation : Ouvrir l'historique mensuel
+- runFlow: .maestro/subflows/open_monthly_history.yaml
+
+# --- SCÉNARIO 1 : Portée 'SINGLE' ---
+- evalScript: |
+    console.log("--- CAS 1 : 'Cette occurrence uniquement' ---")
+
+- tapOn: "Loyer"
+- assertVisible: { id: "screen.transaction.detail" }
+- tapOn: { id: "transaction.detail.edit" }
+
+# Vérifier la présence de la BottomSheet (CA-16)
+- assertVisible: { id: "recurring.edit.scope.sheet" }
+- assertVisible: "Cette occurrence uniquement"
+
+# Cliquer sur SINGLE
+- tapOn: { id: "recurring.edit.scope.single" }
+- assertVisible: { id: "screen.transaction.edit" }
+
+# Vérifier que le bloc récurrence est MASQUÉ (CA-16)
+- assertNotVisible: { id: "transaction.edit.block.recurrence" }
+
+- tapOn: { id: "common.btn.back" }
+- tapOn: { id: "common.btn.back" }
+
+# --- SCÉNARIO 2 : Portée 'FUTURE' ---
+- evalScript: |
+    console.log("--- CAS 2 : 'Cette occurrence et les suivantes' ---")
+
+- tapOn: "Loyer"
+- tapOn: { id: "transaction.detail.edit" }
+- assertVisible: { id: "recurring.edit.scope.sheet" }
+
+# Cliquer sur FUTURE
+- tapOn: { id: "recurring.edit.scope.future" }
+- assertVisible: { id: "screen.transaction.edit" }
+
+# Vérifier que le bloc récurrence est VISIBLE (CA-17)
+- assertVisible: { id: "transaction.edit.block.recurrence" }
+
+- tapOn: { id: "common.btn.back" }
+- tapOn: { id: "common.btn.back" }
+
+# --- SCÉNARIO 3 : Portée 'ALL' ---
+- evalScript: |
+    console.log("--- CAS 3 : 'Toute la série' ---")
+
+- tapOn: "Loyer"
+- tapOn: { id: "transaction.detail.edit" }
+- assertVisible: { id: "recurring.edit.scope.sheet" }
+
+# Cliquer sur ALL
+- tapOn: { id: "recurring.edit.scope.all" }
+- assertVisible: { id: "screen.transaction.edit" }
+
+# Vérifier que le bloc récurrence est VISIBLE (CA-17)
+- assertVisible: { id: "transaction.edit.block.recurrence" }
+
+- tapOn: { id: "common.btn.back" }
+- tapOn: { id: "common.btn.back" }

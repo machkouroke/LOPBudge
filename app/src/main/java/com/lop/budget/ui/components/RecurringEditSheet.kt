@@ -30,9 +30,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lop.budget.domain.model.EditScope
+import com.lop.budget.ui.common.TestTags
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +51,7 @@ fun RecurringEditSheet(
         sheetState = sheetState,
         containerColor = container,
         scrimColor = Color.Black.copy(alpha = 0.55f),
-        modifier = modifier,
+        modifier = modifier.testTag(TestTags.RECURRING_EDIT_SHEET),
     ) {
         Column(
             modifier = Modifier
@@ -100,7 +102,8 @@ fun RecurringEditSheet(
                 icon = Icons.Filled.DateRange,
                 title = "Cette occurrence uniquement",
                 subtitle = "Modifie seulement cette date.",
-                tone = EditActionTone.Primary,
+                tone = EditTone.Primary,
+                modifier = Modifier.testTag(TestTags.RECURRING_EDIT_SINGLE),
                 onClick = { onChoose(EditScope.SINGLE) },
             )
 
@@ -108,7 +111,8 @@ fun RecurringEditSheet(
                 icon = Icons.AutoMirrored.Filled.NextPlan,
                 title = "Cette occurrence et les suivantes",
                 subtitle = "Applique les changements à partir de cette date.",
-                tone = EditActionTone.Primary,
+                tone = EditTone.Primary,
+                modifier = Modifier.testTag(TestTags.RECURRING_EDIT_FUTURE),
                 onClick = { onChoose(EditScope.FUTURE) },
             )
 
@@ -116,7 +120,8 @@ fun RecurringEditSheet(
                 icon = Icons.Filled.EventRepeat,
                 title = "Toute la série",
                 subtitle = "Applique les changements à toutes les occurrences.",
-                tone = EditActionTone.Primary,
+                tone = EditTone.Primary,
+                modifier = Modifier.testTag(TestTags.RECURRING_EDIT_ALL),
                 onClick = { onChoose(EditScope.ALL) },
             )
 
@@ -127,7 +132,7 @@ fun RecurringEditSheet(
                 icon = null,
                 title = "Annuler",
                 subtitle = null,
-                tone = EditActionTone.Neutral,
+                tone = EditTone.Neutral,
                 onClick = onDismiss,
             )
 
@@ -136,32 +141,33 @@ fun RecurringEditSheet(
     }
 }
 
-enum class EditActionTone { Neutral, Primary }
+private enum class EditTone { Neutral, Primary }
 
 @Composable
 private fun ActionRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector?,
     title: String,
     subtitle: String?,
-    tone: EditActionTone,
+    tone: EditTone,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(22.dp)
     val colorScheme = MaterialTheme.colorScheme
     
     val border = when (tone) {
-        EditActionTone.Neutral -> colorScheme.onSurface.copy(alpha = 0.10f)
-        EditActionTone.Primary -> colorScheme.primary.copy(alpha = 0.20f)
+        EditTone.Neutral -> colorScheme.onSurface.copy(alpha = 0.10f)
+        EditTone.Primary -> colorScheme.primary.copy(alpha = 0.20f)
     }
 
     val top = when (tone) {
-        EditActionTone.Neutral -> colorScheme.surfaceVariant.copy(alpha = 0.55f)
-        EditActionTone.Primary -> colorScheme.primary.copy(alpha = 0.10f)
+        EditTone.Neutral -> colorScheme.surfaceVariant.copy(alpha = 0.55f)
+        EditTone.Primary -> colorScheme.primary.copy(alpha = 0.10f)
     }
 
     val bottom = when (tone) {
-        EditActionTone.Neutral -> colorScheme.surface.copy(alpha = 0.45f)
-        EditActionTone.Primary -> colorScheme.primary.copy(alpha = 0.06f)
+        EditTone.Neutral -> colorScheme.surface.copy(alpha = 0.45f)
+        EditTone.Primary -> colorScheme.primary.copy(alpha = 0.06f)
     }
 
     Surface(
@@ -169,7 +175,7 @@ private fun ActionRow(
         border = BorderStroke(1.dp, border),
         shadowElevation = 4.dp,
         tonalElevation = 0.dp,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(Brush.verticalGradient(listOf(top, bottom)))
@@ -188,7 +194,7 @@ private fun ActionRow(
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = if (tone == EditActionTone.Primary) colorScheme.primary else colorScheme.onSurface,
+                    tint = if (tone == EditTone.Primary) colorScheme.primary else colorScheme.onSurface,
                     modifier = Modifier.size(20.dp),
                 )
             } else {
@@ -200,7 +206,7 @@ private fun ActionRow(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (tone == EditActionTone.Primary) colorScheme.primary else colorScheme.onSurface,
+                    color = if (tone == EditTone.Primary) colorScheme.primary else colorScheme.onSurface,
                 )
                 if (!subtitle.isNullOrBlank()) {
                     Text(

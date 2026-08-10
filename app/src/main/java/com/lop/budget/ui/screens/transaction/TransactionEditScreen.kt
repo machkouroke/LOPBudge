@@ -359,7 +359,7 @@ fun TransactionEditScreen(
             item { SectionTitle(stringResource(R.string.tx_repeat_label)) }
 
             item {
-                FloatingCard {
+                FloatingCard(modifier = Modifier.testTag(TestTags.TX_EDIT_BLOCK_RECURRENCE)) {
                     RecurrenceBlock(
                         form = form,
                         onSetFrequency = vm::setFrequency,

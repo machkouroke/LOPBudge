@@ -58,6 +58,7 @@ object TestTags {
     const val TX_EDIT_FIELD_DATE = "transaction.edit.field.date"
     const val TX_EDIT_TYPE_INCOME = "transaction.edit.type.income"
     const val TX_EDIT_TYPE_EXPENSE = "transaction.edit.type.expense"
+    const val TX_EDIT_BLOCK_RECURRENCE = "transaction.edit.block.recurrence"
 
     // Recurring Delete Sheet
     const val RECURRING_DELETE_SHEET = "recurring.delete.scope.sheet"
@@ -65,6 +66,12 @@ object TestTags {
     const val RECURRING_DELETE_FUTURE = "recurring.delete.scope.future"
     const val RECURRING_DELETE_ALL = "recurring.delete.scope.all"
     const val RECURRING_DELETE_CANCEL = "recurring.delete.scope.cancel"
+
+    // Recurring Edit Sheet
+    const val RECURRING_EDIT_SHEET = "recurring.edit.scope.sheet"
+    const val RECURRING_EDIT_SINGLE = "recurring.edit.scope.single"
+    const val RECURRING_EDIT_FUTURE = "recurring.edit.scope.future"
+    const val RECURRING_EDIT_ALL = "recurring.edit.scope.all"
 
     // Delete Confirmation Dialog
     const val DELETE_CONFIRM_DIALOG = "transaction.delete.confirm.dialog"
