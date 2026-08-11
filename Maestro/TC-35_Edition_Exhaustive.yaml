@@ -56,7 +56,7 @@ name: "TC-35: Édition Exhaustive"
 - tapOn: { id: "transaction.edit.field.title" }
 # On efface deux fois pour garantir le champ vide (Input Safety)
 
-- longPressOn: "transaction.edit.field.title"
+- longPressOn: { id: "transaction.edit.field.title" }
 - tapOn: "Tout sélectionner"
 - eraseText: 1
 
@@ -113,11 +113,9 @@ name: "TC-35: Édition Exhaustive"
     direction: UP
 
 # Modifier montant à 950 (Input Safety)
-- tapOn: { id: "transaction.edit.field.amount" }
-- repeat:
-    times: 2
-    commands:
-      - eraseText
+- longPressOn: { id: "transaction.edit.field.amount" }
+- tapOn: "Tout sélectionner"
+- eraseText: 1
 - inputText: "950"
 - hideKeyboard
 - tapOn: { id: "common.btn.save" }
@@ -129,6 +127,16 @@ name: "TC-35: Édition Exhaustive"
 - assertVisible: "950,00"
 
 
+# Vérifier le mois précédent
+- evalScript: |
+      console.log("Vérifier le mois précédent")
+- runFlow:
+      file: .maestro/subflows/change_month.yaml
+      env:
+          month_name: ${output.PREVIOUS_MONTH_NAME}
+          year: ${output.PREVIOUS_YEAR}
+- assertVisible: "820,00"
+- assertNotVisible: "950,00"
 
 # Vérifier le mois suivant
 - evalScript: |
