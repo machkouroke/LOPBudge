@@ -1,0 +1,54 @@
+appId: com.lop.budget
+name: "TC-35-1: Édition Transaction Normale"
+---
+# SCÉNARIO 1 : Transaction Normale
+- runScript: scripts/dates.js
+- launchApp:
+    clearState: true
+
+- runFlow: .maestro/subflows/open_monthly_history.yaml
+
+- evalScript: |
+    console.log("--- CAS 1 : Transaction ponctuelle (Courses Hebdomadaires) ---")
+
+- tapOn: "Courses Hebdomadaires"
+- assertVisible: { id: "screen.transaction.detail" }
+- tapOn: { id: "transaction.detail.edit" }
+
+# Vérifier accès direct (Pas de BottomSheet)
+- assertVisible: { id: "screen.transaction.edit" }
+
+# VÉRIFICATION EXHAUSTIVE PRÉ-REMPLISSAGE (Data-Binding)
+- assertVisible:
+    id: "transaction.edit.field.title"
+    text: "Courses Hebdomadaires"
+- assertVisible:
+    id: "transaction.edit.field.amount"
+    text: "84.2"
+
+- assertVisible: "Dépense ✅"
+- assertVisible: "Courses"
+- assertVisible: "Compte courant"
+
+# Vérifier que le bloc récurrence est MASQUÉ (car ponctuel)
+- scrollUntilVisible:
+    element: { id: "transaction.edit.block.recurrence" }
+
+- scrollUntilVisible:
+    element: { id: "transaction.edit.field.title" }
+    direction: UP
+
+# Modifier et enregistrer
+- tapOn: { id: "transaction.edit.field.title" }
+- longPressOn: { id: "transaction.edit.field.title" }
+- tapOn: "Tout sélectionner"
+- eraseText: 1
+- inputText: "Courses Hebdo"
+- hideKeyboard
+- tapOn: { id: "common.btn.save" }
+
+# Vérifier retour et modification effective
+- extendedWaitUntil:
+    visible: { id: "screen.transaction.detail" }
+    timeout: 5000
+- assertVisible: "Courses Hebdo"
