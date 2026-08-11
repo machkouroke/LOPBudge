@@ -512,6 +512,7 @@ private fun RecurrenceBlock(
 ) {
     var showAdvanced by remember { mutableStateOf(false) }
     var showFrequencySheet by remember { mutableStateOf(false) }
+    var showEndDatePicker by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(
@@ -631,6 +632,37 @@ private fun RecurrenceBlock(
                         }
                     )
                     Text(stringResource(R.string.tx_repeat_ends_never))
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = form.endDate != null,
+                        onClick = { showEndDatePicker = true }
+                    )
+                    Text(stringResource(R.string.tx_repeat_ends_on))
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(
+                        onClick = { showEndDatePicker = true },
+                        modifier = Modifier.testTag("tx_edit_recurrence_end_date_btn")
+                    ) {
+                        Text(com.lop.budget.util.Format.fullDate(form.endDate ?: System.currentTimeMillis()))
+                    }
+                }
+
+                if (showEndDatePicker) {
+                    val endPickerState = rememberDatePickerState(initialSelectedDateMillis = form.endDate ?: System.currentTimeMillis())
+                    DatePickerDialog(
+                        onDismissRequest = { showEndDatePicker = false },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                endPickerState.selectedDateMillis?.let { onSetEndDate(it) }
+                                showEndDatePicker = false
+                            }) { Text(stringResource(R.string.ok)) }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showEndDatePicker = false }) { Text(stringResource(R.string.cancel)) }
+                        }
+                    ) { DatePicker(state = endPickerState) }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
