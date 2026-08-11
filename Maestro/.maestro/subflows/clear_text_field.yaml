@@ -13,7 +13,19 @@ appId: com.lop.budget
     when:
       notVisible: "Tout sélectionner"
     commands:
-      - tapOn: "Options supplémentaires"
+      # On tente l'ID standard Android, ou les variantes de texte fr/en
+      - tapOn:
+          id: "android:id/overflow"
+          optional: true
+      - tapOn:
+          text: "Plus d'options"
+          optional: true
+      - tapOn:
+          text: "Options supplémentaires"
+          optional: true
+      - tapOn:
+          text: "More options"
+          optional: true
 
 - tapOn: "Tout sélectionner"
 - eraseText: 1
