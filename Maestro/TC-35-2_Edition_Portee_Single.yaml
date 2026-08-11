@@ -43,9 +43,10 @@ name: "TC-35-2: Édition Portée SINGLE"
     direction: UP
 
 # Modifier montant à 950 (Input Safety)
-- longPressOn: { id: "transaction.edit.field.amount" }
-- tapOn: "Tout sélectionner"
-- eraseText: 1
+- runFlow:
+    file: .maestro/subflows/clear_text_field.yaml
+    env:
+      target: { id: "transaction.edit.field.amount" }
 - inputText: "950"
 - hideKeyboard
 - tapOn: { id: "common.btn.save" }

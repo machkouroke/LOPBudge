@@ -52,10 +52,10 @@ name: "TC-35-3: Édition Portée FUTURE"
     element: { id: "transaction.edit.field.title" }
     direction: UP
 
-- tapOn: { id: "transaction.edit.field.title" }
-- longPressOn: { id: "transaction.edit.field.title" }
-- tapOn: "Tout sélectionner"
-- eraseText: 1
+- runFlow:
+    file: .maestro/subflows/clear_text_field.yaml
+    env:
+      target: { id: "transaction.edit.field.title" }
 - inputText: "Loyer Paris"
 - hideKeyboard
 - tapOn: { id: "common.btn.save" }
