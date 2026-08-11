@@ -712,8 +712,10 @@ private fun FrequencyBottomSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
+                        val label = stringResource(labelRes)
+                        val text = if (isSelected && BuildConfig.DEBUG) "$label ✅" else label
                         Text(
-                            stringResource(labelRes),
+                            text,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
