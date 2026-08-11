@@ -33,7 +33,7 @@ name: "TC-35-2: Édition Portée SINGLE"
 
 # Vérifier que le bloc récurrence est MASQUÉ (car portée SINGLE)
 - repeat:
-    times: 2
+    times: 3
     commands:
       - scroll
 - assertNotVisible: { id: "transaction.edit.block.recurrence" }
