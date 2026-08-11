@@ -1,0 +1,93 @@
+appId: com.lop.budget
+name: "TC-35-4: Édition Portée ALL"
+---
+# SCÉNARIO 4 : Portée 'ALL' (Global)
+- runScript: scripts/dates.js
+- launchApp:
+      clearState: true
+
+- runFlow: .maestro/subflows/open_monthly_history.yaml
+
+- evalScript: |
+      console.log("--- CAS 3 : Portée 'ALL' (Global) ---")
+
+- tapOn: "Loyer"
+- tapOn: { id: "transaction.detail.edit" }
+- tapOn: "Toute la série"
+
+- extendedWaitUntil:
+      visible: { id: "common.btn.save" }
+      timeout: 5000
+
+# VÉRIFICATION PRÉ-REMPLISSAGE RÉCURRENCE (EXHAUSTIF)
+- assertVisible:
+      id: "transaction.edit.field.title"
+      text: "Loyer"
+- assertVisible:
+      id: "transaction.edit.field.amount"
+      text: "820.0"
+- assertVisible: "Dépense ✅"
+- assertVisible: "Loyer"
+- assertVisible: "Compte courant"
+- scrollUntilVisible:
+      element: { id: "transaction.edit.block.recurrence" }
+
+
+- assertVisible: "Tous les mois"
+
+- tapOn: { id: "transaction.edit.btn.advanced" }
+- scrollUntilVisible:
+      element: "occurrences"
+
+
+
+- assertVisible:
+      id: "transaction.edit.field.interval"
+      text: "1"
+
+
+
+# Modifier Titre pour le futur (Input Safety)
+- scrollUntilVisible:
+      element: { id: "transaction.edit.field.title" }
+      direction: UP
+
+- runFlow:
+      file: .maestro/subflows/clear_text_field.yaml
+      env:
+          target_id: "transaction.edit.field.title"
+- inputText: "Loyer Total"
+- hideKeyboard
+- tapOn: { id: "common.btn.save" }
+
+
+# Vérification Ecran détail
+- extendedWaitUntil:
+      visible: { id: "screen.transaction.detail" }
+      timeout: 5000
+- assertVisible: "Loyer Total"
+
+
+
+# Vérification mois précédent
+- evalScript: |
+      console.log("Vérifier le mois précédent")
+- runFlow:
+      file: .maestro/subflows/change_month.yaml
+      env:
+          month_name: ${output.PREV_MONTH_NAME}
+          year: ${output.PREV_YEAR}
+- assertVisible: "Loyer Total"
+- assertNotVisible: "Loyer"
+
+# Vérification mois suivant
+- evalScript: |
+      console.log("Vérifier le mois suivant")
+- runFlow:
+      file: .maestro/subflows/change_month.yaml
+      env:
+          month_name: ${output.NEXT_MONTH_NAME}
+          year: ${output.NEXT_YEAR}
+- assertVisible: "Loyer Total"
+- assertNotVisible: "Loyer"
+
