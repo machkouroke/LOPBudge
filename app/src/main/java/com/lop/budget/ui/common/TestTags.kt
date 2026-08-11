@@ -47,9 +47,11 @@ object TestTags {
     const val TRANSACTION_LIST = "transaction.list"
     const val TRANSACTION_ITEM = "transaction.item"
     const val TRANSACTION_ITEM_TITLE = "transaction.item.title"
+    const val TRANSACTION_ITEM_AMOUNT = "transaction.item.amount"
     const val TRANSACTION_ITEM_DELETE = "transaction.item.delete"
 
     // Transaction Detail
+    const val TRANSACTION_DETAIL_AMOUNT = "transaction.detail.field.amount"
     const val TRANSACTION_DETAIL_EDIT = "transaction.detail.edit"
     const val TRANSACTION_DETAIL_DELETE = "transaction.detail.delete"
     const val TRANSACTION_DETAIL_TOGGLE_PAID = "transaction.detail.toggle.paid"

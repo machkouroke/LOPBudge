@@ -198,6 +198,7 @@ fun TransactionRow(
                     style = MaterialTheme.typography.titleMedium,
                     color = amountColor,
                     fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.testTag(TestTags.TRANSACTION_ITEM_AMOUNT)
                 )
             }
         }

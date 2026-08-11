@@ -124,7 +124,8 @@ name: "TC-35: Édition Exhaustive"
 - extendedWaitUntil:
     visible: { id: "screen.transaction.detail" }
     timeout: 5000
-- assertVisible: "950,00"
+- assertVisible: { id: "transaction.detail.field.amount" }
+- assertVisible: "950,00.*"
 
 
 # Vérifier le mois précédent
@@ -135,8 +136,10 @@ name: "TC-35: Édition Exhaustive"
       env:
           month_name: ${output.PREVIOUS_MONTH_NAME}
           year: ${output.PREVIOUS_YEAR}
-- assertVisible: "820,00"
-- assertNotVisible: "950,00"
+- assertVisible:
+    id: "transaction.item.amount"
+    text: "/820,00.*/"
+- assertNotVisible: "/950,00.*/"
 
 # Vérifier le mois suivant
 - evalScript: |
@@ -146,8 +149,10 @@ name: "TC-35: Édition Exhaustive"
     env:
       month_name: ${output.NEXT_MONTH_NAME}
       year: ${output.NEXT_YEAR}
-- assertVisible: "820,00"
-- assertNotVisible: "950,00"
+- assertVisible:
+    id: "transaction.item.amount"
+    text: "/820,00.*/"
+- assertNotVisible: "/950,00.*/"
 
 # ==========================================
 # SCÉNARIO 3 : Portée 'FUTURE' (Troncature)

@@ -63,8 +63,6 @@ import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.PillTag
-import com.lop.budget.ui.components.RecurringDeleteChoice
-import com.lop.budget.ui.components.RecurringDeleteSheet
 import com.lop.budget.ui.components.SwipeDownDismissWrapper
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.LopTheme
@@ -201,6 +199,7 @@ fun TransactionDetailScreen(
                             style = MaterialTheme.typography.displayMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold,
+                            modifier = Modifier.testTag(TestTags.TRANSACTION_DETAIL_AMOUNT)
                         )
                     }
                 }
