@@ -26,10 +26,12 @@ import com.lop.budget.domain.model.TransactionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import java.time.Instant
@@ -329,14 +331,47 @@ class BudgetRepository @Inject constructor(
         }.flowOn(Dispatchers.Default)
     }
 
-    fun observeTransaction(id: Long): Flow<TransactionWithRelations?> {
-        if (id >= 0L) return transactionDao.observeById(id)
-        
-        // --- CAS : TRANSACTION VIRTUELLE ---
-        // Pour les virtuels, on utilise getTransactionById qui reconstitue l'objet.
-        // Comme un virtuel ne change pas en base (par définition), un flow simple suffit.
-        return flow {
-            emit(getTransactionById(id))
+    fun observeTransaction(id: Long): Flow<TransactionWithRelations?> = flow {
+        // 1. Identifier le point de départ (réel ou virtuel)
+        val initial = getTransactionById(id)
+        if (initial == null) {
+            emit(null)
+            return@flow
+        }
+
+        val sId = initial.transaction.seriesId
+        val sDate = initial.transaction.seriesDate ?: initial.transaction.date
+
+        if (sId == null) {
+            // Cas standard : transaction isolée, on observe son ID
+            emitAll(transactionDao.observeById(id))
+        } else {
+            // Cas robuste : transaction liée à une série
+            // On observe le contexte (série + transactions réelles de la série)
+            // pour renvoyer la version la plus à jour pour cette 'seriesDate'
+            emitAll(combine(
+                transactionDao.observeSeries(sId),
+                recurringSeriesDao.observeActiveSeries(),
+                accountDao.observeAll(),
+                categoryDao.observeAll()
+            ) { realTxs, allSeries, accounts, categories ->
+                // Priorité 1 : Version matérialisée en base (Exception ou Occurrence réelle)
+                val realMatch = realTxs.find { it.transaction.seriesDate == sDate }
+                if (realMatch != null) return@combine realMatch
+
+                // Priorité 2 : Version virtuelle (générée par le moteur)
+                val series = allSeries.find { it.id.toString() == sId }
+                if (series != null) {
+                    val virtuals = com.lop.budget.domain.RecurrenceEngine.generateOccurrences(series, sDate, sDate)
+                    val vMatch = virtuals.find { it.seriesDate == sDate }
+                    if (vMatch != null) {
+                        val account = accounts.find { it.id == series.accountId }
+                        val category = categories.find { it.id == series.categoryId }
+                        return@combine TransactionWithRelations(vMatch, category, account, emptyList())
+                    }
+                }
+                null
+            })
         }
     }
 
