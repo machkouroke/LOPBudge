@@ -46,7 +46,7 @@ name: "TC-35-2: Édition Portée SINGLE"
 - runFlow:
     file: .maestro/subflows/clear_text_field.yaml
     env:
-      target: { id: "transaction.edit.field.amount" }
+      target_id: "transaction.edit.field.amount"
 - inputText: "950"
 - hideKeyboard
 - tapOn: { id: "common.btn.save" }

@@ -43,7 +43,7 @@ name: "TC-35-1: Édition Transaction Normale"
 - runFlow:
     file: .maestro/subflows/clear_text_field.yaml
     env:
-      target: { id: "transaction.edit.field.title" }
+      target_id: "transaction.edit.field.title"
 - inputText: "Courses Hebdo"
 - hideKeyboard
 - tapOn: { id: "common.btn.save" }

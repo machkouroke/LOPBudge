@@ -1,9 +1,12 @@
+appId: com.lop.budget
+---
 # subflow: clear_text_field.yaml
 # Description: Sélectionne tout le texte d'un champ et le supprime intelligemment
 # Paramètres: 
-#   - target: le sélecteur (id ou texte) de l'élément cible
----
-- longPressOn: ${target}
+#   - target_id: l'ID de l'élément cible
+
+- longPressOn:
+    id: ${target_id}
 
 # Si "Tout sélectionner" n'est pas visible directement, on passe par les options supplémentaires
 - runFlow:

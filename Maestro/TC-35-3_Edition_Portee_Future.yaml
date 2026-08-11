@@ -55,7 +55,7 @@ name: "TC-35-3: Édition Portée FUTURE"
 - runFlow:
     file: .maestro/subflows/clear_text_field.yaml
     env:
-      target: { id: "transaction.edit.field.title" }
+      target_id: "transaction.edit.field.title"
 - inputText: "Loyer Paris"
 - hideKeyboard
 - tapOn: { id: "common.btn.save" }
