@@ -340,7 +340,16 @@ fun LopNavHost(startRoute: String? = null) {
 
                     composableAnimated(Routes.ADD, NavAnimationType.MAIN) {
                         TransactionEditScreen(
-                            onBack = { navController.popBackStack() },
+                            onDone = { newId ->
+                                if (newId > 0) {
+                                    navController.navigate(Routes.detail(newId)) {
+                                        popUpTo(Routes.HOME)
+                                        launchSingleTop = true
+                                    }
+                                } else {
+                                    navController.popBackStack()
+                                }
+                            },
                             onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
                         )
                     }
@@ -360,9 +369,20 @@ fun LopNavHost(startRoute: String? = null) {
                                 defaultValue = -1L
                             }
                         )
-                    ) {
+                    ) { entry ->
+                        val editingId = entry.arguments?.getLong("id") ?: 0L
                         TransactionEditScreen(
-                            onBack = { navController.popBackStack() },
+                            onDone = { newId ->
+                                if (newId != editingId && newId > 0) {
+                                    // Troncature FUTURE ou ALL (si rematérialisé) : on remplace le détail
+                                    navController.navigate(Routes.detail(newId)) {
+                                        popUpTo(Routes.detail(editingId)) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                } else {
+                                    navController.popBackStack()
+                                }
+                            },
                             onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
                         )
                     }

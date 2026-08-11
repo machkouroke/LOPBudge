@@ -46,11 +46,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
@@ -83,6 +85,7 @@ fun TransactionDetailScreen(
     val pendingDeletes by actionVm.pendingDeletes.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
     val haptic = LocalHapticFeedback.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
     val undoMsg = stringResource(R.string.undo)
@@ -90,7 +93,11 @@ fun TransactionDetailScreen(
     LaunchedEffect(state.transaction, state.isLoaded, pendingDeletes) {
         val currentId = state.transaction?.transaction?.id
         if ((state.isLoaded && state.transaction == null) || (currentId != null && currentId in pendingDeletes)) {
-            onBack()
+            // On ne revient en arrière que si l'écran est au premier plan
+            // pour éviter de fermer l'écran d'édition qui serait par-dessus
+            if (lifecycleOwner.lifecycle.currentState == Lifecycle.State.RESUMED) {
+                onBack()
+            }
         }
     }
     var showCategorySheet by remember { mutableStateOf(false) }

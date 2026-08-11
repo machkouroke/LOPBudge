@@ -73,7 +73,7 @@ class TransactionEditViewModel @Inject constructor(
 
     private var originalTransaction: TransactionWithRelations? = null
     private var originalAccount: AccountEntity? = null
-    private val editingTransactionId: Long? = savedStateHandle["id"]
+    val editingTransactionId: Long? = savedStateHandle["id"]
     val editScope: EditScope = savedStateHandle.get<String>("scope")?.let { EditScope.valueOf(it) } ?: EditScope.SINGLE
     private val seriesDate: Long? = savedStateHandle["seriesDate"]
     var isLoaded = false
@@ -215,7 +215,7 @@ class TransactionEditViewModel @Inject constructor(
         }
     }
 
-    fun save(onDone: () -> Unit) {
+    fun save(onDone: (Long) -> Unit) {
         val f = _form.value
         if (f.amount <= 0 || f.categoryId == null || f.accountId == null) return
 
@@ -230,7 +230,7 @@ class TransactionEditViewModel @Inject constructor(
         }
     }
 
-    fun confirmSave(accountNow: Boolean, onDone: () -> Unit) {
+    fun confirmSave(accountNow: Boolean, onDone: (Long) -> Unit) {
         _showBalanceImpactAlert.value = false
         viewModelScope.launch {
             if (accountNow) {
@@ -249,7 +249,7 @@ class TransactionEditViewModel @Inject constructor(
         _showBalanceImpactAlert.value = false
     }
 
-    private suspend fun performSave(onDone: () -> Unit) {
+    private suspend fun performSave(onDone: (Long) -> Unit) {
         val f = _form.value
         val accId = f.accountId ?: return
         val catId = f.categoryId ?: return
@@ -259,7 +259,7 @@ class TransactionEditViewModel @Inject constructor(
 
         // Toute la logique de sauvegarde (SINGLE, FUTURE, ALL) est désormais 
         // centralisée dans BudgetRepository.saveWithTransition.
-        repo.saveWithTransition(
+        val newId = repo.saveWithTransition(
             editingId = editingTransactionId,
             title = title,
             amount = f.amount,
@@ -280,6 +280,6 @@ class TransactionEditViewModel @Inject constructor(
             scope = editScope
         )
 
-        onDone()
+        onDone(newId)
     }
 }

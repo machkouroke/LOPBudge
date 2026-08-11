@@ -276,7 +276,11 @@ class RecurringEditionRepositoryTest {
         // --- ACTION ---
         // Étape 1 : Modifier le titre à 'Crossfit' dès Février
         println("Étape 1 : Action - Modification à 'Crossfit' dès Février (FUTURE)")
-        repository.saveWithTransition(
+        val newSeriesId = 202L
+        coEvery { recurringSeriesDao.upsert(match { it.id == 0L && it.title == "Crossfit" }) } returns newSeriesId
+        coEvery { repository.materializeOccurrence(newSeriesId, feb1) } returns 999L
+
+        val returnedId = repository.saveWithTransition(
             editingId = virtualId,
             title = "Crossfit",
             amount = 50.0,
@@ -297,6 +301,11 @@ class RecurringEditionRepositoryTest {
         )
 
         // --- VALIDATION ---
+        // Étape 1.1 : Vérifier le retour d'identité (NOUVEAU)
+        println("Étape 1.1 : Vérification de l'ID retourné")
+        assertEquals("L'ID retourné doit être celui de la nouvelle occurrence matérialisée", 999L, returnedId)
+        println("Log : ID retourné validé (999)")
+
         // Étape 2 : Vérifier la troncature de l'ancienne série (CA-06)
         // BUT : Prouver que le passé (Janvier) est préservé
         println("Étape 2 : Vérification de la troncature de l'ancienne série")

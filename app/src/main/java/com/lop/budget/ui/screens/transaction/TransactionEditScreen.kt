@@ -91,7 +91,7 @@ import com.lop.budget.util.IconMapper
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TransactionEditScreen(
-    onBack: () -> Unit,
+    onDone: (Long) -> Unit,
     onNavigateToCreateCategory: () -> Unit,
     vm: TransactionEditViewModel = hiltViewModel(),
 ) {
@@ -111,7 +111,7 @@ fun TransactionEditScreen(
             text = { Text(stringResource(R.string.impact_balance_msg)) },
             confirmButton = {
                 TextButton(
-                    onClick = { vm.confirmSave(accountNow = true, onDone = onBack) },
+                    onClick = { vm.confirmSave(accountNow = true, onDone = onDone) },
                     modifier = Modifier.testTag("impact_alert_confirm")
                 ) {
                     Text(stringResource(R.string.impact_balance_account_now))
@@ -119,7 +119,7 @@ fun TransactionEditScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { vm.confirmSave(accountNow = false, onDone = onBack) },
+                    onClick = { vm.confirmSave(accountNow = false, onDone = onDone) },
                     modifier = Modifier.testTag("impact_alert_dismiss")
                 ) {
                     Text(stringResource(R.string.impact_balance_do_not_account))
@@ -138,13 +138,13 @@ fun TransactionEditScreen(
 
     LopScreenScaffold(
         title = if (vm.isEditing) stringResource(R.string.tx_edit_title) else stringResource(R.string.tx_new_title),
-        onBack = onBack,
+        onBack = { onDone(vm.editingTransactionId ?: 0L) },
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
         modifier = Modifier.testTag(TestTags.SCREEN_EDIT),
         bottomBar = {
             Box(Modifier.fillMaxWidth().padding(20.dp)) {
                 Button(
-                    onClick = { vm.save(onBack) },
+                    onClick = { vm.save(onDone) },
                     modifier = Modifier.fillMaxWidth().height(56.dp).testTag(TestTags.BTN_SAVE),
                     shape = MaterialTheme.shapes.medium,
                     enabled = form.amount > 0.0 && form.categoryId != null && form.accountId != null

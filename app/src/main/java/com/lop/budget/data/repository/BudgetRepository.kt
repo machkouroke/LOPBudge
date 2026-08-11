@@ -437,7 +437,7 @@ class BudgetRepository @Inject constructor(
         tagIds: List<Long>,
         scope: EditScope = EditScope.SINGLE, // Portée de la modification
         status: TransactionStatus? = null // Nouveau statut optionnel (ex: pour togglePaid)
-    ) {
+    ): Long {
         // 1. Déterminer l'origine (Série parente) AVANT toute transformation
         // On récupère la transaction (physique ou virtuelle) pour extraire son seriesId
         val initialTwr = editingId?.let { getTransactionById(it) }
@@ -488,7 +488,7 @@ class BudgetRepository @Inject constructor(
                             linkedGoalId = linkedGoalId,
                             linkedDebtId = linkedDebtId
                         )
-                        saveTransaction(singleTx, tagIds)
+                        return saveTransaction(singleTx, tagIds)
                     } else {
                         // Simple mise à jour ou création de transaction ponctuelle
                         val tx = TransactionEntity(
@@ -506,7 +506,7 @@ class BudgetRepository @Inject constructor(
                             linkedGoalId = linkedGoalId,
                             linkedDebtId = linkedDebtId
                         )
-                        saveTransaction(tx, tagIds)
+                        return saveTransaction(tx, tagIds)
                     }
                 } else {
                     // --- CAS : VERS SÉRIE (Mise à jour d'une occurrence ou conversion ponctuel -> série) ---
@@ -530,7 +530,7 @@ class BudgetRepository @Inject constructor(
                             linkedGoalId = linkedGoalId,
                             linkedDebtId = linkedDebtId
                         )
-                        saveTransaction(tx, tagIds)
+                        return saveTransaction(tx, tagIds)
                     } else {
                         // Conversion ponctuel -> série
                         finalEditingId?.let { hardDeleteTransaction(it) }
@@ -553,7 +553,8 @@ class BudgetRepository @Inject constructor(
                             linkedGoalId = linkedGoalId,
                             linkedDebtId = linkedDebtId
                         )
-                        saveRecurringSeries(series)
+                        val newSeriesId = saveRecurringSeries(series)
+                        return materializeOccurrence(newSeriesId, date)
                     }
                 }
             }
@@ -578,8 +579,10 @@ class BudgetRepository @Inject constructor(
                         linkedGoalId = linkedGoalId,
                         linkedDebtId = linkedDebtId
                     )
-                    updateSeriesFrom(currentSeriesId, date, newSeries)
+                    val newSeriesId = updateSeriesFrom(currentSeriesId, date, newSeries)
+                    return materializeOccurrence(newSeriesId, date)
                 }
+                return finalEditingId ?: 0L
             }
             
             EditScope.ALL -> {
@@ -607,7 +610,7 @@ class BudgetRepository @Inject constructor(
                     
                     // On met aussi à jour la transaction physique qu'on avait sous la main si c'était une exception
                     if (currentTwr != null) {
-                        saveTransaction(currentTwr.transaction.copy(
+                        return saveTransaction(currentTwr.transaction.copy(
                             title = title,
                             amount = amount,
                             type = type,
@@ -619,20 +622,22 @@ class BudgetRepository @Inject constructor(
                         ), tagIds)
                     }
                 }
+                return finalEditingId ?: 0L
             }
         }
+        return 0L
     }
 
     suspend fun updateEntireSeries(seriesId: Long, updatedSeries: RecurringSeriesEntity) {
         recurringSeriesDao.update(updatedSeries.copy(id = seriesId))
     }
 
-    suspend fun updateSeriesFrom(seriesId: Long, fromDate: Long, updatedSeries: RecurringSeriesEntity) {
+    suspend fun updateSeriesFrom(seriesId: Long, fromDate: Long, updatedSeries: RecurringSeriesEntity): Long {
         // 1. Tronquer l'ancienne série (arrête à la veille de fromDate)
         cancelSeries(seriesId.toString(), SeriesDeletionMode.FUTURE, fromDate)
         
         // 2. Sauvegarder la nouvelle série (ID = 0 pour auto-générer)
-        recurringSeriesDao.upsert(updatedSeries.copy(id = 0, startDate = fromDate))
+        return recurringSeriesDao.upsert(updatedSeries.copy(id = 0, startDate = fromDate))
     }
 
     suspend fun saveRecurringSeries(series: RecurringSeriesEntity): Long {
