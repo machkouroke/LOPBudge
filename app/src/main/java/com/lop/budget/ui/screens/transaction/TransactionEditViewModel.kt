@@ -42,6 +42,7 @@ data class TransactionForm(
     val tagIds: Set<Long> = emptySet(),
     val note: String = "",
     val status: TransactionStatus = TransactionStatus.PLANNED,
+    val seriesId: String? = null,
     
     val linkedGoalId: Long? = null,
     val linkedDebtId: Long? = null,
@@ -113,6 +114,7 @@ class TransactionEditViewModel @Inject constructor(
             tagIds = twr.tags.map { it.id }.toSet(),
             note = tx.note ?: "",
             status = tx.status,
+            seriesId = tx.seriesId,
             linkedGoalId = tx.linkedGoalId,
             linkedDebtId = tx.linkedDebtId,
             frequency = series?.frequency ?: RecurrenceFrequency.NONE,

@@ -366,7 +366,9 @@ fun TransactionEditScreen(
             }
         }
 
-        if (vm.editScope != com.lop.budget.domain.model.EditScope.SINGLE) {
+        val isIsolatedRecurringEdition = form.seriesId != null && vm.editScope == com.lop.budget.domain.model.EditScope.SINGLE
+
+        if (!isIsolatedRecurringEdition) {
             item { SectionTitle(stringResource(R.string.tx_repeat_label)) }
 
             item {

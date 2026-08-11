@@ -56,10 +56,9 @@ name: "TC-35: Édition Exhaustive"
 - tapOn: { id: "transaction.edit.field.title" }
 # On efface deux fois pour garantir le champ vide (Input Safety)
 
-- repeat:
-    times: 2
-    commands:
-      - eraseText
+- longPressOn: "transaction.edit.field.title"
+- tapOn: "Tout sélectionner"
+- eraseText: 1
 
 - inputText: "Courses Hebdo"
 - hideKeyboard
