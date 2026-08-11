@@ -69,6 +69,7 @@ object TestTags {
     const val TX_EDIT_TYPE_INCOME = "transaction.edit.type.income"
     const val TX_EDIT_TYPE_EXPENSE = "transaction.edit.type.expense"
     const val TX_EDIT_BLOCK_RECURRENCE = "transaction.edit.block.recurrence"
+    const val TX_EDIT_FIELD_FREQUENCY = "transaction.edit.field.frequency"
     const val TX_EDIT_BTN_ADVANCED = "transaction.edit.btn.advanced"
     const val TX_EDIT_CHIP_DAILY = "transaction.edit.chip.daily"
     const val TX_EDIT_CHIP_WEEKLY = "transaction.edit.chip.weekly"

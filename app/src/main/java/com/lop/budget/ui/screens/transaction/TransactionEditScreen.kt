@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.EventRepeat
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
@@ -61,8 +62,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -503,100 +502,6 @@ private fun TypeSegment(
 }
 
 @Composable
-private fun FilledField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    keyboardType: KeyboardType,
-    textStyle: androidx.compose.ui.text.TextStyle,
-    modifier: Modifier = Modifier,
-    leading: @Composable (() -> Unit)? = null,
-    trailing: @Composable (() -> Unit)? = null,
-    minLines: Int = 1,
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 6.dp)
-        )
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = modifier.fillMaxWidth(),
-            textStyle = textStyle,
-            leadingIcon = leading,
-            trailingIcon = trailing,
-            minLines = minLines,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-            )
-        )
-    }
-}
-
-@Composable
-fun SelectorRow(
-    label: String,
-    value: String,
-    icon: Any? = null,
-    iconTint: Color? = null,
-    trailingChevron: Boolean = true,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (icon != null) {
-                CircleIcon(
-                    icon = icon,
-                    tint = iconTint ?: MaterialTheme.colorScheme.primary,
-                    background = (iconTint ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.12f),
-                    size = 36.dp
-                )
-                Spacer(Modifier.width(12.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            if (trailingChevron) {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun RecurrenceBlock(
     form: TransactionForm,
     onSetFrequency: (RecurrenceFrequency) -> Unit,
@@ -606,6 +511,7 @@ private fun RecurrenceBlock(
     onSetMaxOccurrences: (Int?) -> Unit,
 ) {
     var showAdvanced by remember { mutableStateOf(false) }
+    var showFrequencySheet by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(
@@ -629,33 +535,32 @@ private fun RecurrenceBlock(
             }
         }
 
-        // Quick frequencies
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val frequencies = listOf(
-                RecurrenceFrequency.NONE to R.string.tx_repeat_none to "none",
-                RecurrenceFrequency.DAILY to R.string.tx_repeat_daily to "daily",
-                RecurrenceFrequency.WEEKLY to R.string.tx_repeat_weekly to "weekly",
-                RecurrenceFrequency.MONTHLY to R.string.tx_repeat_monthly to "monthly",
-                RecurrenceFrequency.YEARLY to R.string.tx_repeat_yearly to "yearly"
+        // Frequency Selector
+        val frequencyLabel = when (form.frequency) {
+            RecurrenceFrequency.NONE -> stringResource(R.string.tx_repeat_none)
+            RecurrenceFrequency.DAILY -> stringResource(R.string.tx_repeat_daily)
+            RecurrenceFrequency.WEEKLY -> stringResource(R.string.tx_repeat_weekly)
+            RecurrenceFrequency.MONTHLY -> stringResource(R.string.tx_repeat_monthly)
+            RecurrenceFrequency.YEARLY -> stringResource(R.string.tx_repeat_yearly)
+        }
+
+        SelectorRow(
+            label = stringResource(R.string.tx_repeat_label),
+            value = frequencyLabel,
+            icon = Icons.Default.EventRepeat,
+            onClick = { showFrequencySheet = true },
+            modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_FREQUENCY)
+        )
+
+        if (showFrequencySheet) {
+            FrequencyBottomSheet(
+                selectedFrequency = form.frequency,
+                onSelect = { 
+                    onSetFrequency(it)
+                    showFrequencySheet = false
+                },
+                onDismiss = { showFrequencySheet = false }
             )
-            items(frequencies) { (data, tag) ->
-                val (freq, labelRes) = data
-                val testTag = when(freq) {
-                    RecurrenceFrequency.NONE -> TestTags.TX_EDIT_CHIP_NONE
-                    RecurrenceFrequency.DAILY -> TestTags.TX_EDIT_CHIP_DAILY
-                    RecurrenceFrequency.WEEKLY -> TestTags.TX_EDIT_CHIP_WEEKLY
-                    RecurrenceFrequency.MONTHLY -> TestTags.TX_EDIT_CHIP_MONTHLY
-                    RecurrenceFrequency.YEARLY -> TestTags.TX_EDIT_CHIP_YEARLY
-                }
-                val label = stringResource(labelRes)
-                val text = if (form.frequency == freq && BuildConfig.DEBUG) "$label ✅" else label
-                FilterChip(
-                    selected = form.frequency == freq,
-                    onClick = { onSetFrequency(freq) },
-                    label = { Text(text) },
-                    modifier = Modifier.testTag(testTag)
-                )
-            }
         }
 
         AnimatedVisibility(visible = showAdvanced && form.frequency != RecurrenceFrequency.NONE) {
@@ -747,6 +652,175 @@ private fun RecurrenceBlock(
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.tx_repeat_occurrences_label))
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FrequencyBottomSheet(
+    selectedFrequency: RecurrenceFrequency,
+    onSelect: (RecurrenceFrequency) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        scrimColor = Color.Black.copy(alpha = 0.55f),
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                stringResource(R.string.tx_repeat_label),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            val frequencies = listOf(
+                RecurrenceFrequency.NONE to R.string.tx_repeat_none,
+                RecurrenceFrequency.DAILY to R.string.tx_repeat_daily,
+                RecurrenceFrequency.WEEKLY to R.string.tx_repeat_weekly,
+                RecurrenceFrequency.MONTHLY to R.string.tx_repeat_monthly,
+                RecurrenceFrequency.YEARLY to R.string.tx_repeat_yearly
+            )
+
+            frequencies.forEach { (freq, labelRes) ->
+                val isSelected = freq == selectedFrequency
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable { onSelect(freq) },
+                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            stringResource(labelRes),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (isSelected) {
+                            Icon(
+                                Icons.Default.Check,
+                                null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilledField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    keyboardType: KeyboardType,
+    textStyle: androidx.compose.ui.text.TextStyle,
+    modifier: Modifier = Modifier,
+    leading: @Composable (() -> Unit)? = null,
+    trailing: @Composable (() -> Unit)? = null,
+    minLines: Int = 1,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 6.dp)
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = modifier.fillMaxWidth(),
+            textStyle = textStyle,
+            leadingIcon = leading,
+            trailingIcon = trailing,
+            minLines = minLines,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            )
+        )
+    }
+}
+
+@Composable
+fun SelectorRow(
+    label: String,
+    value: String,
+    icon: Any? = null,
+    iconTint: Color? = null,
+    trailingChevron: Boolean = true,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (icon != null) {
+                CircleIcon(
+                    icon = icon,
+                    tint = iconTint ?: MaterialTheme.colorScheme.primary,
+                    background = (iconTint ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.12f),
+                    size = 36.dp
+                )
+                Spacer(Modifier.width(12.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            if (trailingChevron) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
             }
         }
     }
