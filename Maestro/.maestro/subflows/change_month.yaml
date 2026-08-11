@@ -8,10 +8,10 @@ appId: com.lop.budget
 - evalScript: |
     console.log("Subflow Navigation -> Month: " + month_name + " Year: " + year);
 
-# Si on est sur l'historique, retour à la Home pour voir le picker
-- runFlow:
-    when:
-      visible: { id: "screen.monthly" }
+# Retour à la Home par étapes tant que le picker n'est pas visible
+- repeat:
+    while:
+      notVisible: { id: "home.month.picker" }
     commands:
       - tapOn: { id: "common.btn.back" }
 

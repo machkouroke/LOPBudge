@@ -1,0 +1,89 @@
+appId: com.lop.budget
+name: "TC-35-2: Édition Portée SINGLE"
+---
+# SCÉNARIO 2 : Portée 'SINGLE' (Isolation)
+- runScript: scripts/dates.js
+- launchApp:
+    clearState: true
+
+- runFlow: .maestro/subflows/open_monthly_history.yaml
+
+- evalScript: |
+    console.log("--- CAS 2 : Portée SINGLE (Loyer) ---")
+
+- tapOn: "Loyer"
+- tapOn: { id: "transaction.detail.edit" }
+- tapOn: "Cette occurrence uniquement"
+
+- extendedWaitUntil:
+    visible: { id: "common.btn.save" }
+    timeout: 5000
+
+# VÉRIFICATION EXHAUSTIVE
+- assertVisible:
+    id: "transaction.edit.field.title"
+    text: "Loyer"
+- assertVisible:
+    id: "transaction.edit.field.amount"
+    text: "820.0"
+
+- assertVisible: "Dépense ✅"
+- assertVisible: "Loyer"
+- assertVisible: "Compte courant"
+
+# Vérifier que le bloc récurrence est MASQUÉ (car portée SINGLE)
+- repeat:
+    times: 2
+    commands:
+      - scroll
+- assertNotVisible: { id: "transaction.edit.block.recurrence" }
+
+- scrollUntilVisible:
+    element: { id: "transaction.edit.field.amount" }
+    direction: UP
+
+# Modifier montant à 950 (Input Safety)
+- longPressOn: { id: "transaction.edit.field.amount" }
+- tapOn: "Tout sélectionner"
+- eraseText: 1
+- inputText: "950"
+- hideKeyboard
+- tapOn: { id: "common.btn.save" }
+
+# Vérification Isolation (Scan M-1)
+- extendedWaitUntil:
+    visible: { id: "screen.transaction.detail" }
+    timeout: 5000
+
+# Option 3 : Séparer l'ID du Texte pour plus de robustesse
+- assertVisible:
+    id: "transaction.detail.field.amount"
+    text: "950,00.*"
+
+
+
+# Vérifier le mois précédent
+- evalScript: |
+    console.log("Vérifier le mois précédent")
+- runFlow:
+    file: .maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.PREV_MONTH_NAME}
+      year: ${output.PREV_YEAR}
+- assertVisible:
+    id: "transaction.item.amount"
+    text: ".*820,00.*"
+- assertNotVisible: ".*950,00.*"
+
+# Vérifier le mois suivant
+- evalScript: |
+    console.log("Vérifier le mois suivant")
+- runFlow:
+    file: .maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- assertVisible:
+    id: "transaction.item.amount"
+    text: ".*820,00.*"
+- assertNotVisible: ".*950,00.*"

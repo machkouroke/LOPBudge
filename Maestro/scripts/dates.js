@@ -13,7 +13,7 @@ function getRelativeDate(offsetMonths) {
     d.setMonth(d.getMonth() + offsetMonths);
 
     return {
-        label: monthLabels[d.getMonth()],
+        month: monthLabels[d.getMonth()],
         year: d.getFullYear()
     };
 }
@@ -23,13 +23,13 @@ var currDate = getRelativeDate(0);
 var nextDate = getRelativeDate(1);
 
 // Exportation EXPLICITE via l'objet global output de Maestro
-output.PREV_MONTH_NAME = prevDate.label;
+output.PREV_MONTH_NAME = prevDate.month;
 output.PREV_YEAR = prevDate.year;
 
-output.CURRENT_MONTH_NAME = currDate.label;
+output.CURRENT_MONTH_NAME = currDate.month;
 output.CURRENT_YEAR = currDate.year;
 
-output.NEXT_MONTH_NAME = nextDate.label;
+output.NEXT_MONTH_NAME = nextDate.month;
 output.NEXT_YEAR = nextDate.year;
 
 // Log pour la console Maestro
