@@ -11,9 +11,9 @@ name: "TC-30: Impact des Portées de Suppression"
     console.log("PREV: " + output.PREV_MONTH_NAME + " " + PREV_YEAR);
     console.log("NEXT: " + output.NEXT_MONTH_NAME + " " + NEXT_YEAR);
 
-# --- CAS 1 : "Cette occurrence" ---
+# --- Scénario 1 : "Cette occurrence" ---
 - evalScript: |
-    console.log("--- CAS 1 : 'Cette occurrence' ---")
+    console.log("--- Scénario 1 : 'Cette occurrence' ---")
 - launchApp:
     clearState: true
 
@@ -38,9 +38,9 @@ name: "TC-30: Impact des Portées de Suppression"
 - assertVisible: { id: "screen.monthly" }
 - assertVisible: "Loyer"
 
-# --- CAS 2 : "Les suivantes uniquement" ---
+# --- Scénario 2 : "Les suivantes uniquement" ---
 - evalScript: |
-    console.log("--- CAS 2 : 'Les suivantes uniquement' ---")
+    console.log("--- Scénario 2 : 'Les suivantes uniquement' ---")
 - launchApp:
     clearState: true
 
@@ -76,9 +76,9 @@ name: "TC-30: Impact des Portées de Suppression"
 - assertVisible: { id: "screen.monthly" }
 - assertVisible: "Loyer"
 
-# --- CAS 3 : "Toute la série" ---
+# --- Scénario 3 : "Toute la série" ---
 - evalScript: |
-    console.log("--- CAS 3 : 'Toute la série' ---")
+    console.log("--- Scénario 3 : 'Toute la série' ---")
 - launchApp:
     clearState: true
 

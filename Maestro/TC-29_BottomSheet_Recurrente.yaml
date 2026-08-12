@@ -7,11 +7,11 @@ name: "TC-29: Validation Bottom Sheet Suppression"
 
 - runFlow: .maestro/subflows/open_monthly_history.yaml
 
-# Étape 1 : Vérification via Swipe (désactivé temporairement car instable avec Maestro)
-
-# Étape 2 : Vérification via Détail
+# Scénario 1 : Vérification via Swipe (désactivé temporairement car instable avec Maestro)
+## a IMPlementer par la suite
+# Scénario 2 : Vérification via Détail
 - evalScript: |
-    console.log("Étape 2 : Vérification via Détail")
+    console.log("Scénario 2 : Vérification via Détail")
 - runFlow:
     file: .maestro/subflows/delete_occurrence.yaml
     env:
@@ -26,9 +26,9 @@ name: "TC-29: Validation Bottom Sheet Suppression"
 - tapOn: { id: "common.btn.back" }
 - assertVisible: { id: "screen.monthly" }
 
-# Étape 3 : Vérification via Appui long (Popup)
+# Scénario 3 : Vérification via Appui long (Popup)
 - evalScript: |
-    console.log("Étape 3 : Vérification via Appui long (Popup)")
+    console.log("Scénario 3 : Vérification via Appui long (Popup)")
 - longPressOn: "Loyer"
 - assertVisible: "Supprimer"
 - tapOn: { id: "transaction.detail.delete" }
