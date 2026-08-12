@@ -588,25 +588,37 @@ class BudgetRepository @Inject constructor(
             EditScope.ALL -> {
                 // Mise à jour de toute la série
                 if (currentSeriesId != null) {
-                    val updatedSeries = RecurringSeriesEntity(
-                        id = currentSeriesId,
-                        title = title,
-                        amount = amount,
-                        type = type,
-                        categoryId = categoryId,
-                        subCategoryId = subCategoryId,
-                        accountId = accountId,
-                        frequency = frequency,
-                        interval = interval,
-                        startDate = date, 
-                        endDate = endDate,
-                        maxOccurrences = maxOccurrences,
-                        daysOfWeek = daysOfWeek,
-                        note = note,
-                        linkedGoalId = linkedGoalId,
-                        linkedDebtId = linkedDebtId
-                    )
-                    updateEntireSeries(currentSeriesId, updatedSeries)
+                    val existing = getSeriesById(currentSeriesId)
+                    if (existing != null) {
+                        val updatedSeries = existing.copy(
+                            title = title,
+                            amount = amount,
+                            type = type,
+                            categoryId = categoryId,
+                            subCategoryId = subCategoryId,
+                            accountId = accountId,
+                            frequency = frequency,
+                            interval = interval,
+                            endDate = endDate,
+                            maxOccurrences = maxOccurrences,
+                            daysOfWeek = daysOfWeek,
+                            note = note,
+                            linkedGoalId = linkedGoalId,
+                            linkedDebtId = linkedDebtId
+                        )
+                        updateEntireSeries(currentSeriesId, updatedSeries)
+
+                        // Propager aux exceptions matérialisées de cette série
+                        transactionDao.updateSeriesExceptions(
+                            seriesId = currentSeriesId.toString(),
+                            title = title,
+                            amount = amount,
+                            type = type,
+                            categoryId = categoryId,
+                            accountId = accountId,
+                            note = note
+                        )
+                    }
                     
                     // On met aussi à jour la transaction physique qu'on avait sous la main si c'était une exception
                     if (currentTwr != null) {

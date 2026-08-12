@@ -10,6 +10,7 @@ import androidx.room.Upsert
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -128,6 +129,21 @@ interface TransactionDao {
 
     @Query("DELETE FROM transaction_tags WHERE transactionId = :transactionId")
     suspend fun clearTags(transactionId: Long)
+
+    @Query("""
+        UPDATE transactions 
+        SET title = :title, amount = :amount, type = :type, categoryId = :categoryId, accountId = :accountId, note = :note
+        WHERE seriesId = :seriesId AND isException = 1
+    """)
+    suspend fun updateSeriesExceptions(
+        seriesId: String,
+        title: String,
+        amount: Double,
+        type: TransactionType,
+        categoryId: Long,
+        accountId: Long,
+        note: String?
+    )
 
     @Query("SELECT COALESCE(SUM(amount), 0.0) FROM transactions WHERE linkedGoalId = :goalId AND deleted = 0 AND status = 'PAID'")
     suspend fun getSumForGoal(goalId: Long): Double

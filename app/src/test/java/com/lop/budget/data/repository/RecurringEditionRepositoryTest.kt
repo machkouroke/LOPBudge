@@ -377,6 +377,7 @@ class RecurringEditionRepositoryTest {
             null,
             emptyList()
         )
+        coEvery { recurringSeriesDao.getSeriesById(seriesId) } returns oldSeries
         every { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(oldSeries))
 
         // Étape 2 : Vérification Large Pré-Edit
@@ -428,9 +429,15 @@ class RecurringEditionRepositoryTest {
 
         // --- VALIDATION ---
         // Étape 4 : Vérifier la mise à jour de la règle mère (CA-07)
-        // BUT : Confirmer la modification de l'entité RecurringSeries parente
-        println("Étape 4 : Vérification de la mise à jour de la règle mère")
-        coVerify { recurringSeriesDao.update(match { it.id == seriesId && it.title == "Netflix 4K" && it.amount == 18.0 }) }
+        // BUT : Confirmer la modification de l'entité RecurringSeries parente tout en préservant startDate
+        println("Étape 4 : Vérification de la mise à jour de la règle mère (avec préservation de startDate)")
+        coVerify { recurringSeriesDao.update(match { it.id == seriesId && it.title == "Netflix 4K" && it.amount == 18.0 && it.startDate == jan1 }) }
+        println("Log : Mise à jour confirmée et startDate préservée")
+
+        // Étape 4.1 : Vérifier la propagation aux exceptions (NOUVEAU)
+        println("Étape 4.1 : Vérification de la propagation aux exceptions")
+        coVerify { transactionDao.updateSeriesExceptions("200", "Netflix 4K", 18.0, TransactionType.EXPENSE, 1L, 1L, null) }
+        println("Log : Propagation aux exceptions confirmée")
 
         // Étape 5 : Vérification Large Post-Edit (Scan M-1, M, M+1)
         // BUT : Prouver que TOUTES les occurrences suivent la nouvelle règle
