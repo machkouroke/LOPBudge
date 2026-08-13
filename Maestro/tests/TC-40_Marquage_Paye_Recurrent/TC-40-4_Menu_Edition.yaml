@@ -16,9 +16,9 @@ tags:
 
 - evalScript: |
     console.log("When l’utilisateur déclenche le marquage payé depuis 'statut payé depuis le menu d’édition'")
-- scrollUntilVisible:
-    element: { id: "transaction.detail.toggle.paid" }
-    direction: DOWN
+- assertVisible:
+    id: "transaction.detail.toggle.paid"
+
 - tapOn: { id: "transaction.detail.toggle.paid" }
 - tapOn: { id: "common.btn.save" }
 
@@ -29,11 +29,16 @@ tags:
     element: "Marquer comme non payé"
     direction: DOWN
 - assertVisible: "Marquer comme non payé"
-- tapOn: { id: "common.btn.back" }
 
 - evalScript: |
-    console.log("And l’icône de série récurrente est toujours visible")
-- assertVisible: { accessibilityText: "Récurrent" }
+    console.log("And l’icône de série récurrente est toujours visible dans le bloc Loyer")
+- scrollUntilVisible:
+    element: { id: "transaction.detail.edit" }
+    direction: UP
+- tapOn: { id: "common.btn.back" }
+- assertVisible:
+    text: "Récurrent"
+    rightOf: "Loyer"
 
 - evalScript: |
     console.log("And les autres occurrences de la série restent inchangées (mois précédent)")
@@ -43,7 +48,9 @@ tags:
       month_name: ${output.PREV_MONTH_NAME}
       year: ${output.PREV_YEAR}
 - assertVisible: "Loyer"
-- assertVisible: { accessibilityText: "Récurrent" }
+- assertVisible:
+    text: "Récurrent"
+    rightOf: "Loyer"
 - tapOn: "Loyer"
 - scrollUntilVisible:
     element: "Marquer comme payé"
@@ -59,7 +66,9 @@ tags:
       month_name: ${output.NEXT_MONTH_NAME}
       year: ${output.NEXT_YEAR}
 - assertVisible: "Loyer"
-- assertVisible: { accessibilityText: "Récurrent" }
+- assertVisible:
+    text: "Récurrent"
+    rightOf: "Loyer"
 - tapOn: "Loyer"
 - scrollUntilVisible:
     element: "Marquer comme payé"
