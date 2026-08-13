@@ -1,0 +1,105 @@
+appId: com.lop.budget
+name: "TC-40-4: Marquage payé via menu d'édition"
+tags:
+  - recurrence
+  - payment
+---
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+- evalScript: |
+    console.log("Given une occurrence de la série récurrente 'Loyer' est visible sur le mois courant")
+- runFlow:
+    file: ../../.maestro/subflows/navigate_to_edit.yaml
+    env:
+      transactionName: "Loyer"
+      scopeSelection: "Cette occurrence uniquement"
+
+- evalScript: |
+    console.log("When l’utilisateur déclenche le marquage payé depuis 'statut payé depuis le menu d’édition'")
+- scrollUntilVisible:
+    element: { id: "transaction.detail.toggle.paid" }
+    direction: DOWN
+- tapOn: { id: "transaction.detail.toggle.paid" }
+- tapOn: { id: "common.btn.save" }
+
+- evalScript: |
+    console.log("Then l’occurrence ciblée affiche le statut payé")
+- tapOn: "Loyer"
+- scrollUntilVisible:
+    element: "Marquer comme non payé"
+    direction: DOWN
+- assertVisible: "Marquer comme non payé"
+- tapOn: { id: "common.btn.back" }
+
+- evalScript: |
+    console.log("And l’icône de série récurrente est toujours visible")
+- assertVisible: { accessibilityText: "Récurrent" }
+
+- evalScript: |
+    console.log("And les autres occurrences de la série restent inchangées (mois précédent)")
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.PREV_MONTH_NAME}
+      year: ${output.PREV_YEAR}
+- assertVisible: "Loyer"
+- assertVisible: { accessibilityText: "Récurrent" }
+- tapOn: "Loyer"
+- scrollUntilVisible:
+    element: "Marquer comme payé"
+    direction: DOWN
+- assertVisible: "Marquer comme payé"
+- tapOn: { id: "common.btn.back" }
+
+- evalScript: |
+    console.log("And les autres occurrences de la série restent inchangées (mois suivant)")
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- assertVisible: "Loyer"
+- assertVisible: { accessibilityText: "Récurrent" }
+- tapOn: "Loyer"
+- scrollUntilVisible:
+    element: "Marquer comme payé"
+    direction: DOWN
+- assertVisible: "Marquer comme payé"
+- tapOn: { id: "common.btn.back" }
+
+- evalScript: |
+    console.log("Revenir au mois courant pour la suite du test")
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.CURRENT_MONTH_NAME}
+      year: ${output.CURRENT_YEAR}
+
+- evalScript: |
+    console.log("When l’utilisateur ouvre l’édition de cette occurrence")
+- tapOn: "Loyer"
+- scrollUntilVisible:
+    element: { id: "transaction.detail.edit" }
+    direction: UP
+- tapOn: { id: "transaction.detail.edit" }
+
+- evalScript: |
+    console.log("Then la bottom sheet de choix de portée d’édition est toujours affichée")
+- assertVisible: "Modifier la transaction ?"
+- tapOn: "Cette occurrence uniquement"
+
+- evalScript: |
+    console.log("When l’utilisateur déclenche à nouveau le marquage payé")
+- scrollUntilVisible:
+    element: { id: "transaction.detail.toggle.paid" }
+    direction: DOWN
+- tapOn: { id: "transaction.detail.toggle.paid" }
+- tapOn: { id: "common.btn.save" }
+
+- evalScript: |
+    console.log("Then l’occurrence ciblée repasse au statut planifié")
+- tapOn: "Loyer"
+- scrollUntilVisible:
+    element: "Marquer comme payé"
+    direction: DOWN
+- assertVisible: "Marquer comme payé"

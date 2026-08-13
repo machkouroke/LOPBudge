@@ -98,8 +98,8 @@ class TransactionActionViewModel @Inject constructor(
         updatedCategoryId: Long = tx.transaction.categoryId,
         updatedSubCategoryId: Long? = tx.transaction.subCategoryId,
         updatedNote: String? = tx.transaction.note,
-        updatedFrequency: com.lop.budget.domain.model.RecurrenceFrequency = com.lop.budget.domain.model.RecurrenceFrequency.NONE,
-        updatedInterval: Int = 1,
+        updatedFrequency: com.lop.budget.domain.model.RecurrenceFrequency? = null,
+        updatedInterval: Int? = null,
         updatedDaysOfWeek: String? = null,
         updatedEndDate: Long? = null,
         updatedMaxOccurrences: Int? = null,
@@ -107,6 +107,15 @@ class TransactionActionViewModel @Inject constructor(
         onDone: () -> Unit = {}
     ) {
         viewModelScope.launch {
+            val seriesId = tx.transaction.seriesId?.toLongOrNull()
+            val series = seriesId?.let { repo.getSeriesById(it) }
+
+            val finalFreq = updatedFrequency ?: series?.frequency ?: com.lop.budget.domain.model.RecurrenceFrequency.NONE
+            val finalInterval = updatedInterval ?: series?.interval ?: 1
+            val finalDow = updatedDaysOfWeek ?: series?.daysOfWeek
+            val finalEnd = updatedEndDate ?: series?.endDate
+            val finalMax = updatedMaxOccurrences ?: series?.maxOccurrences
+
             repo.saveWithTransition(
                 editingId = tx.transaction.id,
                 title = updatedTitle,
@@ -118,11 +127,11 @@ class TransactionActionViewModel @Inject constructor(
                 categoryId = updatedCategoryId,
                 subCategoryId = updatedSubCategoryId,
                 note = updatedNote,
-                frequency = updatedFrequency,
-                interval = updatedInterval,
-                daysOfWeek = updatedDaysOfWeek,
-                endDate = updatedEndDate,
-                maxOccurrences = updatedMaxOccurrences,
+                frequency = finalFreq,
+                interval = finalInterval,
+                daysOfWeek = finalDow,
+                endDate = finalEnd,
+                maxOccurrences = finalMax,
                 linkedGoalId = tx.transaction.linkedGoalId,
                 linkedDebtId = tx.transaction.linkedDebtId,
                 tagIds = updatedTagIds,
