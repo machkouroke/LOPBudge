@@ -1,0 +1,18 @@
+appId: com.lop.budget
+name: "TC-29-3: BottomSheet Via Swipe"
+tags:
+  - suppression
+  - recurrence
+  - wip
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../.maestro/subflows/open_monthly_history.yaml
+
+# Scénario 1 : Vérification via Swipe (désactivé temporairement car instable avec Maestro)
+## a IMPlementer par la suite
+# - swipe:
+#     from: { text: "Loyer" }
+#     direction: LEFT
+# ...

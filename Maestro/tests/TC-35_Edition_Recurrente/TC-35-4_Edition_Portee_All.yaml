@@ -1,37 +1,35 @@
 appId: com.lop.budget
 name: "TC-35-4: Édition Portée ALL"
+tags:
+  - edition
+  - recurrence
 ---
-# SCÉNARIO 4 : Portée 'ALL' (Global)
-- runScript: scripts/dates.js
-- launchApp:
-      clearState: true
-
-- runFlow: .maestro/subflows/open_monthly_history.yaml
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 
 - evalScript: |
       console.log("--- CAS 3 : Portée 'ALL' (Global) ---")
 
-- tapOn: "Loyer"
-- tapOn: { id: "transaction.detail.edit" }
-- tapOn: "Toute la série"
+- runFlow:
+    file: ../../.maestro/subflows/navigate_to_edit.yaml
+    env:
+      transactionName: "Loyer"
+      scopeSelection: "Toute la série"
 
 - extendedWaitUntil:
       visible: { id: "common.btn.save" }
       timeout: 5000
 
 # VÉRIFICATION PRÉ-REMPLISSAGE RÉCURRENCE (EXHAUSTIF)
-- assertVisible:
-      id: "transaction.edit.field.title"
-      text: "Loyer"
-- assertVisible:
-      id: "transaction.edit.field.amount"
-      text: "820.0"
-- assertVisible: "Dépense ✅"
-- assertVisible: "Loyer"
-- assertVisible: "Compte courant"
+- runFlow:
+    file: ../../.maestro/subflows/assert_edit_form_prefilled.yaml
+    env:
+      title: "Loyer"
+      amount: "820.0"
+      category: "Loyer"
+      account: "Compte courant"
+
 - scrollUntilVisible:
       element: { id: "transaction.edit.block.recurrence" }
-
 
 - assertVisible: "Tous les mois"
 
@@ -39,13 +37,9 @@ name: "TC-35-4: Édition Portée ALL"
 - scrollUntilVisible:
       element: "occurrences"
 
-
-
 - assertVisible:
       id: "transaction.edit.field.interval"
       text: "1"
-
-
 
 # Modifier Titre pour le futur (Input Safety)
 - scrollUntilVisible:
@@ -53,13 +47,10 @@ name: "TC-35-4: Édition Portée ALL"
       direction: UP
 
 - runFlow:
-      file: .maestro/subflows/clear_text_field.yaml
-      env:
-          target_id: "transaction.edit.field.title"
-- inputText: "Loyer Total"
-- hideKeyboard
-- tapOn: { id: "common.btn.save" }
-
+    file: ../../.maestro/subflows/update_amount.yaml
+    env:
+      target_id: "transaction.edit.field.title"
+      new_value: "Loyer Total"
 
 # Vérification Ecran détail
 - extendedWaitUntil:
@@ -67,13 +58,11 @@ name: "TC-35-4: Édition Portée ALL"
       timeout: 5000
 - assertVisible: "Loyer Total"
 
-
-
 # Vérification mois précédent
 - evalScript: |
       console.log("Vérifier le mois précédent")
 - runFlow:
-      file: .maestro/subflows/change_month.yaml
+      file: ../../.maestro/subflows/change_month.yaml
       env:
           month_name: ${output.PREV_MONTH_NAME}
           year: ${output.PREV_YEAR}
@@ -84,10 +73,9 @@ name: "TC-35-4: Édition Portée ALL"
 - evalScript: |
       console.log("Vérifier le mois suivant")
 - runFlow:
-      file: .maestro/subflows/change_month.yaml
+      file: ../../.maestro/subflows/change_month.yaml
       env:
           month_name: ${output.NEXT_MONTH_NAME}
           year: ${output.NEXT_YEAR}
 - assertVisible: "Loyer Total"
 - assertNotVisible: "Loyer"
-

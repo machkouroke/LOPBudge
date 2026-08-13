@@ -1,0 +1,13 @@
+appId: com.lop.budget
+---
+# Subflow: bootstrap_monthly
+# Responsabilité : Initialisation complète pour les tests mensuels
+# - Initialisation des dates (runScript)
+# - Redémarrage propre de l'app (clearState: true)
+# - Ouverture de l'historique mensuel
+# Paramètres : Aucun
+
+- runScript: ../../scripts/dates.js
+- launchApp:
+    clearState: true
+- runFlow: open_monthly_history.yaml

@@ -1,20 +1,15 @@
 appId: com.lop.budget
 name: "TC-31: Suppression Transaction Ponctuelle"
+tags:
+  - suppression
 ---
-# TC-31 - Gherkin UI — Transaction ponctuelle sans portée
-- launchApp:
-    clearState: true
-
-# Étape 1 : S'assurer d'être sur la vue mensuelle avant toute opération
-- evalScript: |
-    console.log("S'assurer d'être sur la vue mensuelle avant toute opération")
-- runFlow: .maestro/subflows/open_monthly_history.yaml
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 
 # Étape 2 : Lancer la suppression
 - evalScript: |
     console.log("Lancer la suppression")
 - runFlow:
-    file: .maestro/subflows/delete_occurrence.yaml
+    file: ../../.maestro/subflows/delete_occurrence.yaml
     env:
       text: "Courses Hebdomadaires"
 

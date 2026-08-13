@@ -1,12 +1,9 @@
 appId: com.lop.budget
 name: "TC-35-1: Édition Transaction Normale"
+tags:
+  - edition
 ---
-# SCÉNARIO 1 : Transaction Normale
-- runScript: scripts/dates.js
-- launchApp:
-    clearState: true
-
-- runFlow: .maestro/subflows/open_monthly_history.yaml
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 
 - evalScript: |
     console.log("--- CAS 1 : Transaction ponctuelle (Courses Hebdomadaires) ---")
@@ -19,16 +16,13 @@ name: "TC-35-1: Édition Transaction Normale"
 - assertVisible: { id: "screen.transaction.edit" }
 
 # VÉRIFICATION EXHAUSTIVE PRÉ-REMPLISSAGE (Data-Binding)
-- assertVisible:
-    id: "transaction.edit.field.title"
-    text: "Courses Hebdomadaires"
-- assertVisible:
-    id: "transaction.edit.field.amount"
-    text: "84.2"
-
-- assertVisible: "Dépense ✅"
-- assertVisible: "Courses"
-- assertVisible: "Compte courant"
+- runFlow:
+    file: ../../.maestro/subflows/assert_edit_form_prefilled.yaml
+    env:
+      title: "Courses Hebdomadaires"
+      amount: "84.2"
+      category: "Courses"
+      account: "Compte courant"
 
 # Vérifier que le bloc récurrence est MASQUÉ (car ponctuel)
 - scrollUntilVisible:
@@ -41,12 +35,10 @@ name: "TC-35-1: Édition Transaction Normale"
 
 # Modifier et enregistrer
 - runFlow:
-    file: .maestro/subflows/clear_text_field.yaml
+    file: ../../.maestro/subflows/update_amount.yaml
     env:
       target_id: "transaction.edit.field.title"
-- inputText: "Courses Hebdo"
-- hideKeyboard
-- tapOn: { id: "common.btn.save" }
+      new_value: "Courses Hebdo"
 
 # Vérifier retour et modification effective
 - extendedWaitUntil:

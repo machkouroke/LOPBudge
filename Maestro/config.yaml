@@ -1,0 +1,19 @@
+# Maestro Workspace Configuration
+# Doc: https://docs.maestro.dev/maestro-flows/workspace-management/project-configuration
+
+# Discovery: Only execute flows in the tests/ directory recursively
+# This automatically excludes .maestro/subflows from standalone execution
+flows:
+  - "tests/**"
+
+# Artefacts: Store test results in a specific directory
+testOutputDir: build/maestro-results
+
+# Tags: Exclude work-in-progress or unstable tests by default
+excludeTags:
+  - wip
+
+# Platform specific configuration
+# Note: appId is still required in each flow for Cloud compatibility
+# but can be defaulted here for local execution
+# appId: com.lop.budget

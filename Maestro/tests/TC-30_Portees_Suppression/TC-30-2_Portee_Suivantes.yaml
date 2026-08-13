@@ -1,0 +1,43 @@
+appId: com.lop.budget
+name: "TC-30-2: Portée Les Suivantes Uniquement"
+tags:
+  - suppression
+  - recurrence
+---
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+- evalScript: |
+    console.log("Starting TC-30-2 with Dynamic Dates:");
+    console.log("PREV: " + output.PREV_MONTH_NAME + " " + output.PREV_YEAR);
+    console.log("NEXT: " + output.NEXT_MONTH_NAME + " " + output.NEXT_YEAR);
+
+- runFlow:
+    file: ../../.maestro/subflows/delete_occurrence.yaml
+    env:
+      text: "Loyer"
+      scope: "Les suivantes uniquement"
+
+- assertVisible: { id: "screen.monthly" }
+- assertNotVisible: "Loyer"
+
+# Vérifier le mois suivant (Absent)
+- evalScript: |
+    console.log("Vérifier le mois suivant (Absent)")
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- assertVisible: { id: "screen.monthly" }
+- assertNotVisible: "Loyer"
+
+# Vérifier le mois précédent (Présent)
+- evalScript: |
+    console.log("Vérifier le mois précédent (Présent)")
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.PREV_MONTH_NAME}
+      year: ${output.PREV_YEAR}
+- assertVisible: { id: "screen.monthly" }
+- assertVisible: "Loyer"

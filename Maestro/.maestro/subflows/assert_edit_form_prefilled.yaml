@@ -1,0 +1,20 @@
+appId: com.lop.budget
+---
+# Subflow: assert_edit_form_prefilled
+# Responsabilité : Vérification exhaustive du formulaire (Data-Binding)
+# Paramètres :
+# - title : Titre attendu
+# - amount : Montant attendu (format brut ex: "820.0")
+# - category : Nom de catégorie attendu
+# - account : Nom de compte attendu
+# - type : "Dépense ✅" ou "Revenu ✅" (Défaut: "Dépense ✅")
+
+- assertVisible:
+    id: "transaction.edit.field.title"
+    text: ${title}
+- assertVisible:
+    id: "transaction.edit.field.amount"
+    text: ${amount}
+- assertVisible: ${type || "Dépense ✅"}
+- assertVisible: ${category}
+- assertVisible: ${account}

@@ -130,4 +130,51 @@ La saisie de texte sur Android peut être instable si le champ n'est pas parfait
 - **Règle** : Toujours fermer le clavier (`hideKeyboard`) immédiatement après une saisie (`inputText`). Cela garantit que les éléments en bas de page (ex: bouton "Enregistrer") sont visibles et cliquables par Maestro.
 
 ---
-*Dernière mise à jour : 8 Août 2026 - Ingénieur QA LOPBudge*
+*Dernière mise à jour : 13 Août 2026 - Ingénieur QA LOPBudge*
+
+## 12. Organisation du Workspace
+
+Pour assurer la scalabilité de la suite de tests, le dossier `Maestro/` suit une structure stricte :
+- **`tests/<CAS_DE_TEST>/`** : Un dossier par fonctionnalité ou cas de test, contenant des fichiers YAML unitaires (1 fichier = 1 scénario).
+- **`.maestro/subflows/`** : Subflows partagés et atomiques.
+- **`scripts/`** : Fichiers JavaScript utilitaires.
+
+## 13. Discovery (Découverte des Tests)
+
+Le fichier `config.yaml` à la racine pilote la découverte des flows par Maestro.
+- **Règle** : Utiliser le glob `tests/**` pour inclure récursivement tous les tests tout en ignorant les subflows.
+- **Doc** : [Test discovery and tags](https://docs.maestro.dev/maestro-flows/workspace-management/test-discovery-and-tags)
+
+## 14. Isolation et Autonomie
+
+Chaque flow doit être indépendant pour permettre une exécution parallèle ou non déterministe.
+- **Règle** : Chaque flow commence par son propre setup (ex: `runFlow: bootstrap_monthly.yaml`) incluant `clearState: true`.
+- **Règle** : Ne jamais compter sur l'état laissé par un test précédent.
+- **Doc** : [Design your test architecture](https://docs.maestro.dev/maestro-flows/workspace-management/design-your-test-architecture)
+
+## 15. Tags et Filtrage
+
+Les tags permettent de segmenter l'exécution (ex: `smoke`, `recurrence`).
+- **Règle** : Toujours tagger les nouveaux tests dans l'en-tête.
+- **Règle** : Utiliser le tag `wip` pour les tests en cours de développement ou instables, et les exclure via `excludeTags` dans `config.yaml`.
+- **Doc** : [Test discovery and tags](https://docs.maestro.dev/maestro-flows/workspace-management/test-discovery-and-tags)
+
+## 16. Chemins Relatifs
+
+Maestro résout les chemins de `runFlow` et `runScript` relativement au fichier appelant.
+- **Règle** : Dans `tests/<CAS>/`, utiliser `../../` pour remonter à la racine du workspace et accéder aux dossiers `.maestro/` ou `scripts/`.
+- **Règle** : Toujours passer le **dossier racine** du workspace à la CLI (`maestro test .`) pour que la configuration soit chargée.
+- **Doc** : [Nested flows](https://docs.maestro.dev/maestro-flows/flow-control-and-logic/nested-flows)
+
+## 17. Gestion des Artefacts
+
+- **Règle** : Déclarer `testOutputDir` dans `config.yaml` pour centraliser les rapports.
+- **Note** : Le format du rapport (`--format`) reste une option de ligne de commande (CLI).
+- **Doc** : [Test reports and artifacts](https://docs.maestro.dev/maestro-flows/workspace-management/test-reports-and-artifacts)
+
+## 18. Subflows Atomiques et Paramétrés
+
+- **Règle** : Un subflow ne doit avoir qu'une seule responsabilité (ex: `update_amount.yaml`).
+- **Règle** : Utiliser `env` pour passer des paramètres.
+- **Règle** : Les constantes définies dans un subflow écrasent celles du parent.
+- **Doc** : [Parameters and constants](https://docs.maestro.dev/maestro-flows/flow-control-and-logic/parameters-and-constants)

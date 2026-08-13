@@ -1,0 +1,31 @@
+appId: com.lop.budget
+name: "TC-30-1: Portée Cette Occurrence"
+tags:
+  - suppression
+  - recurrence
+---
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+- evalScript: |
+    console.log("Starting TC-30-1 with Dynamic Dates:");
+    console.log("NEXT: " + output.NEXT_MONTH_NAME + " " + output.NEXT_YEAR);
+
+- runFlow:
+    file: ../../.maestro/subflows/delete_occurrence.yaml
+    env:
+      text: "Loyer"
+      scope: "Cette occurrence"
+
+- assertVisible: { id: "screen.monthly" }
+- assertNotVisible: "Loyer"
+
+# Vérifier le mois suivant
+- evalScript: |
+    console.log("Vérifier le mois suivant")
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- assertVisible: { id: "screen.monthly" }
+- assertVisible: "Loyer"

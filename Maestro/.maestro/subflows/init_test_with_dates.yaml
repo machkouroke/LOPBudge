@@ -1,0 +1,8 @@
+appId: ${APP_ID}
+---
+# Subflow d'initialisation standard : Launch App + Calcul des dates
+- launchApp:
+    clearState: true
+- runScript: ../../scripts/dates.js
+- evalScript: |
+    console.log("Test Init - PREV: " + output.PREV_MONTH_NAME + " | NEXT: " + output.NEXT_MONTH_NAME)

@@ -1,0 +1,16 @@
+appId: com.lop.budget
+---
+# Subflow: update_amount
+# Responsabilité : Saisie sécurisée d'un montant (nettoyage + saisie + fermeture clavier)
+# Paramètres :
+# - target_id : l'ID du champ montant
+# - new_value : la valeur à saisir
+
+- runFlow:
+    file: clear_text_field.yaml
+    env:
+      target_id: ${target_id}
+
+- inputText: ${new_value}
+- hideKeyboard
+- tapOn: { id: "common.btn.save" }

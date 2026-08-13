@@ -1,0 +1,19 @@
+appId: com.lop.budget
+name: "TC-29-2: BottomSheet Via Appui Long"
+tags:
+  - suppression
+  - recurrence
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../.maestro/subflows/open_monthly_history.yaml
+
+- evalScript: |
+    console.log("Étape 3 : Vérification via Appui long (Popup)")
+- longPressOn: "Loyer"
+- assertVisible: "Supprimer"
+- tapOn: { id: "transaction.detail.delete" }
+- assertVisible: "Cette occurrence"
+- tapOn: "Annuler"
+- assertVisible: "Loyer"

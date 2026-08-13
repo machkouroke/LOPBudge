@@ -1,0 +1,24 @@
+appId: ${APP_ID}
+---
+# Vérification intelligente de la présence ET/OU de l'absence de transactions
+# Paramètres (optionnels) :
+# - exists: texte de la transaction attendue
+# - notExists: texte de la transaction qui ne doit pas être là
+
+# Vérification de Présence
+- runFlow:
+    when:
+      condition: ${exists != null}
+    commands:
+      - evalScript: |
+          console.log("Vérification PRÉSENCE de : " + exists)
+      - assertVisible: ${exists}
+
+# Vérification d'Absence
+- runFlow:
+    when:
+      condition: ${notExists != null}
+    commands:
+      - evalScript: |
+          console.log("Vérification ABSENCE de : " + notExists)
+      - assertNotVisible: ${notExists}

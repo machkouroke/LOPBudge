@@ -1,0 +1,26 @@
+appId: com.lop.budget
+name: "TC-29-1: BottomSheet Via Détail"
+tags:
+  - suppression
+  - recurrence
+---
+- launchApp:
+    clearState: true
+
+- runFlow: ../../.maestro/subflows/open_monthly_history.yaml
+
+- evalScript: |
+    console.log("Étape 2 : Vérification via Détail")
+- runFlow:
+    file: ../../.maestro/subflows/delete_occurrence.yaml
+    env:
+      text: "Loyer"
+
+# Vérification présence des 3 options (CA-03)
+- assertVisible: "Cette occurrence"
+- assertVisible: "Les suivantes uniquement"
+- assertVisible: "Toute la série"
+
+- tapOn: "Annuler"
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.monthly" }
