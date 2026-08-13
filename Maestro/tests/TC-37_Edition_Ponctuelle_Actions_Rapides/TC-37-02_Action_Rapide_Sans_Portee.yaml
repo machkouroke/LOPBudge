@@ -1,0 +1,66 @@
+appId: com.lop.budget
+name: "TC-37-02: Action Rapide sur Occurrence Récurrente"
+tags:
+  - tc-37
+  - action-rapide
+  - recurrence
+---
+# Given l’application est ouverte
+# And une occurrence récurrente "Loyer" est visible sur "Mois courant"
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+- evalScript: |
+    console.log("TC-37-02: Modification rapide catégorie sur récurrence")
+
+- assertVisible: "Loyer"
+
+# When l’utilisateur déclenche l’action rapide (modification catégorie depuis détail)
+- tapOn: "Loyer"
+- assertVisible: { id: "screen.transaction.detail" }
+
+- tapOn:
+    text: "Loyer"
+    index: 2
+
+- assertVisible: "Choisir une catégorie"
+- tapOn: "Chercher une catégorie..."
+- inputText: "Alimentation"
+- hideKeyboard
+
+# Then aucune bottom sheet de portée récurrente n’est affichée
+- assertNotVisible: { id: "recurring.edit.scope.sheet" }
+- tapOn:
+    text: "Alimentation"
+    index: 1
+
+
+# On revient à la liste
+- tapOn: { id: "common.btn.back" }
+
+# And les autres occurrences de la série restent inchangées (Isolation)
+# Vérification Mois Précédent
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+        month_name: ${output.PREV_MONTH_NAME}
+        year: ${output.PREV_YEAR}
+
+
+- tapOn: "Loyer"
+- assertVisible:
+    text: "Loyer"
+    index: 2
+
+
+
+# Vérification Mois Suivant
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+
+- tapOn: "Loyer"
+- assertVisible:
+    text: "Loyer"
+    index: 2

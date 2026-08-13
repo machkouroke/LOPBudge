@@ -1,0 +1,47 @@
+
+
+appId: com.lop.budget
+name: "TC-37-01: Edition Directe Ponctuelle"
+tags:
+  - tc-37
+  - ponctuelle
+---
+# Given l’application est ouverte
+# And la transaction ponctuelle "Courses Hebdomadaires" est visible
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+- evalScript: |
+    console.log("TC-37-01: Vérification transaction ponctuelle")
+
+- assertVisible: "Courses Hebdomadaires"
+
+# When l’utilisateur déclenche l’édition de "Courses Hebdomadaires"
+# (Via le détail, modification d'un champ en direct)
+- tapOn: "Courses Hebdomadaires"
+- assertVisible: { id: "screen.transaction.detail" }
+
+# On tente de modifier la catégorie en direct (Quick Edit)
+- tapOn: "Courses" # Texte de la catégorie actuelle pour "Courses Hebdomadaires"
+- assertVisible: "Choisir une catégorie"
+- tapOn: "Chercher une catégorie..."
+- inputText: "Logement"
+- hideKeyboard
+
+- tapOn:
+    text: "Logement"
+    index: 1
+
+
+# Then l’écran d’édition est ouvert directement (pour le champ ciblé)
+# And aucune bottom sheet de portée récurrente n’est affichée
+- assertNotVisible: { id: "recurring.edit.scope.sheet" }
+- assertNotVisible: "Modifier la transaction ?"
+
+# Vérification que le changement est appliqué
+- assertVisible: "Logement"
+
+# Vérification après retour en arrière
+- tapOn: { id: "common.btn.back" }
+- tapOn: "Courses Hebdomadaires"
+
+- assertVisible: "Logement"
