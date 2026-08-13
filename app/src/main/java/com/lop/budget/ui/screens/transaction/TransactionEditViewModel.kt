@@ -278,7 +278,8 @@ class TransactionEditViewModel @Inject constructor(
             linkedGoalId = f.linkedGoalId,
             linkedDebtId = f.linkedDebtId,
             tagIds = f.tagIds.toList(),
-            scope = editScope
+            scope = editScope,
+            status = f.status
         )
 
         onDone(newId)
