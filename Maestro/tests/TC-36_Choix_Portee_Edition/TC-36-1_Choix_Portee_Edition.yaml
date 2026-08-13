@@ -1,0 +1,73 @@
+appId: com.lop.budget
+name: "TC-36: Choix de portée d'édition récurrente"
+tags:
+  - edition
+  - recurrent
+---
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+# Cas 1 : Ouverture depuis le détail
+- evalScript: |
+    console.log("Cas 1 : Ouverture depuis le détail")
+- tapOn: "Loyer" # On appuie sur l'occurrence récurrente du bootstrap
+- assertVisible:
+    id: "screen.transaction.detail"
+- tapOn:
+    id: "transaction.detail.edit"
+
+# Vérification de la bottom sheet
+- assertVisible: "Modifier la transaction ?"
+
+- assertVisible: "Cette occurrence uniquement" # Ticket dit "Cette occurrence", code dit "Cette occurrence uniquement"
+- assertVisible: "Cette occurrence et les suivantes"
+- assertVisible: "Toute la série"
+
+# Annulation
+- tapOn: "Annuler"
+- assertNotVisible:
+    id: "recurring.edit.scope.sheet"
+- assertVisible:
+    id: "screen.transaction.detail"
+- back
+
+# Cas 2 : Ouverture depuis popup appui long
+- evalScript: |
+    console.log("Cas 2 : Ouverture depuis popup appui long")
+- longPressOn: "Loyer"
+- assertVisible:
+    text: "Éditer"
+    index: 1
+- tapOn:
+    text: "Éditer"
+    index: 1
+
+
+# Vérification de la bottom sheet
+- assertVisible: "Modifier la transaction ?"
+- tapOn: "Annuler"
+- assertNotVisible:
+    id: "recurring.edit.scope.sheet"
+
+# Cas 3 : Non-affichage pour une transaction ponctuelle
+- evalScript: |
+    console.log("Cas 3 : Non-affichage pour une transaction ponctuelle")
+- tapOn: "Courses Hebdomadaires" # C'est une ponctuelle dans bootstrap_monthly (malgré le nom, elle n'a pas de seriesId)
+- assertVisible:
+    id: "screen.transaction.detail"
+- tapOn:
+    id: "transaction.detail.edit"
+- assertNotVisible:
+    id: "recurring.edit.scope.sheet"
+- assertVisible:
+    id: "screen.transaction.edit"
+- back
+- back
+
+# Cas 4 : Payer (Swipe/Bouton) -> Pas de choix de portée
+- evalScript: |
+    console.log("Cas 4 : Payer (Swipe) -> Pas de choix de portée")
+- swipe:
+    from: "Loyer"
+    direction: RIGHT
+- assertNotVisible: "Modifier la transaction ?"
+# Note: On ne vérifie pas le changement d'état ici, juste l'absence de la sheet de portée
