@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.common.UiConfig
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -60,9 +61,9 @@ fun SwipeableTransactionRow(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     /** Fraction de la largeur à dépasser pour confirmer le swipe (0f–1f). */
-    thresholdFraction: Float = 0.40f,
+    thresholdFraction: Float = UiConfig.swipeThresholdFraction,
     /** Vélocité minimale (px/s) pour déclencher l'action par fling. */
-    flingVelocityThreshold: Float = 800f,
+    flingVelocityThreshold: Float = UiConfig.swipeFlingVelocityThreshold,
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()

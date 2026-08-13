@@ -25,6 +25,10 @@ Cette intervention a permis de transformer une suite de tests Maestro monolithiq
 ### 4. Documentation (Lot 5)
 - **Mise à jour du Guide** : Ajout de 7 nouvelles sections (§12 à §18) dans `GUIDE_BONNES_PRATIQUES.md` documentant les nouvelles règles d'architecture et de configuration, avec références à la documentation officielle.
 
+### 5. Optimisation des Tests de Swipe
+- **Seuils dynamiques** : Création de `UiConfig.kt` pour abaisser les seuils de swipe en mode Debug (15% au lieu de 40%).
+- **Stabilité Maestro** : Le test `TC-29-3_BottomSheet_Via_Swipe.yaml` a été activé et stabilisé grâce à ces nouveaux seuils.
+
 ## Vérification de la Definition of Done
 
 - [x] 6 nouveaux fichiers scénario créés, anciens monolithes supprimés.
@@ -38,6 +42,7 @@ Cette intervention a permis de transformer une suite de tests Maestro monolithiq
 ## Liste des fichiers modifiés
 
 ### Créés
+- `app/src/main/java/com/lop/budget/ui/common/UiConfig.kt`
 - `Maestro/config.yaml`
 - `Maestro/.maestro/subflows/bootstrap_monthly.yaml`
 - `Maestro/.maestro/subflows/update_amount.yaml`
@@ -50,6 +55,7 @@ Cette intervention a permis de transformer une suite de tests Maestro monolithiq
 - `Maestro/tests/TC-30_Portees_Suppression/TC-30-3_Portee_Toute_La_Serie.yaml`
 
 ### Déplacés / Modifiés
+- `app/src/main/java/com/lop/budget/ui/components/SwipeableTransactionRow.kt`
 - `Maestro/TC-31_Suppression_Ponctuelle.yaml` -> `Maestro/tests/TC-31_Suppression_Ponctuelle/TC-31-1_Suppression_Ponctuelle.yaml`
 - `Maestro/TC-35-1_Edition_Transaction_Normale.yaml` -> `Maestro/tests/TC-35_Edition_Recurrente/TC-35-1_Edition_Transaction_Normale.yaml`
 - `Maestro/TC-35-2_Edition_Portee_Single.yaml` -> `Maestro/tests/TC-35_Edition_Recurrente/TC-35-2_Edition_Portee_Single.yaml`

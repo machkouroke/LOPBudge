@@ -3,16 +3,20 @@ name: "TC-29-3: BottomSheet Via Swipe"
 tags:
   - suppression
   - recurrence
-  - wip
 ---
-- launchApp:
-    clearState: true
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 
-- runFlow: ../../.maestro/subflows/open_monthly_history.yaml
+- evalScript: |
+    console.log("Scénario 1 : Vérification via Swipe")
 
-# Scénario 1 : Vérification via Swipe (désactivé temporairement car instable avec Maestro)
-## a IMPlementer par la suite
-# - swipe:
-#     from: { text: "Loyer" }
-#     direction: LEFT
-# ...
+- swipe:
+    from: { text: "Loyer" }
+    direction: LEFT
+
+# Vérification présence des 3 options (CA-03)
+- assertVisible: "Cette occurrence"
+- assertVisible: "Les suivantes uniquement"
+- assertVisible: "Toute la série"
+
+- tapOn: "Annuler"
+- assertVisible: "Loyer"

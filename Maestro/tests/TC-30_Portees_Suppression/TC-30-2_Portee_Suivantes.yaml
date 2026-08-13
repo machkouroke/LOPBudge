@@ -33,7 +33,7 @@ tags:
 
 # Vérifier le mois précédent (Présent)
 - evalScript: |
-    console.log("Vérifier le mois précédent (Présent)")
+    console.log("Vérifier le mois précédent")
 - runFlow:
     file: ../../.maestro/subflows/change_month.yaml
     env:
@@ -41,3 +41,14 @@ tags:
       year: ${output.PREV_YEAR}
 - assertVisible: { id: "screen.monthly" }
 - assertVisible: "Loyer"
+
+# Vérifier le mois suivant
+- evalScript: |
+    console.log("Vérifier le mois suivant")
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- assertVisible: { id: "screen.monthly" }
+- assertNotVisible: "Loyer"
