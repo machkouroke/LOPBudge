@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -86,7 +87,7 @@ class TransactionEditViewModel @Inject constructor(
                 loadTransaction(editingTransactionId!!)
             } else {
                 // Nouvelle transaction : présélectionner le compte par défaut ou le premier
-                val accounts = repo.observeAccounts().first()
+                val accounts = repo.observeAccounts().firstOrNull() ?: emptyList()
                 if (accounts.isNotEmpty()) {
                     _form.value = _form.value.copy(accountId = accounts.first().id)
                 }

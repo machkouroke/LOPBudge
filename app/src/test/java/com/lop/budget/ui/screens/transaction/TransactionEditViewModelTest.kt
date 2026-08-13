@@ -36,6 +36,10 @@ class TransactionEditViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+
+        // Correction du NoSuchElementException : 
+        // MockK (relaxed) renvoie un flow vide par défaut, ce qui fait planter .first()
+        coEvery { repo.observeAccounts() } returns flowOf(emptyList())
     }
 
     @After
