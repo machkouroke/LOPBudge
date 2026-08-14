@@ -1,0 +1,27 @@
+appId: com.lop.budget
+---
+# Subflow: update_recurrence_end_date
+# Responsabilité : Ajouter ou modifier la date de fin d'une série
+# Paramètres :
+# - target_day : le jour du mois de fin à sélectionner
+
+- scrollUntilVisible:
+    element: { id: "transaction.edit.btn.advanced" }
+    direction: DOWN
+
+# Déplier si besoin
+- runFlow:
+    when:
+      notVisible: "Moins"
+    commands:
+      - tapOn: { id: "transaction.edit.btn.advanced" }
+
+- scrollUntilVisible:
+    element: { id: "tx_edit_recurrence_end_date_btn" }
+    direction: DOWN
+
+- tapOn: { id: "tx_edit_recurrence_end_date_btn" }
+
+# Sélection du jour dans le DatePicker
+- tapOn: ${target_day}
+- tapOn: "OK"

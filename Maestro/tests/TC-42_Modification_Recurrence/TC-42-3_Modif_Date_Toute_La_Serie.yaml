@@ -1,0 +1,45 @@
+appId: com.lop.budget
+name: "TC-42-3: Déplacer toute la série"
+tags:
+  - recurrence
+  - edition
+---
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+- evalScript: |
+    console.log("Scenario: Déplacer toute la série (portée Toute la série)")
+
+# Given l'utilisateur ouvre le détail de l'occurrence "Loyer" du mois courant
+# When il choisit de la modifier
+# And il sélectionne la portée "Toute la série"
+- runFlow:
+    file: ../../.maestro/subflows/navigate_to_edit.yaml
+    env:
+      transactionName: "Loyer"
+      scopeSelection: "Toute la série"
+
+# When il remplace la date par {jourCible} (6)
+- runFlow:
+    file: ../../.maestro/subflows/update_date.yaml
+    env:
+      target_day: "6"
+
+# And il enregistre
+- tapOn: { id: "common.btn.save" }
+
+# Then les occurrences "Loyer" des mois précédent, courant et suivant sont affichées au nouveau jour d'ancrage
+- assertVisible: "6 ${output.CURRENT_MONTH_NAME}"
+
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- assertVisible: "6 ${output.NEXT_MONTH_NAME}"
+
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.PREV_MONTH_NAME}
+      year: ${output.PREV_YEAR}
+- assertVisible: "6 ${output.PREV_MONTH_NAME}"

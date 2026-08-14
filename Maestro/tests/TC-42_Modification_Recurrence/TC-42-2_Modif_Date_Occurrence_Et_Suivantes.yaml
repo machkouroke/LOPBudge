@@ -1,0 +1,57 @@
+appId: com.lop.budget
+name: "TC-42-2: Déplacer l'occurrence et les suivantes"
+tags:
+  - recurrence
+  - edition
+---
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+- evalScript: |
+    console.log("Scenario: Déplacer l'occurrence et les suivantes (portée Cette occurrence et les suivantes)")
+
+# Given l'utilisateur ouvre le détail de l'occurrence "Loyer" du mois courant
+# When il choisit de la modifier
+# And il sélectionne la portée "Cette occurrence et les suivantes"
+- runFlow:
+    file: ../../.maestro/subflows/navigate_to_edit.yaml
+    env:
+      transactionName: "Loyer"
+      scopeSelection: "Cette occurrence et les suivantes"
+
+# Then la section de récurrence est visible et préremplie avec la fréquence de la série
+- scrollUntilVisible:
+    element: { id: "transaction.edit.block.recurrence" }
+    direction: DOWN
+- assertVisible: "Mensuel"
+
+- scrollUntilVisible:
+    element: { id: "transaction.edit.field.date" }
+    direction: UP
+
+# When il remplace la date par {jourCible} (6)
+- runFlow:
+    file: ../../.maestro/subflows/update_date.yaml
+    env:
+      target_day: "6"
+
+# And il enregistre
+- tapOn: { id: "common.btn.save" }
+
+# Then l'occurrence du mois courant est affichée à la date {jourCible}
+- assertVisible: "6 ${output.CURRENT_MONTH_NAME}"
+
+# And l'occurrence du mois suivant est affichée au nouveau jour d'ancrage
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- assertVisible: "6 ${output.NEXT_MONTH_NAME}"
+
+# And l'occurrence du mois précédent reste à sa date d'origine
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.PREV_MONTH_NAME}
+      year: ${output.PREV_YEAR}
+- assertVisible: "1 ${output.PREV_MONTH_NAME}"

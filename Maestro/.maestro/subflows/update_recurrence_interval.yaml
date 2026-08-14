@@ -1,0 +1,25 @@
+appId: com.lop.budget
+---
+# Subflow: update_recurrence_interval
+# Responsabilité : Modifier l'intervalle de récurrence (ex: tous les X mois)
+# Paramètres :
+# - interval : Valeur de l'intervalle (ex: "3")
+
+- scrollUntilVisible:
+    element: { id: "transaction.edit.btn.advanced" }
+    direction: DOWN
+
+# Déplier si besoin (si "Moins" n'est pas visible)
+- runFlow:
+    when:
+      notVisible: "Moins"
+    commands:
+      - tapOn: { id: "transaction.edit.btn.advanced" }
+
+- scrollUntilVisible:
+    element: { id: "transaction.edit.field.interval" }
+    direction: DOWN
+
+- tapOn: { id: "transaction.edit.field.interval" }
+- inputText: ${interval}
+- hideKeyboard

@@ -1,0 +1,14 @@
+appId: com.lop.budget
+---
+# Subflow: update_date
+# Responsabilité : Modifier la date d'une transaction via le DatePicker
+# Paramètres :
+# - target_day : le jour du mois à sélectionner (ex: "15")
+
+- tapOn: { id: "transaction.edit.field.date" }
+
+# Le DatePicker Material3 affiche les jours. On tape sur le jour cible.
+# Note : On suppose qu'on reste dans le même mois comme indiqué dans le JDD du Gherkin.
+- tapOn: ${target_day}
+
+- tapOn: "OK"

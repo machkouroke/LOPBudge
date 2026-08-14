@@ -1,0 +1,65 @@
+appId: com.lop.budget
+name: "TC-42-8: Retirer la récurrence à partir de l'occurrence consultée"
+tags:
+  - recurrence
+  - edition
+  - wip
+---
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+- evalScript: |
+    console.log("Scenario: Retirer la récurrence à partir de l'occurrence consultée")
+
+# Given l'utilisateur ouvre l'édition de l'occurrence "Loyer" du mois courant
+# And il sélectionne la portée "Cette occurrence et les suivantes"
+- runFlow:
+    file: ../../.maestro/subflows/navigate_to_edit.yaml
+    env:
+      transactionName: "Loyer"
+      scopeSelection: "Cette occurrence et les suivantes"
+
+# When il désactive la récurrence
+- scrollUntilVisible:
+    element: { id: "transaction.edit.field.frequency" }
+    direction: DOWN
+
+- tapOn: { id: "transaction.edit.field.frequency" }
+- tapOn: "Aucune"
+
+# And il enregistre
+- tapOn: { id: "common.btn.save" }
+
+# Then l'occurrence "Loyer" du mois courant est affichée sans icône de série récurrente
+# On suppose que l'icône disparait. On vérifie l'absence de l'icône de série sur l'item Loyer.
+- assertNotVisible:
+    id: "Repeat"
+
+# And aucune occurrence "Loyer" n'est affichée sur le mois suivant
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- assertNotVisible: "Loyer"
+
+# And l'occurrence "Loyer" du mois précédent est toujours affichée avec son icône de série
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.PREV_MONTH_NAME}
+      year: ${output.PREV_YEAR}
+- assertVisible: "Loyer"
+- assertVisible: { id: "Repeat" }
+
+# When l'utilisateur ouvre le détail de l'occurrence du mois courant et choisit de la modifier
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.CURRENT_MONTH_NAME}
+      year: ${output.CURRENT_YEAR}
+- tapOn: "Loyer"
+- tapOn: { id: "transaction.detail.edit" }
+
+# Then aucune bottom sheet de choix de portée n'est affichée (car ce n'est plus une série)
+- assertNotVisible: "Modifier la transaction ?"
+- assertVisible: { id: "common.btn.save" }

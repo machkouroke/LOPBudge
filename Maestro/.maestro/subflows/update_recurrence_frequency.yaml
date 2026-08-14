@@ -1,0 +1,15 @@
+appId: com.lop.budget
+---
+# Subflow: update_recurrence_frequency
+# Responsabilité : Modifier la fréquence de récurrence
+# Paramètres :
+# - frequency : Libellé de la fréquence (ex: "Hebdomadaire", "Mensuel")
+
+- scrollUntilVisible:
+    element: { id: "transaction.edit.field.frequency" }
+    direction: DOWN
+
+- tapOn: { id: "transaction.edit.field.frequency" }
+
+# Sélection dans la BottomSheet
+- tapOn: ${frequency}

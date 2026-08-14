@@ -1,0 +1,64 @@
+appId: com.lop.budget
+name: "TC-42-9: Une modification de règle ne supprime pas silencieusement une exception"
+tags:
+  - recurrence
+  - edition
+  - wip
+---
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+- evalScript: |
+    console.log("Scenario: Une modification de règle ne supprime pas silencieusement une exception")
+
+# Given une occurrence future de la série "Loyer" a déjà été modifiée individuellement
+# On va créer l'exception d'abord
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+
+- runFlow:
+    file: ../../.maestro/subflows/navigate_to_edit.yaml
+    env:
+      transactionName: "Loyer"
+      scopeSelection: "Cette occurrence uniquement"
+
+- runFlow:
+    file: ../../.maestro/subflows/update_amount.yaml
+    env:
+      target_id: "transaction.edit.field.amount"
+      new_value: "999"
+
+# And l'utilisateur ouvre l'édition de l'occurrence "Loyer" du mois courant
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.CURRENT_MONTH_NAME}
+      year: ${output.CURRENT_YEAR}
+
+# And il sélectionne la portée "Toute la série"
+- runFlow:
+    file: ../../.maestro/subflows/navigate_to_edit.yaml
+    env:
+      transactionName: "Loyer"
+      scopeSelection: "Toute la série"
+
+# When il remplace la fréquence par "{nouvelleFrequence}" (Hebdomadaire)
+- runFlow:
+    file: ../../.maestro/subflows/update_recurrence_frequency.yaml
+    env:
+      frequency: "Hebdomadaire"
+
+# And il enregistre
+- tapOn: { id: "common.btn.save" }
+
+# Then l'occurrence modifiée individuellement reste visible selon la règle explicite retenue
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+
+# On cherche notre exception à 999
+- assertVisible: "999,00.*"

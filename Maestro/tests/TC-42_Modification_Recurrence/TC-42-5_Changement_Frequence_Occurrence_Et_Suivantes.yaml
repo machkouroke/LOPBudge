@@ -1,0 +1,53 @@
+appId: com.lop.budget
+name: "TC-42-5: Changer la fréquence pour les occurrences suivantes uniquement"
+tags:
+  - recurrence
+  - edition
+---
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+- evalScript: |
+    console.log("Scenario: Changer la fréquence pour les occurrences suivantes uniquement")
+
+# Given l'utilisateur ouvre l'édition de l'occurrence "Loyer" du mois courant
+# And il sélectionne la portée "Cette occurrence et les suivantes"
+- runFlow:
+    file: ../../.maestro/subflows/navigate_to_edit.yaml
+    env:
+      transactionName: "Loyer"
+      scopeSelection: "Cette occurrence et les suivantes"
+
+# When il remplace la fréquence par "{nouvelleFrequence}" (Hebdomadaire)
+- runFlow:
+    file: ../../.maestro/subflows/update_recurrence_frequency.yaml
+    env:
+      frequency: "Hebdomadaire"
+
+# And il enregistre
+- tapOn: { id: "common.btn.save" }
+
+# Then le mois courant affiche les occurrences selon la nouvelle fréquence
+- assertVisible:
+    text: "Loyer"
+    index: 1
+
+# And le mois suivant affiche les occurrences selon la nouvelle fréquence
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- assertVisible:
+    text: "Loyer"
+    index: 1
+
+# And le mois précédent affiche encore une seule occurrence "Loyer" à sa date d'origine
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.PREV_MONTH_NAME}
+      year: ${output.PREV_YEAR}
+- assertVisible: "Loyer"
+- assertNotVisible:
+    text: "Loyer"
+    index: 1
