@@ -32,14 +32,28 @@ tags:
 # And il enregistre
 - tapOn: { id: "common.btn.save" }
 
+# RETOUR SUR L'ÉCRAN DE DÉTAIL
+- assertVisible: { id: "screen.transaction.detail" }
+
+# APPUI BOUTON RETOUR -> RETOUR ÉCRAN DU MOIS
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.monthly" }
+
 # Then plusieurs occurrences "Loyer" sont affichées sur le mois courant
-# On vérifie au moins deux occurrences
+# On vérifie la présence de deux éléments distincts
 - assertVisible:
     text: "Loyer"
     index: 0
 - assertVisible:
     text: "Loyer"
     index: 1
+
+# And chaque occurrence porte l'icône de série récurrente
+- assertVisible: { id: "Repeat" }
+
+# RETOUR ACCUEIL -> MOIS PRÉCÉDENT
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.home" }
 
 # And le mois précédent affiche également des occurrences selon la nouvelle fréquence
 - runFlow:
@@ -53,6 +67,3 @@ tags:
 - assertVisible:
     text: "Loyer"
     index: 1
-
-# And chaque occurrence porte l'icône de série récurrente
-- assertVisible: { id: "Repeat" }

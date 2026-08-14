@@ -29,10 +29,25 @@ tags:
 # And il enregistre
 - tapOn: { id: "common.btn.save" }
 
+# RETOUR SUR L'ÉCRAN DE DÉTAIL
+- assertVisible: { id: "screen.transaction.detail" }
+
+# APPUI BOUTON RETOUR -> RETOUR ÉCRAN DU MOIS
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.monthly" }
+
 # Then l'occurrence "Loyer" du mois courant est affichée sans icône de série récurrente
-# On suppose que l'icône disparait. On vérifie l'absence de l'icône de série sur l'item Loyer.
+- scrollUntilVisible:
+    element: "1 ${output.CURRENT_MONTH_NAME.substring(0, 3)}.*"
+    direction: DOWN
+- assertVisible: "Loyer"
 - assertNotVisible:
     id: "Repeat"
+    below: "1 ${output.CURRENT_MONTH_NAME.substring(0, 3)}.*"
+
+# RETOUR ACCUEIL -> MOIS SUIVANT
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.home" }
 
 # And aucune occurrence "Loyer" n'est affichée sur le mois suivant
 - runFlow:
@@ -40,7 +55,12 @@ tags:
     env:
       month_name: ${output.NEXT_MONTH_NAME}
       year: ${output.NEXT_YEAR}
+- assertVisible: { id: "screen.monthly" }
 - assertNotVisible: "Loyer"
+
+# RETOUR ACCUEIL -> MOIS PRÉCÉDENT
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.home" }
 
 # And l'occurrence "Loyer" du mois précédent est toujours affichée avec son icône de série
 - runFlow:
@@ -48,18 +68,31 @@ tags:
     env:
       month_name: ${output.PREV_MONTH_NAME}
       year: ${output.PREV_YEAR}
-- assertVisible: "Loyer"
-- assertVisible: { id: "Repeat" }
+- scrollUntilVisible:
+    element: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
+    direction: DOWN
+- assertVisible:
+    text: "Loyer"
+    below: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
+- assertVisible:
+    id: "Repeat"
+    below: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
 
-# When l'utilisateur ouvre le détail de l'occurrence du mois courant et choisit de la modifier
+# RETOUR ACCUEIL -> MOIS COURANT (Pour vérification finale BottomSheet)
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.home" }
+
 - runFlow:
     file: ../../.maestro/subflows/change_month.yaml
     env:
       month_name: ${output.CURRENT_MONTH_NAME}
       year: ${output.CURRENT_YEAR}
+
+# When l'utilisateur ouvre le détail de l'occurrence du mois courant et choisit de la modifier
 - tapOn: "Loyer"
+- assertVisible: { id: "screen.transaction.detail" }
 - tapOn: { id: "transaction.detail.edit" }
 
 # Then aucune bottom sheet de choix de portée n'est affichée (car ce n'est plus une série)
 - assertNotVisible: "Modifier la transaction ?"
-- assertVisible: { id: "common.btn.save" }
+- assertVisible: { id: "screen.transaction.edit" }

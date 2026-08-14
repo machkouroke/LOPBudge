@@ -27,8 +27,24 @@ tags:
 # And il enregistre
 - tapOn: { id: "common.btn.save" }
 
+# RETOUR SUR L'ÉCRAN DE DÉTAIL
+- assertVisible: { id: "screen.transaction.detail" }
+
+# APPUI BOUTON RETOUR -> RETOUR ÉCRAN DU MOIS
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.monthly" }
+
 # Then l'occurrence "Loyer" est toujours affichée sur le mois courant
-- assertVisible: "Loyer"
+- scrollUntilVisible:
+    element: "1 ${output.CURRENT_MONTH_NAME.substring(0, 3)}.*"
+    direction: DOWN
+- assertVisible:
+    text: "Loyer"
+    below: "1 ${output.CURRENT_MONTH_NAME.substring(0, 3)}.*"
+
+# RETOUR ACCUEIL -> MOIS SUIVANT
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.home" }
 
 # And aucune occurrence "Loyer" n'est affichée sur le mois suivant
 - runFlow:
@@ -36,4 +52,5 @@ tags:
     env:
       month_name: ${output.NEXT_MONTH_NAME}
       year: ${output.NEXT_YEAR}
+- assertVisible: { id: "screen.monthly" }
 - assertNotVisible: "Loyer"

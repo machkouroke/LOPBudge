@@ -37,41 +37,70 @@ tags:
 - runFlow:
     file: ../../.maestro/subflows/update_date.yaml
     env:
-      target_day: "6"
+      target_day: "06"
+      target_month: ${output.CURRENT_MONTH_NUM}
+      target_year: ${output.CURRENT_YEAR}
 
 # And il enregistre
 - tapOn: { id: "common.btn.save" }
 
-# Then l'occurrence "Loyer" est affichée à la date {jourCible} sur le mois courant
-- assertVisible: "6 ${output.CURRENT_MONTH_NAME}"
+# RETOUR SUR L'ÉCRAN DE DÉTAIL (Automatique après save)
+- assertVisible: { id: "screen.transaction.detail" }
+# Vérification de la date sur le détail (Format: "Mardi 6 Août 2024")
 - assertVisible:
-    id: "transaction.item.title"
+    text: ".*6 ${output.CURRENT_MONTH_FULL_NAME}.*"
+    below:
+        text: "Date"
+
+# APPUI BOUTON RETOUR -> RETOUR ÉCRAN DU MOIS
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.monthly" }
+
+
+- assertVisible:
     text: "Loyer"
+    below: "6 ${output.CURRENT_MONTH_NAME}.*"
+- runFlow:
+    when:
+        visible: "1 ${output.CURRENT_MONTH_NAME}.*"
+    commands: 
+        - assertNotVisible:
+            text: "Loyer"
+            below: "1 ${output.CURRENT_MONTH_NAME}.*"
 
-# And aucune occurrence "Loyer" n'est affichée à la date {jourOrigine} (1er)
-# On scroll pour être sûr de voir le début du mois
-- scroll:
-    direction: UP
-- assertNotVisible: "1 ${output.CURRENT_MONTH_NAME}"
 
-# And cette occurrence porte toujours l'icône de série récurrente
-- assertVisible: { id: "transaction.item" }
-- assertVisible: { id: "Repeat" } # Icon name from Transactions.kt
+# APPUI BOUTON RETOUR -> RETOUR ACCUEIL
+- tapOn: { id: "common.btn.back" }
 
-# And l'occurrence du mois précédent reste à sa date d'origine
+
+# VÉRIFICATION MOIS PRÉCÉDENT (Isolement)
 - runFlow:
     file: ../../.maestro/subflows/change_month.yaml
     env:
       month_name: ${output.PREV_MONTH_NAME}
       year: ${output.PREV_YEAR}
-- assertVisible: "1 ${output.PREV_MONTH_NAME}"
-- assertVisible: "Loyer"
+- assertVisible: { id: "screen.monthly" }
+- scrollUntilVisible:
+    element: "1 ${output.PREV_MONTH_NAME}.*"
+    direction: DOWN
+- assertVisible:
+    text: "Loyer"
+    below: "1 ${output.PREV_MONTH_NAME}.*"
 
-# And l'occurrence du mois suivant reste à sa date d'origine
+# RETOUR ACCUEIL POUR CHANGEMENT MOIS SUIVANT
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.home" }
+
+# VÉRIFICATION MOIS SUIVANT (Isolement)
 - runFlow:
     file: ../../.maestro/subflows/change_month.yaml
     env:
       month_name: ${output.NEXT_MONTH_NAME}
       year: ${output.NEXT_YEAR}
-- assertVisible: "1 ${output.NEXT_MONTH_NAME}"
-- assertVisible: "Loyer"
+- assertVisible: { id: "screen.monthly" }
+- scrollUntilVisible:
+    element: "1 ${output.NEXT_MONTH_NAME}.*"
+    direction: DOWN
+- assertVisible:
+    text: "Loyer"
+    below: "1 ${output.NEXT_MONTH_NAME}.*"

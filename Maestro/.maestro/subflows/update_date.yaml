@@ -9,6 +9,13 @@ appId: com.lop.budget
 
 # Le DatePicker Material3 affiche les jours. On tape sur le jour cible.
 # Note : On suppose qu'on reste dans le même mois comme indiqué dans le JDD du Gherkin.
-- tapOn: ${target_day}
+- tapOn: "Passer au mode de saisie Texte"
+
+
+- eraseText
+
+- inputText: "${target_day}${target_month}${target_year}"
+
+- hideKeyboard
 
 - tapOn: "OK"

@@ -37,21 +37,51 @@ tags:
 # And il enregistre
 - tapOn: { id: "common.btn.save" }
 
-# Then l'occurrence du mois courant est affichée à la date {jourCible}
-- assertVisible: "6 ${output.CURRENT_MONTH_NAME}"
+# RETOUR SUR L'ÉCRAN DE DÉTAIL
+- assertVisible: { id: "screen.transaction.detail" }
 
-# And l'occurrence du mois suivant est affichée au nouveau jour d'ancrage
+# APPUI BOUTON RETOUR -> RETOUR ÉCRAN DU MOIS
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.monthly" }
+
+# VÉRIFICATION POSITIONNELLE COURANT
+- scrollUntilVisible:
+    element: "6 ${output.CURRENT_MONTH_NAME.substring(0, 3)}.*"
+    direction: DOWN
+- assertVisible:
+    text: "Loyer"
+    below: "6 ${output.CURRENT_MONTH_NAME.substring(0, 3)}.*"
+
+# RETOUR ACCUEIL -> MOIS SUIVANT
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.home" }
+
+# VÉRIFICATION MOIS SUIVANT (Déplacé au 6)
 - runFlow:
     file: ../../.maestro/subflows/change_month.yaml
     env:
       month_name: ${output.NEXT_MONTH_NAME}
       year: ${output.NEXT_YEAR}
-- assertVisible: "6 ${output.NEXT_MONTH_NAME}"
+- scrollUntilVisible:
+    element: "6 ${output.NEXT_MONTH_NAME.substring(0, 3)}.*"
+    direction: DOWN
+- assertVisible:
+    text: "Loyer"
+    below: "6 ${output.NEXT_MONTH_NAME.substring(0, 3)}.*"
 
-# And l'occurrence du mois précédent reste à sa date d'origine
+# RETOUR ACCUEIL -> MOIS PRÉCÉDENT
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.home" }
+
+# VÉRIFICATION MOIS PRÉCÉDENT (Resté au 1er)
 - runFlow:
     file: ../../.maestro/subflows/change_month.yaml
     env:
       month_name: ${output.PREV_MONTH_NAME}
       year: ${output.PREV_YEAR}
-- assertVisible: "1 ${output.PREV_MONTH_NAME}"
+- scrollUntilVisible:
+    element: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
+    direction: DOWN
+- assertVisible:
+    text: "Loyer"
+    below: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"

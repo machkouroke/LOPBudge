@@ -30,6 +30,11 @@ tags:
       target_id: "transaction.edit.field.amount"
       new_value: "999"
 
+# Après le save dans update_amount.yaml, on est sur Détail. On retourne sur le mois.
+- assertVisible: { id: "screen.transaction.detail" }
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.monthly" }
+
 # And l'utilisateur ouvre l'édition de l'occurrence "Loyer" du mois courant
 - runFlow:
     file: ../../.maestro/subflows/change_month.yaml
@@ -52,6 +57,11 @@ tags:
 
 # And il enregistre
 - tapOn: { id: "common.btn.save" }
+
+# Retour sur Détail, puis retour sur Mois.
+- assertVisible: { id: "screen.transaction.detail" }
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.monthly" }
 
 # Then l'occurrence modifiée individuellement reste visible selon la règle explicite retenue
 - runFlow:

@@ -26,10 +26,24 @@ tags:
 # And il enregistre
 - tapOn: { id: "common.btn.save" }
 
-# Then le mois courant affiche les occurrences selon la nouvelle fréquence
+# RETOUR SUR L'ÉCRAN DE DÉTAIL
+- assertVisible: { id: "screen.transaction.detail" }
+
+# APPUI BOUTON RETOUR -> RETOUR ÉCRAN DU MOIS
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.monthly" }
+
+# Then le mois courant affiche les occurrences selon la nouvelle fréquence (au moins 2)
+- assertVisible:
+    text: "Loyer"
+    index: 0
 - assertVisible:
     text: "Loyer"
     index: 1
+
+# RETOUR ACCUEIL -> MOIS SUIVANT
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.home" }
 
 # And le mois suivant affiche les occurrences selon la nouvelle fréquence
 - runFlow:
@@ -39,7 +53,14 @@ tags:
       year: ${output.NEXT_YEAR}
 - assertVisible:
     text: "Loyer"
+    index: 0
+- assertVisible:
+    text: "Loyer"
     index: 1
+
+# RETOUR ACCUEIL -> MOIS PRÉCÉDENT
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.home" }
 
 # And le mois précédent affiche encore une seule occurrence "Loyer" à sa date d'origine
 - runFlow:
@@ -47,7 +68,12 @@ tags:
     env:
       month_name: ${output.PREV_MONTH_NAME}
       year: ${output.PREV_YEAR}
-- assertVisible: "Loyer"
+- scrollUntilVisible:
+    element: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
+    direction: DOWN
+- assertVisible:
+    text: "Loyer"
+    below: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
 - assertNotVisible:
     text: "Loyer"
     index: 1
