@@ -40,7 +40,7 @@ tags:
 - assertVisible: { id: "screen.monthly" }
 
 # Then plusieurs occurrences "Loyer" sont affichées sur le mois courant
-# On vérifie la présence de deux éléments distincts
+# On vérifie la présence de deux éléments distincts via index
 - assertVisible:
     text: "Loyer"
     index: 0

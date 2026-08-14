@@ -38,12 +38,12 @@ tags:
 
 # Then l'occurrence "Loyer" du mois courant est affichée sans icône de série récurrente
 - scrollUntilVisible:
-    element: "1 ${output.CURRENT_MONTH_NAME.substring(0, 3)}.*"
+    element: "1 ${output.CURRENT_MONTH_NAME}.*"
     direction: DOWN
 - assertVisible: "Loyer"
 - assertNotVisible:
     id: "Repeat"
-    below: "1 ${output.CURRENT_MONTH_NAME.substring(0, 3)}.*"
+    below: "1 ${output.CURRENT_MONTH_NAME}.*"
 
 # RETOUR ACCUEIL -> MOIS SUIVANT
 - tapOn: { id: "common.btn.back" }
@@ -69,14 +69,14 @@ tags:
       month_name: ${output.PREV_MONTH_NAME}
       year: ${output.PREV_YEAR}
 - scrollUntilVisible:
-    element: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
+    element: "1 ${output.PREV_MONTH_NAME}.*"
     direction: DOWN
 - assertVisible:
     text: "Loyer"
-    below: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
+    below: "1 ${output.PREV_MONTH_NAME}.*"
 - assertVisible:
     id: "Repeat"
-    below: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
+    below: "1 ${output.PREV_MONTH_NAME}.*"
 
 # RETOUR ACCUEIL -> MOIS COURANT (Pour vérification finale BottomSheet)
 - tapOn: { id: "common.btn.back" }

@@ -69,11 +69,11 @@ tags:
       month_name: ${output.PREV_MONTH_NAME}
       year: ${output.PREV_YEAR}
 - scrollUntilVisible:
-    element: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
+    element: "1 ${output.PREV_MONTH_NAME}.*"
     direction: DOWN
 - assertVisible:
     text: "Loyer"
-    below: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
+    below: "1 ${output.PREV_MONTH_NAME}.*"
 - assertNotVisible:
     text: "Loyer"
     index: 1

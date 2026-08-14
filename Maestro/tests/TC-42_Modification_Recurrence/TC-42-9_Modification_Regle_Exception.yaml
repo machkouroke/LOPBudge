@@ -11,13 +11,14 @@ tags:
     console.log("Scenario: Une modification de règle ne supprime pas silencieusement une exception")
 
 # Given une occurrence future de la série "Loyer" a déjà été modifiée individuellement
-# On va créer l'exception d'abord
+# 1. Aller au mois suivant
 - runFlow:
     file: ../../.maestro/subflows/change_month.yaml
     env:
       month_name: ${output.NEXT_MONTH_NAME}
       year: ${output.NEXT_YEAR}
 
+# 2. Créer l'exception (Montant 999)
 - runFlow:
     file: ../../.maestro/subflows/navigate_to_edit.yaml
     env:
@@ -30,10 +31,12 @@ tags:
       target_id: "transaction.edit.field.amount"
       new_value: "999"
 
-# Après le save dans update_amount.yaml, on est sur Détail. On retourne sur le mois.
+# 3. Retourner à l'historique puis à l'accueil
 - assertVisible: { id: "screen.transaction.detail" }
 - tapOn: { id: "common.btn.back" }
 - assertVisible: { id: "screen.monthly" }
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.home" }
 
 # And l'utilisateur ouvre l'édition de l'occurrence "Loyer" du mois courant
 - runFlow:
@@ -58,12 +61,14 @@ tags:
 # And il enregistre
 - tapOn: { id: "common.btn.save" }
 
-# Retour sur Détail, puis retour sur Mois.
+# 4. Retourner à l'historique puis à l'accueil
 - assertVisible: { id: "screen.transaction.detail" }
 - tapOn: { id: "common.btn.back" }
 - assertVisible: { id: "screen.monthly" }
+- tapOn: { id: "common.btn.back" }
+- assertVisible: { id: "screen.home" }
 
-# Then l'occurrence modifiée individuellement reste visible selon la règle explicite retenue
+# Then l'occurrence modifiée individuellement reste visible
 - runFlow:
     file: ../../.maestro/subflows/change_month.yaml
     env:
@@ -71,4 +76,9 @@ tags:
       year: ${output.NEXT_YEAR}
 
 # On cherche notre exception à 999
-- assertVisible: "999,00.*"
+- scrollUntilVisible:
+    element: "1 ${output.NEXT_MONTH_NAME}.*"
+    direction: DOWN
+- assertVisible:
+    text: "999,00.*"
+    below: "1 ${output.NEXT_MONTH_NAME}.*"
