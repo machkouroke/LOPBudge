@@ -32,6 +32,7 @@ import com.lop.budget.domain.model.AccountType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.util.IconMapper
@@ -58,21 +59,11 @@ fun AccountEditScreen(
     }
 
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = state.balanceUpdatedAt)
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { vm.onBalanceDateChange(it) }
-                    showDatePicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Annuler") }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
+        LopDatePicker(
+            initialDateMillis = state.balanceUpdatedAt,
+            onDateSelected = { it?.let { vm.onBalanceDateChange(it) } },
+            onDismiss = { showDatePicker = false }
+        )
     }
 
     if (showDeleteDialog) {

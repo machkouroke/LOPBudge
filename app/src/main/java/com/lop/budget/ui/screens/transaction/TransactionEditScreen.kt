@@ -80,6 +80,7 @@ import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.HapticIntent
+import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopSwitch
 import com.lop.budget.ui.components.PillTag
@@ -339,19 +340,14 @@ fun TransactionEditScreen(
                         minLines = 2
                     )
 
-                    val dateState = rememberDatePickerState(initialSelectedDateMillis = form.date)
                     var showDatePickerInternal by remember { mutableStateOf(false) }
 
                     if (showDatePickerInternal) {
-                        DatePickerDialog(
-                            onDismissRequest = { showDatePickerInternal = false },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    dateState.selectedDateMillis?.let { vm.setDate(it) }
-                                    showDatePickerInternal = false
-                                }) { Text(stringResource(R.string.ok)) }
-                            }
-                        ) { DatePicker(state = dateState) }
+                        LopDatePicker(
+                            initialDateMillis = form.date,
+                            onDateSelected = { it?.let { vm.setDate(it) } },
+                            onDismiss = { showDatePickerInternal = false }
+                        )
                     }
 
                     SelectorRow(
@@ -650,19 +646,11 @@ private fun RecurrenceBlock(
                 }
 
                 if (showEndDatePicker) {
-                    val endPickerState = rememberDatePickerState(initialSelectedDateMillis = form.endDate ?: System.currentTimeMillis())
-                    DatePickerDialog(
-                        onDismissRequest = { showEndDatePicker = false },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                endPickerState.selectedDateMillis?.let { onSetEndDate(it) }
-                                showEndDatePicker = false
-                            }) { Text(stringResource(R.string.ok)) }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showEndDatePicker = false }) { Text(stringResource(R.string.cancel)) }
-                        }
-                    ) { DatePicker(state = endPickerState) }
+                    LopDatePicker(
+                        initialDateMillis = form.endDate ?: System.currentTimeMillis(),
+                        onDateSelected = { onSetEndDate(it) },
+                        onDismiss = { showEndDatePicker = false }
+                    )
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {

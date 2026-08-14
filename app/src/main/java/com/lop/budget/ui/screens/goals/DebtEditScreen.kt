@@ -35,6 +35,7 @@ import com.lop.budget.R
 import com.lop.budget.domain.model.DebtType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopTextField
 import com.lop.budget.ui.screens.transaction.SelectorRow
@@ -153,24 +154,13 @@ fun DebtEditScreen(
 
         item {
             var showDatePicker by remember { mutableStateOf(false) }
-            val dateState = rememberDatePickerState(initialSelectedDateMillis = form.dueDate)
 
             if (showDatePicker) {
-                DatePickerDialog(
-                    onDismissRequest = { showDatePicker = false },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            vm.updateDueDate(dateState.selectedDateMillis)
-                            showDatePicker = false
-                        }) { Text(stringResource(R.string.ok)) }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = {
-                            vm.updateDueDate(null)
-                            showDatePicker = false
-                        }) { Text(stringResource(R.string.none)) }
-                    }
-                ) { DatePicker(state = dateState) }
+                LopDatePicker(
+                    initialDateMillis = form.dueDate,
+                    onDateSelected = { vm.updateDueDate(it) },
+                    onDismiss = { showDatePicker = false }
+                )
             }
 
             SelectorRow(

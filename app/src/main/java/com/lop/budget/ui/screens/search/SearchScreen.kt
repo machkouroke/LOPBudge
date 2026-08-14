@@ -49,6 +49,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CategoryBottomSheet
+import com.lop.budget.ui.components.LopDateRangePicker
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopSearchBar
 import com.lop.budget.ui.components.transactionDayGroups
@@ -302,21 +303,14 @@ fun SearchScreen(
     }
 
     if (showDatePicker) {
-        val datePickerState = rememberDateRangePickerState()
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.onDateRangeChange(
-                        datePickerState.selectedStartDateMillis,
-                        datePickerState.selectedEndDateMillis
-                    )
-                    showDatePicker = false
-                }) { Text("OK") }
-            }
-        ) {
-            DateRangePicker(state = datePickerState, modifier = Modifier.weight(1f))
-        }
+        LopDateRangePicker(
+            initialStartMillis = state.startDate,
+            initialEndMillis = state.endDate,
+            onRangeSelected = { start, end ->
+                vm.onDateRangeChange(start, end)
+            },
+            onDismiss = { showDatePicker = false }
+        )
     }
 }
 

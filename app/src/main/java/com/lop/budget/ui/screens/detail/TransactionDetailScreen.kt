@@ -63,6 +63,7 @@ import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.SwipeDownDismissWrapper
@@ -411,32 +412,19 @@ fun TransactionDetailScreen(
 
 
     if (showDatePicker && tx != null) {
-        val pickerState =
-            androidx.compose.material3.rememberDatePickerState(initialSelectedDateMillis = tx.date)
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    pickerState.selectedDateMillis?.let { newDate ->
-                        actionVm.confirmEdit(
-                            tx = twr,
-                            scope = EditScope.SINGLE,
-                            updatedDate = newDate
-                        )
-                    }
-                    showDatePicker = false
-                }) {
-                    Text(stringResource(R.string.ok))
+        LopDatePicker(
+            initialDateMillis = tx.date,
+            onDateSelected = { newDate ->
+                newDate?.let {
+                    actionVm.confirmEdit(
+                        tx = twr,
+                        scope = EditScope.SINGLE,
+                        updatedDate = it
+                    )
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-        ) {
-            DatePicker(state = pickerState)
-        }
+            onDismiss = { showDatePicker = false }
+        )
     }
 
     if (showCategorySheet && tx != null) {

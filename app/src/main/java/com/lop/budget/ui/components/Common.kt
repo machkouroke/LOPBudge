@@ -21,6 +21,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,11 +35,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +61,87 @@ import coil.compose.AsyncImage
 import com.lop.budget.R
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.util.IconMapper
+import java.util.TimeZone
+
+/**
+ * DatePicker robuste qui corrige le bug du décalage UTC (J-1).
+ * Le DatePicker de Material3 travaille en UTC. Cette version applique automatiquement
+ * l'offset local pour que la date affichée et la date sélectionnée correspondent
+ * à ce que voit l'utilisateur.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LopDatePicker(
+    initialDateMillis: Long?,
+    onDateSelected: (Long?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val localOffset = remember(initialDateMillis) {
+        TimeZone.getDefault().getOffset(initialDateMillis ?: System.currentTimeMillis()).toLong()
+    }
+    
+    val dateState = rememberDatePickerState(
+        initialSelectedDateMillis = initialDateMillis?.let { it + localOffset }
+    )
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                // On retire l'offset pour repasser en "UTC pure" à minuit pour le stockage
+                onDateSelected(dateState.selectedDateMillis?.let { it - localOffset })
+                onDismiss()
+            }) { Text(stringResource(R.string.ok)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        }
+    ) {
+        DatePicker(state = dateState)
+    }
+}
+
+/**
+ * Version Range du DatePicker corrigeant également le décalage UTC.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LopDateRangePicker(
+    initialStartMillis: Long?,
+    initialEndMillis: Long?,
+    onRangeSelected: (Long?, Long?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val localOffset = remember {
+        TimeZone.getDefault().getOffset(System.currentTimeMillis()).toLong()
+    }
+
+    val datePickerState = rememberDateRangePickerState(
+        initialSelectedStartDateMillis = initialStartMillis?.let { it + localOffset },
+        initialSelectedEndDateMillis = initialEndMillis?.let { it + localOffset }
+    )
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                onRangeSelected(
+                    datePickerState.selectedStartDateMillis?.let { it - localOffset },
+                    datePickerState.selectedEndDateMillis?.let { it - localOffset }
+                )
+                onDismiss()
+            }) { Text(stringResource(R.string.ok)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        }
+    ) {
+        DateRangePicker(
+            state = datePickerState,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
 
 /**
  * Switch stylisé aux couleurs de LOPBudge.
