@@ -22,7 +22,7 @@ tags:
 - scrollUntilVisible:
     element: { id: "transaction.edit.block.recurrence" }
     direction: DOWN
-- assertVisible: "Mensuel"
+- assertVisible: "Tous les mois"
 
 - scrollUntilVisible:
     element: { id: "transaction.edit.field.date" }
@@ -32,29 +32,39 @@ tags:
 - runFlow:
     file: ../../.maestro/subflows/update_date.yaml
     env:
-      target_day: "6"
+      target_day: "06"
+      target_month: ${output.CURRENT_MONTH_NUM}
+      target_year: ${output.CURRENT_YEAR}
 
 # And il enregistre
 - tapOn: { id: "common.btn.save" }
 
 # RETOUR SUR L'ÉCRAN DE DÉTAIL
 - assertVisible: { id: "screen.transaction.detail" }
+# Vérification date sur détail
+- assertVisible:
+    text: ".*6 ${output.CURRENT_MONTH_FULL_NAME}.*"
+    below:
+        text: "Date"
 
 # APPUI BOUTON RETOUR -> RETOUR ÉCRAN DU MOIS
 - tapOn: { id: "common.btn.back" }
 - assertVisible: { id: "screen.monthly" }
 
-# VÉRIFICATION POSITIONNELLE COURANT
-- scrollUntilVisible:
-    element: "6 ${output.CURRENT_MONTH_NAME.substring(0, 3)}.*"
-    direction: DOWN
+- runFlow:
+    when:
+      visible: "1 ${output.CURRENT_MONTH_NAME}.*"
+    commands:
+      - assertNotVisible:
+          text: "Loyer"
+          below: "1 ${output.CURRENT_MONTH_NAME}.*"
 - assertVisible:
     text: "Loyer"
-    below: "6 ${output.CURRENT_MONTH_NAME.substring(0, 3)}.*"
+    below: "6 ${output.CURRENT_MONTH_NAME}.*"
 
 # RETOUR ACCUEIL -> MOIS SUIVANT
 - tapOn: { id: "common.btn.back" }
-- assertVisible: { id: "screen.home" }
+
 
 # VÉRIFICATION MOIS SUIVANT (Déplacé au 6)
 - runFlow:
@@ -62,12 +72,21 @@ tags:
     env:
       month_name: ${output.NEXT_MONTH_NAME}
       year: ${output.NEXT_YEAR}
+
+- runFlow:
+    when:
+      visible: "1 ${output.NEXT_MONTH_NAME}.*"
+    commands:
+      - assertNotVisible:
+          text: "Loyer"
+          below: "1 ${output.NEXT_MONTH_NAME}.*"
 - scrollUntilVisible:
-    element: "6 ${output.NEXT_MONTH_NAME.substring(0, 3)}.*"
-    direction: DOWN
+    element: "6 ${output.NEXT_MONTH_NAME}.*"
+    direction: UP
 - assertVisible:
     text: "Loyer"
-    below: "6 ${output.NEXT_MONTH_NAME.substring(0, 3)}.*"
+    below: "6 ${output.NEXT_MONTH_NAME}.*"
+
 
 # RETOUR ACCUEIL -> MOIS PRÉCÉDENT
 - tapOn: { id: "common.btn.back" }
@@ -79,9 +98,17 @@ tags:
     env:
       month_name: ${output.PREV_MONTH_NAME}
       year: ${output.PREV_YEAR}
+
 - scrollUntilVisible:
-    element: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
+    element: "1 ${output.PREV_MONTH_NAME}.*"
     direction: DOWN
 - assertVisible:
     text: "Loyer"
-    below: "1 ${output.PREV_MONTH_NAME.substring(0, 3)}.*"
+    below: "1 ${output.PREV_MONTH_NAME}.*"
+- runFlow:
+    when:
+      visible: "6 ${output.PREV_MONTH_NAME}.*"
+    commands:
+      - assertNotVisible:
+          text: "Loyer"
+          below: "6 ${output.PREV_MONTH_NAME}.*"

@@ -438,10 +438,14 @@ class BudgetRepository @Inject constructor(
         scope: EditScope = EditScope.SINGLE, // Portée de la modification
         status: TransactionStatus? = null // Nouveau statut optionnel (ex: pour togglePaid)
     ): Long {
-        // 1. Déterminer l'origine (Série parente) AVANT toute transformation
-        // On récupère la transaction (physique ou virtuelle) pour extraire son seriesId
+        // 1. Déterminer l'origine (Série parente) et le SLOT d'origine
         val initialTwr = editingId?.let { getTransactionById(it) }
         val seriesIdFromSource = initialTwr?.transaction?.seriesId?.toLongOrNull()
+        
+        // Le seriesDate d'origine est LA CLÉ pour bloquer le slot virtuel
+        // Si on édite un virtuel, son .date EST le seriesDate (le slot).
+        // Si on édite une exception existante, son .seriesDate est déjà renseigné.
+        val originalSeriesDate = initialTwr?.transaction?.seriesDate ?: initialTwr?.transaction?.date ?: date
 
         // 2. Gérer la matérialisation si on édite une occurrence virtuelle
         var finalEditingId = editingId
@@ -449,13 +453,13 @@ class BudgetRepository @Inject constructor(
 
         if (finalEditingId != null && finalEditingId < 0L) {
             // C'est une occurrence virtuelle : on la matérialise physiquement en base
+            // MAIS on utilise originalSeriesDate pour le slot
             if (seriesIdFromSource != null) {
-                finalEditingId = materializeOccurrence(seriesIdFromSource, date)
+                finalEditingId = materializeOccurrence(seriesIdFromSource, originalSeriesDate)
                 currentTwr = transactionDao.getById(finalEditingId!!)
             }
         }
         
-        // On utilise la source la plus fiable pour le seriesId (le virtuel d'origine ou le Twr rechargé)
         val currentSeriesId = seriesIdFromSource ?: currentTwr?.transaction?.seriesId?.toLongOrNull()
         val finalStatus = status ?: currentTwr?.transaction?.status ?: TransactionStatus.PLANNED
 
@@ -465,11 +469,9 @@ class BudgetRepository @Inject constructor(
                 if (frequency == com.lop.budget.domain.model.RecurrenceFrequency.NONE) {
                     // --- CAS : VERS PONCTUEL ---
                     if (currentSeriesId != null) {
-                        // On passe de série à ponctuel : 
-                        // 1. On arrête la série parente pour le futur (conserve le passé)
-                        cancelSeries(currentSeriesId.toString(), SeriesDeletionMode.FUTURE, date)
+                        // On débranche de la série : on arrête la série avant ce slot
+                        cancelSeries(currentSeriesId.toString(), SeriesDeletionMode.FUTURE, originalSeriesDate)
                         
-                        // 2. On transforme l'occurrence éditée en transaction isolée
                         val singleTx = TransactionEntity(
                             id = finalEditingId ?: 0L,
                             title = title,
@@ -490,7 +492,7 @@ class BudgetRepository @Inject constructor(
                         )
                         return saveTransaction(singleTx, tagIds)
                     } else {
-                        // Simple mise à jour ou création de transaction ponctuelle
+                        // Mise à jour ponctuelle standard
                         val tx = TransactionEntity(
                             id = finalEditingId ?: 0L,
                             title = title,
@@ -509,23 +511,24 @@ class BudgetRepository @Inject constructor(
                         return saveTransaction(tx, tagIds)
                     }
                 } else {
-                    // --- CAS : VERS SÉRIE (Mise à jour d'une occurrence ou conversion ponctuel -> série) ---
+                    // --- CAS : VERS SÉRIE (Mise à jour d'occurrence ou conversion ponctuel -> série) ---
                     if (currentSeriesId != null) {
-                        // On met à jour l'exception (modification d'une seule occurrence dans une série)
+                        // On met à jour l'exception. 
+                        // IMPORTANT : seriesDate RESTE originalSeriesDate pour bloquer le slot !
                         val tx = TransactionEntity(
                             id = finalEditingId ?: 0L,
                             title = title,
                             amount = amount,
                             type = type,
                             status = finalStatus,
-                            date = date,
+                            date = date, // Nouvelle date d'affichage
                             accountId = accountId,
                             categoryId = categoryId,
                             subCategoryId = subCategoryId,
                             note = note,
                             paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr?.transaction?.paidAt ?: System.currentTimeMillis()) else null,
                             seriesId = currentSeriesId.toString(),
-                            seriesDate = currentTwr?.transaction?.seriesDate ?: date,
+                            seriesDate = originalSeriesDate, // On garde le lien vers le slot d'origine
                             isException = true,
                             linkedGoalId = linkedGoalId,
                             linkedDebtId = linkedDebtId
@@ -560,7 +563,7 @@ class BudgetRepository @Inject constructor(
             }
             
             EditScope.FUTURE -> {
-                // Mise à jour de cette occurrence et des suivantes (Troncature)
+                // Mise à jour FUTURE : On tronque à originalSeriesDate pour ne pas laisser de trou
                 if (currentSeriesId != null) {
                     val newSeries = RecurringSeriesEntity(
                         title = title,
@@ -579,7 +582,9 @@ class BudgetRepository @Inject constructor(
                         linkedGoalId = linkedGoalId,
                         linkedDebtId = linkedDebtId
                     )
-                    val newSeriesId = updateSeriesFrom(currentSeriesId, date, newSeries)
+                    // On arrête l'ancienne série juste AVANT le slot d'origine
+                    val newSeriesId = updateSeriesFrom(currentSeriesId, originalSeriesDate, newSeries)
+                    // On matérialise la première occurrence de la nouvelle série
                     return materializeOccurrence(newSeriesId, date)
                 }
                 return finalEditingId ?: 0L
@@ -590,6 +595,19 @@ class BudgetRepository @Inject constructor(
                 if (currentSeriesId != null) {
                     val existing = getSeriesById(currentSeriesId)
                     if (existing != null) {
+                        // Si le jour a changé, on doit décaler le startDate de la série
+                        // pour que les occurrences virtuelles suivent le nouveau rythme
+                        val newStartDate = if (date != originalSeriesDate) {
+                            val calendar = java.util.Calendar.getInstance()
+                            calendar.timeInMillis = date
+                            val newDay = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+                            
+                            // On ré-applique le nouveau jour au startDate d'origine
+                            calendar.timeInMillis = existing.startDate
+                            calendar.set(java.util.Calendar.DAY_OF_MONTH, newDay)
+                            calendar.timeInMillis
+                        } else existing.startDate
+
                         val updatedSeries = existing.copy(
                             title = title,
                             amount = amount,
@@ -599,6 +617,7 @@ class BudgetRepository @Inject constructor(
                             accountId = accountId,
                             frequency = frequency,
                             interval = interval,
+                            startDate = newStartDate,
                             endDate = endDate,
                             maxOccurrences = maxOccurrences,
                             daysOfWeek = daysOfWeek,
@@ -608,7 +627,7 @@ class BudgetRepository @Inject constructor(
                         )
                         updateEntireSeries(currentSeriesId, updatedSeries)
 
-                        // Propager aux exceptions matérialisées de cette série
+                        // Propager aux exceptions matérialisées (on change tout SAUF le seriesDate/slot)
                         transactionDao.updateSeriesExceptions(
                             seriesId = currentSeriesId.toString(),
                             title = title,
@@ -620,7 +639,6 @@ class BudgetRepository @Inject constructor(
                         )
                     }
                     
-                    // On met aussi à jour la transaction physique qu'on avait sous la main si c'était une exception
                     if (currentTwr != null) {
                         return saveTransaction(currentTwr.transaction.copy(
                             title = title,
@@ -630,6 +648,7 @@ class BudgetRepository @Inject constructor(
                             categoryId = categoryId,
                             accountId = accountId,
                             note = note,
+                            date = date, // La date d'affichage change
                             paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr.transaction.paidAt ?: System.currentTimeMillis()) else null
                         ), tagIds)
                     }

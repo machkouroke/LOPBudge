@@ -56,17 +56,17 @@ tags:
 - tapOn: { id: "common.btn.back" }
 - assertVisible: { id: "screen.monthly" }
 
-
+- runFlow:
+    when:
+      visible: "1 ${output.CURRENT_MONTH_NAME}.*"
+    commands:
+      - assertNotVisible:
+          text: "Loyer"
+          below: "1 ${output.CURRENT_MONTH_NAME}.*"
 - assertVisible:
     text: "Loyer"
     below: "6 ${output.CURRENT_MONTH_NAME}.*"
-- runFlow:
-    when:
-        visible: "1 ${output.CURRENT_MONTH_NAME}.*"
-    commands: 
-        - assertNotVisible:
-            text: "Loyer"
-            below: "1 ${output.CURRENT_MONTH_NAME}.*"
+
 
 
 # APPUI BOUTON RETOUR -> RETOUR ACCUEIL
@@ -80,12 +80,22 @@ tags:
       month_name: ${output.PREV_MONTH_NAME}
       year: ${output.PREV_YEAR}
 - assertVisible: { id: "screen.monthly" }
+
+
 - scrollUntilVisible:
     element: "1 ${output.PREV_MONTH_NAME}.*"
     direction: DOWN
 - assertVisible:
     text: "Loyer"
     below: "1 ${output.PREV_MONTH_NAME}.*"
+- runFlow:
+    when:
+      visible: "6 ${output.PREV_MONTH_NAME}.*"
+    commands:
+      - assertNotVisible:
+          text: "Loyer"
+          below: "6 ${output.PREV_MONTH_NAME}.*"
+
 
 # RETOUR ACCUEIL POUR CHANGEMENT MOIS SUIVANT
 - tapOn: { id: "common.btn.back" }
@@ -98,9 +108,18 @@ tags:
       month_name: ${output.NEXT_MONTH_NAME}
       year: ${output.NEXT_YEAR}
 - assertVisible: { id: "screen.monthly" }
+
 - scrollUntilVisible:
     element: "1 ${output.NEXT_MONTH_NAME}.*"
     direction: DOWN
 - assertVisible:
     text: "Loyer"
     below: "1 ${output.NEXT_MONTH_NAME}.*"
+- runFlow:
+    when:
+      visible: "6 ${output.NEXT_MONTH_NAME}.*"
+    commands:
+      - assertNotVisible:
+          text: "Loyer"
+          below: "6 ${output.NEXT_MONTH_NAME}.*"
+
