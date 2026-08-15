@@ -108,7 +108,9 @@ class TransactionEditViewModel @Inject constructor(
             type = tx.type,
             amountInput = tx.amount.toString(),
             title = tx.title,
-            date = seriesDate ?: tx.date,
+            // LOP-97 : N'utiliser seriesDate (argument navigation) que s'il est valide (> 0)
+            // S'il vaut -1 ou est null, on garde tx.date (date réelle persistée ou virtuelle)
+            date = seriesDate?.takeIf { it > 0L } ?: tx.date,
             categoryId = tx.categoryId,
             subCategoryId = tx.subCategoryId,
             accountId = tx.accountId,
