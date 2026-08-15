@@ -582,10 +582,27 @@ class BudgetRepository @Inject constructor(
                         linkedGoalId = linkedGoalId,
                         linkedDebtId = linkedDebtId
                     )
-                    // On arrête l'ancienne série juste AVANT le slot d'origine
-                    val newSeriesId = updateSeriesFrom(currentSeriesId, originalSeriesDate, newSeries)
+                    // On arrête l'ancienne série juste AVANT la borne la plus basse (ancien slot ou nouvelle date)
+                    // pour éviter les doublons si on avance la date.
+                    val newSeriesId = updateSeriesFrom(
+                        seriesId = currentSeriesId,
+                        truncateFrom = originalSeriesDate,
+                        updatedSeries = newSeries,
+                        newStartDate = date
+                    )
                     // On matérialise la première occurrence de la nouvelle série
-                    return materializeOccurrence(newSeriesId, date)
+                    val newTxId = materializeOccurrence(newSeriesId, date)
+                    
+                    // LOP-97 : Ne pas perdre le statut et les tags à la matérialisation
+                    val materializedTwr = getTransactionById(newTxId)
+                    if (materializedTwr != null) {
+                        saveTransaction(materializedTwr.transaction.copy(
+                            status = finalStatus,
+                            paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr?.transaction?.paidAt ?: System.currentTimeMillis()) else null
+                        ), tagIds)
+                    }
+                    
+                    return newTxId
                 }
                 return finalEditingId ?: 0L
             }
@@ -663,12 +680,19 @@ class BudgetRepository @Inject constructor(
         recurringSeriesDao.update(updatedSeries.copy(id = seriesId))
     }
 
-    suspend fun updateSeriesFrom(seriesId: Long, fromDate: Long, updatedSeries: RecurringSeriesEntity): Long {
-        // 1. Tronquer l'ancienne série (arrête à la veille de fromDate)
-        cancelSeries(seriesId.toString(), SeriesDeletionMode.FUTURE, fromDate)
-        
+    suspend fun updateSeriesFrom(
+        seriesId: Long,
+        truncateFrom: Long,
+        updatedSeries: RecurringSeriesEntity,
+        newStartDate: Long = truncateFrom
+    ): Long {
+        // 1. Tronquer l'ancienne série
+        // On tronque au plus tôt des deux bornes pour ne jamais laisser les deux séries
+        // générer sur la même période (cas où la nouvelle date est antérieure à l'ancienne)
+        cancelSeries(seriesId.toString(), SeriesDeletionMode.FUTURE, minOf(truncateFrom, newStartDate))
+
         // 2. Sauvegarder la nouvelle série (ID = 0 pour auto-générer)
-        return recurringSeriesDao.upsert(updatedSeries.copy(id = 0, startDate = fromDate))
+        return recurringSeriesDao.upsert(updatedSeries.copy(id = 0, startDate = newStartDate))
     }
 
     suspend fun saveRecurringSeries(series: RecurringSeriesEntity): Long {
