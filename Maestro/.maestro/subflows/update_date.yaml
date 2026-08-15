@@ -5,6 +5,10 @@ appId: com.lop.budget
 # Paramètres :
 # - target_day : le jour du mois à sélectionner (ex: "15")
 
+- scrollUntilVisible:
+    element: { id: "transaction.edit.field.date" }
+    direction: DOWN
+
 - tapOn: { id: "transaction.edit.field.date" }
 
 # Le DatePicker Material3 affiche les jours. On tape sur le jour cible.

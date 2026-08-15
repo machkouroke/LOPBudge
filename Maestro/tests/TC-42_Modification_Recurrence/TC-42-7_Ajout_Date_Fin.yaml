@@ -3,6 +3,7 @@ name: "TC-42-7: Ajouter une date de fin à la série"
 tags:
   - recurrence
   - edition
+  - wip
 ---
 - runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 

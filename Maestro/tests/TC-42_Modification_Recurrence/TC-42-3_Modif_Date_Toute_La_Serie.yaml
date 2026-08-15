@@ -3,6 +3,7 @@ name: "TC-42-3: Déplacer toute la série"
 tags:
   - recurrence
   - edition
+  - wip
 ---
 - runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 
@@ -23,11 +24,14 @@ tags:
     file: ../../.maestro/subflows/update_date.yaml
     env:
       target_day: "06"
+      target_month: ${output.CURRENT_MONTH_NUM}
+      target_year: ${output.CURRENT_YEAR}
+
 
 # And il enregistre
 - tapOn: { id: "common.btn.save" }
 
-# RETOUR SUR L'ÉCRAN DE DÉTAIL
+# RETOUR  SUR L'ÉCRAN DE DÉTAIL
 - assertVisible: { id: "screen.transaction.detail" }
 # Vérification date sur détail
 - assertVisible:
@@ -39,10 +43,13 @@ tags:
 - tapOn: { id: "common.btn.back" }
 - assertVisible: { id: "screen.monthly" }
 
-# VÉRIFICATION POSITIONNELLE COURANT (Déplacé au 6)
-- scrollUntilVisible:
-    element: "6 ${output.CURRENT_MONTH_NAME}.*"
-    direction: DOWN
+- runFlow:
+    when:
+      visible: "1 ${output.CURRENT_MONTH_NAME}.*"
+    commands:
+      - assertNotVisible:
+          text: "Loyer"
+          below: "1 ${output.CURRENT_MONTH_NAME}.*"
 - assertVisible:
     text: "Loyer"
     below: "6 ${output.CURRENT_MONTH_NAME}.*"

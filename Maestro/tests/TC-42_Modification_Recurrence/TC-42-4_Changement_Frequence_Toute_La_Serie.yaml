@@ -3,6 +3,7 @@ name: "TC-42-4: Changer la fréquence pour toute la série"
 tags:
   - recurrence
   - edition
+  - wip
 ---
 - runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 

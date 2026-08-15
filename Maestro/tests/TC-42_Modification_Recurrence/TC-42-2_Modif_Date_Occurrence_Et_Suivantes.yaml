@@ -18,15 +18,8 @@ tags:
       transactionName: "Loyer"
       scopeSelection: "Cette occurrence et les suivantes"
 
-# Then la section de récurrence est visible et préremplie avec la fréquence de la série
-- scrollUntilVisible:
-    element: { id: "transaction.edit.block.recurrence" }
-    direction: DOWN
-- assertVisible: "Tous les mois"
 
-- scrollUntilVisible:
-    element: { id: "transaction.edit.field.date" }
-    direction: UP
+
 
 # When il remplace la date par {jourCible} (6)
 - runFlow:

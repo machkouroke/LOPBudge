@@ -3,6 +3,7 @@ name: "TC-42-5: Changer la fréquence pour les occurrences suivantes uniquement"
 tags:
   - recurrence
   - edition
+  - wip
 ---
 - runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 

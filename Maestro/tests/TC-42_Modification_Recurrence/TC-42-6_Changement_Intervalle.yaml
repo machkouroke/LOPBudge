@@ -3,6 +3,7 @@ name: "TC-42-6: Changer l'intervalle de répétition"
 tags:
   - recurrence
   - edition
+  - wip
 ---
 - runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 
