@@ -54,6 +54,10 @@ tags:
     text: "Loyer"
     below: "6 ${output.CURRENT_MONTH_NAME}.*"
 
+- assertNotVisible:
+    text: "Loyer"
+    index: 1
+
 # RETOUR ACCUEIL -> MOIS SUIVANT
 - tapOn: { id: "common.btn.back" }
 - assertVisible: { id: "screen.home" }
@@ -67,9 +71,16 @@ tags:
 - scrollUntilVisible:
     element: "6 ${output.NEXT_MONTH_NAME}.*"
     direction: DOWN
+
 - assertVisible:
     text: "Loyer"
     below: "6 ${output.NEXT_MONTH_NAME}.*"
+
+- assertNotVisible:
+    text: "Loyer"
+    index: 1
+    below: "6 ${output.NEXT_MONTH_NAME}.*"
+
 
 # RETOUR ACCUEIL -> MOIS PRÉCÉDENT
 - tapOn: { id: "common.btn.back" }
