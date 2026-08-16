@@ -14,9 +14,11 @@ import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.spyk
 import kotlinx.coroutines.flow.first
@@ -472,5 +474,110 @@ class RecurringEditionRepositoryTest {
         )
 
         println("--- [END] TC-38 - Edition ALL SUCCESS ---")
+    }
+
+    /**
+     * LOP-98 : Déplacer la date en portée ALL ne doit pas dupliquer l'occurrence du mois édité.
+     */
+    @Test
+    fun `LOP-98 - Moving date in ALL scope should not duplicate occurrence`() = runBlocking {
+        println("\n--- [START] LOP-98 - Moving date in ALL scope ---")
+
+        // 1. Préparation d'une série mensuelle au jour 1
+        val aug1 = Calendar.getInstance().apply {
+            set(2026, Calendar.AUGUST, 1, 10, 0, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val seriesId = 100L
+        val oldSeries = RecurringSeriesEntity(
+            id = seriesId,
+            title = "Loyer",
+            amount = 800.0,
+            type = TransactionType.EXPENSE,
+            categoryId = 1L,
+            accountId = 1L,
+            frequency = RecurrenceFrequency.MONTHLY,
+            startDate = aug1
+        )
+
+        val virtualId = -123L
+        val virtualTx = TransactionEntity(
+            id = virtualId, title = "Loyer", amount = 800.0, type = TransactionType.EXPENSE,
+            status = TransactionStatus.PLANNED, date = aug1, accountId = 1, categoryId = 1,
+            seriesId = seriesId.toString(), seriesDate = aug1
+        )
+
+        coEvery { recurringSeriesDao.getSeriesById(seriesId) } returns oldSeries
+        coEvery { repository.getTransactionById(virtualId) } returns TransactionWithRelations(
+            virtualTx, null, null, emptyList()
+        )
+        every { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(oldSeries))
+        every { transactionDao.observeBetween(any(), any()) } returns flowOf(emptyList())
+        coEvery { transactionDao.getById(any()) } returns null
+        coEvery { transactionDao.upsert(any()) } returns 500L
+        coEvery { transactionDao.updateSeriesExceptions(any(), any(), any(), any(), any(), any(), any()) } just Runs
+
+        // 2. Action : Déplacer au jour 6 en portée ALL
+        val aug6 = Calendar.getInstance().apply {
+            set(2026, Calendar.AUGUST, 6, 10, 0, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        repository.saveWithTransition(
+            editingId = virtualId,
+            title = "Loyer",
+            amount = 800.0,
+            type = TransactionType.EXPENSE,
+            date = aug6,
+            accountId = 1L,
+            categoryId = 1L,
+            frequency = RecurrenceFrequency.MONTHLY,
+            interval = 1,
+            daysOfWeek = null,
+            endDate = null,
+            maxOccurrences = null,
+            linkedGoalId = null,
+            linkedDebtId = null,
+            tagIds = emptyList(),
+            scope = EditScope.ALL,
+            note = null
+        )
+
+        // 3. Validation de l'invariant via observeTransactionsBetween
+        // On simule ce que la base contient après l'action
+        val newSeries = oldSeries.copy(startDate = aug6)
+        val exception = TransactionEntity(
+            id = 500L, title = "Loyer", amount = 800.0, type = TransactionType.EXPENSE,
+            status = TransactionStatus.PLANNED, date = aug6, accountId = 1, categoryId = 1,
+            seriesId = seriesId.toString(), seriesDate = aug6, isException = true
+        )
+
+        every { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(newSeries))
+        // La transaction réelle est maintenant en base
+        every { transactionDao.observeBetween(any(), any()) } returns flowOf(listOf(
+            TransactionWithRelations(exception, null, null, emptyList())
+        ))
+
+        // On observe le mois d'août
+        val startAug = Calendar.getInstance().apply { set(2026, Calendar.AUGUST, 1); set(Calendar.HOUR_OF_DAY, 0) }.timeInMillis
+        val endAug = Calendar.getInstance().apply { set(2026, Calendar.AUGUST, 31); set(Calendar.HOUR_OF_DAY, 23) }.timeInMillis
+
+        val result = repository.observeTransactionsBetween(startAug, endAug).first()
+
+        // Vérification cruciale : une seule occurrence au jour 6, zéro au jour 1
+        val day6Occurrences = result.filter { 
+            val cal = Calendar.getInstance().apply { timeInMillis = it.transaction.date }
+            cal.get(Calendar.DAY_OF_MONTH) == 6
+        }
+        val day1Occurrences = result.filter {
+            val cal = Calendar.getInstance().apply { timeInMillis = it.transaction.date }
+            cal.get(Calendar.DAY_OF_MONTH) == 1
+        }
+
+        assertEquals("Il doit y avoir exactement une occurrence au jour 6", 1, day6Occurrences.size)
+        assertEquals("Il ne doit y avoir aucune occurrence au jour 1", 0, day1Occurrences.size)
+        assertTrue("L'occurrence doit être l'exception matérialisée", day6Occurrences.first().transaction.isException)
+        assertEquals("Le seriesDate doit être réaligné sur le nouveau slot", aug6, day6Occurrences.first().transaction.seriesDate)
+
+        println("--- [END] LOP-98 SUCCESS ---")
     }
 }

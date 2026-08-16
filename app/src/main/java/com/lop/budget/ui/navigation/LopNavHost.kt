@@ -19,11 +19,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,30 +37,27 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.lop.budget.R
-import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.ui.components.DeleteConfirmationDialog
 import com.lop.budget.ui.components.FloatingBottomBar
-import com.lop.budget.ui.components.RecurringDeleteChoice
 import com.lop.budget.ui.components.RecurringDeleteSheet
 import com.lop.budget.ui.components.RecurringEditSheet
 import com.lop.budget.ui.components.TransactionPreviewPopup
 import com.lop.budget.ui.motion.MotionSpec
-import com.lop.budget.ui.screens.accounts.AccountsScreen
 import com.lop.budget.ui.screens.accounts.AccountDetailScreen
+import com.lop.budget.ui.screens.accounts.AccountsScreen
 import com.lop.budget.ui.screens.ai.AiScreen
 import com.lop.budget.ui.screens.analytics.AnalyticsScreen
-import com.lop.budget.ui.screens.manage.CategoriesManageScreen
 import com.lop.budget.ui.screens.category.CategoryCreateScreen
 import com.lop.budget.ui.screens.detail.TransactionDetailScreen
 import com.lop.budget.ui.screens.detected.DetectedTransactionsScreen
+import com.lop.budget.ui.screens.goals.DebtEditScreen
 import com.lop.budget.ui.screens.goals.GoalEditScreen
 import com.lop.budget.ui.screens.goals.GoalsScreen
-import com.lop.budget.ui.screens.goals.DebtEditScreen
 import com.lop.budget.ui.screens.home.HomeScreen
-import com.lop.budget.ui.screens.manage.AccountsManageScreen
-import com.lop.budget.ui.screens.manage.TagsManageScreen
 import com.lop.budget.ui.screens.manage.AccountEditScreen
+import com.lop.budget.ui.screens.manage.AccountsManageScreen
+import com.lop.budget.ui.screens.manage.CategoriesManageScreen
+import com.lop.budget.ui.screens.manage.TagsManageScreen
 import com.lop.budget.ui.screens.monthly.MonthlyTransactionsScreen
 import com.lop.budget.ui.screens.search.SearchScreen
 import com.lop.budget.ui.screens.settings.SettingsScreen
@@ -84,8 +85,6 @@ fun LopNavHost(startRoute: String? = null) {
     val pendingConfirmation by actionVm.pendingConfirmation.collectAsStateWithLifecycle()
     val editRequest by actionVm.editRequest.collectAsStateWithLifecycle()
 
-    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
-    val undoMsg = stringResource(R.string.undo)
 
     val showBar =
         (currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts")
@@ -151,11 +150,8 @@ fun LopNavHost(startRoute: String? = null) {
                         HomeScreen(
                             snackbarHostState = snackbarHostState,
                             onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
-                            onOpenAi = { navController.navigate(Routes.AI) },
                             navController = navController,
-                            onOpenMonthly = { type, ym ->
-                                navController.navigate(Routes.analytics(type, ym))
-                            },
+
                             hazeState = hazeState,
                         )
                     }

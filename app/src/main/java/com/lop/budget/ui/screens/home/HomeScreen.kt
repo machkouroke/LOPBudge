@@ -80,8 +80,6 @@ import java.time.YearMonth
 fun HomeScreen(
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
     onOpenTransaction: (Long) -> Unit,
-    onOpenAi: () -> Unit,
-    onOpenMonthly: (TransactionType, YearMonth) -> Unit,
     navController: NavController,
     hazeState: HazeState? = null,
     vm: HomeViewModel = hiltViewModel(),

@@ -24,11 +24,13 @@ import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.TransactionStatus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -331,47 +333,76 @@ class BudgetRepository @Inject constructor(
         }.flowOn(Dispatchers.Default)
     }
 
-    fun observeTransaction(id: Long): Flow<TransactionWithRelations?> = flow {
-        // 1. Identifier le point de départ (réel ou virtuel)
-        val initial = getTransactionById(id)
-        if (initial == null) {
-            emit(null)
-            return@flow
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun observeTransaction(id: Long): Flow<TransactionWithRelations?> {
+        if (id < 0L) {
+            // Cas d'un virtuel pur (non encore matérialisé)
+            return flow {
+                val initial = getTransactionById(id)
+                if (initial == null) {
+                    emit(null)
+                    return@flow
+                }
+                val sId = initial.transaction.seriesId
+                val sDate = initial.transaction.seriesDate ?: initial.transaction.date
+                if (sId == null) {
+                    emit(initial)
+                } else {
+                    emitAll(combine(
+                        transactionDao.observeSeries(sId),
+                        recurringSeriesDao.observeActiveSeries(),
+                        accountDao.observeAll(),
+                        categoryDao.observeAll()
+                    ) { realTxs, allSeries, accounts, categories ->
+                        val realMatch = realTxs.find { it.transaction.seriesDate == sDate }
+                        if (realMatch != null) return@combine realMatch
+                        val series = allSeries.find { it.id.toString() == sId }
+                        if (series != null) {
+                            val virtuals = RecurrenceEngine.generateOccurrences(series, sDate, sDate)
+                            val vMatch = virtuals.find { it.seriesDate == sDate }
+                            if (vMatch != null) {
+                                val account = accounts.find { it.id == series.accountId }
+                                val category = categories.find { it.id == series.categoryId }
+                                return@combine TransactionWithRelations(vMatch, category, account, emptyList())
+                            }
+                        }
+                        null
+                    })
+                }
+            }
         }
 
-        val sId = initial.transaction.seriesId
-        val sDate = initial.transaction.seriesDate ?: initial.transaction.date
+        // Cas d'une transaction réelle (id >= 0) : on réagit aux changements de slot (seriesDate)
+        return transactionDao.observeById(id).flatMapLatest { current ->
+            if (current == null) return@flatMapLatest flowOf(null)
 
-        if (sId == null) {
-            // Cas standard : transaction isolée, on observe son ID
-            emitAll(transactionDao.observeById(id))
-        } else {
-            // Cas robuste : transaction liée à une série
-            // On observe le contexte (série + transactions réelles de la série)
-            // pour renvoyer la version la plus à jour pour cette 'seriesDate'
-            emitAll(combine(
-                transactionDao.observeSeries(sId),
-                recurringSeriesDao.observeActiveSeries(),
-                accountDao.observeAll(),
-                categoryDao.observeAll()
-            ) { realTxs, allSeries, accounts, categories ->
-                // Priorité 1 : Version matérialisée en base (Exception ou Occurrence réelle)
-                val realMatch = realTxs.find { it.transaction.seriesDate == sDate }
-                if (realMatch != null) return@combine realMatch
+            val sId = current.transaction.seriesId
+            val sDate = current.transaction.seriesDate ?: current.transaction.date
 
-                // Priorité 2 : Version virtuelle (générée par le moteur)
-                val series = allSeries.find { it.id.toString() == sId }
-                if (series != null) {
-                    val virtuals = com.lop.budget.domain.RecurrenceEngine.generateOccurrences(series, sDate, sDate)
-                    val vMatch = virtuals.find { it.seriesDate == sDate }
-                    if (vMatch != null) {
-                        val account = accounts.find { it.id == series.accountId }
-                        val category = categories.find { it.id == series.categoryId }
-                        return@combine TransactionWithRelations(vMatch, category, account, emptyList())
+            if (sId == null) {
+                flowOf(current)
+            } else {
+                combine(
+                    transactionDao.observeSeries(sId),
+                    recurringSeriesDao.observeActiveSeries(),
+                    accountDao.observeAll(),
+                    categoryDao.observeAll()
+                ) { realTxs, allSeries, accounts, categories ->
+                    val realMatch = realTxs.find { it.transaction.seriesDate == sDate }
+                    if (realMatch != null) return@combine realMatch
+                    val series = allSeries.find { it.id.toString() == sId }
+                    if (series != null) {
+                        val virtuals = RecurrenceEngine.generateOccurrences(series, sDate, sDate)
+                        val vMatch = virtuals.find { it.seriesDate == sDate }
+                        if (vMatch != null) {
+                            val account = accounts.find { it.id == series.accountId }
+                            val category = categories.find { it.id == series.categoryId }
+                            return@combine TransactionWithRelations(vMatch, category, account, emptyList())
+                        }
                     }
+                    null
                 }
-                null
-            })
+            }
         }
     }
 
@@ -451,7 +482,9 @@ class BudgetRepository @Inject constructor(
         var finalEditingId = editingId
         var currentTwr = initialTwr
 
-        if (finalEditingId != null && finalEditingId < 0L) {
+        // LOP-98 : Ne plus matérialiser systématiquement avant le choix de la portée.
+        // La portée ALL gère elle-même son rattachement au nouveau slot.
+        if (finalEditingId != null && finalEditingId < 0L && scope != EditScope.ALL) {
             // C'est une occurrence virtuelle : on la matérialise physiquement en base
             // MAIS on utilise originalSeriesDate pour le slot
             if (seriesIdFromSource != null) {
@@ -644,7 +677,21 @@ class BudgetRepository @Inject constructor(
                         )
                         updateEntireSeries(currentSeriesId, updatedSeries)
 
+                        // LOP-98 : Déterminer le nouveau slot canonique pour l'occurrence courante.
+                        // On doit respecter l'heure/seconde de la série pour que la fusion (seriesDate) fonctionne.
+                        val targetSlot = if (date != originalSeriesDate) {
+                            val cal = java.util.Calendar.getInstance().apply { timeInMillis = date }
+                            val baseCal = java.util.Calendar.getInstance().apply { timeInMillis = newStartDate }
+                            cal.set(java.util.Calendar.HOUR_OF_DAY, baseCal.get(java.util.Calendar.HOUR_OF_DAY))
+                            cal.set(java.util.Calendar.MINUTE, baseCal.get(java.util.Calendar.MINUTE))
+                            cal.set(java.util.Calendar.SECOND, baseCal.get(java.util.Calendar.SECOND))
+                            cal.set(java.util.Calendar.MILLISECOND, baseCal.get(java.util.Calendar.MILLISECOND))
+                            cal.timeInMillis
+                        } else originalSeriesDate
+
                         // Propager aux exceptions matérialisées (on change tout SAUF le seriesDate/slot)
+                        // Note : Pour les autres exceptions que la courante, le seriesDate reste inchangé 
+                        // pour l'instant car le ticket cible l'occurrence éditée.
                         transactionDao.updateSeriesExceptions(
                             seriesId = currentSeriesId.toString(),
                             title = title,
@@ -654,20 +701,43 @@ class BudgetRepository @Inject constructor(
                             accountId = accountId,
                             note = note
                         )
-                    }
-                    
-                    if (currentTwr != null) {
-                        return saveTransaction(currentTwr.transaction.copy(
-                            title = title,
-                            amount = amount,
-                            type = type,
-                            status = finalStatus,
-                            categoryId = categoryId,
-                            accountId = accountId,
-                            note = note,
-                            date = date, // La date d'affichage change
-                            paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr.transaction.paidAt ?: System.currentTimeMillis()) else null
-                        ), tagIds)
+
+                        // LOP-98 : Réaligner l'occurrence courante sur le nouveau slot
+                        if (currentTwr != null) {
+                            // Cas 1 : L'occurrence était déjà matérialisée
+                            return saveTransaction(currentTwr.transaction.copy(
+                                title = title,
+                                amount = amount,
+                                type = type,
+                                status = finalStatus,
+                                categoryId = categoryId,
+                                accountId = accountId,
+                                note = note,
+                                date = date,
+                                seriesDate = targetSlot, // Réalignement crucial
+                                isException = true,
+                                paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr.transaction.paidAt ?: System.currentTimeMillis()) else null
+                            ), tagIds)
+                        } else if (finalEditingId != null && finalEditingId < 0L) {
+                            // Cas 2 : L'occurrence était virtuelle (non matérialisée avant car portée ALL)
+                            val newTxId = materializeOccurrence(currentSeriesId, targetSlot)
+                            val materializedTwr = getTransactionById(newTxId)
+                            if (materializedTwr != null) {
+                                saveTransaction(materializedTwr.transaction.copy(
+                                    title = title,
+                                    amount = amount,
+                                    type = type,
+                                    status = finalStatus,
+                                    categoryId = categoryId,
+                                    accountId = accountId,
+                                    note = note,
+                                    date = date, // Date d'affichage (peut inclure l'heure du picker)
+                                    seriesDate = targetSlot, // Slot canonique pour la fusion
+                                    paidAt = if (finalStatus == TransactionStatus.PAID) System.currentTimeMillis() else null
+                                ), tagIds)
+                            }
+                            return newTxId
+                        }
                     }
                 }
                 return finalEditingId ?: 0L
