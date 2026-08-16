@@ -16,22 +16,23 @@ class AccountRepository @Inject constructor(
     private val accountDao: AccountDao
 ) {
     fun observeAll(): Flow<List<AccountEntity>> = accountDao.observeAll()
-    
+
     suspend fun getById(id: Long): AccountEntity? = accountDao.getById(id)
-    
+
     suspend fun upsert(account: AccountEntity): Long = accountDao.upsert(account)
-    
+
     suspend fun delete(id: Long) = accountDao.delete(id)
 
     /**
      * Observe les soldes de tous les comptes en temps réel.
      */
-    fun observeAccountBalances(transactionsFlow: Flow<List<TransactionEntity>>): Flow<Map<Long, Double>> = combine(
-        accountDao.observeAll(),
-        transactionsFlow
-    ) { accounts, transactions ->
-        BalanceEngine.calculateBalances(accounts, transactions)
-    }.flowOn(Dispatchers.IO)
+    fun observeAccountBalances(transactionsFlow: Flow<List<TransactionEntity>>): Flow<Map<Long, Double>> =
+        combine(
+            accountDao.observeAll(),
+            transactionsFlow
+        ) { accounts, transactions ->
+            BalanceEngine.calculateBalances(accounts, transactions)
+        }.flowOn(Dispatchers.IO)
 
     /**
      * Observe le solde total consolidé.
