@@ -24,15 +24,13 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SyncAlt
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,6 +58,7 @@ import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.common.TransactionActionViewModel
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
@@ -78,8 +77,8 @@ fun TransactionDetailScreen(
     transactionId: Long,
     onBack: () -> Unit,
     vm: TransactionDetailViewModel = hiltViewModel(),
-    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(LocalContext.current as androidx.activity.ComponentActivity),
-    snackbarHostState: androidx.compose.material3.SnackbarHostState,
+    actionVm: TransactionActionViewModel = hiltViewModel(LocalContext.current as androidx.activity.ComponentActivity),
+    snackbarHostState: SnackbarHostState,
 ) {
     LaunchedEffect(transactionId) { vm.load(transactionId) }
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -88,8 +87,6 @@ fun TransactionDetailScreen(
     val haptic = LocalHapticFeedback.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    val txDeletedMsg = stringResource(R.string.tx_deleted_snackbar)
-    val undoMsg = stringResource(R.string.undo)
 
     LaunchedEffect(state.transaction, state.isLoaded, pendingDeletes) {
         val currentId = state.transaction?.transaction?.id

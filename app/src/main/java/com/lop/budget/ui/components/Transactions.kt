@@ -41,7 +41,6 @@ import com.lop.budget.ui.common.TransactionActionViewModel
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
-import dev.chrisbanes.haze.HazeState
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -52,9 +51,7 @@ fun LazyListScope.transactionDayGroups(
     dayGroups: List<DayGroup>,
     currency: String,
     txVersions: Map<Long, Int>,
-    onOpenTransaction: (Long) -> Unit,
-    onMaterializeAndOpen: (Long, Long) -> Unit,
-    hazeState: HazeState? = null
+    onOpenTransaction: (Long) -> Unit
 ) {
     dayGroups.forEach { day ->
         item(key = "day_header_${day.date}", contentType = "day_header") {
@@ -94,9 +91,7 @@ fun LazyListScope.transactionDayGroups(
                 TransactionRow(
                     tx = tx,
                     currency = currency,
-                    onOpenTransaction = onOpenTransaction,
-                    onMaterializeAndOpen = onMaterializeAndOpen,
-                    hazeState = hazeState
+                    onOpenTransaction = onOpenTransaction
                 )
             }
         }
@@ -108,10 +103,8 @@ fun TransactionRow(
     tx: TransactionWithRelations,
     currency: String,
     onOpenTransaction: (Long) -> Unit,
-    onMaterializeAndOpen: (Long, Long) -> Unit,
     modifier: Modifier = Modifier,
     showDate: Boolean = false,
-    hazeState: HazeState? = null,
     actionVm: TransactionActionViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
 ) {
     val ext = LopTheme.extended

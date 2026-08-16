@@ -6,7 +6,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,10 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.lop.budget.data.local.entity.TransactionWithRelations
-import com.lop.budget.ui.motion.MotionSpec
 
 /**
  * Composant Masterclass UX : Affiche un groupe de transactions (ex: occurrences d'une série)
@@ -154,7 +151,6 @@ fun StackedTransactionGroup(
                             tx = twr,
                             currency = currency,
                             onOpenTransaction = onOpenTransaction,
-                            onMaterializeAndOpen = onMaterializeAndOpen,
                             showDate = true,
                             modifier = Modifier.testTag("stack_item_${seriesId}_$index")
                         )

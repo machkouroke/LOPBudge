@@ -74,10 +74,8 @@ fun TransactionsDashboardWidget(
                         TransactionRow(
                             tx = tx,
                             currency = currency,
-                            onOpenTransaction = onOpenTransaction,
-                            onMaterializeAndOpen = onMaterializeAndOpen,
+                            onOpenTransaction = onOpenTransaction
 
-                            hazeState = hazeState
                         )
                     }
                     Spacer(Modifier.height(4.dp))

@@ -40,14 +40,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
-import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopSearchBar
-import com.lop.budget.ui.components.RecurringDeleteChoice
-import com.lop.budget.ui.components.RecurringDeleteSheet
 import com.lop.budget.ui.components.transactionDayGroups
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
@@ -303,9 +300,7 @@ fun MonthlyTransactionsScreen(
             dayGroups = state.dayGroups,
             currency = state.currency,
             txVersions = txVersions,
-            onOpenTransaction = onOpenTransaction,
-            onMaterializeAndOpen = { sid, date -> vm.materializeAndOpen(sid, date, onOpenTransaction) },
-            hazeState = hazeState
+            onOpenTransaction = onOpenTransaction
         )
 
         if (state.dayGroups.isEmpty()) {
