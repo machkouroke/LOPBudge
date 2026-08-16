@@ -9,7 +9,7 @@ import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.EditScope
-import com.lop.budget.domain.model.SeriesDeletionMode
+import com.lop.budget.domain.model.SeriesCancelMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.flow.first
@@ -21,7 +21,8 @@ class SaveTransactionUseCase @Inject constructor(
     private val transactionRepo: TransactionRepository,
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
-    private val syncProgressUseCase: SyncProgressUseCase
+    private val syncProgressUseCase: SyncProgressUseCase,
+    private val deleteTransactionUseCase: DeleteTransactionUseCase
 ) {
 
     /**
@@ -95,7 +96,7 @@ class SaveTransactionUseCase @Inject constructor(
             EditScope.SINGLE -> {
                 if (frequency == com.lop.budget.domain.model.RecurrenceFrequency.NONE) {
                     if (currentSeriesId != null) {
-                        cancelSeries(currentSeriesId.toString(), SeriesDeletionMode.FUTURE, originalSeriesDate)
+                        deleteTransactionUseCase.cancelSeries(currentSeriesId, SeriesCancelMode.Future(originalSeriesDate))
                         return saveSimple(TransactionEntity(id = finalEditingId ?: 0L, title = title, amount = amount, type = type, status = finalStatus, date = date, accountId = accountId, categoryId = categoryId, note = note, paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr?.transaction?.paidAt ?: System.currentTimeMillis()) else null, seriesId = null, seriesDate = null, isException = false, linkedGoalId = linkedGoalId, linkedDebtId = linkedDebtId), tagIds)
                     } else {
                         return saveSimple(TransactionEntity(id = finalEditingId ?: 0L, title = title, amount = amount, type = type, status = finalStatus, date = date, accountId = accountId, categoryId = categoryId, note = note, paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr?.transaction?.paidAt ?: System.currentTimeMillis()) else null, linkedGoalId = linkedGoalId, linkedDebtId = linkedDebtId), tagIds)
@@ -112,7 +113,7 @@ class SaveTransactionUseCase @Inject constructor(
             }
             EditScope.FUTURE -> {
                 if (currentSeriesId != null) {
-                    cancelSeries(currentSeriesId.toString(), SeriesDeletionMode.FUTURE, minOf(originalSeriesDate, date))
+                    deleteTransactionUseCase.cancelSeries(currentSeriesId, SeriesCancelMode.Future(minOf(originalSeriesDate, date)))
                     val newSeriesId = transactionRepo.upsertSeries(RecurringSeriesEntity(title = title, amount = amount, type = type, categoryId = categoryId, accountId = accountId, frequency = frequency, interval = interval, startDate = date, endDate = endDate, maxOccurrences = maxOccurrences, daysOfWeek = daysOfWeek, note = note, linkedGoalId = linkedGoalId, linkedDebtId = linkedDebtId))
                     val newTxId = transactionRepo.materializeOccurrence(newSeriesId, date)
                     transactionRepo.getById(newTxId)?.let { matTwr ->
@@ -174,21 +175,5 @@ class SaveTransactionUseCase @Inject constructor(
         }
         return null
     }
-
-    private suspend fun cancelSeries(seriesIdStr: String, mode: SeriesDeletionMode, fromDate: Long? = null) {
-        val seriesId = seriesIdStr.toLongOrNull() ?: return
-        when (mode) {
-            SeriesDeletionMode.ALL -> {
-                transactionRepo.updateSeriesCancelled(seriesId, true)
-                transactionRepo.softDeleteTransactionsBySeries(seriesIdStr)
-            }
-            SeriesDeletionMode.FUTURE -> {
-                transactionRepo.getSeriesById(seriesId)?.let { series ->
-                    if (fromDate != null) transactionRepo.upsertSeries(series.copy(endDate = fromDate - 1))
-                    else transactionRepo.updateSeriesCancelled(seriesId, true)
-                }
-                if (fromDate != null) transactionRepo.softDeleteSeriesFrom(seriesIdStr, fromDate)
-            }
-        }
-    }
 }
+

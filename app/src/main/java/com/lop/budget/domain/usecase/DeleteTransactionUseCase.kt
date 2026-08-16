@@ -2,7 +2,7 @@ package com.lop.budget.domain.usecase
 
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.TransactionRepository
-import com.lop.budget.domain.model.SeriesDeletionMode
+import com.lop.budget.domain.model.SeriesCancelMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -42,31 +42,31 @@ class DeleteTransactionUseCase @Inject constructor(
     }
 
     /**
-     * Cancels a recurring series based on the specified deletion mode.
+     * Cancels a recurring series based on the specified cancellation mode.
      *
-     * @param seriesIdStr The ID of the recurring series as a string.
-     * @param mode The [SeriesDeletionMode] indicating whether to delete all occurrences or only future ones.
-     * @param fromDate The starting date from which to delete occurrences, relevant for [SeriesDeletionMode.FUTURE].
+     * @param seriesId The ID of the recurring series.
+     * @param mode The [SeriesCancelMode] indicating whether to cancel all occurrences or only future ones.
      */
     suspend fun cancelSeries(
-        seriesIdStr: String,
-        mode: SeriesDeletionMode,
-        fromDate: Long? = null
+        seriesId: Long,
+        mode: SeriesCancelMode
     ) {
-        val seriesId = seriesIdStr.toLongOrNull() ?: return
+        val series = transactionRepo.getSeriesById(seriesId) ?: return
+
         when (mode) {
-            SeriesDeletionMode.ALL -> {
+            is SeriesCancelMode.All -> {
                 transactionRepo.updateSeriesCancelled(seriesId, true)
-                transactionRepo.softDeleteTransactionsBySeries(seriesIdStr)
+                transactionRepo.softDeleteTransactionsBySeries(seriesId.toString())
             }
 
-            SeriesDeletionMode.FUTURE -> {
-                transactionRepo.getSeriesById(seriesId)?.let { series ->
-                    if (fromDate != null) transactionRepo.upsertSeries(series.copy(endDate = fromDate - 1))
-                    else transactionRepo.updateSeriesCancelled(seriesId, true)
-                }
-                if (fromDate != null) transactionRepo.softDeleteSeriesFrom(seriesIdStr, fromDate)
+            is SeriesCancelMode.Future -> {
+                transactionRepo.upsertSeries(series.copy(endDate = mode.fromDate - 1))
+                transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId.toString(), mode.fromDate)
             }
         }
+
+        // Recalculate progress if linked to a goal or debt
+        series.linkedGoalId?.let { syncProgressUseCase.recalculateGoalProgress(it) }
+        series.linkedDebtId?.let { syncProgressUseCase.recalculateDebtProgress(it) }
     }
 }

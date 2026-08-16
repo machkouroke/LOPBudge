@@ -2,10 +2,12 @@ package com.lop.budget.ui.common
 
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
-import com.lop.budget.data.repository.BudgetRepository
-import com.lop.budget.domain.model.SeriesDeletionMode
+import com.lop.budget.data.repository.TransactionRepository
+import com.lop.budget.domain.model.SeriesCancelMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.DeleteTransactionUseCase
+import com.lop.budget.domain.usecase.SaveTransactionUseCase
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -26,14 +28,17 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class ContextualDeletionMappingTest {
 
-    private val repo = mockk<BudgetRepository>(relaxed = true)
+    // private val repo = mockk<BudgetRepository>(relaxed = true)
+    private val deleteTransactionUseCase = mockk<DeleteTransactionUseCase>(relaxed = true)
+    private val saveTransactionUseCase = mockk<SaveTransactionUseCase>(relaxed = true)
+    private val transactionRepo = mockk<TransactionRepository>(relaxed = true)
     private lateinit var viewModel: TransactionActionViewModel
     private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        viewModel = TransactionActionViewModel(repo)
+        viewModel = TransactionActionViewModel(transactionRepo, deleteTransactionUseCase, saveTransactionUseCase)
     }
 
     @After
@@ -57,8 +62,8 @@ class ContextualDeletionMappingTest {
         // Étape 3 : Confirmer la suppression
         viewModel.confirmDelete()
 
-        // Étape 4 : Vérifier que le mapping appelle bien softDeleteTransactionOccurrence
-        coVerify { repo.softDeleteTransactionOccurrence(twr) }
+        // Étape 4 : Vérifier que le mapping appelle bien softDeleteOccurrence
+        coVerify { deleteTransactionUseCase.softDeleteOccurrence(twr) }
     }
 
     /**
@@ -79,7 +84,7 @@ class ContextualDeletionMappingTest {
         viewModel.confirmDelete()
 
         // Étape 4 : Vérifier l'appel à cancelSeries(S1, FUTURE, datePivot)
-        coVerify { repo.cancelSeries("S1", SeriesDeletionMode.FUTURE, datePivot) }
+        coVerify { deleteTransactionUseCase.cancelSeries(any(), SeriesCancelMode.Future(datePivot)) }
     }
 
     /**
@@ -98,8 +103,8 @@ class ContextualDeletionMappingTest {
         // Étape 3 : Confirmer
         viewModel.confirmDelete()
 
-        // Étape 4 : Vérifier l'appel à cancelSeries(S1, ALL, null)
-        coVerify { repo.cancelSeries("S1", SeriesDeletionMode.ALL, any()) }
+        // Étape 4 : Vérifier l'appel à cancelSeries(S1, ALL)
+        coVerify { deleteTransactionUseCase.cancelSeries(any(), SeriesCancelMode.All) }
     }
 
     private fun createRecurringTransaction(id: Long, seriesId: String, date: Long) = TransactionEntity(

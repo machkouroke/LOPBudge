@@ -41,7 +41,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
-import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CategoryBottomSheet

@@ -5,7 +5,7 @@ import com.lop.budget.data.local.dao.RecurringSeriesOperations
 import com.lop.budget.data.local.dao.TransactionDao
 import com.lop.budget.data.local.dao.TransactionOperations
 import com.lop.budget.data.local.entity.TransactionEntity
-import com.lop.budget.domain.model.SeriesDeletionMode
+import com.lop.budget.domain.model.SeriesCancelMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -57,17 +57,16 @@ class TransactionRepository @Inject constructor(
     fun isTransactionVisible(
         tx: TransactionEntity,
         pendingDeletes: Set<Long>,
-        pendingSeriesDeletes: Map<String, SeriesDeletionMode>,
+        pendingSeriesDeletes: Map<String, SeriesCancelMode>,
         pendingSeriesFromDates: Map<String, Long>
     ): Boolean {
         if (tx.deleted || tx.id in pendingDeletes) return false
 
         val seriesPendingMode = if (tx.seriesId != null) pendingSeriesDeletes[tx.seriesId] else null
         val isSeriesPending = when (seriesPendingMode) {
-            SeriesDeletionMode.ALL -> true
-            SeriesDeletionMode.FUTURE -> {
-                val fromDate = pendingSeriesFromDates[tx.seriesId]
-                fromDate != null && tx.date >= fromDate
+            is SeriesCancelMode.All -> true
+            is SeriesCancelMode.Future -> {
+                tx.date >= seriesPendingMode.fromDate
             }
             null -> false
         }

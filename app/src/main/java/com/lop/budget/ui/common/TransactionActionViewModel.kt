@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
-import com.lop.budget.domain.model.SeriesDeletionMode
+import com.lop.budget.domain.model.SeriesCancelMode
 import com.lop.budget.domain.usecase.DeleteTransactionUseCase
 import com.lop.budget.domain.usecase.SaveTransactionUseCase
 import com.lop.budget.ui.components.RecurringDeleteChoice
@@ -93,12 +93,14 @@ class TransactionActionViewModel @Inject constructor(
                     }
                     RecurringDeleteChoice.FUTURE_ONLY -> {
                         tx.transaction.seriesId.let { sid ->
-                            deleteTransactionUseCase.cancelSeries(sid, SeriesDeletionMode.FUTURE, tx.transaction.date)
+                            val seriesId = sid.toLongOrNull() ?: return@let
+                            deleteTransactionUseCase.cancelSeries(seriesId, SeriesCancelMode.Future(tx.transaction.date))
                         }
                     }
                     RecurringDeleteChoice.ALL_SERIES -> {
                         tx.transaction.seriesId.let { sid ->
-                            deleteTransactionUseCase.cancelSeries(sid, SeriesDeletionMode.ALL, null)
+                            val seriesId = sid.toLongOrNull() ?: return@let
+                            deleteTransactionUseCase.cancelSeries(seriesId, SeriesCancelMode.All)
                         }
                     }
                 }

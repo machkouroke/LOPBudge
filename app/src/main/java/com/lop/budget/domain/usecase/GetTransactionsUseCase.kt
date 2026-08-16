@@ -8,7 +8,7 @@ import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.RecurrenceEngine
-import com.lop.budget.domain.model.SeriesDeletionMode
+import com.lop.budget.domain.model.SeriesCancelMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +31,7 @@ class GetTransactionsUseCase @Inject constructor(
     // ou d'injecter un "UndoManager". 
     // On va simuler l'état local pour garder la logique de BudgetRepository.
     private val _pendingDeletes = MutableStateFlow<Set<Long>>(emptySet())
-    private val _pendingSeriesDeletes = MutableStateFlow<Map<String, SeriesDeletionMode>>(emptyMap())
+    private val _pendingSeriesDeletes = MutableStateFlow<Map<String, SeriesCancelMode>>(emptyMap())
     private val _pendingSeriesFromDates = MutableStateFlow<Map<String, Long>>(emptyMap())
 
     /**
@@ -66,7 +66,7 @@ class GetTransactionsUseCase @Inject constructor(
             @Suppress("UNCHECKED_CAST") val allAccounts = args[2] as List<AccountEntity>
             @Suppress("UNCHECKED_CAST") val allCategories = args[3] as List<CategoryEntity>
             @Suppress("UNCHECKED_CAST") val pending = args[4] as Set<Long>
-            @Suppress("UNCHECKED_CAST") val pendingSeries = args[5] as Map<String, SeriesDeletionMode>
+            @Suppress("UNCHECKED_CAST") val pendingSeries = args[5] as Map<String, SeriesCancelMode>
             @Suppress("UNCHECKED_CAST") val pendingDates = args[6] as Map<String, Long>
 
             val zone = ZoneId.systemDefault()
@@ -81,10 +81,11 @@ class GetTransactionsUseCase @Inject constructor(
                 if (query.isBlank() || series.title.contains(query, ignoreCase = true) || series.note?.contains(query, ignoreCase = true) == true) {
                     if (accountId == null || series.accountId == accountId) {
                         if (categoryId == null || series.categoryId == categoryId) {
-                            if (!series.isCancelled && pendingSeries[series.id.toString()] != SeriesDeletionMode.ALL) {
+                            val cancelMode = pendingSeries[series.id.toString()]
+                            if (!series.isCancelled && cancelMode !is SeriesCancelMode.All) {
                                 val occurrences = RecurrenceEngine.generateOccurrences(series, searchStart, searchEnd)
                                 for (virtualTx in occurrences) {
-                                    if (pendingSeries[series.id.toString()] == SeriesDeletionMode.FUTURE && (pendingDates[series.id.toString()] ?: Long.MAX_VALUE) <= virtualTx.date) continue
+                                    if (cancelMode is SeriesCancelMode.Future && cancelMode.fromDate <= virtualTx.date) continue
                                     if (realTxs.none { it.transaction.seriesId == series.id.toString() && it.transaction.seriesDate == virtualTx.date }) {
                                         if (virtualTx.id !in pending) {
                                             val account = allAccounts.find { it.id == series.accountId }
@@ -122,7 +123,7 @@ class GetTransactionsUseCase @Inject constructor(
             @Suppress("UNCHECKED_CAST") val accounts = args[2] as List<AccountEntity>
             @Suppress("UNCHECKED_CAST") val categories = args[3] as List<CategoryEntity>
             @Suppress("UNCHECKED_CAST") val pending = args[4] as Set<Long>
-            @Suppress("UNCHECKED_CAST") val pendingSeries = args[5] as Map<String, SeriesDeletionMode>
+            @Suppress("UNCHECKED_CAST") val pendingSeries = args[5] as Map<String, SeriesCancelMode>
             @Suppress("UNCHECKED_CAST") val pendingDates = args[6] as Map<String, Long>
 
             val finalResult = allInPeriod.filter { twr -> 
@@ -130,10 +131,11 @@ class GetTransactionsUseCase @Inject constructor(
             }.toMutableList()
 
             for (series in seriesList) {
-                if (!series.isCancelled && pendingSeries[series.id.toString()] != SeriesDeletionMode.ALL) {
+                val cancelMode = pendingSeries[series.id.toString()]
+                if (!series.isCancelled && cancelMode !is SeriesCancelMode.All) {
                     val occurrences = RecurrenceEngine.generateOccurrences(series, start, end)
                     for (virtualTx in occurrences) {
-                        if (pendingSeries[series.id.toString()] == SeriesDeletionMode.FUTURE && (pendingDates[series.id.toString()] ?: Long.MAX_VALUE) <= virtualTx.date) continue
+                        if (cancelMode is SeriesCancelMode.Future && cancelMode.fromDate <= virtualTx.date) continue
                         if (allInPeriod.none { it.transaction.seriesId == series.id.toString() && it.transaction.seriesDate == virtualTx.date }) {
                             if (virtualTx.id !in pending) {
                                 val account = accounts.find { it.id == series.accountId }

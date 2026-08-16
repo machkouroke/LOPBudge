@@ -28,7 +28,7 @@ interface TransactionOperations {
     fun searchAdvanced(query: String, accountId: Long?, categoryId: Long?, startDate: Long?, endDate: Long?): Flow<List<TransactionWithRelations>>
     suspend fun updateSeriesExceptions(seriesId: String, title: String, amount: Double, type: TransactionType, categoryId: Long, accountId: Long, note: String?)
     suspend fun softDeleteTransactionsBySeries(seriesId: String)
-    suspend fun softDeleteSeriesFrom(seriesId: String, fromDate: Long)
+    suspend fun softDeleteTransactionsBySeriesFrom(seriesId: String, fromDate: Long)
 }
 
 @Dao
@@ -214,7 +214,7 @@ interface TransactionDao : TransactionOperations {
         SET deleted = 1 
         WHERE seriesId = :seriesId AND date >= :fromDate
     """)
-    override suspend fun softDeleteSeriesFrom(seriesId: String, fromDate: Long)
+    override suspend fun softDeleteTransactionsBySeriesFrom(seriesId: String, fromDate: Long)
 
     @Query("""
         DELETE FROM transactions
