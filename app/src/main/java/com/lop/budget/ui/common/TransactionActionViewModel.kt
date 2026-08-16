@@ -83,7 +83,7 @@ class TransactionActionViewModel @Inject constructor(
         val tx = request.transaction
         val choice = request.choice
         _pendingConfirmation.value = null
-        
+
         // On marque immédiatement l'ID comme "en cours de suppression" pour l'UI
         _pendingDeletes.value = _pendingDeletes.value + tx.transaction.id
 
@@ -93,12 +93,17 @@ class TransactionActionViewModel @Inject constructor(
                     RecurringDeleteChoice.THIS_OCCURRENCE -> {
                         softDeleteTransactionOccurrenceUseCase(tx)
                     }
+
                     RecurringDeleteChoice.FUTURE_ONLY -> {
                         tx.transaction.seriesId.let { sid ->
                             val seriesId = sid.toLongOrNull() ?: return@let
-                            cancelRecurringSeriesUseCase(seriesId, SeriesCancelMode.Future(tx.transaction.date))
+                            cancelRecurringSeriesUseCase(
+                                seriesId,
+                                SeriesCancelMode.Future(tx.transaction.date)
+                            )
                         }
                     }
+
                     RecurringDeleteChoice.ALL_SERIES -> {
                         tx.transaction.seriesId.let { sid ->
                             val seriesId = sid.toLongOrNull() ?: return@let
@@ -139,7 +144,8 @@ class TransactionActionViewModel @Inject constructor(
             val seriesId = tx.transaction.seriesId?.toLongOrNull()
             val series = seriesId?.let { transactionRepo.getSeriesById(it) }
 
-            val finalFreq = updatedFrequency ?: series?.frequency ?: com.lop.budget.domain.model.RecurrenceFrequency.NONE
+            val finalFreq = updatedFrequency ?: series?.frequency
+            ?: com.lop.budget.domain.model.RecurrenceFrequency.NONE
             val finalInterval = updatedInterval ?: series?.interval ?: 1
             val finalDow = updatedDaysOfWeek ?: series?.daysOfWeek
             val finalEnd = updatedEndDate ?: series?.endDate
@@ -219,11 +225,12 @@ class TransactionActionViewModel @Inject constructor(
      * Utilise désormais l'orchestrateur central confirmEdit pour garantir l'unification.
      */
     fun togglePaid(tx: TransactionWithRelations) {
-        val newStatus = if (tx.transaction.status == com.lop.budget.domain.model.TransactionStatus.PAID) {
-            com.lop.budget.domain.model.TransactionStatus.PLANNED
-        } else {
-            com.lop.budget.domain.model.TransactionStatus.PAID
-        }
+        val newStatus =
+            if (tx.transaction.status == com.lop.budget.domain.model.TransactionStatus.PAID) {
+                com.lop.budget.domain.model.TransactionStatus.PLANNED
+            } else {
+                com.lop.budget.domain.model.TransactionStatus.PAID
+            }
 
         confirmEdit(
             tx = tx,
