@@ -203,7 +203,8 @@ class BudgetRepository @Inject constructor(
      * Si l'exception existe déjà, retourne son ID.
      */
     suspend fun materializeOccurrence(seriesId: Long, seriesDate: Long): Long {
-        val series = recurringSeriesDao.getSeriesById(seriesId) ?: return -1L
+        val series = recurringSeriesDao.getSeriesById(seriesId)
+            ?: error("Série récurrente introuvable (ID: $seriesId). Impossible de matérialiser l'occurrence.")
         return transactionDao.getOrCreateException(seriesId.toString(), seriesDate, series)
     }
     /**
@@ -773,16 +774,13 @@ class BudgetRepository @Inject constructor(
         }
 
         if (realId >= 0L) {
-            softDeleteTransaction(realId)
+            val twr = transactionDao.getById(realId)
+            transactionDao.softDelete(realId)
+            twr?.transaction?.linkedGoalId?.let { recalculateGoalProgress(it) }
+            twr?.transaction?.linkedDebtId?.let { recalculateDebtProgress(it) }
         }
     }
 
-    suspend fun softDeleteTransaction(id: Long) {
-        val twr = transactionDao.getById(id)
-        transactionDao.softDelete(id)
-        twr?.transaction?.linkedGoalId?.let { recalculateGoalProgress(it) }
-        twr?.transaction?.linkedDebtId?.let { recalculateDebtProgress(it) }
-    }
 
 
     suspend fun hardDeleteTransaction(id: Long) {
