@@ -21,7 +21,7 @@ interface TransactionOperations {
     fun observeSeries(seriesId: Long): Flow<List<TransactionWithRelations>>
     suspend fun getById(id: Long): TransactionWithRelations?
     suspend fun upsert(tx: TransactionEntity): Long
-    suspend fun softDelete(id: Long)
+    suspend fun softDeleteTransaction(id: Long)
     suspend fun hardDelete(id: Long)
     suspend fun clearTags(txId: Long)
     suspend fun addTagCrossRef(crossRef: TransactionTagCrossRef)
@@ -105,7 +105,7 @@ interface TransactionDao : TransactionOperations {
         SET deleted = 1 
         WHERE id = :id
     """)
-    override suspend fun softDelete(id: Long)
+    override suspend fun softDeleteTransaction(id: Long)
 
     @Query("""
         DELETE FROM transactions 

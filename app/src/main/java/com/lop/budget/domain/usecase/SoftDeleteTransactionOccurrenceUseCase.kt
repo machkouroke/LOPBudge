@@ -25,7 +25,7 @@ class SoftDeleteTransactionOccurrenceUseCase @Inject constructor(
 
         if (realId >= 0L) {
             transactionRepo.getById(realId)?.let { current ->
-                transactionRepo.softDelete(realId)
+                transactionRepo.softDeleteTransaction(realId)
                 current.transaction.linkedGoalId?.let {
                     syncProgressUseCase.recalculateGoalProgress(it)
                 }

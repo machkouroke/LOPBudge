@@ -530,7 +530,7 @@ class RecurringFrequencyEditionTest {
         // VALIDATION
         println("Vérification : L'exception n'a pas été touchée")
         coVerify(exactly = 0) { transactionDao.hardDelete(99L) }
-        coVerify(exactly = 0) { transactionDao.softDelete(99L) }
+        coVerify(exactly = 0) { transactionDao.softDeleteTransaction(99L) }
 
         println("--- [END] SUCCESS ---")
     }
