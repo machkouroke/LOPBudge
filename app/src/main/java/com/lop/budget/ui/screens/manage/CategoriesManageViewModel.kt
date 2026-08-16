@@ -3,7 +3,7 @@ package com.lop.budget.ui.screens.manage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.CategoryEntity
-import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,10 +25,10 @@ data class CategoriesManageUiState(
 
 @HiltViewModel
 class CategoriesManageViewModel @Inject constructor(
-    private val repo: BudgetRepository
+    private val categoryRepo: CategoryRepository
 ) : ViewModel() {
 
-    val uiState: StateFlow<CategoriesManageUiState> = repo.observeCategories()
+    val uiState: StateFlow<CategoriesManageUiState> = categoryRepo.observeAll()
         .map { all ->
             val parents = all.filter { it.parentCategoryId == null }
             val subs = all.filter { it.parentCategoryId != null }
@@ -46,9 +46,7 @@ class CategoriesManageViewModel @Inject constructor(
 
     fun deleteCategory(id: Long) {
         viewModelScope.launch {
-            // Dans un vrai cas, on devrait gérer les transactions liées.
-            // On peut appeler une méthode repo.deleteCategory(id) s'il elle existe.
-            // categoryDao.delete(id)
+            categoryRepo.delete(id)
         }
     }
 }

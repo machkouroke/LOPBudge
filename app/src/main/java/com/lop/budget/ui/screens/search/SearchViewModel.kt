@@ -3,11 +3,11 @@ package com.lop.budget.ui.screens.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.AccountRepository
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.DayGroup
+import com.lop.budget.domain.usecase.GetTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -31,10 +31,10 @@ data class SearchUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val budgetRepo: BudgetRepository,
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
     private val transactionRepo: TransactionRepository,
+    private val getTransactionsUseCase: GetTransactionsUseCase,
     private val settings: SettingsRepository
 ) : ViewModel() {
 
@@ -57,7 +57,7 @@ class SearchViewModel @Inject constructor(
             if (q.isBlank() && acc == null && cat == null && start == null && end == null) {
                 flowOf(emptyList())
             } else {
-                budgetRepo.searchTransactionsAdvanced(q, acc, cat, start, end)
+                getTransactionsUseCase.searchAdvanced(q, acc, cat, start, end)
             }
         },
         settings.currency,

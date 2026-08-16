@@ -2,9 +2,10 @@ package com.lop.budget.ui.screens.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.AccountBalance
+import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,15 +21,16 @@ data class AccountsUiState(
 
 @HiltViewModel
 class AccountsViewModel @Inject constructor(
-    repo: BudgetRepository,
+    accountRepo: AccountRepository,
+    getAccountBalancesUseCase: GetAccountBalancesUseCase,
     settings: SettingsRepository,
 ) : ViewModel() {
 
     val uiState: StateFlow<AccountsUiState> =
         combine(
-            repo.observeAccounts(),
-            repo.observeAccountBalances(),
-            repo.observeTotalBalance(),
+            accountRepo.observeAll(),
+            getAccountBalancesUseCase.observeBalances(),
+            getAccountBalancesUseCase.observeTotalBalance(),
             settings.currency
         ) { accounts, balances, total, currency ->
             val items = accounts.map { acc ->

@@ -11,7 +11,6 @@ import androidx.core.app.NotificationManagerCompat
 import com.lop.budget.MainActivity
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository

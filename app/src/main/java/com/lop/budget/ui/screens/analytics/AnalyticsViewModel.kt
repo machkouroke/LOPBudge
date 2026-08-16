@@ -2,10 +2,10 @@ package com.lop.budget.ui.screens.analytics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.GetTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,7 +37,7 @@ data class AnalyticsUiState(
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
     savedStateHandle: androidx.lifecycle.SavedStateHandle,
-    private val budgetRepo: BudgetRepository,
+    private val getTransactionsUseCase: GetTransactionsUseCase,
     settings: SettingsRepository,
 ) : ViewModel() {
 
@@ -68,7 +68,7 @@ class AnalyticsViewModel @Inject constructor(
         combine(month, type, settings.currency) { m, t, c -> Triple(m, t, c) }
             .flatMapLatest { (m, t, currency) ->
                 val (start, end) = m.range()
-                budgetRepo.observeTransactionsBetween(start, end).let { flow ->
+                getTransactionsUseCase.observeBetween(start, end).let { flow ->
                     combine(flow, MutableStateFlow(Unit)) { txs, _ ->
                         val filtered = txs.filter {
                             it.transaction.type == t && it.transaction.status == TransactionStatus.PAID

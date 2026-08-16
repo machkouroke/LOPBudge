@@ -6,9 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
+import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,17 +37,17 @@ data class AccountDetailUiState(
 @HiltViewModel
 class AccountDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val budgetRepo: BudgetRepository,
     private val accountRepo: AccountRepository,
     private val transactionRepo: TransactionRepository,
-    private val settings: SettingsRepository
+    getAccountBalancesUseCase: GetAccountBalancesUseCase,
+    settings: SettingsRepository
 ) : ViewModel() {
 
     private val accountId: Long = savedStateHandle.get<Long>("id") ?: 0L
     private val _txVersions = MutableStateFlow<Map<Long, Int>>(emptyMap())
 
     val uiState: StateFlow<AccountDetailUiState> = combine(
-        budgetRepo.observeAccountBalances(),
+        getAccountBalancesUseCase.observeBalances(),
         transactionRepo.observePaidByAccount(accountId),
         transactionRepo.observePlannedByAccount(accountId),
         settings.currency,
@@ -73,7 +73,7 @@ class AccountDetailViewModel @Inject constructor(
 
     fun materializeAndOpen(seriesId: Long, date: Long, onOpen: (Long) -> Unit) {
         viewModelScope.launch {
-            val id = budgetRepo.materializeOccurrence(seriesId, date)
+            val id = transactionRepo.materializeOccurrence(seriesId, date)
             onOpen(id)
         }
     }

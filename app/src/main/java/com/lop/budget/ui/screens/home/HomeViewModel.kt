@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
@@ -13,6 +12,8 @@ import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
+import com.lop.budget.domain.usecase.GetTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -62,9 +63,10 @@ data class HomeUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val budgetRepo: BudgetRepository,
     private val accountRepo: AccountRepository,
     private val transactionRepo: TransactionRepository,
+    private val getTransactionsUseCase: GetTransactionsUseCase,
+    private val getAccountBalancesUseCase: GetAccountBalancesUseCase,
     private val detectionRepo: NotificationDetectionRepository,
     private val settings: SettingsRepository,
 ) : ViewModel() {
@@ -102,8 +104,8 @@ class HomeViewModel @Inject constructor(
         val (prevStart, prevEnd) = ym.minusMonths(1).range()
 
         combine(
-            budgetRepo.observeTransactionsBetween(start, end),
-            budgetRepo.observeTransactionsBetween(prevStart, prevEnd),
+            getTransactionsUseCase.observeBetween(start, end),
+            getTransactionsUseCase.observeBetween(prevStart, prevEnd),
         ) { txs, prevTxs ->
             val income = txs.filter { it.transaction.type == TransactionType.INCOME }
                 .sumOf { it.transaction.amount }
@@ -121,7 +123,7 @@ class HomeViewModel @Inject constructor(
             settings.currency,
             month,
             accountRepo.observeAll(),
-            budgetRepo.observeAccountBalances(),
+            getAccountBalancesUseCase.observeBalances(),
             detectedCount,
             settings.notificationDetectionEnabled
         ) { args ->

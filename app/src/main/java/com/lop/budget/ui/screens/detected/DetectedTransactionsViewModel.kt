@@ -4,12 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
 import com.lop.budget.data.local.entity.TransactionEntity
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
-import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.SaveTransactionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +19,7 @@ import javax.inject.Inject
 @HiltViewModel
 class DetectedTransactionsViewModel @Inject constructor(
     private val detectionRepo: NotificationDetectionRepository,
-    private val budgetRepo: BudgetRepository,
+    private val saveTransactionUseCase: SaveTransactionUseCase,
     private val categoryRepo: CategoryRepository,
 ) : ViewModel() {
 
@@ -48,7 +47,7 @@ class DetectedTransactionsViewModel @Inject constructor(
                 categoryId = categoryId,
                 note = "Détecté via ${proposal.sourcePackage}",
             )
-            val id = budgetRepo.saveTransaction(tx)
+            val id = saveTransactionUseCase.saveSimple(tx)
             // On marque la proposition comme ignorée pour la retirer de la liste.
             detectionRepo.ignore(proposal.id)
             onOpenEdit(id)

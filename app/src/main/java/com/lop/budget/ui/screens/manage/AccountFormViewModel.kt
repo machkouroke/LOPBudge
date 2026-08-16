@@ -5,11 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.repository.AccountRepository
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.IconResult
 import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
+import com.lop.budget.domain.usecase.AdjustBalanceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -44,7 +44,7 @@ data class AccountFormUiState(
 @HiltViewModel
 class AccountFormViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val budgetRepo: BudgetRepository,
+    private val adjustBalanceUseCase: AdjustBalanceUseCase,
     private val accountRepo: AccountRepository,
     private val transactionRepo: TransactionRepository,
     private val iconSearch: IconSearchRepository,
@@ -193,7 +193,7 @@ class AccountFormViewModel @Inject constructor(
 
             if (isEdit) {
                 // Pour un compte existant, on ajuste via transaction compensatoire
-                budgetRepo.adjustAccountBalance(accountId, newInitialBalance)
+                adjustBalanceUseCase.adjust(accountId, newInitialBalance)
                 
                 // On met à jour les autres champs du compte (sans toucher au solde initial)
                 val currentAccount = accountRepo.getById(accountId)

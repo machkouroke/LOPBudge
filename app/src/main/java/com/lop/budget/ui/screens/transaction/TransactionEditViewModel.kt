@@ -11,7 +11,6 @@ import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.DebtRepository
 import com.lop.budget.data.repository.GoalRepository
@@ -22,6 +21,8 @@ import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.ObserveTransactionUseCase
+import com.lop.budget.domain.usecase.SaveTransactionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,13 +62,14 @@ data class TransactionForm(
 
 @HiltViewModel
 class TransactionEditViewModel @Inject constructor(
-    private val budgetRepo: BudgetRepository,
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
     private val transactionRepo: TransactionRepository,
     private val tagRepo: TagRepository,
     private val goalRepo: GoalRepository,
     private val debtRepo: DebtRepository,
+    private val saveTransactionUseCase: SaveTransactionUseCase,
+    private val observeTransactionUseCase: ObserveTransactionUseCase,
     private val settings: SettingsRepository,
     private val savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context
@@ -104,7 +106,7 @@ class TransactionEditViewModel @Inject constructor(
     }
 
     private suspend fun loadTransaction(id: Long) {
-        val twr = budgetRepo.getTransactionById(id) ?: return
+        val twr = observeTransactionUseCase.getById(id) ?: return
         originalTransaction = twr
         val tx = twr.transaction
         
@@ -266,8 +268,8 @@ class TransactionEditViewModel @Inject constructor(
         val dow = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",")
 
         // Toute la logique de sauvegarde (SINGLE, FUTURE, ALL) est désormais 
-        // centralisée dans BudgetRepository.saveWithTransition.
-        val newId = budgetRepo.saveWithTransition(
+        // centralisée dans SaveTransactionUseCase.saveWithTransition.
+        val newId = saveTransactionUseCase.saveWithTransition(
             editingId = editingTransactionId,
             title = title,
             amount = f.amount,

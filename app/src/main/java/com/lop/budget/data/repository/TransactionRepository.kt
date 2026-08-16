@@ -7,7 +7,6 @@ import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.SeriesDeletionMode
-import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -32,6 +31,12 @@ class TransactionRepository @Inject constructor(
     suspend fun softDelete(id: Long) = transactionDao.softDelete(id)
     suspend fun hardDelete(id: Long) = transactionDao.hardDelete(id)
     
+    suspend fun materializeOccurrence(seriesId: Long, seriesDate: Long): Long {
+        val series = recurringSeriesDao.getSeriesById(seriesId)
+            ?: error("Série récurrente introuvable (ID: $seriesId).")
+        return transactionDao.getOrCreateException(seriesId.toString(), seriesDate, series)
+    }
+
     suspend fun getSumForGoal(goalId: Long) = transactionDao.getSumForGoal(goalId)
     suspend fun getSumForDebt(debtId: Long) = transactionDao.getSumForDebt(debtId)
     
@@ -56,12 +61,6 @@ class TransactionRepository @Inject constructor(
 
     suspend fun softDeleteSeries(seriesId: String) = transactionDao.softDeleteSeries(seriesId)
     suspend fun softDeleteSeriesFrom(seriesId: String, fromDate: Long) = transactionDao.softDeleteSeriesFrom(seriesId, fromDate)
-
-    suspend fun materializeOccurrence(seriesId: Long, seriesDate: Long): Long {
-        val series = recurringSeriesDao.getSeriesById(seriesId)
-            ?: error("Série récurrente introuvable (ID: $seriesId).")
-        return transactionDao.getOrCreateException(seriesId.toString(), seriesDate, series)
-    }
 
     // Recurring Series
     fun observeActiveSeries() = recurringSeriesDao.observeActiveSeries()

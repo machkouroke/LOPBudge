@@ -5,13 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.GetTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,10 +61,10 @@ data class MonthlyTransactionsUiState(
 @HiltViewModel
 class MonthlyTransactionsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val budgetRepo: BudgetRepository,
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
     private val transactionRepo: TransactionRepository,
+    private val getTransactionsUseCase: GetTransactionsUseCase,
     private val settings: SettingsRepository,
 ) : ViewModel() {
 
@@ -105,7 +105,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
 
     private val baseTxs = month.flatMapLatest { ym ->
         val (start, end) = ym.range()
-        budgetRepo.observeTransactionsBetween(start, end)
+        getTransactionsUseCase.observeBetween(start, end)
     }
 
     val uiState: StateFlow<MonthlyTransactionsUiState> =

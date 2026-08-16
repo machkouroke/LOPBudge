@@ -3,10 +3,11 @@ package com.lop.budget.ui.common
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.TransactionWithRelations
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.SeriesDeletionMode
+import com.lop.budget.domain.usecase.DeleteTransactionUseCase
+import com.lop.budget.domain.usecase.SaveTransactionUseCase
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,8 +17,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class TransactionActionViewModel @Inject constructor(
-    private val budgetRepo: BudgetRepository,
     private val transactionRepo: TransactionRepository,
+    private val deleteTransactionUseCase: DeleteTransactionUseCase,
+    private val saveTransactionUseCase: SaveTransactionUseCase,
 ) : ViewModel() {
 
     // On suit les versions des transactions pour forcer le rafraîchissement UI
@@ -65,21 +67,21 @@ class TransactionActionViewModel @Inject constructor(
             if (tx.transaction.seriesId != null && choice != null) {
                 when (choice) {
                     RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                        budgetRepo.softDeleteTransactionOccurrence(tx)
+                        deleteTransactionUseCase.softDeleteOccurrence(tx)
                     }
                     RecurringDeleteChoice.FUTURE_ONLY -> {
                         tx.transaction.seriesId.let { sid ->
-                            budgetRepo.cancelSeries(sid, SeriesDeletionMode.FUTURE, tx.transaction.date)
+                            deleteTransactionUseCase.cancelSeries(sid, SeriesDeletionMode.FUTURE, tx.transaction.date)
                         }
                     }
                     RecurringDeleteChoice.ALL_SERIES -> {
                         tx.transaction.seriesId.let { sid ->
-                            budgetRepo.cancelSeries(sid, SeriesDeletionMode.ALL, null)
+                            deleteTransactionUseCase.cancelSeries(sid, SeriesDeletionMode.ALL, null)
                         }
                     }
                 }
             } else {
-                budgetRepo.softDeleteTransactionOccurrence(tx)
+                deleteTransactionUseCase.softDeleteOccurrence(tx)
             }
         }
     }
@@ -117,7 +119,7 @@ class TransactionActionViewModel @Inject constructor(
             val finalEnd = updatedEndDate ?: series?.endDate
             val finalMax = updatedMaxOccurrences ?: series?.maxOccurrences
 
-            budgetRepo.saveWithTransition(
+            saveTransactionUseCase.saveWithTransition(
                 editingId = tx.transaction.id,
                 title = updatedTitle,
                 amount = updatedAmount,
