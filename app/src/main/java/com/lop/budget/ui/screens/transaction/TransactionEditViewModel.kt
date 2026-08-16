@@ -38,7 +38,6 @@ data class TransactionForm(
     val title: String = "",
     val date: Long = System.currentTimeMillis(),
     val categoryId: Long? = null,
-    val subCategoryId: Long? = null,
     val accountId: Long? = null,
     val tagIds: Set<Long> = emptySet(),
     val note: String = "",
@@ -112,7 +111,6 @@ class TransactionEditViewModel @Inject constructor(
             // S'il vaut -1 ou est null, on garde tx.date (date réelle persistée ou virtuelle)
             date = seriesDate?.takeIf { it > 0L } ?: tx.date,
             categoryId = tx.categoryId,
-            subCategoryId = tx.subCategoryId,
             accountId = tx.accountId,
             tagIds = twr.tags.map { it.id }.toSet(),
             note = tx.note ?: "",
@@ -161,8 +159,7 @@ class TransactionEditViewModel @Inject constructor(
     fun setTitle(title: String) { _form.value = _form.value.copy(title = title) }
     fun setStatus(status: TransactionStatus) { _form.value = _form.value.copy(status = status) }
 
-    fun setCategory(id: Long) { _form.value = _form.value.copy(categoryId = id, subCategoryId = null) }
-    fun setSubCategory(id: Long?) { _form.value = _form.value.copy(subCategoryId = id) }
+    fun setCategory(id: Long) { _form.value = _form.value.copy(categoryId = id) }
 
     fun setAccount(id: Long) {
         _form.value = _form.value.copy(accountId = id)
@@ -270,7 +267,6 @@ class TransactionEditViewModel @Inject constructor(
             date = f.date,
             accountId = accId,
             categoryId = catId,
-            subCategoryId = f.subCategoryId,
             note = note,
             frequency = f.frequency,
             interval = f.interval,

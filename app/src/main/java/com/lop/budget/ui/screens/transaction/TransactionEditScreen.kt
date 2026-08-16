@@ -34,8 +34,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -49,7 +47,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -237,19 +234,25 @@ fun TransactionEditScreen(
             FloatingCard {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     val selectedCat = categories.find { it.id == form.categoryId }
+                    val effectiveParent = if (selectedCat?.parentCategoryId != null) {
+                        categories.find { it.id == selectedCat.parentCategoryId }
+                    } else {
+                        selectedCat
+                    }
+
                     SelectorRow(
                         label = stringResource(R.string.tx_category_label),
-                        value = selectedCat?.name ?: stringResource(R.string.tx_select_category),
-                        icon = selectedCat?.let { IconMapper.get(it.icon) } ?: Icons.Filled.Category,
-                        iconTint = selectedCat?.let { Color(it.colorArgb) },
+                        value = effectiveParent?.name ?: stringResource(R.string.tx_select_category),
+                        icon = effectiveParent?.let { IconMapper.get(it.icon) } ?: Icons.Filled.Category,
+                        iconTint = effectiveParent?.let { Color(it.colorArgb) },
                         onClick = { showCategorySheet = true },
                         modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_CATEGORY)
                     )
 
-                    if (selectedCat != null) {
-                        val subCats = categories.filter { it.parentCategoryId == selectedCat.id }
+                    if (effectiveParent != null) {
+                        val subCats = categories.filter { it.parentCategoryId == effectiveParent.id }
                         if (subCats.isNotEmpty()) {
-                            val selectedSub = categories.find { it.id == form.subCategoryId }
+                            val selectedSub = if (selectedCat?.parentCategoryId != null) selectedCat else null
                             SelectorRow(
                                 label = "Sous-catégorie",
                                 value = selectedSub?.name ?: "Choisir une sous-catégorie...",
@@ -388,12 +391,8 @@ fun TransactionEditScreen(
             selectedId = form.categoryId,
             onSelect = { id ->
                 val selected = categories.find { it.id == id }
-                if (selected?.parentCategoryId != null) {
-                    vm.setCategory(selected.parentCategoryId)
-                    vm.setSubCategory(id)
-                } else {
-                    vm.setCategory(id)
-                }
+                vm.setCategory(id)
+
                 showCategorySheet = false
             },
             onCreate = {

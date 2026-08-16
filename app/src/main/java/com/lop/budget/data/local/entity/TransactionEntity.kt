@@ -41,7 +41,6 @@ data class TransactionEntity(
     val date: Long,
     val accountId: Long,
     val categoryId: Long,
-    val subCategoryId: Long? = null,
     val note: String? = null,
     /** Date effective de paiement, epoch millis. */
     val paidAt: Long? = null,
