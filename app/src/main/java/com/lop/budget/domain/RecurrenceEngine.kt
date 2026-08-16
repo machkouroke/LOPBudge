@@ -67,7 +67,7 @@ object RecurrenceEngine {
             date = date,
             accountId = series.accountId,
             categoryId = series.categoryId,
-            seriesId = series.id.toString(),
+            seriesId = series.id,
             seriesDate = date,
             isException = false,
             note = series.note,

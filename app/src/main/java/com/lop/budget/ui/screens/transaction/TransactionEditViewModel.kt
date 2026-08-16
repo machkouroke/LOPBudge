@@ -45,7 +45,7 @@ data class TransactionForm(
     val tagIds: Set<Long> = emptySet(),
     val note: String = "",
     val status: TransactionStatus = TransactionStatus.PLANNED,
-    val seriesId: String? = null,
+    val seriesId: Long? = null,
     
     val linkedGoalId: Long? = null,
     val linkedDebtId: Long? = null,
@@ -111,7 +111,7 @@ class TransactionEditViewModel @Inject constructor(
         val tx = twr.transaction
         
         // Si on édite une série (FUTURE ou ALL), on va chercher la règle de la série
-        val series = tx.seriesId?.toLongOrNull()?.let { transactionRepo.getSeriesById(it) }
+        val series = tx.seriesId?.let { transactionRepo.getSeriesById(it) }
         
         _form.value = TransactionForm(
             type = tx.type,

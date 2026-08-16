@@ -25,7 +25,7 @@ class TransactionRepository @Inject constructor(
     suspend fun materializeOccurrence(seriesId: Long, seriesDate: Long): Long {
         val series = getSeriesById(seriesId)
             ?: error("Série récurrente introuvable (ID: $seriesId).")
-        return transactionDao.getOrCreateException(seriesId.toString(), seriesDate, series)
+        return transactionDao.getOrCreateException(seriesId, seriesDate, series)
     }
 
     /**
@@ -57,8 +57,8 @@ class TransactionRepository @Inject constructor(
     fun isTransactionVisible(
         tx: TransactionEntity,
         pendingDeletes: Set<Long>,
-        pendingSeriesDeletes: Map<String, SeriesCancelMode>,
-        pendingSeriesFromDates: Map<String, Long>
+        pendingSeriesDeletes: Map<Long, SeriesCancelMode>,
+        pendingSeriesFromDates: Map<Long, Long>
     ): Boolean {
         if (tx.deleted || tx.id in pendingDeletes) return false
 

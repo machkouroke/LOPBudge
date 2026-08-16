@@ -18,7 +18,7 @@ interface TransactionOperations {
     fun observePlannedByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
     fun observeBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>>
     fun observeById(id: Long): Flow<TransactionWithRelations?>
-    fun observeSeries(seriesId: String): Flow<List<TransactionWithRelations>>
+    fun observeSeries(seriesId: Long): Flow<List<TransactionWithRelations>>
     suspend fun getById(id: Long): TransactionWithRelations?
     suspend fun upsert(tx: TransactionEntity): Long
     suspend fun softDelete(id: Long)
@@ -26,9 +26,9 @@ interface TransactionOperations {
     suspend fun clearTags(txId: Long)
     suspend fun addTagCrossRef(crossRef: TransactionTagCrossRef)
     fun searchAdvanced(query: String, accountId: Long?, categoryId: Long?, startDate: Long?, endDate: Long?): Flow<List<TransactionWithRelations>>
-    suspend fun updateSeriesExceptions(seriesId: String, title: String, amount: Double, type: TransactionType, categoryId: Long, accountId: Long, note: String?)
-    suspend fun softDeleteTransactionsBySeries(seriesId: String)
-    suspend fun softDeleteTransactionsBySeriesFrom(seriesId: String, fromDate: Long)
+    suspend fun updateSeriesExceptions(seriesId: Long, title: String, amount: Double, type: TransactionType, categoryId: Long, accountId: Long, note: String?)
+    suspend fun softDeleteTransactionsBySeries(seriesId: Long)
+    suspend fun softDeleteTransactionsBySeriesFrom(seriesId: Long, fromDate: Long)
 }
 
 @Dao
@@ -81,7 +81,7 @@ interface TransactionDao : TransactionOperations {
         SELECT * FROM transactions 
         WHERE seriesId = :seriesId AND deleted = 0
     """)
-    override fun observeSeries(seriesId: String): Flow<List<TransactionWithRelations>>
+    override fun observeSeries(seriesId: Long): Flow<List<TransactionWithRelations>>
 
     @Transaction
     @Query("""
@@ -155,7 +155,7 @@ interface TransactionDao : TransactionOperations {
 
     @Transaction
     suspend fun getOrCreateException(
-        seriesId: String,
+        seriesId: Long,
         seriesDate: Long,
         series: RecurringSeriesEntity
     ): Long {
@@ -185,7 +185,7 @@ interface TransactionDao : TransactionOperations {
         WHERE seriesId = :seriesId AND seriesDate = :seriesDate AND deleted = 0 
         LIMIT 1
     """)
-    suspend fun getBySeriesSlot(seriesId: String, seriesDate: Long): TransactionEntity?
+    suspend fun getBySeriesSlot(seriesId: Long, seriesDate: Long): TransactionEntity?
 
     @Query("""
         UPDATE transactions 
@@ -193,7 +193,7 @@ interface TransactionDao : TransactionOperations {
         WHERE seriesId = :seriesId AND isException = 1 AND deleted = 0
     """)
     override suspend fun updateSeriesExceptions(
-        seriesId: String,
+        seriesId: Long,
         title: String,
         amount: Double,
         type: TransactionType,
@@ -207,14 +207,14 @@ interface TransactionDao : TransactionOperations {
         SET deleted = 1 
         WHERE seriesId = :seriesId
     """)
-    override suspend fun softDeleteTransactionsBySeries(seriesId: String)
+    override suspend fun softDeleteTransactionsBySeries(seriesId: Long)
 
     @Query("""
         UPDATE transactions 
         SET deleted = 1 
         WHERE seriesId = :seriesId AND date >= :fromDate
     """)
-    override suspend fun softDeleteTransactionsBySeriesFrom(seriesId: String, fromDate: Long)
+    override suspend fun softDeleteTransactionsBySeriesFrom(seriesId: Long, fromDate: Long)
 
     @Query("""
         DELETE FROM transactions

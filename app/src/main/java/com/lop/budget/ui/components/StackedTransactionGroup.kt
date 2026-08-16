@@ -39,7 +39,7 @@ fun StackedTransactionGroup(
     if (transactions.isEmpty()) return
     
     var isExpanded by remember { mutableStateOf(false) }
-    val seriesId = transactions.first().transaction.seriesId ?: "unknown"
+    val seriesId = transactions.first().transaction.seriesId ?: -1L
     
     // Tri par ordre croissant pour l'affichage déplié (Masterclass UX)
     val sortedTransactions = remember(transactions) {

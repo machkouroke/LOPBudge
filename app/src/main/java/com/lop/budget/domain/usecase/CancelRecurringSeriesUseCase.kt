@@ -25,12 +25,12 @@ class CancelRecurringSeriesUseCase @Inject constructor(
         when (mode) {
             is SeriesCancelMode.All -> {
                 transactionRepo.updateSeriesCancelled(seriesId, true)
-                transactionRepo.softDeleteTransactionsBySeries(seriesId.toString())
+                transactionRepo.softDeleteTransactionsBySeries(seriesId)
             }
 
             is SeriesCancelMode.Future -> {
                 transactionRepo.upsertSeries(series.copy(endDate = mode.fromDate - 1))
-                transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId.toString(), mode.fromDate)
+                transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, mode.fromDate)
             }
         }
 

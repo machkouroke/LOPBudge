@@ -20,7 +20,7 @@ class SoftDeleteTransactionOccurrenceUseCase @Inject constructor(
     suspend operator fun invoke(twr: TransactionWithRelations) {
         val tx = twr.transaction
         val realId = if (tx.id < 0L && tx.seriesId != null && tx.seriesDate != null) {
-            transactionRepo.materializeOccurrence(tx.seriesId.toLong(), tx.seriesDate)
+            transactionRepo.materializeOccurrence(tx.seriesId, tx.seriesDate)
         } else tx.id
 
         if (realId >= 0L) {

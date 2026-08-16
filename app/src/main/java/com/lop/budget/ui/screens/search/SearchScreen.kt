@@ -77,7 +77,7 @@ fun SearchScreen(
     }
     
     val dayGroupItems = remember(state.dayGroups, multiOccurrencesSeries) {
-        val displayedSeries = mutableSetOf<String>()
+        val displayedSeries = mutableSetOf<Long>()
         state.dayGroups.map { group ->
             val items = group.transactions.filter { twr ->
                 val sid = twr.transaction.seriesId

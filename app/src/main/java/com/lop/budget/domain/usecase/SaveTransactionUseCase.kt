@@ -76,7 +76,7 @@ class SaveTransactionUseCase @Inject constructor(
         linkedGoalId: Long?, linkedDebtId: Long?, tagIds: List<Long>, scope: EditScope = EditScope.SINGLE, status: TransactionStatus? = null
     ): Long {
         val initialTwr = editingId?.let { transactionRepo.getById(it) } ?: editingId?.let { getVirtualById(it) }
-        val seriesIdFromSource = initialTwr?.transaction?.seriesId?.toLongOrNull()
+        val seriesIdFromSource = initialTwr?.transaction?.seriesId
         val originalSeriesDate = initialTwr?.transaction?.seriesDate ?: initialTwr?.transaction?.date ?: date
 
         var finalEditingId = editingId
@@ -89,7 +89,7 @@ class SaveTransactionUseCase @Inject constructor(
             }
         }
         
-        val currentSeriesId = seriesIdFromSource ?: currentTwr?.transaction?.seriesId?.toLongOrNull()
+        val currentSeriesId = seriesIdFromSource ?: currentTwr?.transaction?.seriesId
         val finalStatus = status ?: currentTwr?.transaction?.status ?: TransactionStatus.PLANNED
 
         when (scope) {
@@ -103,7 +103,7 @@ class SaveTransactionUseCase @Inject constructor(
                     }
                 } else {
                     if (currentSeriesId != null) {
-                        return saveSimple(TransactionEntity(id = finalEditingId ?: 0L, title = title, amount = amount, type = type, status = finalStatus, date = date, accountId = accountId, categoryId = categoryId, note = note, paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr?.transaction?.paidAt ?: System.currentTimeMillis()) else null, seriesId = currentSeriesId.toString(), seriesDate = originalSeriesDate, isException = true, linkedGoalId = linkedGoalId, linkedDebtId = linkedDebtId), tagIds)
+                        return saveSimple(TransactionEntity(id = finalEditingId ?: 0L, title = title, amount = amount, type = type, status = finalStatus, date = date, accountId = accountId, categoryId = categoryId, note = note, paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr?.transaction?.paidAt ?: System.currentTimeMillis()) else null, seriesId = currentSeriesId, seriesDate = originalSeriesDate, isException = true, linkedGoalId = linkedGoalId, linkedDebtId = linkedDebtId), tagIds)
                     } else {
                         finalEditingId?.let { transactionRepo.hardDelete(it) }
                         val newSeriesId = transactionRepo.upsertSeries(RecurringSeriesEntity(title = title, amount = amount, type = type, categoryId = categoryId, accountId = accountId, frequency = frequency, interval = interval, startDate = date, endDate = endDate, maxOccurrences = maxOccurrences, daysOfWeek = daysOfWeek, isCancelled = false, note = note, linkedGoalId = linkedGoalId, linkedDebtId = linkedDebtId))
@@ -146,7 +146,7 @@ class SaveTransactionUseCase @Inject constructor(
                                 }.timeInMillis
                             }
                         } else originalSeriesDate
-                        transactionRepo.updateSeriesExceptions(currentSeriesId.toString(), title, amount, type, categoryId, accountId, note)
+                        transactionRepo.updateSeriesExceptions(currentSeriesId, title, amount, type, categoryId, accountId, note)
                         if (currentTwr != null) {
                             return saveSimple(currentTwr.transaction.copy(title = title, amount = amount, type = type, status = finalStatus, categoryId = categoryId, accountId = accountId, note = note, date = date, seriesDate = targetSlot, isException = true, paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr.transaction.paidAt ?: System.currentTimeMillis()) else null), tagIds)
                         } else if (finalEditingId != null && finalEditingId < 0L) {

@@ -39,7 +39,7 @@ class ObserveTransactionUseCase @Inject constructor(
                     ) { realTxs, allSeries, accounts, categories ->
                         val realMatch = realTxs.find { it.transaction.seriesDate == sDate }
                         if (realMatch != null) return@combine realMatch
-                        val series = allSeries.find { it.id.toString() == sId }
+                        val series = allSeries.find { it.id == sId }
                         if (series != null) {
                             val vMatch = RecurrenceEngine.generateOccurrences(series, sDate, sDate).find { it.seriesDate == sDate }
                             if (vMatch != null) {
@@ -65,7 +65,7 @@ class ObserveTransactionUseCase @Inject constructor(
                 ) { realTxs, allSeries, accounts, categories ->
                     val realMatch = realTxs.find { it.transaction.seriesDate == sDate }
                     if (realMatch != null) return@combine realMatch
-                    val series = allSeries.find { it.id.toString() == sId }
+                    val series = allSeries.find { it.id == sId }
                     if (series != null) {
                         val vMatch = RecurrenceEngine.generateOccurrences(series, sDate, sDate).find { it.seriesDate == sDate }
                         if (vMatch != null) {

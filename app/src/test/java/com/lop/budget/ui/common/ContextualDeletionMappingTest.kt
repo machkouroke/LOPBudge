@@ -55,7 +55,7 @@ class ContextualDeletionMappingTest {
     @Test
     fun `TC-33 - Mapping THIS_OCCURRENCE should call softDeleteTransactionOccurrence`() {
         // Étape 1 : Créer une transaction récurrente cible
-        val tx = createRecurringTransaction(id = 10L, seriesId = "S1", date = 1000L)
+        val tx = createRecurringTransaction(id = 10L, seriesId = 1L, date = 1000L)
         val twr = TransactionWithRelations(tx, null, null, emptyList())
 
         // Étape 2 : Simuler la requête de suppression et le choix de l'utilisateur
@@ -76,7 +76,7 @@ class ContextualDeletionMappingTest {
     fun `TC-33 - Mapping FUTURE_ONLY should call cancelSeries with mode FUTURE`() {
         // Étape 1 : Créer une transaction récurrente cible le 15 du mois
         val datePivot = 1500L
-        val tx = createRecurringTransaction(id = 20L, seriesId = "S1", date = datePivot)
+        val tx = createRecurringTransaction(id = 20L, seriesId = 1L, date = datePivot)
         val twr = TransactionWithRelations(tx, null, null, emptyList())
 
         // Étape 2 : Simuler le choix "Les suivantes uniquement"
@@ -96,7 +96,7 @@ class ContextualDeletionMappingTest {
     @Test
     fun `TC-33 - Mapping ALL_SERIES should call cancelSeries with mode ALL`() {
         // Étape 1 : Créer une transaction récurrente cible
-        val tx = createRecurringTransaction(id = 30L, seriesId = "S1", date = 1000L)
+        val tx = createRecurringTransaction(id = 30L, seriesId = 1L, date = 1000L)
         val twr = TransactionWithRelations(tx, null, null, emptyList())
 
         // Étape 2 : Simuler le choix "Toute la série"
@@ -109,7 +109,7 @@ class ContextualDeletionMappingTest {
         coVerify { cancelRecurringSeriesUseCase(any(), SeriesCancelMode.All) }
     }
 
-    private fun createRecurringTransaction(id: Long, seriesId: String, date: Long) = TransactionEntity(
+    private fun createRecurringTransaction(id: Long, seriesId: Long, date: Long) = TransactionEntity(
         id = id,
         title = "Recurring Tx",
         amount = 50.0,

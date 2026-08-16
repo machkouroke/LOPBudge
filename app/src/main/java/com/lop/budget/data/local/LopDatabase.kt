@@ -33,7 +33,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         DebtEntity::class,
         DetectedTransactionProposalEntity::class,
     ],
-    version = 16,
+    version = 17,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -49,6 +49,53 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        val MIGRATION_16_17 = object : androidx.room.migration.Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Recreate transactions table with seriesId as INTEGER
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `transactions_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `title` TEXT NOT NULL, 
+                        `amount` REAL NOT NULL, 
+                        `type` TEXT NOT NULL, 
+                        `status` TEXT NOT NULL, 
+                        `kind` TEXT NOT NULL DEFAULT 'STANDARD', 
+                        `date` INTEGER NOT NULL, 
+                        `accountId` INTEGER NOT NULL, 
+                        `categoryId` INTEGER NOT NULL, 
+                        `note` TEXT, 
+                        `paidAt` INTEGER, 
+                        `seriesId` INTEGER, 
+                        `seriesDate` INTEGER, 
+                        `isException` INTEGER NOT NULL, 
+                        `linkedGoalId` INTEGER, 
+                        `linkedDebtId` INTEGER, 
+                        `deleted` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                
+                // Copy data, converting seriesId to INTEGER
+                // CAST(seriesId AS INTEGER) works in SQLite if the string is numeric
+                db.execSQL("""
+                    INSERT INTO transactions_new (id, title, amount, type, status, kind, date, accountId, categoryId, note, paidAt, seriesId, seriesDate, isException, linkedGoalId, linkedDebtId, deleted)
+                    SELECT id, title, amount, type, status, kind, date, accountId, categoryId, note, paidAt, CAST(seriesId AS INTEGER), seriesDate, isException, linkedGoalId, linkedDebtId, deleted FROM transactions
+                """.trimIndent())
+                
+                db.execSQL("DROP TABLE transactions")
+                db.execSQL("ALTER TABLE transactions_new RENAME TO transactions")
+                
+                // Recreate indices
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_accountId` ON `transactions` (`accountId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_categoryId` ON `transactions` (`categoryId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_seriesId` ON `transactions` (`seriesId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_date` ON `transactions` (`date`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_paidAt` ON `transactions` (`paidAt`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_status` ON `transactions` (`status`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_kind` ON `transactions` (`kind`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_deleted` ON `transactions` (`deleted`)")
+            }
+        }
 
         val MIGRATION_15_16 = object : androidx.room.migration.Migration(15, 16) {
             override fun migrate(db: SupportSQLiteDatabase) {

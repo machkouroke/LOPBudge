@@ -95,8 +95,7 @@ class TransactionActionViewModel @Inject constructor(
                     }
 
                     RecurringDeleteChoice.FUTURE_ONLY -> {
-                        tx.transaction.seriesId.let { sid ->
-                            val seriesId = sid.toLongOrNull() ?: return@let
+                        tx.transaction.seriesId.let { seriesId ->
                             cancelRecurringSeriesUseCase(
                                 seriesId,
                                 SeriesCancelMode.Future(tx.transaction.date)
@@ -105,8 +104,7 @@ class TransactionActionViewModel @Inject constructor(
                     }
 
                     RecurringDeleteChoice.ALL_SERIES -> {
-                        tx.transaction.seriesId.let { sid ->
-                            val seriesId = sid.toLongOrNull() ?: return@let
+                        tx.transaction.seriesId.let { seriesId ->
                             cancelRecurringSeriesUseCase(seriesId, SeriesCancelMode.All)
                         }
                     }
@@ -141,7 +139,7 @@ class TransactionActionViewModel @Inject constructor(
         onDone: () -> Unit = {}
     ) {
         viewModelScope.launch {
-            val seriesId = tx.transaction.seriesId?.toLongOrNull()
+            val seriesId = tx.transaction.seriesId
             val series = seriesId?.let { transactionRepo.getSeriesById(it) }
 
             val finalFreq = updatedFrequency ?: series?.frequency

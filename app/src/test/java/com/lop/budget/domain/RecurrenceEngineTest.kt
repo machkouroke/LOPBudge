@@ -56,7 +56,7 @@ class RecurrenceEngineTest {
 
         // Étape 5 : Inspecter que chaque occurrence possède seriesId et seriesDate
         occurrences.forEach { occ ->
-            assertEquals("100", occ.seriesId)
+            assertEquals(100L, occ.seriesId)
             assertTrue(occ.seriesDate != null)
         }
 

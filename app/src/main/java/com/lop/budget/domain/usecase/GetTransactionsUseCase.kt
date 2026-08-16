@@ -31,8 +31,8 @@ class GetTransactionsUseCase @Inject constructor(
     // ou d'injecter un "UndoManager". 
     // On va simuler l'état local pour garder la logique de BudgetRepository.
     private val _pendingDeletes = MutableStateFlow<Set<Long>>(emptySet())
-    private val _pendingSeriesDeletes = MutableStateFlow<Map<String, SeriesCancelMode>>(emptyMap())
-    private val _pendingSeriesFromDates = MutableStateFlow<Map<String, Long>>(emptyMap())
+    private val _pendingSeriesDeletes = MutableStateFlow<Map<Long, SeriesCancelMode>>(emptyMap())
+    private val _pendingSeriesFromDates = MutableStateFlow<Map<Long, Long>>(emptyMap())
 
     /**
      * Performs an advanced search for transactions based on various filters.
@@ -66,8 +66,8 @@ class GetTransactionsUseCase @Inject constructor(
             @Suppress("UNCHECKED_CAST") val allAccounts = args[2] as List<AccountEntity>
             @Suppress("UNCHECKED_CAST") val allCategories = args[3] as List<CategoryEntity>
             @Suppress("UNCHECKED_CAST") val pending = args[4] as Set<Long>
-            @Suppress("UNCHECKED_CAST") val pendingSeries = args[5] as Map<String, SeriesCancelMode>
-            @Suppress("UNCHECKED_CAST") val pendingDates = args[6] as Map<String, Long>
+            @Suppress("UNCHECKED_CAST") val pendingSeries = args[5] as Map<Long, SeriesCancelMode>
+            @Suppress("UNCHECKED_CAST") val pendingDates = args[6] as Map<Long, Long>
 
             val zone = ZoneId.systemDefault()
             val searchStart = startDate ?: (LocalDate.now().minusMonths(1).atStartOfDay(zone).toInstant().toEpochMilli())
@@ -81,12 +81,12 @@ class GetTransactionsUseCase @Inject constructor(
                 if (query.isBlank() || series.title.contains(query, ignoreCase = true) || series.note?.contains(query, ignoreCase = true) == true) {
                     if (accountId == null || series.accountId == accountId) {
                         if (categoryId == null || series.categoryId == categoryId) {
-                            val cancelMode = pendingSeries[series.id.toString()]
+                            val cancelMode = pendingSeries[series.id]
                             if (!series.isCancelled && cancelMode !is SeriesCancelMode.All) {
                                 val occurrences = RecurrenceEngine.generateOccurrences(series, searchStart, searchEnd)
                                 for (virtualTx in occurrences) {
                                     if (cancelMode is SeriesCancelMode.Future && cancelMode.fromDate <= virtualTx.date) continue
-                                    if (realTxs.none { it.transaction.seriesId == series.id.toString() && it.transaction.seriesDate == virtualTx.date }) {
+                                    if (realTxs.none { it.transaction.seriesId == series.id && it.transaction.seriesDate == virtualTx.date }) {
                                         if (virtualTx.id !in pending) {
                                             val account = allAccounts.find { it.id == series.accountId }
                                             val category = allCategories.find { it.id == series.categoryId }
@@ -123,20 +123,20 @@ class GetTransactionsUseCase @Inject constructor(
             @Suppress("UNCHECKED_CAST") val accounts = args[2] as List<AccountEntity>
             @Suppress("UNCHECKED_CAST") val categories = args[3] as List<CategoryEntity>
             @Suppress("UNCHECKED_CAST") val pending = args[4] as Set<Long>
-            @Suppress("UNCHECKED_CAST") val pendingSeries = args[5] as Map<String, SeriesCancelMode>
-            @Suppress("UNCHECKED_CAST") val pendingDates = args[6] as Map<String, Long>
+            @Suppress("UNCHECKED_CAST") val pendingSeries = args[5] as Map<Long, SeriesCancelMode>
+            @Suppress("UNCHECKED_CAST") val pendingDates = args[6] as Map<Long, Long>
 
             val finalResult = allInPeriod.filter { twr -> 
                 transactionRepo.isTransactionVisible(twr.transaction, pending, pendingSeries, pendingDates)
             }.toMutableList()
 
             for (series in seriesList) {
-                val cancelMode = pendingSeries[series.id.toString()]
+                val cancelMode = pendingSeries[series.id]
                 if (!series.isCancelled && cancelMode !is SeriesCancelMode.All) {
                     val occurrences = RecurrenceEngine.generateOccurrences(series, start, end)
                     for (virtualTx in occurrences) {
                         if (cancelMode is SeriesCancelMode.Future && cancelMode.fromDate <= virtualTx.date) continue
-                        if (allInPeriod.none { it.transaction.seriesId == series.id.toString() && it.transaction.seriesDate == virtualTx.date }) {
+                        if (allInPeriod.none { it.transaction.seriesId == series.id && it.transaction.seriesDate == virtualTx.date }) {
                             if (virtualTx.id !in pending) {
                                 val account = accounts.find { it.id == series.accountId }
                                 val category = categories.find { it.id == series.categoryId }

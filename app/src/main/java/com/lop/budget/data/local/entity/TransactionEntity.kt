@@ -46,7 +46,7 @@ data class TransactionEntity(
     val paidAt: Long? = null,
 
     // --- Lien vers série récurrente ---
-    val seriesId: String? = null,
+    val seriesId: Long? = null,
     val seriesDate: Long? = null,
     val isException: Boolean = false,
 
