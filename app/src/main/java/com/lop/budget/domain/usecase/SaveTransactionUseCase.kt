@@ -22,7 +22,7 @@ class SaveTransactionUseCase @Inject constructor(
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
     private val syncProgressUseCase: SyncProgressUseCase,
-    private val deleteTransactionUseCase: DeleteTransactionUseCase
+    private val cancelRecurringSeriesUseCase: CancelRecurringSeriesUseCase
 ) {
 
     /**
@@ -96,7 +96,7 @@ class SaveTransactionUseCase @Inject constructor(
             EditScope.SINGLE -> {
                 if (frequency == com.lop.budget.domain.model.RecurrenceFrequency.NONE) {
                     if (currentSeriesId != null) {
-                        deleteTransactionUseCase.cancelSeries(currentSeriesId, SeriesCancelMode.Future(originalSeriesDate))
+                        cancelRecurringSeriesUseCase(currentSeriesId, SeriesCancelMode.Future(originalSeriesDate))
                         return saveSimple(TransactionEntity(id = finalEditingId ?: 0L, title = title, amount = amount, type = type, status = finalStatus, date = date, accountId = accountId, categoryId = categoryId, note = note, paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr?.transaction?.paidAt ?: System.currentTimeMillis()) else null, seriesId = null, seriesDate = null, isException = false, linkedGoalId = linkedGoalId, linkedDebtId = linkedDebtId), tagIds)
                     } else {
                         return saveSimple(TransactionEntity(id = finalEditingId ?: 0L, title = title, amount = amount, type = type, status = finalStatus, date = date, accountId = accountId, categoryId = categoryId, note = note, paidAt = if (finalStatus == TransactionStatus.PAID) (currentTwr?.transaction?.paidAt ?: System.currentTimeMillis()) else null, linkedGoalId = linkedGoalId, linkedDebtId = linkedDebtId), tagIds)
@@ -113,7 +113,7 @@ class SaveTransactionUseCase @Inject constructor(
             }
             EditScope.FUTURE -> {
                 if (currentSeriesId != null) {
-                    deleteTransactionUseCase.cancelSeries(currentSeriesId, SeriesCancelMode.Future(minOf(originalSeriesDate, date)))
+                    cancelRecurringSeriesUseCase(currentSeriesId, SeriesCancelMode.Future(minOf(originalSeriesDate, date)))
                     val newSeriesId = transactionRepo.upsertSeries(RecurringSeriesEntity(title = title, amount = amount, type = type, categoryId = categoryId, accountId = accountId, frequency = frequency, interval = interval, startDate = date, endDate = endDate, maxOccurrences = maxOccurrences, daysOfWeek = daysOfWeek, note = note, linkedGoalId = linkedGoalId, linkedDebtId = linkedDebtId))
                     val newTxId = transactionRepo.materializeOccurrence(newSeriesId, date)
                     transactionRepo.getById(newTxId)?.let { matTwr ->

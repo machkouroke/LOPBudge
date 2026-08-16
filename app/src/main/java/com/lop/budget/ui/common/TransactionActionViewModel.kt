@@ -6,8 +6,9 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.SeriesCancelMode
-import com.lop.budget.domain.usecase.DeleteTransactionUseCase
+import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
 import com.lop.budget.domain.usecase.SaveTransactionUseCase
+import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class TransactionActionViewModel @Inject constructor(
     private val transactionRepo: TransactionRepository,
-    private val deleteTransactionUseCase: DeleteTransactionUseCase,
+    private val softDeleteTransactionOccurrenceUseCase: SoftDeleteTransactionOccurrenceUseCase,
+    private val cancelRecurringSeriesUseCase: CancelRecurringSeriesUseCase,
     private val saveTransactionUseCase: SaveTransactionUseCase,
 ) : ViewModel() {
 
@@ -89,23 +91,23 @@ class TransactionActionViewModel @Inject constructor(
             if (tx.transaction.seriesId != null && choice != null) {
                 when (choice) {
                     RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                        deleteTransactionUseCase.softDeleteOccurrence(tx)
+                        softDeleteTransactionOccurrenceUseCase(tx)
                     }
                     RecurringDeleteChoice.FUTURE_ONLY -> {
                         tx.transaction.seriesId.let { sid ->
                             val seriesId = sid.toLongOrNull() ?: return@let
-                            deleteTransactionUseCase.cancelSeries(seriesId, SeriesCancelMode.Future(tx.transaction.date))
+                            cancelRecurringSeriesUseCase(seriesId, SeriesCancelMode.Future(tx.transaction.date))
                         }
                     }
                     RecurringDeleteChoice.ALL_SERIES -> {
                         tx.transaction.seriesId.let { sid ->
                             val seriesId = sid.toLongOrNull() ?: return@let
-                            deleteTransactionUseCase.cancelSeries(seriesId, SeriesCancelMode.All)
+                            cancelRecurringSeriesUseCase(seriesId, SeriesCancelMode.All)
                         }
                     }
                 }
             } else {
-                deleteTransactionUseCase.softDeleteOccurrence(tx)
+                softDeleteTransactionOccurrenceUseCase(tx)
             }
         }
     }
