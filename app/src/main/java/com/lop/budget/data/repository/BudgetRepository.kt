@@ -203,30 +203,8 @@ class BudgetRepository @Inject constructor(
      * Si l'exception existe déjà, retourne son ID.
      */
     suspend fun materializeOccurrence(seriesId: Long, seriesDate: Long): Long {
-        // 1. Vérifier si l'exception existe déjà
-        val existing = transactionDao.getException(seriesId.toString(), seriesDate)
-        if (existing != null) return existing.id
-
-        // 2. Récupérer la série
         val series = recurringSeriesDao.getSeriesById(seriesId) ?: return -1L
-
-        // 3. Créer l'exception
-        val exception = TransactionEntity(
-            title = series.title,
-            amount = series.amount,
-            type = series.type,
-            status = TransactionStatus.PLANNED,
-            date = seriesDate,
-            accountId = series.accountId,
-            categoryId = series.categoryId,
-            note = series.note,
-            seriesId = series.id.toString(),
-            seriesDate = seriesDate,
-            isException = true,
-            linkedGoalId = series.linkedGoalId,
-            linkedDebtId = series.linkedDebtId,
-        )
-        return transactionDao.upsert(exception)
+        return transactionDao.getOrCreateException(seriesId.toString(), seriesDate, series)
     }
     /**
      * Retourne toutes les transactions d'un mois : les transactions ponctuelles, les exceptions,

@@ -7,9 +7,11 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
+import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
 
@@ -144,6 +146,33 @@ interface TransactionDao {
         accountId: Long,
         note: String?
     )
+
+    @Transaction
+    suspend fun getOrCreateException(
+        seriesId: String,
+        seriesDate: Long,
+        series: RecurringSeriesEntity
+    ): Long {
+        val existing = getException(seriesId, seriesDate)
+        if (existing != null) return existing.id
+
+        val exception = TransactionEntity(
+            title = series.title,
+            amount = series.amount,
+            type = series.type,
+            status = TransactionStatus.PLANNED,
+            date = seriesDate,
+            accountId = series.accountId,
+            categoryId = series.categoryId,
+            note = series.note,
+            seriesId = seriesId,
+            seriesDate = seriesDate,
+            isException = true,
+            linkedGoalId = series.linkedGoalId,
+            linkedDebtId = series.linkedDebtId,
+        )
+        return upsert(exception)
+    }
 
     @Query("SELECT COALESCE(SUM(amount), 0.0) FROM transactions WHERE linkedGoalId = :goalId AND deleted = 0 AND status = 'PAID'")
     suspend fun getSumForGoal(goalId: Long): Double
