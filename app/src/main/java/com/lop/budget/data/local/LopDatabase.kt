@@ -68,7 +68,7 @@ abstract class LopDatabase : RoomDatabase() {
         }
 
         val MIGRATION_13_14 = object : androidx.room.migration.Migration(13, 14) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 // 1. RecurringSeriesEntity update: add isCancelled, remove status (if it existed)
                 // In migration 2_3, status was added. In current entity it's gone.
                 // Room migration requires the table to match the entity EXACTLY.
@@ -94,7 +94,7 @@ abstract class LopDatabase : RoomDatabase() {
         }
 
         val MIGRATION_12_13 = object : androidx.room.migration.Migration(12, 13) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 // Add kind column to transactions table
                 db.execSQL("ALTER TABLE transactions ADD COLUMN kind TEXT NOT NULL DEFAULT 'STANDARD'")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_kind` ON `transactions` (`kind`)")
@@ -102,7 +102,7 @@ abstract class LopDatabase : RoomDatabase() {
         }
 
         val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 // 1. TransactionEntity update: add paidAt and index
                 db.execSQL("ALTER TABLE transactions ADD COLUMN paidAt INTEGER")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_paidAt` ON `transactions` (`paidAt`)")
@@ -116,37 +116,37 @@ abstract class LopDatabase : RoomDatabase() {
         }
 
         val MIGRATION_10_11 = object : androidx.room.migration.Migration(10, 11) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE detected_transaction_proposals ADD COLUMN suggestedCategoryId INTEGER")
             }
         }
 
         val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE detected_transaction_proposals ADD COLUMN cardName TEXT")
             }
         }
 
         val MIGRATION_8_9 = object : androidx.room.migration.Migration(8, 9) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE detected_transaction_proposals ADD COLUMN fullText TEXT NOT NULL DEFAULT ''")
             }
         }
 
         val MIGRATION_7_8 = object : androidx.room.migration.Migration(7, 8) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE detected_transaction_proposals ADD COLUMN confidenceScore REAL NOT NULL DEFAULT 1.0")
             }
         }
 
         val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE transactions ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
             }
         }
 
         val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE transactions ADD COLUMN seriesDate INTEGER")
                 db.execSQL("ALTER TABLE transactions ADD COLUMN isException INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("""
@@ -173,7 +173,7 @@ abstract class LopDatabase : RoomDatabase() {
         }
 
         val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `detected_transaction_proposals` (
@@ -196,7 +196,7 @@ abstract class LopDatabase : RoomDatabase() {
         }
 
         val MIGRATION_4_5 = object : androidx.room.migration.Migration(4, 5) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE accounts ADD COLUMN bankName TEXT")
                 db.execSQL("ALTER TABLE accounts ADD COLUMN comment TEXT")
                 db.execSQL("ALTER TABLE accounts ADD COLUMN includeInTotal INTEGER NOT NULL DEFAULT 1")
@@ -205,7 +205,7 @@ abstract class LopDatabase : RoomDatabase() {
         }
 
         val MIGRATION_5_6 = object : androidx.room.migration.Migration(5, 6) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE categories ADD COLUMN parentCategoryId INTEGER")
                 db.execSQL("ALTER TABLE transactions ADD COLUMN subCategoryId INTEGER")
                 db.execSQL("ALTER TABLE recurring_series ADD COLUMN subCategoryId INTEGER")
@@ -213,7 +213,7 @@ abstract class LopDatabase : RoomDatabase() {
         }
 
         val MIGRATION_6_7 = object : androidx.room.migration.Migration(6, 7) {
-            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 // Goals
                 db.execSQL("ALTER TABLE goals ADD COLUMN startingBalance REAL NOT NULL DEFAULT 0.0")
                 db.execSQL("ALTER TABLE goals ADD COLUMN isCompleted INTEGER NOT NULL DEFAULT 0")

@@ -93,7 +93,6 @@ fun ConfirmDeleteSheet(
             ActionRow(
                 icon = Icons.Filled.DeleteForever,
                 title = confirmLabel,
-                subtitle = null,
                 tone = ActionTone.Danger,
                 onClick = onConfirm,
             )
@@ -103,7 +102,6 @@ fun ConfirmDeleteSheet(
             ActionRow(
                 icon = null,
                 title = "Annuler",
-                subtitle = null,
                 tone = ActionTone.Neutral,
                 onClick = onDismiss,
             )
@@ -118,7 +116,6 @@ fun ConfirmDeleteSheet(
 private fun ActionRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector?,
     title: String,
-    subtitle: String?,
     tone: ActionTone,
     onClick: () -> Unit,
 ) {
@@ -126,16 +123,6 @@ private fun ActionRow(
     val border = when (tone) {
         ActionTone.Neutral -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
         ActionTone.Danger -> MaterialTheme.colorScheme.error.copy(alpha = 0.20f)
-    }
-
-    val top = when (tone) {
-        ActionTone.Neutral -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-        ActionTone.Danger -> MaterialTheme.colorScheme.error.copy(alpha = 0.10f)
-    }
-
-    val bottom = when (tone) {
-        ActionTone.Neutral -> MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)
-        ActionTone.Danger -> MaterialTheme.colorScheme.error.copy(alpha = 0.06f)
     }
 
     Surface(
@@ -178,13 +165,7 @@ private fun ActionRow(
                     fontWeight = FontWeight.SemiBold,
                     color = if (tone == ActionTone.Danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                 )
-                if (!subtitle.isNullOrBlank()) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+
             }
         }
     }

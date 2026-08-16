@@ -11,7 +11,6 @@ import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.RecurrenceFrequency
-import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import io.mockk.every
@@ -157,8 +156,6 @@ class RecurringDeletionRepositoryTest {
             startDate = startJan
         )
 
-        // Étape 2 : Simuler une suppression en attente (Undo) pour le futur à partir de Février
-        repository.setPendingSeriesDelete("100", SeriesDeletionMode.FUTURE, startFeb)
 
         every { recurringSeriesDao.observeActiveSeries() } returns flowOf(listOf(series))
         every { transactionDao.observeBetween(startJan, endRange) } returns flowOf(emptyList())

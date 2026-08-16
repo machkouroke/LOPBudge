@@ -50,7 +50,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,8 +81,7 @@ fun HomeScreen(
     onOpenTransaction: (Long) -> Unit,
     navController: NavController,
     hazeState: HazeState? = null,
-    vm: HomeViewModel = hiltViewModel(),
-    actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(LocalContext.current as androidx.activity.ComponentActivity)
+    vm: HomeViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -116,12 +114,14 @@ fun HomeScreen(
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
+    @Suppress("UNUSED_VALUE")
     var isMonthPickerOpen by remember { mutableStateOf(false) }
 
     if (isMonthPickerOpen) {
         MonthPickerBottomSheet(
             selected = state.month,
             onSelect = vm::setMonth,
+
             onDismiss = { isMonthPickerOpen = false },
         )
     }
@@ -141,16 +141,15 @@ fun HomeScreen(
             onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },
             onPrevMonth = { vm.prevMonth() },
             onNextMonth = { vm.nextMonth() },
-            snackbarHostState = snackbarHostState,
             hazeState = hazeState,
-            vm = vm,
-            actionVm = actionVm
+            vm = vm
         )
 
         // Overlay UI (Header and Floating elements)
         HomeOverlay(
             state = state,
             isCurrentMonth = state.isCurrentMonth,
+
             onMonthClick = { isMonthPickerOpen = true },
             onTodayClick = { vm.goToCurrentMonth() },
             onSearchClick = { navController.navigate(Routes.SEARCH) },
@@ -172,10 +171,8 @@ fun HomeContent(
     onOpenAccountDetail: (Long) -> Unit,
     onPrevMonth: () -> Unit,
     onNextMonth: () -> Unit,
-    snackbarHostState: androidx.compose.material3.SnackbarHostState,
     hazeState: HazeState? = null,
-    vm: HomeViewModel,
-    actionVm: com.lop.budget.ui.common.TransactionActionViewModel
+    vm: HomeViewModel
 ) {
     val listState = rememberLazyListState()
 
@@ -197,17 +194,17 @@ fun HomeContent(
                     fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
                 },
                 label = "dashboard_balance"
-            ) { _ ->
+            ) { targetMonth ->
                 // Note: since the rest of 'state' (income, expense) is already for 'targetMonth', 
                 // we just use it directly.
                 BalanceDashboardWidget(
-                    month = state.month,
+                    month = targetMonth,
                     income = state.monthIncome,
                     expense = state.monthExpense,
                     currency = state.currency,
                     onPrevMonth = onPrevMonth,
                     onNextMonth = onNextMonth,
-                    onOpenMonthly = { onOpenMonthly(it, state.month) }
+                    onOpenMonthly = { onOpenMonthly(it, targetMonth) }
                 )
             }
         }
@@ -219,7 +216,9 @@ fun HomeContent(
                     fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
                 },
                 label = "dashboard_accounts"
-            ) { _ ->
+            ) { targetMonth ->
+                // Using targetMonth to ensure AnimatedContent updates correctly
+                val accounts = remember(targetMonth, state.accounts) { state.accounts }
                 FloatingCard(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
@@ -251,12 +250,12 @@ fun HomeContent(
                             }
                         }
 
-                        if (state.accounts.isNotEmpty()) {
+                        if (accounts.isNotEmpty()) {
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 18.dp, top = 8.dp)
                             ) {
-                                items(state.accounts, key = { it.account.id }) { balance ->
+                                items(accounts, key = { it.account.id }) { balance ->
                                     AccountWidgetCard(balance, state.currency) {
                                         onOpenAccountDetail(balance.account.id)
                                     }
@@ -282,7 +281,9 @@ fun HomeContent(
                     fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
                 },
                 label = "dashboard_subscriptions"
-            ) { _ ->
+            ) { targetMonth ->
+                // Using targetMonth to ensure AnimatedContent updates correctly
+                val subscriptions = remember(targetMonth, state.subscriptions) { state.subscriptions }
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(
                         stringResource(R.string.home_unpaid_subscriptions),
@@ -312,17 +313,17 @@ fun HomeContent(
                                         style = MaterialTheme.typography.titleMedium
                                     )
                                     Text(
-                                        if (state.subscriptions.isEmpty()) stringResource(R.string.home_no_pending_subscriptions) else stringResource(
+                                        if (subscriptions.isEmpty()) stringResource(R.string.home_no_pending_subscriptions) else stringResource(
                                             R.string.home_pending_subscriptions_count,
-                                            state.subscriptions.size
+                                            subscriptions.size
                                         ),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
-                            if (state.subscriptions.isNotEmpty()) {
-                                val totalSubs = state.subscriptions.sumOf { it.transaction.amount }
+                            if (subscriptions.isNotEmpty()) {
+                                val totalSubs = subscriptions.sumOf { it.transaction.amount }
                                 Text(
                                     Format.money(totalSubs, state.currency),
                                     style = MaterialTheme.typography.titleMedium,
@@ -343,7 +344,6 @@ fun HomeContent(
                 },
                 label = "dashboard_transactions"
             ) { targetMonth ->
-                val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
                 TransactionsDashboardWidget(
                     transactions = state.dashboardTransactions,
                     currency = state.currency,
@@ -493,10 +493,10 @@ fun HomeOverlay(
 
 @Composable
 fun IconButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector, 
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit,
-    contentDescription: String? = null,
     modifier: Modifier = Modifier,
+    contentDescription: String? = null,
 ) {
     Box(
 

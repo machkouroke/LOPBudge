@@ -4,39 +4,36 @@ import com.lop.budget.data.local.dao.AccountDao
 import com.lop.budget.data.local.dao.CategoryDao
 import com.lop.budget.data.local.dao.DebtDao
 import com.lop.budget.data.local.dao.GoalDao
+import com.lop.budget.data.local.dao.RecurringSeriesDao
 import com.lop.budget.data.local.dao.TagDao
 import com.lop.budget.data.local.dao.TransactionDao
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.DebtEntity
 import com.lop.budget.data.local.entity.GoalEntity
+import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
-import com.lop.budget.data.local.dao.RecurringSeriesDao
-import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.BalanceEngine
 import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.domain.model.TransactionKind
-import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.TransactionStatus
+import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
@@ -63,27 +60,12 @@ class BudgetRepository @Inject constructor(
     private val _pendingSeriesFromDates = MutableStateFlow<Map<String, Long>>(emptyMap())
 
 
-    fun setPendingSeriesDelete(seriesId: String, mode: SeriesDeletionMode?, fromDate: Long? = null) {
-        if (mode == null) {
-            _pendingSeriesDeletes.value -= seriesId
-            _pendingSeriesFromDates.value -= seriesId
-        } else {
-            _pendingSeriesDeletes.value += (seriesId to mode)
-            if (fromDate != null) _pendingSeriesFromDates.value += (seriesId to fromDate)
-        }
-    }
-
     // Transactions
     fun observeTransactions(): Flow<List<TransactionWithRelations>> = transactionDao.observeAll()
     fun observeTransactionsByAccount(accountId: Long) = transactionDao.observeByAccount(accountId)
     fun observePaidTransactionsByAccount(accountId: Long) = transactionDao.observePaidByAccount(accountId)
     fun observePlannedTransactionsByAccount(accountId: Long) = transactionDao.observePlannedByAccount(accountId)
 
-    /** Observe les transactions "métier" (exclut les ajustements de solde). */
-    fun observeBusinessTransactions(): Flow<List<TransactionWithRelations>> =
-        transactionDao.observeAll().map { list ->
-            list.filter { it.transaction.kind == TransactionKind.STANDARD }
-        }
 
     /** Ajuste le solde d'un compte en créant une transaction compensatoire technique. */
     suspend fun adjustAccountBalance(accountId: Long, newTargetBalance: Double) {
@@ -116,7 +98,6 @@ class BudgetRepository @Inject constructor(
         transactionDao.upsert(adjustmentTx)
     }
 
-    fun searchTransactions(query: String) = transactionDao.search(query)
 
     /**
      * Recherche Universelle : combine les transactions réelles et les occurrences virtuelles
@@ -489,7 +470,7 @@ class BudgetRepository @Inject constructor(
             // MAIS on utilise originalSeriesDate pour le slot
             if (seriesIdFromSource != null) {
                 finalEditingId = materializeOccurrence(seriesIdFromSource, originalSeriesDate)
-                currentTwr = transactionDao.getById(finalEditingId!!)
+                currentTwr = transactionDao.getById(finalEditingId)
             }
         }
         
@@ -589,7 +570,7 @@ class BudgetRepository @Inject constructor(
                             linkedGoalId = linkedGoalId,
                             linkedDebtId = linkedDebtId
                         )
-                        val newSeriesId = saveRecurringSeries(series)
+                        val newSeriesId = recurringSeriesDao.upsert(series)
                         return materializeOccurrence(newSeriesId, date)
                     }
                 }
@@ -617,12 +598,9 @@ class BudgetRepository @Inject constructor(
                     )
                     // On arrête l'ancienne série juste AVANT la borne la plus basse (ancien slot ou nouvelle date)
                     // pour éviter les doublons si on avance la date.
-                    val newSeriesId = updateSeriesFrom(
-                        seriesId = currentSeriesId,
-                        truncateFrom = originalSeriesDate,
-                        updatedSeries = newSeries,
-                        newStartDate = date
-                    )
+
+                    cancelSeries(currentSeriesId.toString(), SeriesDeletionMode.FUTURE, minOf(originalSeriesDate, date))
+                    val newSeriesId = recurringSeriesDao.upsert(newSeries.copy(id = 0, startDate = date))
                     // On matérialise la première occurrence de la nouvelle série
                     val newTxId = materializeOccurrence(newSeriesId, date)
                     
@@ -675,7 +653,7 @@ class BudgetRepository @Inject constructor(
                             linkedGoalId = linkedGoalId,
                             linkedDebtId = linkedDebtId
                         )
-                        updateEntireSeries(currentSeriesId, updatedSeries)
+                        recurringSeriesDao.update(updatedSeries.copy(id = currentSeriesId))
 
                         // LOP-98 : Déterminer le nouveau slot canonique pour l'occurrence courante.
                         // On doit respecter l'heure/seconde de la série pour que la fusion (seriesDate) fonctionne.
@@ -743,31 +721,10 @@ class BudgetRepository @Inject constructor(
                 return finalEditingId ?: 0L
             }
         }
-        return 0L
     }
 
-    suspend fun updateEntireSeries(seriesId: Long, updatedSeries: RecurringSeriesEntity) {
-        recurringSeriesDao.update(updatedSeries.copy(id = seriesId))
-    }
 
-    suspend fun updateSeriesFrom(
-        seriesId: Long,
-        truncateFrom: Long,
-        updatedSeries: RecurringSeriesEntity,
-        newStartDate: Long = truncateFrom
-    ): Long {
-        // 1. Tronquer l'ancienne série
-        // On tronque au plus tôt des deux bornes pour ne jamais laisser les deux séries
-        // générer sur la même période (cas où la nouvelle date est antérieure à l'ancienne)
-        cancelSeries(seriesId.toString(), SeriesDeletionMode.FUTURE, minOf(truncateFrom, newStartDate))
 
-        // 2. Sauvegarder la nouvelle série (ID = 0 pour auto-générer)
-        return recurringSeriesDao.upsert(updatedSeries.copy(id = 0, startDate = newStartDate))
-    }
-
-    suspend fun saveRecurringSeries(series: RecurringSeriesEntity): Long {
-        return recurringSeriesDao.upsert(series)
-    }
 
     suspend fun getSeriesById(id: Long) = recurringSeriesDao.getSeriesById(id)
 
@@ -790,7 +747,7 @@ class BudgetRepository @Inject constructor(
 
         val seriesList = recurringSeriesDao.observeActiveSeries().first()
         for (series in seriesList) {
-            val occurrences = com.lop.budget.domain.RecurrenceEngine.generateOccurrences(series, start, end)
+            val occurrences = RecurrenceEngine.generateOccurrences(series, start, end)
             val match = occurrences.find { it.id == id }
             if (match != null) {
                 // On a trouvé le virtuel, on récupère ses relations pour l'UI
@@ -830,44 +787,7 @@ class BudgetRepository @Inject constructor(
         }
     }
 
-    /** Modifie la catégorie même si la transaction est déjà payée. */
-    suspend fun changeCategory(transactionId: Long, categoryId: Long) =
-        transactionDao.updateCategory(transactionId, categoryId)
 
-    suspend fun changeDate(transactionId: Long, date: Long) =
-        transactionDao.updateDate(transactionId, date)
-
-    suspend fun changeAccount(transactionId: Long, accountId: Long) =
-        transactionDao.updateAccount(transactionId, accountId)
-
-    /** Bascule le statut d'une transaction entre PAID et PLANNED. */
-    suspend fun toggleTransactionStatus(twr: TransactionWithRelations) {
-        val tx = twr.transaction
-        val newStatus = if (tx.status == TransactionStatus.PAID) TransactionStatus.PLANNED else TransactionStatus.PAID
-        
-        // On délègue maintenant à saveWithTransition pour garantir l'unification et la matérialisation
-        saveWithTransition(
-            editingId = tx.id,
-            title = tx.title,
-            amount = tx.amount,
-            type = tx.type,
-            date = tx.date,
-            accountId = tx.accountId,
-            categoryId = tx.categoryId,
-            subCategoryId = tx.subCategoryId,
-            note = tx.note,
-            frequency = com.lop.budget.domain.model.RecurrenceFrequency.NONE, // Ce n'est pas un changement de règle
-            interval = 1,
-            daysOfWeek = null,
-            endDate = null,
-            maxOccurrences = null,
-            linkedGoalId = tx.linkedGoalId,
-            linkedDebtId = tx.linkedDebtId,
-            tagIds = twr.tags.map { it.id },
-            scope = EditScope.SINGLE,
-            status = newStatus
-        )
-    }
 
     /**
      * Supprime une occurrence de transaction (soft delete).
@@ -886,15 +806,6 @@ class BudgetRepository @Inject constructor(
         }
     }
 
-    suspend fun setStatus(transactionId: Long, status: String) {
-        val paidAt = if (status == TransactionStatus.PAID.name) System.currentTimeMillis() else null
-        transactionDao.updateStatus(transactionId, status, paidAt)
-        // Recalculer le progrès si la transaction est liée à un objectif ou une dette
-        val twr = transactionDao.getById(transactionId)
-        twr?.transaction?.linkedGoalId?.let { recalculateGoalProgress(it) }
-        twr?.transaction?.linkedDebtId?.let { recalculateDebtProgress(it) }
-    }
-
     suspend fun softDeleteTransaction(id: Long) {
         val twr = transactionDao.getById(id)
         transactionDao.softDelete(id)
@@ -902,12 +813,6 @@ class BudgetRepository @Inject constructor(
         twr?.transaction?.linkedDebtId?.let { recalculateDebtProgress(it) }
     }
 
-    suspend fun restoreTransaction(id: Long) {
-        transactionDao.restore(id)
-        val twr = transactionDao.getById(id)
-        twr?.transaction?.linkedGoalId?.let { recalculateGoalProgress(it) }
-        twr?.transaction?.linkedDebtId?.let { recalculateDebtProgress(it) }
-    }
 
     suspend fun hardDeleteTransaction(id: Long) {
         val twr = transactionDao.getById(id)
@@ -953,7 +858,6 @@ class BudgetRepository @Inject constructor(
     suspend fun deleteCategory(id: Long) = categoryDao.delete(id)
     suspend fun saveTag(t: TagEntity) = tagDao.upsert(t)
     suspend fun deleteTag(id: Long) = tagDao.delete(id)
-    suspend fun getTagUsageCount(id: Long) = tagDao.countUsages(id)
     suspend fun saveGoal(g: GoalEntity) = goalDao.upsert(g)
     suspend fun getGoalById(id: Long) = goalDao.getById(id)
     suspend fun deleteGoal(id: Long) = goalDao.delete(id)

@@ -62,7 +62,7 @@ class AccountDetailViewModel @Inject constructor(
             history = history,
             recentTransactions = paid.take(20), // On en prend un peu plus car les ajustements peuvent s'y glisser
             upcomingTransactions = planned.take(5),
-            txVersions = emptyMap(), // On délègue au SharedViewModel
+            txVersions = versions,
             isLoaded = true
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountDetailUiState())
