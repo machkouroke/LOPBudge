@@ -16,23 +16,36 @@ class DeleteTransactionUseCase @Inject constructor(
         val realId = if (tx.id < 0L && tx.seriesId != null && tx.seriesDate != null) {
             transactionRepo.materializeOccurrence(tx.seriesId.toLong(), tx.seriesDate)
         } else tx.id
-        
+
         if (realId >= 0L) {
             transactionRepo.getById(realId)?.let { current ->
                 transactionRepo.softDelete(realId)
-                current.transaction.linkedGoalId?.let { syncProgressUseCase.recalculateGoalProgress(it) }
-                current.transaction.linkedDebtId?.let { syncProgressUseCase.recalculateDebtProgress(it) }
+                current.transaction.linkedGoalId?.let {
+                    syncProgressUseCase.recalculateGoalProgress(
+                        it
+                    )
+                }
+                current.transaction.linkedDebtId?.let {
+                    syncProgressUseCase.recalculateDebtProgress(
+                        it
+                    )
+                }
             }
         }
     }
 
-    suspend fun cancelSeries(seriesIdStr: String, mode: SeriesDeletionMode, fromDate: Long? = null) {
+    suspend fun cancelSeries(
+        seriesIdStr: String,
+        mode: SeriesDeletionMode,
+        fromDate: Long? = null
+    ) {
         val seriesId = seriesIdStr.toLongOrNull() ?: return
         when (mode) {
             SeriesDeletionMode.ALL -> {
                 transactionRepo.updateSeriesCancelled(seriesId, true)
                 transactionRepo.softDeleteSeries(seriesIdStr)
             }
+
             SeriesDeletionMode.FUTURE -> {
                 transactionRepo.getSeriesById(seriesId)?.let { series ->
                     if (fromDate != null) transactionRepo.upsertSeries(series.copy(endDate = fromDate - 1))
