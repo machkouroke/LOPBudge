@@ -27,10 +27,18 @@ class DetectedTransactionsViewModel @Inject constructor(
         detectionRepo.observePending()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /**
+     * Ignores a detected transaction proposal, removing it from the pending list.
+     *
+     * @param id The ID of the proposal to ignore.
+     */
     fun ignore(id: Long) = viewModelScope.launch { detectionRepo.ignore(id) }
 
     /**
-     * MVP : confirme une proposition en créeant une transaction PLANNED (modifiable ensuite).
+     * Accepts a detected transaction proposal by creating a new planned transaction.
+     *
+     * @param proposal The proposal entity to accept.
+     * @param onOpenEdit Callback to navigate to the edit screen for the newly created transaction.
      */
     fun accept(proposal: DetectedTransactionProposalEntity, onOpenEdit: (Long) -> Unit) {
         viewModelScope.launch {

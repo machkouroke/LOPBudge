@@ -12,6 +12,12 @@ class CategoryRepository @Inject constructor(
     private val categoryDao: CategoryDao
 ) : CategoryOperations by categoryDao {
 
+    /**
+     * Retrieves the ID of a default expense category.
+     * It tries to find a category named "Alimentation" first, otherwise it falls back to the first expense category found.
+     *
+     * @return The ID of the default expense category.
+     */
     suspend fun getDefaultExpenseCategoryId(): Long {
         val all = observeAll().first()
         return all.find { it.name.contains("Alimentation", ignoreCase = true) }?.id

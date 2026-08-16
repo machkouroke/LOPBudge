@@ -34,6 +34,17 @@ class GetTransactionsUseCase @Inject constructor(
     private val _pendingSeriesDeletes = MutableStateFlow<Map<String, SeriesDeletionMode>>(emptyMap())
     private val _pendingSeriesFromDates = MutableStateFlow<Map<String, Long>>(emptyMap())
 
+    /**
+     * Performs an advanced search for transactions based on various filters.
+     * It combines real persisted transactions and generated virtual occurrences from recurring series.
+     *
+     * @param query The search query string.
+     * @param accountId Optional account ID filter.
+     * @param categoryId Optional category ID filter.
+     * @param startDate Optional start date filter (in milliseconds).
+     * @param endDate Optional end date filter (in milliseconds).
+     * @return A flow of lists of [TransactionWithRelations] matching the criteria.
+     */
     fun searchAdvanced(
         query: String,
         accountId: Long?,
@@ -91,6 +102,13 @@ class GetTransactionsUseCase @Inject constructor(
         }.flowOn(Dispatchers.Default)
     }
 
+    /**
+     * Observes transactions (both real and virtual) between two specific dates.
+     *
+     * @param start The start date (in milliseconds).
+     * @param end The end date (in milliseconds).
+     * @return A flow of lists of [TransactionWithRelations] within the specified period.
+     */
     fun observeBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>> {
         return combine(
             transactionRepo.observeBetween(start, end),

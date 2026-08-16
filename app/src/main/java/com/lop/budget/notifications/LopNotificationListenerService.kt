@@ -97,6 +97,11 @@ class LopNotificationListenerService : NotificationListenerService() {
         }
     }
 
+    /**
+     * Sends a local notification to the user when a potential transaction is detected.
+     *
+     * @param p The detected transaction proposal entity.
+     */
     private fun postDetectedNotification(p: DetectedTransactionProposalEntity) {
         ensureChannel()
 
@@ -130,6 +135,9 @@ class LopNotificationListenerService : NotificationListenerService() {
         }
     }
 
+    /**
+     * Ensures that the notification channel for detected transactions exists.
+     */
     private fun ensureChannel() {
         val mgr = getSystemService(NotificationManager::class.java)
         val existing = mgr.getNotificationChannel(CHANNEL_ID)

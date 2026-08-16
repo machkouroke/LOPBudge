@@ -58,6 +58,12 @@ class AiViewModel @Inject constructor(
         - Base tes réponses sur le contexte financier fourni ci-dessous. Si une donnée manque, dis-le clairement.
     """.trimIndent()
 
+    /**
+     * Sends a message to the AI assistant.
+     * It builds a financial context and passes the message history to the AI client.
+     *
+     * @param message The user's message.
+     */
     fun send(message: String) {
         if (message.isBlank()) return
         _state.value = _state.value.copy(
@@ -85,6 +91,11 @@ class AiViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Builds a textual representation of the user's financial situation to provide context to the AI.
+     *
+     * @return A string containing a summary of the budget, expenses, and income.
+     */
     private suspend fun buildBudgetContext(): String {
         val currency = settings.currency.first()
         val txs = transactionRepo.observeAll().first()

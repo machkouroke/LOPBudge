@@ -54,10 +54,26 @@ class AnalyticsViewModel @Inject constructor(
     private val month = MutableStateFlow(initialMonth)
     private val type = MutableStateFlow(initialType)
 
+    /**
+     * Sets the transaction type to filter the analytics data.
+     */
     fun setType(t: TransactionType) { type.value = t }
+
+    /**
+     * Moves the analysis period to the next month.
+     */
     fun nextMonth() { month.value = month.value.plusMonths(1) }
+
+    /**
+     * Moves the analysis period to the previous month.
+     */
     fun prevMonth() { month.value = month.value.minusMonths(1) }
 
+    /**
+     * Calculates the millisecond range for a given YearMonth.
+     *
+     * @return A pair representing the start and end of the month in milliseconds.
+     */
     private fun YearMonth.range(): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()
         return atDay(1).atStartOfDay(zone).toInstant().toEpochMilli() to

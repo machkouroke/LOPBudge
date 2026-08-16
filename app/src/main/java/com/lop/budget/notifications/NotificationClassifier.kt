@@ -18,10 +18,16 @@ data class ClassificationResult(
 }
 
 /**
- * Interface pour la classification des notifications.
- * Permet d'interchanger l'implémentation (Heuristiques, ML, LLM).
+ * Interface for notification classification.
+ * Allows switching between different implementations (Heuristics, ML, LLM).
  */
 interface NotificationClassifier {
+    /**
+     * Classifies a given notification text.
+     *
+     * @param text The text content of the notification.
+     * @return A [ClassificationResult] indicating the classification status and confidence.
+     */
     suspend fun classify(text: String): ClassificationResult
 }
 
@@ -41,6 +47,13 @@ class HeuristicNotificationClassifier : NotificationClassifier {
         "off", "save", "balance", "available", "gift", "discover", "limit"
     )
 
+    /**
+     * Classifies the text using heuristic rules.
+     * Evaluates positive and negative keywords to determine if the text represents a transaction.
+     *
+     * @param text The notification text.
+     * @return The determined [ClassificationResult].
+     */
     override suspend fun classify(text: String): ClassificationResult {
         val lowerText = text.lowercase(Locale.ROOT)
         

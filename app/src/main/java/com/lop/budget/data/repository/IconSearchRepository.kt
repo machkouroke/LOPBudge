@@ -89,15 +89,28 @@ class IconSearchRepository @Inject constructor() {
 
     data class BankInfo(val name: String, val domain: String)
 
+    /**
+     * Returns a list of known banks and popular services.
+     */
     fun getKnownBanks(): List<BankInfo> = bankList
 
+    /**
+     * Generates a logo URL for a given domain using hunter.io.
+     *
+     * @param domain The domain name of the company.
+     * @return The absolute URL of the logo image.
+     */
     private fun getLogoUrl(domain: String): String {
         // Hunter.io is a reliable replacement for Clearbit Logo API
         return "https://logos.hunter.io/$domain"
     }
 
     /**
-     * Recherche REELLE sur Internet via Clearout Autocomplete + Hunter.io pour les images.
+     * Searches for icons matching a query string.
+     * Combines local predefined icons and a web search using the Clearout Autocomplete API.
+     *
+     * @param query The search query.
+     * @return A list of [IconResult] matching the query.
      */
     suspend fun searchIcons(query: String): List<IconResult> = withContext(Dispatchers.IO) {
         val results = mutableListOf<IconResult>()
@@ -143,6 +156,12 @@ class IconSearchRepository @Inject constructor() {
         results.distinctBy { it.iconName }
     }
 
+    /**
+     * Specifically searches for a bank's icon from a predefined list.
+     *
+     * @param bankName The name of the bank to look for.
+     * @return An [IconResult] if a match is found, null otherwise.
+     */
     fun searchBankIcon(bankName: String): IconResult? {
         val normalized = bankName.lowercase().trim()
         bankList.forEach { bank ->

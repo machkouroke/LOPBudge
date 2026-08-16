@@ -38,22 +38,44 @@ class TransactionActionViewModel @Inject constructor(
     private val _pendingConfirmation = MutableStateFlow<DeleteConfirmationRequest?>(null)
     val pendingConfirmation = _pendingConfirmation.asStateFlow()
 
+    /**
+     * Requests the deletion of a transaction. If the transaction is part of a recurring series,
+     * it might trigger a selection sheet to choose the deletion scope.
+     *
+     * @param tx The transaction with relations to be deleted.
+     */
     fun requestDelete(tx: TransactionWithRelations) {
         _deleteRequest.value = tx
     }
 
+    /**
+     * Dismisses the current delete request without performing any action.
+     */
     fun dismissDeleteRequest() {
         _deleteRequest.value = null
     }
 
+    /**
+     * Requests a confirmation for a deletion action, optionally specifying the choice for recurring transactions.
+     *
+     * @param tx The transaction to delete.
+     * @param choice The [RecurringDeleteChoice] if the transaction is recurring.
+     */
     fun requestConfirmation(tx: TransactionWithRelations, choice: RecurringDeleteChoice?) {
         _pendingConfirmation.value = DeleteConfirmationRequest(tx, choice)
     }
 
+    /**
+     * Dismisses the confirmation dialog.
+     */
     fun dismissConfirmation() {
         _pendingConfirmation.value = null
     }
 
+    /**
+     * Executes the deletion after confirmation.
+     * Handles single transactions, future recurring occurrences, or entire series based on user choice.
+     */
     fun confirmDelete() {
         val request = _pendingConfirmation.value ?: return
         val tx = request.transaction
@@ -147,10 +169,18 @@ class TransactionActionViewModel @Inject constructor(
     private val _editRequest = MutableStateFlow<TransactionWithRelations?>(null)
     val editRequest = _editRequest.asStateFlow()
 
+    /**
+     * Requests an edit for a specific transaction.
+     *
+     * @param tx The transaction with relations to edit.
+     */
     fun requestEdit(tx: TransactionWithRelations) {
         _editRequest.value = tx
     }
 
+    /**
+     * Dismisses the current edit request.
+     */
     fun dismissEditRequest() {
         _editRequest.value = null
     }
@@ -162,11 +192,20 @@ class TransactionActionViewModel @Inject constructor(
     private val _previewCurrency = MutableStateFlow("EUR")
     val previewCurrency = _previewCurrency.asStateFlow()
 
+    /**
+     * Shows a preview for a specific transaction.
+     *
+     * @param tx The transaction with relations to preview.
+     * @param currency The currency code to display.
+     */
     fun showPreview(tx: TransactionWithRelations, currency: String) {
         _previewTx.value = tx
         _previewCurrency.value = currency
     }
 
+    /**
+     * Dismisses the transaction preview popup.
+     */
     fun dismissPreview() {
         _previewTx.value = null
     }

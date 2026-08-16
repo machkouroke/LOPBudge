@@ -11,6 +11,13 @@ class DeleteTransactionUseCase @Inject constructor(
     private val transactionRepo: TransactionRepository,
     private val syncProgressUseCase: SyncProgressUseCase
 ) {
+    /**
+     * Performs a soft delete on a specific transaction occurrence.
+     * If the transaction is a virtual occurrence of a recurring series, it materializes it first.
+     * It also triggers a recalculation of progress for any linked goal or debt.
+     *
+     * @param twr The transaction with its relations to be deleted.
+     */
     suspend fun softDeleteOccurrence(twr: TransactionWithRelations) {
         val tx = twr.transaction
         val realId = if (tx.id < 0L && tx.seriesId != null && tx.seriesDate != null) {
@@ -34,6 +41,13 @@ class DeleteTransactionUseCase @Inject constructor(
         }
     }
 
+    /**
+     * Cancels a recurring series based on the specified deletion mode.
+     *
+     * @param seriesIdStr The ID of the recurring series as a string.
+     * @param mode The [SeriesDeletionMode] indicating whether to delete all occurrences or only future ones.
+     * @param fromDate The starting date from which to delete occurrences, relevant for [SeriesDeletionMode.FUTURE].
+     */
     suspend fun cancelSeries(
         seriesIdStr: String,
         mode: SeriesDeletionMode,

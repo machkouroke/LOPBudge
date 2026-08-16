@@ -42,6 +42,11 @@ class TransactionDetailViewModel @Inject constructor(
 
     private val txId = MutableStateFlow<Long?>(null)
     private val updating = MutableStateFlow(false)
+    /**
+     * Loads a transaction by its ID to display its details.
+     *
+     * @param id The transaction ID.
+     */
     fun load(id: Long) { txId.value = id }
 
     private val txFlow = txId.filterNotNull().flatMapLatest { observeTransactionUseCase(it) }

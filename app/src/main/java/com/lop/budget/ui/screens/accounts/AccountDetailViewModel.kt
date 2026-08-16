@@ -71,6 +71,13 @@ class AccountDetailViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountDetailUiState())
 
+    /**
+     * Materializes a virtual recurring occurrence into a real transaction and provides its new ID.
+     *
+     * @param seriesId The ID of the recurring series.
+     * @param date The date of the occurrence.
+     * @param onOpen A callback function with the newly created transaction's ID.
+     */
     fun materializeAndOpen(seriesId: Long, date: Long, onOpen: (Long) -> Unit) {
         viewModelScope.launch {
             val id = transactionRepo.materializeOccurrence(seriesId, date)
@@ -78,6 +85,13 @@ class AccountDetailViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Calculates the historical balance points based on an initial balance and a list of transactions.
+     *
+     * @param initial The initial balance of the account.
+     * @param txs The list of transactions associated with the account.
+     * @return A list of [BalancePoint] objects representing the balance over time.
+     */
     private fun calculateHistory(initial: Double, txs: List<TransactionWithRelations>): List<BalancePoint> {
         val zone = ZoneId.systemDefault()
         val sortedTxs = txs.sortedBy { it.transaction.date }

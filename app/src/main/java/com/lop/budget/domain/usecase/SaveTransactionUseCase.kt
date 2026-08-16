@@ -24,6 +24,13 @@ class SaveTransactionUseCase @Inject constructor(
     private val syncProgressUseCase: SyncProgressUseCase
 ) {
 
+    /**
+     * Saves a simple transaction (non-recurring or a specific materialized occurrence).
+     *
+     * @param tx The transaction entity to save.
+     * @param tagIds List of tag IDs to associate with this transaction.
+     * @return The ID of the saved transaction.
+     */
     suspend fun saveSimple(tx: TransactionEntity, tagIds: List<Long> = emptyList()): Long {
         val finalTx = if (tx.status == TransactionStatus.PAID && tx.paidAt == null) tx.copy(paidAt = System.currentTimeMillis())
         else if (tx.status == TransactionStatus.PLANNED && tx.paidAt != null) tx.copy(paidAt = null)
@@ -38,6 +45,30 @@ class SaveTransactionUseCase @Inject constructor(
         return txId
     }
 
+    /**
+     * Saves a transaction with potential transitions between recurring and non-recurring states.
+     * Handles different edit scopes (SINGLE, FUTURE, ALL).
+     *
+     * @param editingId The ID of the transaction being edited (null for new transactions).
+     * @param title The transaction title.
+     * @param amount The transaction amount.
+     * @param type The transaction type (INCOME/EXPENSE/TRANSFER).
+     * @param date The transaction date.
+     * @param accountId The associated account ID.
+     * @param categoryId The associated category ID.
+     * @param note An optional note.
+     * @param frequency The recurrence frequency.
+     * @param interval The recurrence interval.
+     * @param daysOfWeek Optional days of the week for weekly recurrence.
+     * @param endDate Optional end date for the series.
+     * @param maxOccurrences Optional maximum number of occurrences.
+     * @param linkedGoalId Optional linked goal ID.
+     * @param linkedDebtId Optional linked debt ID.
+     * @param tagIds List of associated tag IDs.
+     * @param scope The [EditScope] of the change.
+     * @param status Optional transaction status.
+     * @return The ID of the saved or materialized transaction.
+     */
     suspend fun saveWithTransition(
         editingId: Long?, title: String, amount: Double, type: TransactionType, date: Long, accountId: Long, categoryId: Long, note: String?,
         frequency: com.lop.budget.domain.model.RecurrenceFrequency, interval: Int, daysOfWeek: String?, endDate: Long?, maxOccurrences: Int?,
