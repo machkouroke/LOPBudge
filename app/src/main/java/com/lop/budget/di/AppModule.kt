@@ -31,17 +31,12 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): LopDatabase {
-        lateinit var dbRef: LopDatabase
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        dbRef = Room.databaseBuilder(context, LopDatabase::class.java, LopDatabase.NAME)
+        val db = Room.databaseBuilder(context, LopDatabase::class.java, LopDatabase.NAME)
             .addCallback(object : androidx.room.RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
-                    // Seeding automatique uniquement en mode DEBUG (Dev/Tests)
-                    // En PROD (Release), l'app démarre avec une base vide.
-                    if (BuildConfig.DEBUG) {
-                        scope.launch { DatabaseSeeder.seed(dbRef) }
-                    }
+                    // Sera géré par l'init juste après le build() pour couvrir aussi les migrations
                 }
             })
             .addMigrations(
@@ -59,10 +54,17 @@ object AppModule {
                 LopDatabase.MIGRATION_12_13,
                 LopDatabase.MIGRATION_13_14,
                 LopDatabase.MIGRATION_14_15,
+                LopDatabase.MIGRATION_15_16,
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
-        return dbRef
+
+        // Lancement du seeding (si nécessaire) à chaque démarrage en mode DEBUG
+        if (BuildConfig.DEBUG) {
+            scope.launch { DatabaseSeeder.seed(db) }
+        }
+        
+        return db
     }
 
     @Provides fun provideTransactionDao(db: LopDatabase): TransactionDao = db.transactionDao()
