@@ -7,7 +7,6 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
@@ -24,7 +23,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -55,20 +53,16 @@ data class HomeUiState(
     val detectedCount: Int = 0,
     val notificationDetectionEnabled: Boolean = false,
 ) {
-    val budgetRemaining: Double get() = totalBudget - monthExpense
-    val budgetPercentage: Float get() = if (totalBudget > 0) (monthExpense / totalBudget).toFloat() else 0f
-    val expenseDifference: Double get() = monthExpense - previousPeriodExpense
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val accountRepo: AccountRepository,
-    private val transactionRepo: TransactionRepository,
+    accountRepo: AccountRepository,
     private val getTransactionsUseCase: GetTransactionsUseCase,
-    private val getAccountBalancesUseCase: GetAccountBalancesUseCase,
-    private val detectionRepo: NotificationDetectionRepository,
-    private val settings: SettingsRepository,
+    getAccountBalancesUseCase: GetAccountBalancesUseCase,
+    detectionRepo: NotificationDetectionRepository,
+    settings: SettingsRepository,
 ) : ViewModel() {
 
     private val month = MutableStateFlow(YearMonth.now())
@@ -79,14 +73,6 @@ class HomeViewModel @Inject constructor(
 
     fun setMonth(value: YearMonth) { month.value = value }
 
-    fun materializeAndOpen(seriesId: Long, seriesDate: Long, onOpen: (Long) -> Unit) {
-        viewModelScope.launch {
-            val realId = transactionRepo.materializeOccurrence(seriesId, seriesDate)
-            if (realId >= 0L) {
-                onOpen(realId)
-            }
-        }
-    }
 
     fun goToCurrentMonth() { month.value = YearMonth.now() }
     fun nextMonth() { month.value = month.value.plusMonths(1) }
@@ -137,32 +123,30 @@ class HomeViewModel @Inject constructor(
 
             @Suppress("UNCHECKED_CAST")
             val allTxs = data[0] as List<TransactionWithRelations>
-            
-            val txs = allTxs
 
             val income = data[1] as Double
             val expense = data[2] as Double
             val prevExpense = data[3] as Double
 
             val now = System.currentTimeMillis()
-            val upcoming = txs
+            val upcoming = allTxs
                 .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.date >= now }
                 .sortedBy { it.transaction.date }
                 .take(8)
 
-            val subscriptions = txs
+            val subscriptions = allTxs
                 .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.seriesId != null }
                 .sortedBy { it.transaction.date }
 
-            val plannedExpense = txs
+            val plannedExpense = allTxs
                 .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.type == TransactionType.EXPENSE }
                 .sumOf { it.transaction.amount }
             val projected = income - expense - plannedExpense
 
-            val payday = nextPayday(txs)
+            val payday = nextPayday(allTxs)
 
             val zone = ZoneId.systemDefault()
-            val dayGroups = txs
+            val dayGroups = allTxs
                 .sortedByDescending { it.transaction.date }
                 .groupBy { Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate() }
                 .toSortedMap(compareByDescending { it })
@@ -178,7 +162,7 @@ class HomeViewModel @Inject constructor(
                 AccountBalance(acc, balances[acc.id] ?: acc.initialBalance)
             }
 
-            val dashboardTxs = getDashboardTransactions(txs)
+            val dashboardTxs = getDashboardTransactions(allTxs)
 
             HomeUiState(
                 month = ym,

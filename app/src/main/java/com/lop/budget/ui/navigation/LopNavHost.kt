@@ -152,8 +152,7 @@ fun LopNavHost(startRoute: String? = null) {
                             onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
                             navController = navController,
 
-                            hazeState = hazeState,
-                        )
+                            )
                     }
 
                     composableAnimated(Routes.DETECTED, NavAnimationType.MAIN) {

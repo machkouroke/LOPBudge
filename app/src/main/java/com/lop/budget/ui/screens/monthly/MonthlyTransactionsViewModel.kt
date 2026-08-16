@@ -7,7 +7,6 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
@@ -20,7 +19,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneId
@@ -61,11 +59,10 @@ data class MonthlyTransactionsUiState(
 @HiltViewModel
 class MonthlyTransactionsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val accountRepo: AccountRepository,
-    private val categoryRepo: CategoryRepository,
-    private val transactionRepo: TransactionRepository,
+    accountRepo: AccountRepository,
+    categoryRepo: CategoryRepository,
     private val getTransactionsUseCase: GetTransactionsUseCase,
-    private val settings: SettingsRepository,
+    settings: SettingsRepository,
 ) : ViewModel() {
 
     private val initialType = savedStateHandle.get<String>("type")?.let { TransactionType.valueOf(it) }
@@ -84,18 +81,12 @@ class MonthlyTransactionsViewModel @Inject constructor(
     private val isAnalyticsMode = MutableStateFlow(initialMode == "ANALYTICS")
 
     fun setFilter(f: PaidFilter) { filter.value = f }
-    fun setInsightMode(m: InsightMode) { insightMode.value = m }
     fun onQueryChange(q: String) { searchQuery.value = q }
     fun onAccountFilterChange(id: Long?) { selectedAccountId.value = id }
     fun onCategoryFilterChange(id: Long?) { selectedCategoryId.value = id }
     fun setType(t: TransactionType?) { type.value = t }
 
-    fun materializeAndOpen(seriesId: Long, date: Long, onOpen: (Long) -> Unit) {
-        viewModelScope.launch {
-            val realId = transactionRepo.materializeOccurrence(seriesId, date)
-            if (realId >= 0L) onOpen(realId)
-        }
-    }
+
 
     private fun YearMonth.range(): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()
@@ -137,6 +128,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
             val analytics = args[11] as Boolean
 
             val filtered = allTxs
+                .asSequence()
                 .filter { if (t == null) true else it.transaction.type == t }
                 .filter {
                     when (f) {
@@ -145,14 +137,15 @@ class MonthlyTransactionsViewModel @Inject constructor(
                         PaidFilter.PLANNED -> it.transaction.status == TransactionStatus.PLANNED
                     }
                 }
-                .filter { 
-                    if (query.isBlank()) true 
-                    else it.transaction.title.contains(query, ignoreCase = true) || 
-                         it.transaction.note?.contains(query, ignoreCase = true) == true
+                .filter {
+                    if (query.isBlank()) true
+                    else it.transaction.title.contains(query, ignoreCase = true) ||
+                            it.transaction.note?.contains(query, ignoreCase = true) == true
                 }
                 .filter { if (accId == null) true else it.account?.id == accId }
                 .filter { if (catId == null) true else it.category?.id == catId }
                 .sortedByDescending { it.transaction.date }
+                .toList()
 
             val total = filtered.sumOf { tx -> 
                 if (tx.transaction.type == TransactionType.INCOME) tx.transaction.amount else -tx.transaction.amount 
@@ -202,9 +195,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
             }
 
             // Check if results exist globally if none in current month
-            val hasResultsInOtherMonths = if (query.isNotBlank() && filtered.isEmpty()) {
-                true
-            } else false
+            val hasResultsInOtherMonths = query.isNotBlank() && filtered.isEmpty()
 
             MonthlyTransactionsUiState(
                 month = ym,

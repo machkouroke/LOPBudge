@@ -51,14 +51,12 @@ class TransactionRepository @Inject constructor(
      * @param tx The transaction to check.
      * @param pendingDeletes A set of transaction IDs that are marked for deletion in the UI.
      * @param pendingSeriesDeletes A map of series IDs to their pending deletion mode.
-     * @param pendingSeriesFromDates A map of series IDs to the date from which they should be hidden.
      * @return True if the transaction should be visible, false otherwise.
      */
     fun isTransactionVisible(
         tx: TransactionEntity,
         pendingDeletes: Set<Long>,
-        pendingSeriesDeletes: Map<Long, SeriesCancelMode>,
-        pendingSeriesFromDates: Map<Long, Long>
+        pendingSeriesDeletes: Map<Long, SeriesCancelMode>
     ): Boolean {
         if (tx.deleted || tx.id in pendingDeletes) return false
 

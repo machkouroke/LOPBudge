@@ -74,7 +74,7 @@ class GetTransactionsUseCase @Inject constructor(
             val searchEnd = endDate ?: (LocalDate.now().plusMonths(6).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli())
 
             val finalResult = realTxs.filter { twr ->
-                transactionRepo.isTransactionVisible(twr.transaction, pending, pendingSeries, pendingDates)
+                transactionRepo.isTransactionVisible(twr.transaction, pending, pendingSeries)
             }.toMutableList()
 
             for (series in seriesList) {
@@ -127,7 +127,7 @@ class GetTransactionsUseCase @Inject constructor(
             @Suppress("UNCHECKED_CAST") val pendingDates = args[6] as Map<Long, Long>
 
             val finalResult = allInPeriod.filter { twr -> 
-                transactionRepo.isTransactionVisible(twr.transaction, pending, pendingSeries, pendingDates)
+                transactionRepo.isTransactionVisible(twr.transaction, pending, pendingSeries)
             }.toMutableList()
 
             for (series in seriesList) {

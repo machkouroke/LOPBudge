@@ -71,7 +71,6 @@ import com.lop.budget.ui.navigation.Routes
 import com.lop.budget.ui.theme.ExpenseCoral
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
-import dev.chrisbanes.haze.HazeState
 import java.time.YearMonth
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -80,7 +79,6 @@ fun HomeScreen(
     snackbarHostState: androidx.compose.material3.SnackbarHostState,
     onOpenTransaction: (Long) -> Unit,
     navController: NavController,
-    hazeState: HazeState? = null,
     vm: HomeViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -140,9 +138,7 @@ fun HomeScreen(
             onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
             onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },
             onPrevMonth = { vm.prevMonth() },
-            onNextMonth = { vm.nextMonth() },
-            hazeState = hazeState,
-            vm = vm
+            onNextMonth = { vm.nextMonth() }
         )
 
         // Overlay UI (Header and Floating elements)
@@ -170,9 +166,7 @@ fun HomeContent(
     onOpenAccounts: () -> Unit,
     onOpenAccountDetail: (Long) -> Unit,
     onPrevMonth: () -> Unit,
-    onNextMonth: () -> Unit,
-    hazeState: HazeState? = null,
-    vm: HomeViewModel
+    onNextMonth: () -> Unit
 ) {
     val listState = rememberLazyListState()
 
@@ -349,14 +343,6 @@ fun HomeContent(
                     currency = state.currency,
                     onSeeAll = { onSeeAllTransactions(TransactionType.EXPENSE, targetMonth) },
                     onOpenTransaction = onOpenTransaction,
-                    onMaterializeAndOpen = { sid, date ->
-                        vm.materializeAndOpen(
-                            sid,
-                            date,
-                            onOpenTransaction
-                        )
-                    },
-                    hazeState = hazeState
                 )
             }
         }

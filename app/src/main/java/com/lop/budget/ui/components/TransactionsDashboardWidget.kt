@@ -20,9 +20,6 @@ fun TransactionsDashboardWidget(
     currency: String,
     onSeeAll: () -> Unit,
     onOpenTransaction: (Long) -> Unit,
-    onMaterializeAndOpen: (Long, Long) -> Unit,
-
-    hazeState: HazeState? = null,
     modifier: Modifier = Modifier
 ) {
     FloatingCard(
