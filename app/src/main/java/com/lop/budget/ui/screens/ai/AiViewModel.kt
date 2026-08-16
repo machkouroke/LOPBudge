@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.R
 import com.lop.budget.ai.GeminiClient
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.util.Format
@@ -33,7 +33,7 @@ data class AiUiState(
 @HiltViewModel
 class AiViewModel @Inject constructor(
     private val gemini: GeminiClient,
-    private val repo: BudgetRepository,
+    private val transactionRepo: TransactionRepository,
     private val settings: SettingsRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
@@ -87,7 +87,7 @@ class AiViewModel @Inject constructor(
 
     private suspend fun buildBudgetContext(): String {
         val currency = settings.currency.first()
-        val txs = repo.observeTransactions().first()
+        val txs = transactionRepo.observeAll().first()
         val income = txs.filter { it.transaction.type == TransactionType.INCOME && it.transaction.status == TransactionStatus.PAID }
             .sumOf { it.transaction.amount }
         val expense = txs.filter { it.transaction.type == TransactionType.EXPENSE && it.transaction.status == TransactionStatus.PAID }

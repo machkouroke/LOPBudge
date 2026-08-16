@@ -9,10 +9,15 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.local.entity.TagEntity
-import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.data.repository.CategoryRepository
+import com.lop.budget.data.repository.DebtRepository
+import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.data.repository.TagRepository
+import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
@@ -23,9 +28,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -59,7 +61,13 @@ data class TransactionForm(
 
 @HiltViewModel
 class TransactionEditViewModel @Inject constructor(
-    private val repo: BudgetRepository,
+    private val budgetRepo: BudgetRepository,
+    private val accountRepo: AccountRepository,
+    private val categoryRepo: CategoryRepository,
+    private val transactionRepo: TransactionRepository,
+    private val tagRepo: TagRepository,
+    private val goalRepo: GoalRepository,
+    private val debtRepo: DebtRepository,
     private val settings: SettingsRepository,
     private val savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context
@@ -86,7 +94,7 @@ class TransactionEditViewModel @Inject constructor(
                 loadTransaction(editingTransactionId!!)
             } else {
                 // Nouvelle transaction : présélectionner le compte par défaut ou le premier
-                val accounts = repo.observeAccounts().firstOrNull() ?: emptyList()
+                val accounts = accountRepo.observeAll().firstOrNull() ?: emptyList()
                 if (accounts.isNotEmpty()) {
                     _form.value = _form.value.copy(accountId = accounts.first().id)
                 }
@@ -96,12 +104,12 @@ class TransactionEditViewModel @Inject constructor(
     }
 
     private suspend fun loadTransaction(id: Long) {
-        val twr = repo.getTransactionById(id) ?: return
+        val twr = budgetRepo.getTransactionById(id) ?: return
         originalTransaction = twr
         val tx = twr.transaction
         
         // Si on édite une série (FUTURE ou ALL), on va chercher la règle de la série
-        val series = tx.seriesId?.toLongOrNull()?.let { repo.getSeriesById(it) }
+        val series = tx.seriesId?.toLongOrNull()?.let { transactionRepo.getSeriesById(it) }
         
         _form.value = TransactionForm(
             type = tx.type,
@@ -129,19 +137,19 @@ class TransactionEditViewModel @Inject constructor(
     }
 
     val categories: StateFlow<List<CategoryEntity>> = _form.flatMapLatest { f ->
-        repo.observeCategoriesByType(f.type)
+        categoryRepo.observeByType(f.type.name)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val accounts: StateFlow<List<AccountEntity>> = repo.observeAccounts()
+    val accounts: StateFlow<List<AccountEntity>> = accountRepo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val tags: StateFlow<List<TagEntity>> = repo.observeTags()
+    val tags: StateFlow<List<TagEntity>> = tagRepo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val goals: StateFlow<List<GoalEntity>> = repo.observeGoals()
+    val goals: StateFlow<List<GoalEntity>> = goalRepo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val debts: StateFlow<List<com.lop.budget.data.local.entity.DebtEntity>> = repo.observeDebts()
+    val debts: StateFlow<List<com.lop.budget.data.local.entity.DebtEntity>> = debtRepo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun setType(type: TransactionType) {
@@ -201,14 +209,14 @@ class TransactionEditViewModel @Inject constructor(
 
     fun createTag(name: String, color: Int) {
         viewModelScope.launch {
-            val id = repo.saveTag(TagEntity(name = name, colorArgb = color))
+            val id = tagRepo.upsert(TagEntity(name = name, colorArgb = color))
             toggleTag(id)
         }
     }
 
     fun deleteTag(id: Long) {
         viewModelScope.launch {
-            repo.deleteTag(id)
+            tagRepo.delete(id)
             if (_form.value.tagIds.contains(id)) {
                 toggleTag(id)
             }
@@ -221,7 +229,7 @@ class TransactionEditViewModel @Inject constructor(
 
         viewModelScope.launch {
             // Vérifier l'impact sur le solde si on édite une transaction payée passée
-            val account = repo.getAccountById(f.accountId)
+            val account = accountRepo.getById(f.accountId)
             if (account != null && f.status == TransactionStatus.PAID && f.date < account.balanceUpdatedAt) {
                 _showBalanceImpactAlert.value = true
             } else {
@@ -236,9 +244,9 @@ class TransactionEditViewModel @Inject constructor(
             if (accountNow) {
                 // Mettre à jour la date de référence du compte pour inclure cette modif
                 val f = _form.value
-                val account = repo.getAccountById(f.accountId!!)
+                val account = accountRepo.getById(f.accountId!!)
                 if (account != null) {
-                    repo.saveAccount(account.copy(balanceUpdatedAt = f.date))
+                    accountRepo.upsert(account.copy(balanceUpdatedAt = f.date))
                 }
             }
             performSave(onDone)
@@ -259,7 +267,7 @@ class TransactionEditViewModel @Inject constructor(
 
         // Toute la logique de sauvegarde (SINGLE, FUTURE, ALL) est désormais 
         // centralisée dans BudgetRepository.saveWithTransition.
-        val newId = repo.saveWithTransition(
+        val newId = budgetRepo.saveWithTransition(
             editingId = editingTransactionId,
             title = title,
             amount = f.amount,

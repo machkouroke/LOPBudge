@@ -2,8 +2,11 @@ package com.lop.budget.ui.screens.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.DayGroup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,7 +31,10 @@ data class SearchUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val repo: BudgetRepository,
+    private val budgetRepo: BudgetRepository,
+    private val accountRepo: AccountRepository,
+    private val categoryRepo: CategoryRepository,
+    private val transactionRepo: TransactionRepository,
     private val settings: SettingsRepository
 ) : ViewModel() {
 
@@ -51,7 +57,7 @@ class SearchViewModel @Inject constructor(
             if (q.isBlank() && acc == null && cat == null && start == null && end == null) {
                 flowOf(emptyList())
             } else {
-                repo.searchTransactionsAdvanced(q, acc, cat, start, end)
+                budgetRepo.searchTransactionsAdvanced(q, acc, cat, start, end)
             }
         },
         settings.currency,
@@ -60,8 +66,8 @@ class SearchViewModel @Inject constructor(
         _selectedCategoryId,
         _startDate,
         _endDate,
-        repo.observeAccounts(),
-        repo.observeCategories()
+        accountRepo.observeAll(),
+        categoryRepo.observeAll()
     ) { args ->
         @Suppress("UNCHECKED_CAST")
         val txs = args[0] as List<com.lop.budget.data.local.entity.TransactionWithRelations>
@@ -102,7 +108,7 @@ class SearchViewModel @Inject constructor(
 
     fun materializeAndOpen(seriesId: Long, date: Long, onOpen: (Long) -> Unit) {
         viewModelScope.launch {
-            val id = repo.materializeOccurrence(seriesId, date)
+            val id = transactionRepo.materializeOccurrence(seriesId, date)
             onOpen(id)
         }
     }

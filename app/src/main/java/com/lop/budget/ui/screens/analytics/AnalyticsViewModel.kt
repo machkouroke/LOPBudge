@@ -37,7 +37,7 @@ data class AnalyticsUiState(
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
     savedStateHandle: androidx.lifecycle.SavedStateHandle,
-    private val repo: BudgetRepository,
+    private val budgetRepo: BudgetRepository,
     settings: SettingsRepository,
 ) : ViewModel() {
 
@@ -68,12 +68,12 @@ class AnalyticsViewModel @Inject constructor(
         combine(month, type, settings.currency) { m, t, c -> Triple(m, t, c) }
             .flatMapLatest { (m, t, currency) ->
                 val (start, end) = m.range()
-                repo.observeTransactionsBetween(start, end).let { flow ->
+                budgetRepo.observeTransactionsBetween(start, end).let { flow ->
                     combine(flow, MutableStateFlow(Unit)) { txs, _ ->
                         val filtered = txs.filter {
                             it.transaction.type == t && it.transaction.status == TransactionStatus.PAID
                         }
-                        val total = filtered.sumOf { it.transaction.amount }
+                        val totalAmount = filtered.sumOf { it.transaction.amount }
                         val grouped = filtered.groupBy { it.category }
                             .map { (cat, list) ->
                                 val sum = list.sumOf { it.transaction.amount }
@@ -81,11 +81,11 @@ class AnalyticsViewModel @Inject constructor(
                                     name = cat?.name ?: "Sans catégorie",
                                     colorArgb = cat?.colorArgb ?: 0xFF9E9E9E.toInt(),
                                     total = sum,
-                                    share = if (total > 0) sum / total else 0.0,
+                                    share = if (totalAmount > 0) sum / totalAmount else 0.0,
                                 )
                             }
                             .sortedByDescending { it.total }
-                        AnalyticsUiState(m, currency, t, total, grouped)
+                        AnalyticsUiState(m, currency, t, totalAmount, grouped)
                     }
                 }
             }

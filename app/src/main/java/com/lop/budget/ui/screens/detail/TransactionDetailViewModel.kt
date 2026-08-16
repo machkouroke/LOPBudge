@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.data.repository.CategoryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,28 +33,30 @@ data class DetailUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TransactionDetailViewModel @Inject constructor(
-    private val repo: BudgetRepository,
+    private val budgetRepo: BudgetRepository,
+    private val accountRepo: AccountRepository,
+    private val categoryRepo: CategoryRepository,
 ) : ViewModel() {
 
     private val txId = MutableStateFlow<Long?>(null)
     private val updating = MutableStateFlow(false)
     fun load(id: Long) { txId.value = id }
 
-    private val txFlow = txId.filterNotNull().flatMapLatest { repo.observeTransaction(it) }
+    private val txFlow = txId.filterNotNull().flatMapLatest { budgetRepo.observeTransaction(it) }
 
     val uiState: StateFlow<DetailUiState> =
         combine(
             txFlow,
-            repo.observeCategories(),
-            repo.observeAccounts(),
+            categoryRepo.observeAll(),
+            accountRepo.observeAll(),
             updating,
             txId.filterNotNull().flatMapLatest { id ->
-                repo.observeTransaction(id).flatMapLatest { tx ->
+                budgetRepo.observeTransaction(id).flatMapLatest { tx ->
                     val seriesId = tx?.transaction?.seriesId
                     if (seriesId != null) {
                         val startTime = tx.transaction.date + 1
                         val endTime = startTime + (5L * 365 * 24 * 60 * 60 * 1000) // + 5 ans
-                        repo.observeTransactionsBetween(startTime, endTime).map { list ->
+                        budgetRepo.observeTransactionsBetween(startTime, endTime).map { list ->
                             list.filter { 
                                 it.transaction.seriesId == seriesId && it.transaction.date > tx.transaction.date
                             }.take(6)

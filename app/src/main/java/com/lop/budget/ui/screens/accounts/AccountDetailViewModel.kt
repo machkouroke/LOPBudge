@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.data.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,7 +37,9 @@ data class AccountDetailUiState(
 @HiltViewModel
 class AccountDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repo: BudgetRepository,
+    private val budgetRepo: BudgetRepository,
+    private val accountRepo: AccountRepository,
+    private val transactionRepo: TransactionRepository,
     private val settings: SettingsRepository
 ) : ViewModel() {
 
@@ -43,13 +47,13 @@ class AccountDetailViewModel @Inject constructor(
     private val _txVersions = MutableStateFlow<Map<Long, Int>>(emptyMap())
 
     val uiState: StateFlow<AccountDetailUiState> = combine(
-        repo.observeAccountBalances(),
-        repo.observePaidTransactionsByAccount(accountId),
-        repo.observePlannedTransactionsByAccount(accountId),
+        budgetRepo.observeAccountBalances(),
+        transactionRepo.observePaidByAccount(accountId),
+        transactionRepo.observePlannedByAccount(accountId),
         settings.currency,
         _txVersions
     ) { balances, paid, planned, currency, versions ->
-        val account = repo.getAccountById(accountId)
+        val account = accountRepo.getById(accountId)
         
         // Calcul de l'historique (simplifié pour le prototype)
         // L'historique inclut désormais les ajustements de solde pour être cohérent avec le solde affiché
@@ -69,7 +73,7 @@ class AccountDetailViewModel @Inject constructor(
 
     fun materializeAndOpen(seriesId: Long, date: Long, onOpen: (Long) -> Unit) {
         viewModelScope.launch {
-            val id = repo.materializeOccurrence(seriesId, date)
+            val id = budgetRepo.materializeOccurrence(seriesId, date)
             onOpen(id)
         }
     }

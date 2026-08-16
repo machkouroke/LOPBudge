@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.CategoryEntity
-import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +31,7 @@ data class CategoryFormUiState(
 @HiltViewModel
 class CategoryFormViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repo: BudgetRepository
+    private val categoryRepo: CategoryRepository
 ) : ViewModel() {
 
     private val categoryId = savedStateHandle.get<Long>("id") ?: 0L
@@ -48,7 +48,7 @@ class CategoryFormViewModel @Inject constructor(
     init {
         if (isEdit) {
             viewModelScope.launch {
-                val cat = repo.getCategoryById(categoryId)
+                val cat = categoryRepo.getById(categoryId)
                 if (cat != null) {
                     name.value = cat.name
                     type.value = cat.type
@@ -62,7 +62,7 @@ class CategoryFormViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<CategoryFormUiState> = combine(
-        name, type, colorArgb, icon, parentId, isSaving, isLoaded, repo.observeCategories()
+        name, type, colorArgb, icon, parentId, isSaving, isLoaded, categoryRepo.observeAll()
     ) { args ->
         val allCats = args[7] as List<CategoryEntity>
         CategoryFormUiState(
@@ -89,7 +89,7 @@ class CategoryFormViewModel @Inject constructor(
         if (name.value.isBlank()) return
         viewModelScope.launch {
             isSaving.value = true
-            repo.saveCategory(
+            categoryRepo.upsert(
                 CategoryEntity(
                     id = categoryId,
                     name = name.value,
@@ -106,7 +106,7 @@ class CategoryFormViewModel @Inject constructor(
     fun delete(onDone: () -> Unit) {
         if (!isEdit) return
         viewModelScope.launch {
-            repo.deleteCategory(categoryId)
+            categoryRepo.delete(categoryId)
             onDone()
         }
     }

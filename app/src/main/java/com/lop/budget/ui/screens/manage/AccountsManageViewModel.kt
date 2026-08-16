@@ -3,7 +3,7 @@ package com.lop.budget.ui.screens.manage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.AccountEntity
-import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,12 +21,12 @@ data class AccountsManageUiState(
 
 @HiltViewModel
 class AccountsManageViewModel @Inject constructor(
-    private val repo: BudgetRepository,
+    private val accountRepo: AccountRepository,
     settings: SettingsRepository,
 ) : ViewModel() {
 
     val uiState: StateFlow<AccountsManageUiState> = combine(
-        repo.observeAccounts(),
+        accountRepo.observeAll(),
         settings.currency
     ) { accounts, currency ->
         AccountsManageUiState(
@@ -38,13 +38,13 @@ class AccountsManageViewModel @Inject constructor(
 
     fun toggleArchive(account: AccountEntity) {
         viewModelScope.launch {
-            repo.saveAccount(account.copy(archived = !account.archived))
+            accountRepo.upsert(account.copy(archived = !account.archived))
         }
     }
 
     fun deleteAccount(accountId: Long) {
         viewModelScope.launch {
-            repo.deleteAccount(accountId)
+            accountRepo.delete(accountId)
         }
     }
 }

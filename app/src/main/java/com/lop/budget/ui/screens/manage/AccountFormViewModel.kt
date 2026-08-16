@@ -4,9 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.AccountEntity
+import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.IconResult
 import com.lop.budget.data.repository.IconSearchRepository
+import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +44,9 @@ data class AccountFormUiState(
 @HiltViewModel
 class AccountFormViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repo: BudgetRepository,
+    private val budgetRepo: BudgetRepository,
+    private val accountRepo: AccountRepository,
+    private val transactionRepo: TransactionRepository,
     private val iconSearch: IconSearchRepository,
 ) : ViewModel() {
 
@@ -75,13 +79,13 @@ class AccountFormViewModel @Inject constructor(
 
         if (isEdit) {
             viewModelScope.launch {
-                val account = repo.getAccountById(accountId)
+                val account = accountRepo.getById(accountId)
                 if (account != null) {
                     name.value = account.name
                     type.value = account.type
                     
                     // On affiche le solde ACTUEL calculé au lieu du solde initial technique
-                    val allTxs = repo.observeTransactionsByAccount(accountId).first().map { it.transaction }
+                    val allTxs = transactionRepo.observeByAccount(accountId).first().map { it.transaction }
                     val currentBalances = com.lop.budget.domain.BalanceEngine.calculateBalances(listOf(account), allTxs)
                     val currentBalance = currentBalances[accountId] ?: account.initialBalance
                     initialBalance.value = currentBalance.toString()
@@ -175,7 +179,7 @@ class AccountFormViewModel @Inject constructor(
     fun deleteAccount(onDone: () -> Unit) {
         if (!isEdit) return
         viewModelScope.launch {
-            repo.deleteAccount(accountId)
+            accountRepo.delete(accountId)
             onDone()
         }
     }
@@ -189,10 +193,10 @@ class AccountFormViewModel @Inject constructor(
 
             if (isEdit) {
                 // Pour un compte existant, on ajuste via transaction compensatoire
-                repo.adjustAccountBalance(accountId, newInitialBalance)
+                budgetRepo.adjustAccountBalance(accountId, newInitialBalance)
                 
                 // On met à jour les autres champs du compte (sans toucher au solde initial)
-                val currentAccount = repo.getAccountById(accountId)
+                val currentAccount = accountRepo.getById(accountId)
                 if (currentAccount != null) {
                     val updatedAccount = currentAccount.copy(
                         name = name.value,
@@ -204,7 +208,7 @@ class AccountFormViewModel @Inject constructor(
                         includeInTotal = includeInTotal.value,
                         archived = archived.value
                     )
-                    repo.saveAccount(updatedAccount)
+                    accountRepo.upsert(updatedAccount)
                 }
             } else {
                 // Création : on garde le comportement standard
@@ -221,7 +225,7 @@ class AccountFormViewModel @Inject constructor(
                     includeInTotal = includeInTotal.value,
                     archived = archived.value
                 )
-                repo.saveAccount(account)
+                accountRepo.upsert(account)
             }
             onDone()
         }

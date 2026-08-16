@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
+import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,6 +21,7 @@ import javax.inject.Inject
 class DetectedTransactionsViewModel @Inject constructor(
     private val detectionRepo: NotificationDetectionRepository,
     private val budgetRepo: BudgetRepository,
+    private val categoryRepo: CategoryRepository,
 ) : ViewModel() {
 
     val pending: StateFlow<List<DetectedTransactionProposalEntity>> =
@@ -32,7 +35,7 @@ class DetectedTransactionsViewModel @Inject constructor(
      */
     fun accept(proposal: DetectedTransactionProposalEntity, onOpenEdit: (Long) -> Unit) {
         viewModelScope.launch {
-            val defaultCatId = budgetRepo.getDefaultExpenseCategoryId()
+            val defaultCatId = categoryRepo.getDefaultExpenseCategoryId()
             val categoryId = proposal.suggestedCategoryId ?: defaultCatId
             
             val tx = TransactionEntity(

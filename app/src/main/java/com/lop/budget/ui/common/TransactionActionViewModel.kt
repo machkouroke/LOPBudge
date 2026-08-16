@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.SeriesDeletionMode
 import com.lop.budget.ui.components.RecurringDeleteChoice
@@ -15,7 +16,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class TransactionActionViewModel @Inject constructor(
-    private val repo: BudgetRepository
+    private val budgetRepo: BudgetRepository,
+    private val transactionRepo: TransactionRepository,
 ) : ViewModel() {
 
     // On suit les versions des transactions pour forcer le rafraîchissement UI
@@ -63,21 +65,21 @@ class TransactionActionViewModel @Inject constructor(
             if (tx.transaction.seriesId != null && choice != null) {
                 when (choice) {
                     RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                        repo.softDeleteTransactionOccurrence(tx)
+                        budgetRepo.softDeleteTransactionOccurrence(tx)
                     }
                     RecurringDeleteChoice.FUTURE_ONLY -> {
                         tx.transaction.seriesId.let { sid ->
-                            repo.cancelSeries(sid, SeriesDeletionMode.FUTURE, tx.transaction.date)
+                            budgetRepo.cancelSeries(sid, SeriesDeletionMode.FUTURE, tx.transaction.date)
                         }
                     }
                     RecurringDeleteChoice.ALL_SERIES -> {
                         tx.transaction.seriesId.let { sid ->
-                            repo.cancelSeries(sid, SeriesDeletionMode.ALL, null)
+                            budgetRepo.cancelSeries(sid, SeriesDeletionMode.ALL, null)
                         }
                     }
                 }
             } else {
-                repo.softDeleteTransactionOccurrence(tx)
+                budgetRepo.softDeleteTransactionOccurrence(tx)
             }
         }
     }
@@ -107,7 +109,7 @@ class TransactionActionViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             val seriesId = tx.transaction.seriesId?.toLongOrNull()
-            val series = seriesId?.let { repo.getSeriesById(it) }
+            val series = seriesId?.let { transactionRepo.getSeriesById(it) }
 
             val finalFreq = updatedFrequency ?: series?.frequency ?: com.lop.budget.domain.model.RecurrenceFrequency.NONE
             val finalInterval = updatedInterval ?: series?.interval ?: 1
@@ -115,7 +117,7 @@ class TransactionActionViewModel @Inject constructor(
             val finalEnd = updatedEndDate ?: series?.endDate
             val finalMax = updatedMaxOccurrences ?: series?.maxOccurrences
 
-            repo.saveWithTransition(
+            budgetRepo.saveWithTransition(
                 editingId = tx.transaction.id,
                 title = updatedTitle,
                 amount = updatedAmount,

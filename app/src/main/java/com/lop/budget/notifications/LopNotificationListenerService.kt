@@ -11,9 +11,10 @@ import androidx.core.app.NotificationManagerCompat
 import com.lop.budget.MainActivity
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
+import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.ui.navigation.Routes
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.EntryPoint
@@ -39,7 +40,7 @@ class LopNotificationListenerService : NotificationListenerService() {
         fun notificationDetectionRepository(): NotificationDetectionRepository
         fun paymentNotificationParser(): PaymentNotificationParser
         fun smartCategorizer(): SmartCategorizer
-        fun budgetRepository(): BudgetRepository
+        fun categoryRepository(): CategoryRepository
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -48,7 +49,7 @@ class LopNotificationListenerService : NotificationListenerService() {
         val repo = ep.notificationDetectionRepository()
         val parser = ep.paymentNotificationParser()
         val categorizer = ep.smartCategorizer()
-        val budget = ep.budgetRepository()
+        val categoryRepo = ep.categoryRepository()
 
         scope.launch {
             if (!settings.isNotificationDetectionEnabledOnce()) return@launch
@@ -67,10 +68,11 @@ class LopNotificationListenerService : NotificationListenerService() {
             // Catégorisation intelligente (IA)
             var suggestedCatId: Long? = null
             if (settings.useLocalLlm.first()) {
-                val availableCats = budget.observeCategories().first().map { it.name }
+                val allCats = categoryRepo.observeAll().first()
+                val availableCats = allCats.map { it.name }
                 val suggestedName = categorizer.suggestCategory(parsed.label, availableCats)
                 if (suggestedName != null) {
-                    suggestedCatId = budget.observeCategories().first().find { it.name == suggestedName }?.id
+                    suggestedCatId = allCats.find { it.name == suggestedName }?.id
                 }
             }
 

@@ -4,7 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.DebtEntity
 import com.lop.budget.data.local.entity.GoalEntity
-import com.lop.budget.data.repository.BudgetRepository
+import com.lop.budget.data.repository.DebtRepository
+import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,11 +22,12 @@ data class GoalsUiState(
 
 @HiltViewModel
 class GoalsViewModel @Inject constructor(
-    repo: BudgetRepository,
+    goalRepo: GoalRepository,
+    debtRepo: DebtRepository,
     settings: SettingsRepository,
 ) : ViewModel() {
     val uiState: StateFlow<GoalsUiState> =
-        combine(repo.observeGoals(), repo.observeDebts(), settings.currency) { goals, debts, currency ->
+        combine(goalRepo.observeAll(), debtRepo.observeAll(), settings.currency) { goals, debts, currency ->
             GoalsUiState(currency, goals, debts)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GoalsUiState())
 }

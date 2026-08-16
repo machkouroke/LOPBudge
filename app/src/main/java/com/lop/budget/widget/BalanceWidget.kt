@@ -24,8 +24,8 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
-import com.lop.budget.data.repository.BudgetRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.util.Format
@@ -41,16 +41,16 @@ class BalanceWidget : GlanceAppWidget() {
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     interface WidgetEntryPoint {
-        fun budgetRepository(): BudgetRepository
+        fun transactionRepository(): TransactionRepository
         fun settingsRepository(): SettingsRepository
     }
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val ep = EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java)
-        val repo = ep.budgetRepository()
+        val repo = ep.transactionRepository()
         val settings = ep.settingsRepository()
 
-        val txs = repo.observeTransactions().first()
+        val txs = repo.observeAll().first()
         val currency = settings.currency.first()
         val income = txs.filter { it.transaction.type == TransactionType.INCOME && it.transaction.status == TransactionStatus.PAID }
             .sumOf { it.transaction.amount }
