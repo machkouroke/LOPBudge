@@ -57,7 +57,7 @@ class DeleteTransactionUseCase @Inject constructor(
         when (mode) {
             SeriesDeletionMode.ALL -> {
                 transactionRepo.updateSeriesCancelled(seriesId, true)
-                transactionRepo.softDeleteSeries(seriesIdStr)
+                transactionRepo.softDeleteTransactionsBySeries(seriesIdStr)
             }
 
             SeriesDeletionMode.FUTURE -> {

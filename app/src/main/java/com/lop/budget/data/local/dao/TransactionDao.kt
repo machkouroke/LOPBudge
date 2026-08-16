@@ -27,7 +27,7 @@ interface TransactionOperations {
     suspend fun addTagCrossRef(crossRef: TransactionTagCrossRef)
     fun searchAdvanced(query: String, accountId: Long?, categoryId: Long?, startDate: Long?, endDate: Long?): Flow<List<TransactionWithRelations>>
     suspend fun updateSeriesExceptions(seriesId: String, title: String, amount: Double, type: TransactionType, categoryId: Long, accountId: Long, note: String?)
-    suspend fun softDeleteSeries(seriesId: String)
+    suspend fun softDeleteTransactionsBySeries(seriesId: String)
     suspend fun softDeleteSeriesFrom(seriesId: String, fromDate: Long)
 }
 
@@ -207,7 +207,7 @@ interface TransactionDao : TransactionOperations {
         SET deleted = 1 
         WHERE seriesId = :seriesId
     """)
-    override suspend fun softDeleteSeries(seriesId: String)
+    override suspend fun softDeleteTransactionsBySeries(seriesId: String)
 
     @Query("""
         UPDATE transactions 
