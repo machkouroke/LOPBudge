@@ -11,6 +11,7 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
 
+data class SeriesSlot(val seriesId: Long, val seriesDate: Long)
 interface TransactionOperations {
     fun observeAll(): Flow<List<TransactionWithRelations>>
     fun observeByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
@@ -25,10 +26,11 @@ interface TransactionOperations {
     suspend fun hardDelete(id: Long)
     suspend fun clearTags(txId: Long)
     suspend fun addTagCrossRef(crossRef: TransactionTagCrossRef)
-    fun searchAdvanced(query: String, accountId: Long?, categoryId: Long?, startDate: Long?, endDate: Long?): Flow<List<TransactionWithRelations>>
     suspend fun updateSeriesExceptions(seriesId: Long, title: String, amount: Double, type: TransactionType, categoryId: Long, accountId: Long, note: String?)
     suspend fun softDeleteTransactionsBySeries(seriesId: Long)
     suspend fun softDeleteTransactionsBySeriesFrom(seriesId: Long, fromDate: Long)
+
+    fun observeOccupiedSeriesSlots(start: Long, end: Long): Flow<List<SeriesSlot>>
 }
 
 @Dao
@@ -135,25 +137,6 @@ interface TransactionDao : TransactionOperations {
     override suspend fun addTagCrossRef(crossRef: TransactionTagCrossRef)
 
     @Transaction
-    @Query("""
-        SELECT * FROM transactions
-        WHERE deleted = 0
-        AND (:accountId IS NULL OR accountId = :accountId)
-        AND (:categoryId IS NULL OR categoryId = :categoryId)
-        AND (:startDate IS NULL OR date >= :startDate)
-        AND (:endDate IS NULL OR date <= :endDate)
-        AND (title LIKE '%' || :query || '%' OR note LIKE '%' || :query || '%')
-        ORDER BY date DESC
-    """)
-    override fun searchAdvanced(
-        query: String,
-        accountId: Long?,
-        categoryId: Long?,
-        startDate: Long?,
-        endDate: Long?
-    ): Flow<List<TransactionWithRelations>>
-
-    @Transaction
     suspend fun getOrCreateException(
         seriesId: Long,
         seriesDate: Long,
@@ -201,6 +184,17 @@ interface TransactionDao : TransactionOperations {
         accountId: Long,
         note: String?
     )
+
+
+    @Query(
+        """
+    SELECT seriesId, seriesDate FROM transactions
+    WHERE seriesId IS NOT NULL
+      AND seriesDate IS NOT NULL
+      AND seriesDate BETWEEN :start AND :end
+    """
+    )
+    override fun observeOccupiedSeriesSlots(start: Long, end: Long): Flow<List<SeriesSlot>>
 
     @Query("""
         UPDATE transactions 

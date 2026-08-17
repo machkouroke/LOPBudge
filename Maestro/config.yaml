@@ -9,6 +9,8 @@ flows:
 # Artefacts: Store test results in a specific directory
 testOutputDir: build/maestro-results
 
+includeTags:
+  - suppression
 # Tags: Exclude work-in-progress or unstable tests by default
 excludeTags:
   - wip
