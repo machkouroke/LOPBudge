@@ -10,9 +10,7 @@ import io.mockk.coVerify
 import io.mockk.coVerifyOrder
 import io.mockk.confirmVerified
 import io.mockk.mockk
-import io.mockk.slot
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 import java.time.Instant
@@ -112,6 +110,10 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
             transactionRepo.updateSeriesCancelled(seriesId, true)
             transactionRepo.softDeleteTransactionsBySeries(seriesId)
         }
+        coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.updateSeriesCancelled(seriesId, true) }
+        coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeries(seriesId) }
+
         coVerify(exactly = 0) { transactionRepo.upsertSeries(any()) }
         coVerify(exactly = 0) { transactionRepo.softDeleteTransactionsBySeriesFrom(any(), any()) }
         coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
@@ -123,9 +125,9 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
     fun `C-04 - Given existing series, When invoked in FUTURE mode, Then it updates endDate and deletes in order`() = runTest {
         // Given
         val series = createSeries()
-        val seriesSlot = slot<RecurringSeriesEntity>()
+        val updatedSeries = series.copy(endDate = februarySlot - 1)
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
-        coEvery { transactionRepo.upsertSeries(capture(seriesSlot)) } returns seriesId
+        coEvery { transactionRepo.upsertSeries(updatedSeries) } returns seriesId
         coEvery { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) } returns Unit
 
         // When
@@ -134,9 +136,13 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
         // Then
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
-            transactionRepo.upsertSeries(seriesSlot.captured)
+            transactionRepo.upsertSeries(updatedSeries)
             transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot)
         }
+        coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.upsertSeries(updatedSeries) }
+        coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) }
+
         coVerify(exactly = 0) { transactionRepo.updateSeriesCancelled(any(), any()) }
         coVerify(exactly = 0) { transactionRepo.softDeleteTransactionsBySeries(any()) }
         coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
@@ -145,13 +151,14 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
     }
 
     @Test
-    fun `C-05 - Given FUTURE mode, Then captures and compares full entity with discriminant goalId`() = runTest {
+    fun `C-05 - Given FUTURE mode, Then compares full entity with discriminant goalId`() = runTest {
         // Given
-        // Discriminant: repo returns goalId=7L, while input doesn't have it (though here we only mock repo)
+        // Discriminant: repo returns goalId=7L
         val series = createSeries(linkedGoalId = goalId)
+        val expected = series.copy(endDate = februarySlot - 1)
+        
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
-        val seriesSlot = slot<RecurringSeriesEntity>()
-        coEvery { transactionRepo.upsertSeries(capture(seriesSlot)) } returns seriesId
+        coEvery { transactionRepo.upsertSeries(expected) } returns seriesId
         coEvery { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) } returns Unit
         coEvery { syncProgressUseCase.recalculateGoalProgress(goalId) } returns Unit
 
@@ -159,15 +166,17 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
         sut.invoke(seriesId, SeriesCancelMode.Future(februarySlot))
 
         // Then
-        val expected = series.copy(endDate = februarySlot - 1)
-        assertEquals(expected, seriesSlot.captured)
-        
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
-            transactionRepo.upsertSeries(seriesSlot.captured)
+            transactionRepo.upsertSeries(expected)
             transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot)
             syncProgressUseCase.recalculateGoalProgress(goalId)
         }
+        coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.upsertSeries(expected) }
+        coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) }
+        coVerify(exactly = 1) { syncProgressUseCase.recalculateGoalProgress(goalId) }
+
         confirmVerified(transactionRepo, syncProgressUseCase)
     }
 
@@ -188,6 +197,10 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
             transactionRepo.updateSeriesCancelled(seriesId, true)
             transactionRepo.softDeleteTransactionsBySeries(seriesId)
         }
+        coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.updateSeriesCancelled(seriesId, true) }
+        coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeries(seriesId) }
+
         coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
         coVerify(exactly = 0) { syncProgressUseCase.recalculateDebtProgress(any()) }
         confirmVerified(transactionRepo, syncProgressUseCase)
@@ -197,8 +210,9 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
     fun `C-06-FUTURE - Given non-linked series in FUTURE mode, When cancelled, Then no sync call occurs`() = runTest {
         // Given
         val series = createSeries(linkedGoalId = null, linkedDebtId = null)
+        val expected = series.copy(endDate = februarySlot - 1)
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
-        coEvery { transactionRepo.upsertSeries(any()) } returns seriesId
+        coEvery { transactionRepo.upsertSeries(expected) } returns seriesId
         coEvery { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) } returns Unit
 
         // When
@@ -207,9 +221,13 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
         // Then
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
-            transactionRepo.upsertSeries(any())
+            transactionRepo.upsertSeries(expected)
             transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot)
         }
+        coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.upsertSeries(expected) }
+        coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) }
+
         coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
         coVerify(exactly = 0) { syncProgressUseCase.recalculateDebtProgress(any()) }
         confirmVerified(transactionRepo, syncProgressUseCase)
@@ -219,8 +237,9 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
     fun `C-07 - Given series linked to goal, When cancelled in FUTURE mode, Then goal sync follows writes`() = runTest {
         // Given
         val series = createSeries(linkedGoalId = goalId)
+        val expected = series.copy(endDate = februarySlot - 1)
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
-        coEvery { transactionRepo.upsertSeries(any()) } returns seriesId
+        coEvery { transactionRepo.upsertSeries(expected) } returns seriesId
         coEvery { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) } returns Unit
         coEvery { syncProgressUseCase.recalculateGoalProgress(goalId) } returns Unit
 
@@ -230,10 +249,15 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
         // Then
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
-            transactionRepo.upsertSeries(any())
+            transactionRepo.upsertSeries(expected)
             transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot)
             syncProgressUseCase.recalculateGoalProgress(goalId)
         }
+        coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.upsertSeries(expected) }
+        coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) }
+        coVerify(exactly = 1) { syncProgressUseCase.recalculateGoalProgress(goalId) }
+
         coVerify(exactly = 0) { syncProgressUseCase.recalculateDebtProgress(any()) }
         confirmVerified(transactionRepo, syncProgressUseCase)
     }
@@ -257,12 +281,17 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
             transactionRepo.softDeleteTransactionsBySeries(seriesId)
             syncProgressUseCase.recalculateDebtProgress(debtId)
         }
+        coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.updateSeriesCancelled(seriesId, true) }
+        coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeries(seriesId) }
+        coVerify(exactly = 1) { syncProgressUseCase.recalculateDebtProgress(debtId) }
+
         coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
         confirmVerified(transactionRepo, syncProgressUseCase)
     }
 
     @Test
-    fun `C-09 - Given series linked to both, When cancelled, Then both syncs follow writes`() = runTest {
+    fun `C-09 - Given series linked to both, When cancelled, Then both syncs follow writes independently`() = runTest {
         // Given
         val series = createSeries(linkedGoalId = goalId, linkedDebtId = debtId)
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
@@ -275,13 +304,22 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
         sut.invoke(seriesId, SeriesCancelMode.All)
 
         // Then
+        // Decoupled causal chains: each sync must follow the last write
         coVerifyOrder {
-            transactionRepo.getSeriesById(seriesId)
-            transactionRepo.updateSeriesCancelled(seriesId, true)
             transactionRepo.softDeleteTransactionsBySeries(seriesId)
             syncProgressUseCase.recalculateGoalProgress(goalId)
+        }
+        coVerifyOrder {
+            transactionRepo.softDeleteTransactionsBySeries(seriesId)
             syncProgressUseCase.recalculateDebtProgress(debtId)
         }
+        
+        coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.updateSeriesCancelled(seriesId, true) }
+        coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeries(seriesId) }
+        coVerify(exactly = 1) { syncProgressUseCase.recalculateGoalProgress(goalId) }
+        coVerify(exactly = 1) { syncProgressUseCase.recalculateDebtProgress(debtId) }
+
         confirmVerified(transactionRepo, syncProgressUseCase)
     }
 
@@ -302,6 +340,10 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
             transactionRepo.updateSeriesCancelled(seriesId, true)
             transactionRepo.softDeleteTransactionsBySeries(seriesId)
         }
+        coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.updateSeriesCancelled(seriesId, true) }
+        coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeries(seriesId) }
+
         coVerify(exactly = 0) { transactionRepo.getSeriesById(controlSeriesId) }
         coVerify(exactly = 0) { transactionRepo.updateSeriesCancelled(controlSeriesId, any()) }
         coVerify(exactly = 0) { transactionRepo.softDeleteTransactionsBySeries(controlSeriesId) }
