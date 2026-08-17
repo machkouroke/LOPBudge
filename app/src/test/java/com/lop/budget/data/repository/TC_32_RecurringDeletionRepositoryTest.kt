@@ -16,7 +16,7 @@ import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
-import com.lop.budget.domain.usecase.GetTransactionsUseCase
+import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
 import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.domain.usecase.SyncProgressUseCase
 import kotlinx.coroutines.flow.first
@@ -71,7 +71,7 @@ class RecurringDeletionRepositoryTest {
     private lateinit var syncProgressUseCase: SyncProgressUseCase
     private lateinit var softDeleteOccurrence: SoftDeleteTransactionOccurrenceUseCase
     private lateinit var cancelSeries: CancelRecurringSeriesUseCase
-    private lateinit var getTransactions: GetTransactionsUseCase
+    private lateinit var getTransactions: ObserveTransactionsUseCase
 
     private val zone = ZoneId.of("Europe/Paris")
     private lateinit var previousTimeZone: TimeZone
@@ -117,7 +117,7 @@ class RecurringDeletionRepositoryTest {
         softDeleteOccurrence =
             SoftDeleteTransactionOccurrenceUseCase(transactionRepo, syncProgressUseCase)
         cancelSeries = CancelRecurringSeriesUseCase(transactionRepo, syncProgressUseCase)
-        getTransactions = newGetTransactionsUseCase()
+        getTransactions = newObserveTransactionsUseCase()
     }
 
     @After
@@ -355,7 +355,7 @@ class RecurringDeletionRepositoryTest {
             val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
             softDeleteOccurrence(februaryOccurrence)
 
-            val refreshedUseCase = newGetTransactionsUseCase()
+            val refreshedUseCase = newObserveTransactionsUseCase()
 
             assertEquals(
                 listOf(januarySlot, marchSlot),
@@ -482,16 +482,16 @@ class RecurringDeletionRepositoryTest {
     // Observation reelle
     // =======================================================================================
 
-    private fun newGetTransactionsUseCase() =
-        GetTransactionsUseCase(transactionRepo, accountRepo, categoryRepo)
+    private fun newObserveTransactionsUseCase() =
+        ObserveTransactionsUseCase(transactionRepo, accountRepo, categoryRepo)
 
     private suspend fun observeVisibleTransactions(
-        useCase: GetTransactionsUseCase = getTransactions,
-    ): List<TransactionWithRelations> = useCase.observeBetween(periodStart, periodEnd).first()
+        useCase: ObserveTransactionsUseCase = getTransactions,
+    ): List<TransactionWithRelations> = useCase(periodStart, periodEnd).first()
 
     private suspend fun observeSlotsOf(
         seriesId: Long,
-        useCase: GetTransactionsUseCase = getTransactions,
+        useCase: ObserveTransactionsUseCase = getTransactions,
     ): List<Long> = slotsOf(observeVisibleTransactions(useCase), seriesId)
 
     private fun slotsOf(

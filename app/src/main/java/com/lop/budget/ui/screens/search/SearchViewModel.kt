@@ -7,7 +7,7 @@ import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.DayGroup
-import com.lop.budget.domain.usecase.GetTransactionsUseCase
+import com.lop.budget.domain.usecase.SearchTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -34,7 +34,7 @@ class SearchViewModel @Inject constructor(
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
     private val transactionRepo: TransactionRepository,
-    private val getTransactionsUseCase: GetTransactionsUseCase,
+    private val searchTransactionsUseCase: SearchTransactionsUseCase,
     private val settings: SettingsRepository
 ) : ViewModel() {
 
@@ -57,7 +57,7 @@ class SearchViewModel @Inject constructor(
             if (q.isBlank() && acc == null && cat == null && start == null && end == null) {
                 flowOf(emptyList())
             } else {
-                getTransactionsUseCase.searchAdvanced(q, acc, cat, start, end)
+                searchTransactionsUseCase(q, acc, cat, start, end)
             }
         },
         settings.currency,

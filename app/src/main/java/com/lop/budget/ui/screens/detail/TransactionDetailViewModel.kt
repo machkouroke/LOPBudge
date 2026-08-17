@@ -7,7 +7,7 @@ import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
-import com.lop.budget.domain.usecase.GetTransactionsUseCase
+import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
 import com.lop.budget.domain.usecase.ObserveTransactionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -35,7 +35,7 @@ data class DetailUiState(
 @HiltViewModel
 class TransactionDetailViewModel @Inject constructor(
     private val observeTransactionUseCase: ObserveTransactionUseCase,
-    private val getTransactionsUseCase: GetTransactionsUseCase,
+    private val observeTransactionsUseCase: ObserveTransactionsUseCase,
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
 ) : ViewModel() {
@@ -63,7 +63,7 @@ class TransactionDetailViewModel @Inject constructor(
                     if (seriesId != null) {
                         val startTime = tx.transaction.date + 1
                         val endTime = startTime + (5L * 365 * 24 * 60 * 60 * 1000) // + 5 ans
-                        getTransactionsUseCase.observeBetween(startTime, endTime).map { list ->
+                        observeTransactionsUseCase(startTime, endTime).map { list ->
                             list.filter { 
                                 it.transaction.seriesId == seriesId && it.transaction.date > tx.transaction.date
                             }.take(6)

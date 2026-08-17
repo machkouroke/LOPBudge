@@ -12,7 +12,7 @@ import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
-import com.lop.budget.domain.usecase.GetTransactionsUseCase
+import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,7 +59,7 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     accountRepo: AccountRepository,
-    private val getTransactionsUseCase: GetTransactionsUseCase,
+    private val observeTransactionsUseCase: ObserveTransactionsUseCase,
     getAccountBalancesUseCase: GetAccountBalancesUseCase,
     detectionRepo: NotificationDetectionRepository,
     settings: SettingsRepository,
@@ -90,8 +90,8 @@ class HomeViewModel @Inject constructor(
         val (prevStart, prevEnd) = ym.minusMonths(1).range()
 
         combine(
-            getTransactionsUseCase.observeBetween(start, end),
-            getTransactionsUseCase.observeBetween(prevStart, prevEnd),
+            observeTransactionsUseCase(start, end),
+            observeTransactionsUseCase(prevStart, prevEnd),
         ) { txs, prevTxs ->
             val income = txs.filter { it.transaction.type == TransactionType.INCOME }
                 .sumOf { it.transaction.amount }
