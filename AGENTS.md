@@ -35,6 +35,11 @@ Ne pas recréer de repository « god mode », de résolveur, de commande ou de c
 uniquement pour faciliter un test. Toute nouvelle abstraction de production doit répondre à un
 besoin fonctionnel ou architectural explicitement validé.
 
+Il est notamment interdit de créer une fonction, un type ou une couche absente du code courant
+uniquement parce qu’elle simplifierait le test, par exemple `resolveDeleteDecision`, `DeleteCommand`
+ou un exécuteur supplémentaire. Si le ticket semble exiger une API inexistante, arrêter le travail
+et signaler l’écart avant toute modification de production.
+
 ## 3. Choix obligatoire du niveau de test
 
 - **Logique Kotlin pure** : test unitaire sans Android ni Room.
@@ -95,6 +100,10 @@ métier.
 - commandes exécutées et résultats RED/GREEN ;
 - incohérences statiques ou comportements non spécifiés découverts ;
 - confirmation qu’aucun test n’a été affaibli.
+
+Avant la restitution, effectuer l’audit final imposé par le `AGENTS.md` local. Une règle obligatoire
+non satisfaite rend le travail incomplet. L’agent doit le dire explicitement au lieu de présenter le
+ticket comme terminé.
 
 Ne pas corriger silencieusement une incohérence hors périmètre : la documenter et demander une
 décision.
