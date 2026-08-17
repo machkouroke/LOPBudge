@@ -156,9 +156,10 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
         // Discriminant: repo returns goalId=7L
         val series = createSeries(linkedGoalId = goalId)
         val expected = series.copy(endDate = februarySlot - 1)
+        val capturedSeries = io.mockk.slot<RecurringSeriesEntity>()
         
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
-        coEvery { transactionRepo.upsertSeries(expected) } returns seriesId
+        coEvery { transactionRepo.upsertSeries(capture(capturedSeries)) } returns seriesId
         coEvery { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) } returns Unit
         coEvery { syncProgressUseCase.recalculateGoalProgress(goalId) } returns Unit
 
@@ -166,6 +167,8 @@ class TC_44_CancelRecurringSeriesUseCaseTest {
         sut.invoke(seriesId, SeriesCancelMode.Future(februarySlot))
 
         // Then
+        org.junit.Assert.assertEquals(expected, capturedSeries.captured)
+
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
             transactionRepo.upsertSeries(expected)
