@@ -96,9 +96,10 @@ class TransactionActionViewModel @Inject constructor(
 
                     RecurringDeleteChoice.FUTURE_ONLY -> {
                         tx.transaction.seriesId.let { seriesId ->
+                            val pivotDate = tx.transaction.seriesDate ?: tx.transaction.date
                             cancelRecurringSeriesUseCase(
                                 seriesId,
-                                SeriesCancelMode.Future(tx.transaction.date)
+                                SeriesCancelMode.Future(pivotDate)
                             )
                         }
                     }
@@ -109,7 +110,7 @@ class TransactionActionViewModel @Inject constructor(
                         }
                     }
                 }
-            } else {
+            } else if (tx.transaction.seriesId == null) {
                 softDeleteTransactionOccurrenceUseCase(tx)
             }
         }

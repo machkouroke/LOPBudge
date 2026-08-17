@@ -71,8 +71,10 @@ class ContextualDeletionMappingTest {
     )
 
     private val punctualTx = createTwr(id = 10L, seriesId = null, date = january10)
-    private val virtualOccurrence = createTwr(id = -1L, seriesId = 100L, seriesDate = februarySlot, date = februarySlot)
-    private val movedException = createTwr(id = 20L, seriesId = 100L, seriesDate = februarySlot, date = movedDisplayDate)
+    private val virtualOccurrence =
+        createTwr(id = -1L, seriesId = 100L, seriesDate = februarySlot, date = februarySlot)
+    private val movedException =
+        createTwr(id = 20L, seriesId = 100L, seriesDate = februarySlot, date = movedDisplayDate)
 
     @Before
     fun setUp() {
@@ -91,28 +93,33 @@ class ContextualDeletionMappingTest {
     }
 
     @Test
-    fun `M-01 - requestDelete sets deleteRequest and calls nothing`() = runTest {
+    fun `M-01 - requestDelete sets deleteRequest and calls nothing`() = runTest(testDispatcher) {
         sut.requestDelete(punctualTx)
         assertEquals(punctualTx, sut.deleteRequest.value)
-        confirmVerified(transactionRepo, softDeleteUseCase, cancelSeriesUseCase, saveTransactionUseCase)
+        confirmVerified(
+            transactionRepo,
+            softDeleteUseCase,
+            cancelSeriesUseCase,
+            saveTransactionUseCase
+        )
     }
 
     @Test
-    fun `M-02 - dismissDeleteRequest clears deleteRequest`() = runTest {
+    fun `M-02 - dismissDeleteRequest clears deleteRequest`() = runTest(testDispatcher) {
         sut.requestDelete(punctualTx)
         sut.dismissDeleteRequest()
         assertNull(sut.deleteRequest.value)
     }
 
     @Test
-    fun `M-03 - requestConfirmation sets pendingConfirmation`() = runTest {
+    fun `M-03 - requestConfirmation sets pendingConfirmation`() = runTest(testDispatcher) {
         sut.requestConfirmation(punctualTx, null)
         assertEquals(punctualTx, sut.pendingConfirmation.value?.transaction)
         assertNull(sut.pendingConfirmation.value?.choice)
     }
 
     @Test
-    fun `M-04 - dismissConfirmation clears pendingConfirmation`() = runTest {
+    fun `M-04 - dismissConfirmation clears pendingConfirmation`() = runTest(testDispatcher) {
         sut.requestConfirmation(punctualTx, null)
         sut.dismissConfirmation()
         assertNull(sut.pendingConfirmation.value)
@@ -121,14 +128,14 @@ class ContextualDeletionMappingTest {
     }
 
     @Test
-    fun `M-05 - confirmDelete without confirmation is no-op`() = runTest {
+    fun `M-05 - confirmDelete without confirmation is no-op`() = runTest(testDispatcher) {
         sut.confirmDelete()
         assertTrue(sut.pendingDeletes.value.isEmpty())
         confirmVerified(softDeleteUseCase, cancelSeriesUseCase)
     }
 
     @Test
-    fun `M-06 - Confirm punctual with choice null calls SINGLE exactly once`() = runTest {
+    fun `M-06 - Confirm punctual with choice null calls SINGLE exactly once`() = runTest(testDispatcher) {
         coEvery { softDeleteUseCase(punctualTx) } returns Unit
         sut.requestConfirmation(punctualTx, null)
 
@@ -142,7 +149,7 @@ class ContextualDeletionMappingTest {
     }
 
     @Test
-    fun `M-07 - Confirm recurring with THIS_OCCURRENCE calls SINGLE exactly once`() = runTest {
+    fun `M-07 - Confirm recurring with THIS_OCCURRENCE calls SINGLE exactly once`() = runTest(testDispatcher) {
         coEvery { softDeleteUseCase(virtualOccurrence) } returns Unit
         sut.requestConfirmation(virtualOccurrence, RecurringDeleteChoice.THIS_OCCURRENCE)
 
@@ -154,7 +161,7 @@ class ContextualDeletionMappingTest {
     }
 
     @Test
-    fun `M-08 - Confirm non-moved occurrence with FUTURE_ONLY calls series use case`() = runTest {
+    fun `M-08 - Confirm non-moved occurrence with FUTURE_ONLY calls series use case`() = runTest(testDispatcher) {
         coEvery { cancelSeriesUseCase(100L, SeriesCancelMode.Future(februarySlot)) } returns Unit
         sut.requestConfirmation(virtualOccurrence, RecurringDeleteChoice.FUTURE_ONLY)
 
@@ -166,7 +173,7 @@ class ContextualDeletionMappingTest {
     }
 
     @Test
-    fun `M-09 - Confirm moved exception with FUTURE_ONLY uses seriesDate as pivot`() = runTest {
+    fun `M-09 - Confirm moved exception with FUTURE_ONLY uses seriesDate as pivot`() = runTest(testDispatcher) {
         // I-M01: The test expects seriesDate (februarySlot) but current code uses date (movedDisplayDate)
         coEvery { cancelSeriesUseCase(100L, SeriesCancelMode.Future(februarySlot)) } returns Unit
         sut.requestConfirmation(movedException, RecurringDeleteChoice.FUTURE_ONLY)
@@ -179,7 +186,7 @@ class ContextualDeletionMappingTest {
     }
 
     @Test
-    fun `M-10 - Confirm ALL_SERIES calls series use case with All`() = runTest {
+    fun `M-10 - Confirm ALL_SERIES calls series use case with All`() = runTest(testDispatcher) {
         coEvery { cancelSeriesUseCase(100L, SeriesCancelMode.All) } returns Unit
         sut.requestConfirmation(virtualOccurrence, RecurringDeleteChoice.ALL_SERIES)
 
@@ -191,7 +198,7 @@ class ContextualDeletionMappingTest {
     }
 
     @Test
-    fun `M-11 - Confirm recurring with choice null should call nothing`() = runTest {
+    fun `M-11 - Confirm recurring with choice null should call nothing`() = runTest(testDispatcher) {
         // I-M02: Current code incorrectly calls softDeleteUseCase if choice is null even for recurring
         sut.requestConfirmation(virtualOccurrence, null)
 
@@ -203,7 +210,7 @@ class ContextualDeletionMappingTest {
     }
 
     @Test
-    fun `M-12 - Double confirmDelete only calls use case once`() = runTest {
+    fun `M-12 - Double confirmDelete only calls use case once`() = runTest(testDispatcher) {
         coEvery { softDeleteUseCase(punctualTx) } returns Unit
         sut.requestConfirmation(punctualTx, null)
 
@@ -215,17 +222,17 @@ class ContextualDeletionMappingTest {
     }
 
     @Test
-    fun `M-13 - State reset timing check`() = runTest {
+    fun `M-13 - State reset timing check`() = runTest(testDispatcher) {
         coEvery { softDeleteUseCase(punctualTx) } returns Unit
         sut.requestConfirmation(punctualTx, null)
 
         sut.confirmDelete()
-        
+
         assertNull(sut.pendingConfirmation.value)
         assertTrue(sut.pendingDeletes.value.contains(punctualTx.transaction.id))
-        
+
         advanceUntilIdle()
-        
+
         coVerify(exactly = 1) { softDeleteUseCase(punctualTx) }
     }
 }
