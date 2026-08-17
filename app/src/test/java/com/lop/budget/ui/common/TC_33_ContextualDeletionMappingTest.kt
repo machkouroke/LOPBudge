@@ -31,7 +31,7 @@ import org.junit.Test
 import java.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class ContextualDeletionMappingTest {
+class TC_33_ContextualDeletionMappingTest {
 
     private lateinit var sut: TransactionActionViewModel
     private val transactionRepo = mockk<TransactionRepository>(relaxed = false)
