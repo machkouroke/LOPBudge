@@ -1,7 +1,6 @@
 package com.lop.budget.domain.usecase
 
 import com.lop.budget.data.local.entity.TransactionEntity
-import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.TransactionStatus
 import javax.inject.Inject
@@ -30,9 +29,7 @@ class SaveTransactionUseCase @Inject constructor(
             else if (tx.status == TransactionStatus.PLANNED && tx.paidAt != null) tx.copy(paidAt = null)
             else tx
 
-        val txId = transactionRepo.upsert(finalTx)
-        transactionRepo.clearTags(txId)
-        tagIds.forEach { transactionRepo.addTagCrossRef(TransactionTagCrossRef(txId, it)) }
+        val txId = transactionRepo.saveWithTags(finalTx, tagIds)
 
         finalTx.linkedGoalId?.let { syncProgressUseCase.recalculateGoalProgress(it) }
         finalTx.linkedDebtId?.let { syncProgressUseCase.recalculateDebtProgress(it) }

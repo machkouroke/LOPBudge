@@ -26,6 +26,7 @@ interface TransactionOperations {
     suspend fun hardDelete(id: Long)
     suspend fun clearTags(txId: Long)
     suspend fun addTagCrossRef(crossRef: TransactionTagCrossRef)
+    suspend fun saveWithTags(tx: TransactionEntity, tagIds: List<Long>): Long
     suspend fun updateSeriesExceptions(seriesId: Long, title: String, amount: Double, type: TransactionType, categoryId: Long, accountId: Long, note: String?)
     suspend fun softDeleteTransactionsBySeries(seriesId: Long)
     suspend fun softDeleteTransactionsBySeriesFrom(seriesId: Long, fromDate: Long)
@@ -135,6 +136,14 @@ interface TransactionDao : TransactionOperations {
 
     @Upsert
     override suspend fun addTagCrossRef(crossRef: TransactionTagCrossRef)
+
+    @Transaction
+    override suspend fun saveWithTags(tx: TransactionEntity, tagIds: List<Long>): Long {
+        val txId = upsert(tx)
+        clearTags(txId)
+        tagIds.forEach { addTagCrossRef(TransactionTagCrossRef(txId, it)) }
+        return txId
+    }
 
     @Transaction
     suspend fun getOrCreateException(
