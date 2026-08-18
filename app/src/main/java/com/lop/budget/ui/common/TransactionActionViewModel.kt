@@ -7,6 +7,7 @@ import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.SeriesCancelMode
 import com.lop.budget.domain.model.TransactionEdition
+import com.lop.budget.domain.model.toDaysOfWeekSet
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
@@ -134,7 +135,7 @@ class TransactionActionViewModel @Inject constructor(
         updatedNote: String? = tx.transaction.note,
         updatedFrequency: com.lop.budget.domain.model.RecurrenceFrequency? = null,
         updatedInterval: Int? = null,
-        updatedDaysOfWeek: String? = null,
+        updatedDaysOfWeek: Set<Int>? = null,
         updatedEndDate: Long? = null,
         updatedMaxOccurrences: Int? = null,
         updatedTagIds: List<Long> = tx.tags.map { it.id },
@@ -147,7 +148,7 @@ class TransactionActionViewModel @Inject constructor(
             val finalFreq = updatedFrequency ?: series?.frequency
             ?: com.lop.budget.domain.model.RecurrenceFrequency.NONE
             val finalInterval = updatedInterval ?: series?.interval ?: 1
-            val finalDow = updatedDaysOfWeek ?: series?.daysOfWeek
+            val finalDow = updatedDaysOfWeek ?: series?.daysOfWeek.toDaysOfWeekSet()
             val finalEnd = updatedEndDate ?: series?.endDate
             val finalMax = updatedMaxOccurrences ?: series?.maxOccurrences
 

@@ -3,12 +3,13 @@ package com.lop.budget.ui.screens.detected
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
-import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
+import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.domain.usecase.SaveTransactionUseCase
+import com.lop.budget.domain.usecase.CreateTransactionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +20,7 @@ import javax.inject.Inject
 @HiltViewModel
 class DetectedTransactionsViewModel @Inject constructor(
     private val detectionRepo: NotificationDetectionRepository,
-    private val saveTransactionUseCase: SaveTransactionUseCase,
+    private val createTransactionUseCase: CreateTransactionUseCase,
     private val categoryRepo: CategoryRepository,
 ) : ViewModel() {
 
@@ -44,18 +45,26 @@ class DetectedTransactionsViewModel @Inject constructor(
         viewModelScope.launch {
             val defaultCatId = categoryRepo.getDefaultExpenseCategoryId()
             val categoryId = proposal.suggestedCategoryId ?: defaultCatId
-            
-            val tx = TransactionEntity(
+
+            val edition = TransactionEdition(
                 title = proposal.label.ifBlank { "Transaction" },
                 amount = proposal.amount,
                 type = TransactionType.EXPENSE,
-                status = TransactionStatus.PLANNED,
                 date = proposal.detectedAt,
-                accountId = 1L, // TODO MVP: choisir un compte par défaut
+                accountId = 1L, // TODO MVP: choisir un compte par défaut (comportement inchangé)
                 categoryId = categoryId,
                 note = "Détecté via ${proposal.sourcePackage}",
+                status = TransactionStatus.PLANNED,
+                frequency = RecurrenceFrequency.NONE,
+                interval = 1,
+                daysOfWeek = emptySet(),
+                endDate = null,
+                maxOccurrences = null,
+                linkedGoalId = null,
+                linkedDebtId = null,
+                tagIds = emptyList(),
             )
-            val id = saveTransactionUseCase.saveSimple(tx)
+            val id = createTransactionUseCase(edition)
             // On marque la proposition comme ignorée pour la retirer de la liste.
             detectionRepo.ignore(proposal.id)
             onOpenEdit(id)

@@ -19,13 +19,13 @@ import com.lop.budget.data.repository.TagRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.model.toDaysOfWeekSet
 import com.lop.budget.domain.usecase.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.ObserveTransactionUseCase
-import com.lop.budget.domain.usecase.SaveTransactionUseCase
-import com.lop.budget.domain.model.TransactionEdition
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,6 +62,29 @@ data class TransactionForm(
 ) {
     val amount: Double get() = amountInput.toDoubleOrNull() ?: 0.0
 }
+
+/**
+ * Unique mapper UI -> domaine. Préconditions garanties par save() : amount > 0,
+ * categoryId != null, accountId != null.
+ */
+fun TransactionForm.toEdition(defaultTitle: String): TransactionEdition = TransactionEdition(
+    title = title.ifBlank { defaultTitle },
+    amount = amount,
+    type = type,
+    date = date,
+    accountId = requireNotNull(accountId),
+    categoryId = requireNotNull(categoryId),
+    note = note.ifBlank { null },
+    status = status,
+    frequency = frequency,
+    interval = interval,
+    daysOfWeek = daysOfWeek,
+    endDate = endDate,
+    maxOccurrences = maxOccurrences,
+    linkedGoalId = linkedGoalId,
+    linkedDebtId = linkedDebtId,
+    tagIds = tagIds.toList(),
+)
 
 @HiltViewModel
 class TransactionEditViewModel @Inject constructor(
@@ -134,7 +157,7 @@ class TransactionEditViewModel @Inject constructor(
             linkedDebtId = tx.linkedDebtId,
             frequency = series?.frequency ?: RecurrenceFrequency.NONE,
             interval = series?.interval ?: 1,
-            daysOfWeek = series?.daysOfWeek?.split(",")?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet(),
+            daysOfWeek = series?.daysOfWeek.toDaysOfWeekSet(),
             endDate = series?.endDate,
             maxOccurrences = series?.maxOccurrences
         )
@@ -265,30 +288,8 @@ class TransactionEditViewModel @Inject constructor(
 
     private suspend fun performSave(onDone: (Long) -> Unit) {
         val f = _form.value
-        val accId = f.accountId ?: return
-        val catId = f.categoryId ?: return
-        val title = f.title.ifBlank { context.getString(R.string.tx_default_title) }
-        val note = f.note.ifBlank { null }
-        val dow = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",")
-
-        val edition = TransactionEdition(
-            title = title,
-            amount = f.amount,
-            type = f.type,
-            date = f.date,
-            accountId = accId,
-            categoryId = catId,
-            note = note,
-            status = f.status,
-            frequency = f.frequency,
-            interval = f.interval,
-            daysOfWeek = dow,
-            endDate = f.endDate,
-            maxOccurrences = f.maxOccurrences,
-            linkedGoalId = f.linkedGoalId,
-            linkedDebtId = f.linkedDebtId,
-            tagIds = f.tagIds.toList()
-        )
+        if (f.accountId == null || f.categoryId == null) return
+        val edition = f.toEdition(context.getString(R.string.tx_default_title))
 
         val newId = if (isEditing) {
             editTransactionWithScopeUseCase(
@@ -296,7 +297,7 @@ class TransactionEditViewModel @Inject constructor(
                 seriesId = f.seriesId,
                 seriesDate = seriesDate,
                 edition = edition,
-                scope = editScope
+                scope = editScope,
             )
         } else {
             createTransactionUseCase(edition)
