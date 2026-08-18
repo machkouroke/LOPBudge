@@ -6,8 +6,9 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.SeriesCancelMode
+import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
-import com.lop.budget.domain.usecase.SaveTransactionUseCase
+import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,7 +22,7 @@ class TransactionActionViewModel @Inject constructor(
     private val transactionRepo: TransactionRepository,
     private val softDeleteTransactionOccurrenceUseCase: SoftDeleteTransactionOccurrenceUseCase,
     private val cancelRecurringSeriesUseCase: CancelRecurringSeriesUseCase,
-    private val saveTransactionUseCase: SaveTransactionUseCase,
+    private val editTransactionWithScopeUseCase: EditTransactionWithScopeUseCase,
 ) : ViewModel() {
 
     // On suit les versions des transactions pour forcer le rafraîchissement UI
@@ -150,16 +151,15 @@ class TransactionActionViewModel @Inject constructor(
             val finalEnd = updatedEndDate ?: series?.endDate
             val finalMax = updatedMaxOccurrences ?: series?.maxOccurrences
 
-            saveTransactionUseCase.saveWithTransition(
-                editingId = tx.transaction.id,
+            val edition = TransactionEdition(
                 title = updatedTitle,
                 amount = updatedAmount,
                 type = updatedType,
-                status = updatedStatus,
                 date = updatedDate,
                 accountId = updatedAccountId,
                 categoryId = updatedCategoryId,
                 note = updatedNote,
+                status = updatedStatus,
                 frequency = finalFreq,
                 interval = finalInterval,
                 daysOfWeek = finalDow,
@@ -167,7 +167,14 @@ class TransactionActionViewModel @Inject constructor(
                 maxOccurrences = finalMax,
                 linkedGoalId = tx.transaction.linkedGoalId,
                 linkedDebtId = tx.transaction.linkedDebtId,
-                tagIds = updatedTagIds,
+                tagIds = updatedTagIds
+            )
+
+            editTransactionWithScopeUseCase(
+                editingId = tx.transaction.id,
+                seriesId = tx.transaction.seriesId,
+                seriesDate = tx.transaction.seriesDate,
+                edition = edition,
                 scope = scope
             )
             onDone()

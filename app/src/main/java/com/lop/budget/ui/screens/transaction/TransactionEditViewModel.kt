@@ -21,8 +21,11 @@ import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.CreateTransactionUseCase
+import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.ObserveTransactionUseCase
 import com.lop.budget.domain.usecase.SaveTransactionUseCase
+import com.lop.budget.domain.model.TransactionEdition
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,7 +71,8 @@ class TransactionEditViewModel @Inject constructor(
     private val tagRepo: TagRepository,
     private val goalRepo: GoalRepository,
     private val debtRepo: DebtRepository,
-    private val saveTransactionUseCase: SaveTransactionUseCase,
+    private val createTransactionUseCase: CreateTransactionUseCase,
+    private val editTransactionWithScopeUseCase: EditTransactionWithScopeUseCase,
     private val observeTransactionUseCase: ObserveTransactionUseCase,
     private val settings: SettingsRepository,
     private val savedStateHandle: SavedStateHandle,
@@ -267,10 +271,7 @@ class TransactionEditViewModel @Inject constructor(
         val note = f.note.ifBlank { null }
         val dow = f.daysOfWeek.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",")
 
-        // Toute la logique de sauvegarde (SINGLE, FUTURE, ALL) est désormais 
-        // centralisée dans SaveTransactionUseCase.saveWithTransition.
-        val newId = saveTransactionUseCase.saveWithTransition(
-            editingId = editingTransactionId,
+        val edition = TransactionEdition(
             title = title,
             amount = f.amount,
             type = f.type,
@@ -278,6 +279,7 @@ class TransactionEditViewModel @Inject constructor(
             accountId = accId,
             categoryId = catId,
             note = note,
+            status = f.status,
             frequency = f.frequency,
             interval = f.interval,
             daysOfWeek = dow,
@@ -285,10 +287,20 @@ class TransactionEditViewModel @Inject constructor(
             maxOccurrences = f.maxOccurrences,
             linkedGoalId = f.linkedGoalId,
             linkedDebtId = f.linkedDebtId,
-            tagIds = f.tagIds.toList(),
-            scope = editScope,
-            status = f.status
+            tagIds = f.tagIds.toList()
         )
+
+        val newId = if (isEditing) {
+            editTransactionWithScopeUseCase(
+                editingId = editingTransactionId!!,
+                seriesId = f.seriesId,
+                seriesDate = seriesDate,
+                edition = edition,
+                scope = editScope
+            )
+        } else {
+            createTransactionUseCase(edition)
+        }
 
         onDone(newId)
     }

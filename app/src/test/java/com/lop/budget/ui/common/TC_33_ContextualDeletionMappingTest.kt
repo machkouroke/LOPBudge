@@ -8,7 +8,7 @@ import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
-import com.lop.budget.domain.usecase.SaveTransactionUseCase
+import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import io.mockk.coEvery
@@ -37,7 +37,7 @@ class TC_33_ContextualDeletionMappingTest {
     private val transactionRepo = mockk<TransactionRepository>(relaxed = false)
     private val softDeleteUseCase = mockk<SoftDeleteTransactionOccurrenceUseCase>(relaxed = false)
     private val cancelSeriesUseCase = mockk<CancelRecurringSeriesUseCase>(relaxed = false)
-    private val saveTransactionUseCase = mockk<SaveTransactionUseCase>(relaxed = false)
+    private val editTransactionWithScopeUseCase = mockk<EditTransactionWithScopeUseCase>(relaxed = false)
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -83,7 +83,7 @@ class TC_33_ContextualDeletionMappingTest {
             transactionRepo,
             softDeleteUseCase,
             cancelSeriesUseCase,
-            saveTransactionUseCase
+            editTransactionWithScopeUseCase
         )
     }
 
@@ -100,7 +100,7 @@ class TC_33_ContextualDeletionMappingTest {
             transactionRepo,
             softDeleteUseCase,
             cancelSeriesUseCase,
-            saveTransactionUseCase
+            editTransactionWithScopeUseCase
         )
     }
 
