@@ -165,7 +165,7 @@ interface TransactionDao : TransactionOperations {
 
     @Query("""
         SELECT * FROM transactions 
-        WHERE seriesId = :seriesId AND seriesDate = :seriesDate AND deleted = 0 
+        WHERE seriesId = :seriesId AND seriesDate = :seriesDate
         LIMIT 1
     """)
     suspend fun getBySeriesSlot(seriesId: Long, seriesDate: Long): TransactionEntity?

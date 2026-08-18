@@ -242,50 +242,51 @@ class RecurringDeletionRepositoryTest {
             assertEquals(controlBefore, controlState())
         }
 
-    // =======================================================================================
-    // P-05
-    // =======================================================================================
-
     @Test
-    fun `P-05 - Given an exception whose slot is march but displayed in january, When future cancellation from february, Then it is deleted`() =
+    fun `P-05 - Given an exception displayed before the pivot, When future cancellation from february, Then it is kept`() =
         runTest {
             seedCanonicalDataSet()
             val movedExceptionId = insertException(
                 seriesId = seriesAId,
                 slot = marchSlot,
-                displayDate = displayDateBeforeFebruary,
+                displayDate = displayDateBeforeFebruary, // 25 janvier : affichée AVANT le pivot
             )
+            val controlBefore = controlState()
 
             cancelSeries(seriesAId, SeriesCancelMode.Future(februarySlot))
 
-            assertTrue(
-                "Une exception dont le slot est futur doit etre supprimee, meme si sa date affichee est anterieure au pivot",
-                persistedRow(movedExceptionId).deleted,
+            // Regle produit : la portee « et les suivantes » suit la date affichee.
+            assertFalse(persistedRow(movedExceptionId).deleted)
+
+            val series = requireNotNull(transactionRepo.getSeriesById(seriesAId))
+            assertEquals(februarySlot - 1, series.endDate)
+
+            val visibleOfA = observeVisibleTransactions().filter { it.transaction.seriesId == seriesAId }
+            assertTrue(visibleOfA.any { it.transaction.id == movedExceptionId })
+            assertEquals(
+                listOf(januarySlot, marchSlot),
+                visibleOfA.map { it.transaction.seriesDate ?: it.transaction.date }.sorted(),
             )
-            assertEquals(listOf(januarySlot), observeSlotsOf(seriesAId))
+            assertEquals(controlBefore, controlState())
         }
 
-    // =======================================================================================
-    // P-06
-    // =======================================================================================
-
     @Test
-    fun `P-06 - Given an exception whose slot is january but displayed in february, When future cancellation from february, Then it is kept`() =
+    fun `P-06 - Given an exception displayed after the pivot, When future cancellation from february, Then it is deleted`() =
         runTest {
             seedCanonicalDataSet()
             val movedExceptionId = insertException(
                 seriesId = seriesAId,
                 slot = januarySlot,
-                displayDate = displayDateAfterFebruary,
+                displayDate = displayDateAfterFebruary, // 20 fevrier : affichee APRES le pivot
             )
+            val controlBefore = controlState()
 
             cancelSeries(seriesAId, SeriesCancelMode.Future(februarySlot))
 
-            assertFalse(
-                "Une exception dont le slot est anterieur au pivot doit etre conservee, meme si sa date affichee est posterieure",
-                persistedRow(movedExceptionId).deleted,
-            )
-            assertEquals(listOf(januarySlot), observeSlotsOf(seriesAId))
+            // Affichee dans la zone « et les suivantes » : supprimee, meme si son slot d'origine est passe.
+            assertTrue(persistedRow(movedExceptionId).deleted)
+            assertTrue(observeVisibleTransactions().none { it.transaction.id == movedExceptionId })
+            assertEquals(controlBefore, controlState())
         }
 
     // =======================================================================================
