@@ -2,6 +2,7 @@ appId: com.lop.budget
 name: "TC-40-1: Marquage payé via swipe droite"
 tags:
   - recurrence
+  - edition
   - payment
 ---
 - runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml

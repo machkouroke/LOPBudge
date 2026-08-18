@@ -2,6 +2,7 @@ appId: com.lop.budget
 name: "TC-40-3: Marquage payé via écran de détail"
 tags:
   - recurrence
+  - edition
   - payment
 ---
 - runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml

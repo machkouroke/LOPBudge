@@ -3,6 +3,7 @@ name: "TC-37-02: Action Rapide sur Occurrence Récurrente"
 tags:
   - tc-37
   - action-rapide
+  - edition
   - recurrence
 ---
 # Given l’application est ouverte

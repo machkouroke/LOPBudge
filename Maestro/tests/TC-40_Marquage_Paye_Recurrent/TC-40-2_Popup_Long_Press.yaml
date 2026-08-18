@@ -3,6 +3,7 @@ name: "TC-40-2: Marquage payé via popup long press"
 tags:
   - recurrence
   - payment
+  - edition
 ---
 - runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 

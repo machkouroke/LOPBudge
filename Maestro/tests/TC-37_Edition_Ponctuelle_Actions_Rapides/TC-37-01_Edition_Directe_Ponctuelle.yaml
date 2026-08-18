@@ -2,6 +2,7 @@ appId: com.lop.budget
 name: "TC-37-01: Edition Directe Ponctuelle"
 tags:
   - tc-37
+  - edition
   - ponctuelle
 ---
 # Given l’application est ouverte
