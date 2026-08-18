@@ -173,16 +173,17 @@ class TC_33_ContextualDeletionMappingTest {
     }
 
     @Test
-    fun `M-09 - Confirm moved exception with FUTURE_ONLY uses seriesDate as pivot`() = runTest(testDispatcher) {
-        // I-M01: The test expects seriesDate (februarySlot) but current code uses date (movedDisplayDate)
-        coEvery { cancelSeriesUseCase(100L, SeriesCancelMode.Future(februarySlot)) } returns Unit
-        sut.requestConfirmation(movedException, RecurringDeleteChoice.FUTURE_ONLY)
+    fun `M-09 - Confirm moved exception with FUTURE_ONLY uses display date as pivot`() = runTest(testDispatcher) {
+        // Decision produit : la portee FUTURE suit la date d'affichage.
+        // Le pivot doit etre `date` (movedDisplayDate), jamais `seriesDate`.
+        coEvery { cancelSeriesUseCase(100L, SeriesCancelMode.Future(movedDisplayDate)) } returns Unit
 
+        sut.requestConfirmation(movedException, RecurringDeleteChoice.FUTURE_ONLY)
         sut.confirmDelete()
         advanceUntilIdle()
 
-        // This assertion is expected to fail on current code because it will call with movedDisplayDate
-        coVerify(exactly = 1) { cancelSeriesUseCase(100L, SeriesCancelMode.Future(februarySlot)) }
+        coVerify(exactly = 1) { cancelSeriesUseCase(100L, SeriesCancelMode.Future(movedDisplayDate)) }
+        coVerify(exactly = 0) { softDeleteUseCase(any()) }
     }
 
     @Test

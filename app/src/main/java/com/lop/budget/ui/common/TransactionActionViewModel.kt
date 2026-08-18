@@ -96,7 +96,7 @@ class TransactionActionViewModel @Inject constructor(
 
                     RecurringDeleteChoice.FUTURE_ONLY -> {
                         tx.transaction.seriesId.let { seriesId ->
-                            val pivotDate = tx.transaction.seriesDate ?: tx.transaction.date
+                            val pivotDate = tx.transaction.date
                             cancelRecurringSeriesUseCase(
                                 seriesId,
                                 SeriesCancelMode.Future(pivotDate)
