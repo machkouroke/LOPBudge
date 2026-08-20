@@ -60,43 +60,31 @@ import java.util.TimeZone
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], application = Application::class)
-class RecurringDeletionRepositoryTest {
+class RecurringDeletionRepositoryTest : RepositoryTestInfrastructure {
 
-    private lateinit var db: LopDatabase
-    private lateinit var transactionRepo: TransactionRepository
-    private lateinit var accountRepo: AccountRepository
-    private lateinit var categoryRepo: CategoryRepository
-    private lateinit var goalRepo: GoalRepository
-    private lateinit var debtRepo: DebtRepository
+    override lateinit var db: LopDatabase
+    override lateinit var transactionRepo: TransactionRepository
+    override lateinit var accountRepo: AccountRepository
+    override lateinit var categoryRepo: CategoryRepository
+    lateinit var goalRepo: GoalRepository
+    lateinit var debtRepo: DebtRepository
     private lateinit var syncProgressUseCase: SyncProgressUseCase
     private lateinit var softDeleteOccurrence: SoftDeleteTransactionOccurrenceUseCase
     private lateinit var cancelSeries: CancelRecurringSeriesUseCase
     private lateinit var getTransactions: ObserveTransactionsUseCase
 
-    private val zone = ZoneId.of("Europe/Paris")
+    override val zone: ZoneId = ZoneId.of("Europe/Paris")
     private lateinit var previousTimeZone: TimeZone
 
-    // --- Dates du jeu de donnees canonique -------------------------------------------------
-    private val januarySlot = startOfDay(2024, 1, 1)
-    private val februarySlot = startOfDay(2024, 2, 1)
-    private val marchSlot = startOfDay(2024, 3, 1)
+    // --- Identifiants du JDD (reels) -------------------------------------------------------
+    override var accountId = 0L
+    override var categoryId = 0L
+    override var seriesAId = 0L
+    override var seriesBId = 0L
+    override var punctualId = 0L
 
-    private val seriesBJanuarySlot = startOfDay(2024, 1, 15)
-    private val seriesBFebruarySlot = startOfDay(2024, 2, 15)
-    private val seriesBMarchSlot = startOfDay(2024, 3, 15)
-
-    private val punctualDate = startOfDay(2024, 1, 20)
     private val displayDateBeforeFebruary = startOfDay(2024, 1, 25)
     private val displayDateAfterFebruary = startOfDay(2024, 2, 20)
-
-    private val periodStart = startOfDay(2024, 1, 1)
-    private val periodEnd = endOfDay(2024, 3, 31)
-
-    private var accountId = 0L
-    private var categoryId = 0L
-    private var seriesAId = 0L
-    private var seriesBId = 0L
-    private var punctualId = 0L
 
     @Before
     fun setUp() {
@@ -135,7 +123,7 @@ class RecurringDeletionRepositoryTest {
         runTest {
             seedCanonicalDataSet()
 
-            val visible = observeVisibleTransactions()
+            val visible = observeVisibleTransactions(getTransactions)
 
             assertEquals(listOf(januarySlot, februarySlot, marchSlot), slotsOf(visible, seriesAId))
             assertEquals(
@@ -162,17 +150,17 @@ class RecurringDeletionRepositoryTest {
         runTest {
             seedCanonicalDataSet()
             val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-            val controlBefore = controlState()
+            val controlBefore = controlState(getTransactions)
 
             softDeleteOccurrence(februaryOccurrence)
 
-            assertEquals(listOf(januarySlot, marchSlot), observeSlotsOf(seriesAId))
+            assertEquals(listOf(januarySlot, marchSlot), observeSlotsOf(seriesAId, getTransactions))
 
             val tombstones = persistedRowsForSlot(seriesAId, februarySlot)
             assertEquals(1, tombstones.size)
             assertTrue(tombstones.single().deleted)
 
-            assertEquals(controlBefore, controlState())
+            assertEquals(controlBefore, controlState(getTransactions))
         }
 
     // =======================================================================================
@@ -185,7 +173,7 @@ class RecurringDeletionRepositoryTest {
             seedCanonicalDataSet()
             val materializedId = transactionRepo.materializeOccurrence(seriesAId, februarySlot)
             val materialized = requireNotNull(transactionRepo.getById(materializedId))
-            val controlBefore = controlState()
+            val controlBefore = controlState(getTransactions)
 
             softDeleteOccurrence(materialized)
 
@@ -194,8 +182,8 @@ class RecurringDeletionRepositoryTest {
             assertEquals(materializedId, rows.single().id)
             assertTrue(rows.single().deleted)
 
-            assertEquals(listOf(januarySlot, marchSlot), observeSlotsOf(seriesAId))
-            assertEquals(controlBefore, controlState())
+            assertEquals(listOf(januarySlot, marchSlot), observeSlotsOf(seriesAId, getTransactions))
+            assertEquals(controlBefore, controlState(getTransactions))
         }
 
     // =======================================================================================
@@ -214,7 +202,7 @@ class RecurringDeletionRepositoryTest {
             val rows = persistedRowsForSlot(seriesAId, februarySlot)
             assertEquals("Un seul tombstone est attendu pour le slot de fevrier", 1, rows.size)
             assertTrue(rows.single().deleted)
-            assertEquals(listOf(januarySlot, marchSlot), observeSlotsOf(seriesAId))
+            assertEquals(listOf(januarySlot, marchSlot), observeSlotsOf(seriesAId, getTransactions))
         }
 
     // =======================================================================================
@@ -227,7 +215,7 @@ class RecurringDeletionRepositoryTest {
             seedCanonicalDataSet()
             val januaryExceptionId = transactionRepo.materializeOccurrence(seriesAId, januarySlot)
             val marchExceptionId = transactionRepo.materializeOccurrence(seriesAId, marchSlot)
-            val controlBefore = controlState()
+            val controlBefore = controlState(getTransactions)
 
             cancelSeries(seriesAId, SeriesCancelMode.Future(februarySlot))
 
@@ -235,11 +223,11 @@ class RecurringDeletionRepositoryTest {
             assertEquals(februarySlot - 1, series.endDate)
             assertFalse(series.isCancelled)
 
-            assertEquals(listOf(januarySlot), observeSlotsOf(seriesAId))
+            assertEquals(listOf(januarySlot), observeSlotsOf(seriesAId, getTransactions))
             assertFalse(persistedRow(januaryExceptionId).deleted)
             assertTrue(persistedRow(marchExceptionId).deleted)
 
-            assertEquals(controlBefore, controlState())
+            assertEquals(controlBefore, controlState(getTransactions))
         }
 
     @Test
@@ -251,7 +239,7 @@ class RecurringDeletionRepositoryTest {
                 slot = marchSlot,
                 displayDate = displayDateBeforeFebruary, // 25 janvier : affichée AVANT le pivot
             )
-            val controlBefore = controlState()
+            val controlBefore = controlState(getTransactions)
 
             cancelSeries(seriesAId, SeriesCancelMode.Future(februarySlot))
 
@@ -261,13 +249,13 @@ class RecurringDeletionRepositoryTest {
             val series = requireNotNull(transactionRepo.getSeriesById(seriesAId))
             assertEquals(februarySlot - 1, series.endDate)
 
-            val visibleOfA = observeVisibleTransactions().filter { it.transaction.seriesId == seriesAId }
+            val visibleOfA = observeVisibleTransactions(getTransactions).filter { it.transaction.seriesId == seriesAId }
             assertTrue(visibleOfA.any { it.transaction.id == movedExceptionId })
             assertEquals(
                 listOf(januarySlot, marchSlot),
                 visibleOfA.map { it.transaction.seriesDate ?: it.transaction.date }.sorted(),
             )
-            assertEquals(controlBefore, controlState())
+            assertEquals(controlBefore, controlState(getTransactions))
         }
 
     @Test
@@ -279,14 +267,14 @@ class RecurringDeletionRepositoryTest {
                 slot = januarySlot,
                 displayDate = displayDateAfterFebruary, // 20 fevrier : affichee APRES le pivot
             )
-            val controlBefore = controlState()
+            val controlBefore = controlState(getTransactions)
 
             cancelSeries(seriesAId, SeriesCancelMode.Future(februarySlot))
 
             // Affichee dans la zone « et les suivantes » : supprimee, meme si son slot d'origine est passe.
             assertTrue(persistedRow(movedExceptionId).deleted)
-            assertTrue(observeVisibleTransactions().none { it.transaction.id == movedExceptionId })
-            assertEquals(controlBefore, controlState())
+            assertTrue(observeVisibleTransactions(getTransactions).none { it.transaction.id == movedExceptionId })
+            assertEquals(controlBefore, controlState(getTransactions))
         }
 
     // =======================================================================================
@@ -299,7 +287,7 @@ class RecurringDeletionRepositoryTest {
             seedCanonicalDataSet()
             val januaryExceptionId = transactionRepo.materializeOccurrence(seriesAId, januarySlot)
             val marchExceptionId = transactionRepo.materializeOccurrence(seriesAId, marchSlot)
-            val controlBefore = controlState()
+            val controlBefore = controlState(getTransactions)
 
             cancelSeries(seriesAId, SeriesCancelMode.All)
 
@@ -313,8 +301,8 @@ class RecurringDeletionRepositoryTest {
             )
             assertTrue(rowsOfA.all { it.deleted })
 
-            assertEquals(emptyList<Long>(), observeSlotsOf(seriesAId))
-            assertEquals(controlBefore, controlState())
+            assertEquals(emptyList<Long>(), observeSlotsOf(seriesAId, getTransactions))
+            assertEquals(controlBefore, controlState(getTransactions))
         }
 
     // =======================================================================================
@@ -325,13 +313,13 @@ class RecurringDeletionRepositoryTest {
     fun `P-08 - Given the punctual transaction, When it is soft deleted, Then only it disappears and no series is modified`() =
         runTest {
             seedCanonicalDataSet()
-            val punctual = observeVisibleTransactions().single { it.transaction.id == punctualId }
+            val punctual = observeVisibleTransactions(getTransactions).single { it.transaction.id == punctualId }
             val seriesABefore = transactionRepo.getSeriesById(seriesAId)
             val seriesBBefore = transactionRepo.getSeriesById(seriesBId)
 
             softDeleteOccurrence(punctual)
 
-            val visible = observeVisibleTransactions()
+            val visible = observeVisibleTransactions(getTransactions)
             assertTrue(visible.none { it.transaction.id == punctualId })
             assertTrue(persistedRow(punctualId).deleted)
 
@@ -374,11 +362,11 @@ class RecurringDeletionRepositoryTest {
         runTest {
             seedCanonicalDataSet()
             val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-            val controlBefore = controlState()
+            val controlBefore = controlState(getTransactions)
 
             softDeleteOccurrence(februaryOccurrence)
 
-            assertEquals(controlBefore, controlState())
+            assertEquals(controlBefore, controlState(getTransactions))
         }
 
     @Test
@@ -386,11 +374,11 @@ class RecurringDeletionRepositoryTest {
         runTest {
             seedCanonicalDataSet()
             transactionRepo.materializeOccurrence(seriesAId, marchSlot)
-            val controlBefore = controlState()
+            val controlBefore = controlState(getTransactions)
 
             cancelSeries(seriesAId, SeriesCancelMode.Future(februarySlot))
 
-            assertEquals(controlBefore, controlState())
+            assertEquals(controlBefore, controlState(getTransactions))
         }
 
     @Test
@@ -398,113 +386,22 @@ class RecurringDeletionRepositoryTest {
         runTest {
             seedCanonicalDataSet()
             transactionRepo.materializeOccurrence(seriesAId, januarySlot)
-            val controlBefore = controlState()
+            val controlBefore = controlState(getTransactions)
 
             cancelSeries(seriesAId, SeriesCancelMode.All)
 
-            assertEquals(controlBefore, controlState())
+            assertEquals(controlBefore, controlState(getTransactions))
         }
 
     // =======================================================================================
-    // Fixtures
-    // =======================================================================================
-
-    private suspend fun seedCanonicalDataSet() {
-        accountId = db.accountDao().upsert(
-            AccountEntity(
-                name = "Compte courant",
-                type = AccountType.CHECKING,
-                initialBalance = 1_000.0,
-                colorArgb = 0xFF2196F3.toInt(),
-                icon = "wallet",
-            ),
-        )
-        categoryId = db.categoryDao().upsert(
-            CategoryEntity(
-                name = "Logement",
-                type = TransactionType.EXPENSE,
-                colorArgb = 0xFF4CAF50.toInt(),
-                icon = "home",
-            ),
-        )
-
-        seriesAId = transactionRepo.upsertSeries(
-            monthlySeries(title = "Loyer", amount = 800.0, startDate = januarySlot),
-        )
-        seriesBId = transactionRepo.upsertSeries(
-            monthlySeries(title = "Abonnement", amount = 12.0, startDate = seriesBJanuarySlot),
-        )
-
-        punctualId = transactionRepo.upsert(
-            TransactionEntity(
-                title = "Courses",
-                amount = 45.0,
-                type = TransactionType.EXPENSE,
-                status = TransactionStatus.PLANNED,
-                kind = TransactionKind.STANDARD,
-                date = punctualDate,
-                accountId = accountId,
-                categoryId = categoryId,
-            ),
-        )
-    }
-
-    private fun monthlySeries(title: String, amount: Double, startDate: Long) =
-        RecurringSeriesEntity(
-            title = title,
-            amount = amount,
-            type = TransactionType.EXPENSE,
-            categoryId = categoryId,
-            accountId = accountId,
-            frequency = RecurrenceFrequency.MONTHLY,
-            interval = 1,
-            startDate = startDate,
-        )
-
-    /** Exception materialisee dont la date d'affichage peut differer du slot de serie. */
-    private suspend fun insertException(seriesId: Long, slot: Long, displayDate: Long): Long =
-        transactionRepo.upsert(
-            TransactionEntity(
-                title = "Loyer",
-                amount = 800.0,
-                type = TransactionType.EXPENSE,
-                status = TransactionStatus.PLANNED,
-                kind = TransactionKind.STANDARD,
-                date = displayDate,
-                accountId = accountId,
-                categoryId = categoryId,
-                seriesId = seriesId,
-                seriesDate = slot,
-                isException = true,
-            ),
-        )
-
-    // =======================================================================================
-    // Observation reelle
+    // Helpers specifiques
     // =======================================================================================
 
     private fun newObserveTransactionsUseCase() =
         ObserveTransactionsUseCase(transactionRepo, accountRepo, categoryRepo)
 
-    private suspend fun observeVisibleTransactions(
-        useCase: ObserveTransactionsUseCase = getTransactions,
-    ): List<TransactionWithRelations> = useCase(periodStart, periodEnd).first()
-
-    private suspend fun observeSlotsOf(
-        seriesId: Long,
-        useCase: ObserveTransactionsUseCase = getTransactions,
-    ): List<Long> = slotsOf(observeVisibleTransactions(useCase), seriesId)
-
-    private fun slotsOf(
-        transactions: List<TransactionWithRelations>,
-        seriesId: Long,
-    ): List<Long> = transactions
-        .filter { it.transaction.seriesId == seriesId }
-        .map { it.transaction.seriesDate ?: it.transaction.date }
-        .sorted()
-
     private suspend fun virtualOccurrenceOfA(slot: Long): TransactionWithRelations {
-        val occurrence = observeVisibleTransactions().single {
+        val occurrence = observeVisibleTransactions(getTransactions).single {
             it.transaction.seriesId == seriesAId && it.transaction.seriesDate == slot
         }
         assertTrue(
@@ -513,85 +410,4 @@ class RecurringDeletionRepositoryTest {
         )
         return occurrence
     }
-
-    // =======================================================================================
-    // Lecture persistante (tombstones inclus)
-    // =======================================================================================
-
-    private data class PersistedTx(
-        val id: Long,
-        val seriesId: Long?,
-        val seriesDate: Long?,
-        val date: Long,
-        val isException: Boolean,
-        val deleted: Boolean,
-    )
-
-    /**
-     * Les DAO publics filtrent `deleted = 0`. Cette lecture SQL reste strictement limitee au
-     * code de test pour inspecter les tombstones, conformement au ticket.
-     */
-    private fun persistedTransactions(): List<PersistedTx> {
-        val rows = mutableListOf<PersistedTx>()
-        db.query(
-            "SELECT id, seriesId, seriesDate, date, isException, deleted FROM transactions ORDER BY id",
-            emptyArray<Any?>(),
-        ).use { cursor ->
-            while (cursor.moveToNext()) {
-                rows += PersistedTx(
-                    id = cursor.getLong(0),
-                    seriesId = if (cursor.isNull(1)) null else cursor.getLong(1),
-                    seriesDate = if (cursor.isNull(2)) null else cursor.getLong(2),
-                    date = cursor.getLong(3),
-                    isException = cursor.getInt(4) == 1,
-                    deleted = cursor.getInt(5) == 1,
-                )
-            }
-        }
-        return rows
-    }
-
-    private fun persistedRow(id: Long): PersistedTx =
-        persistedTransactions().single { it.id == id }
-
-    private fun persistedRowsForSlot(seriesId: Long, slot: Long): List<PersistedTx> =
-        persistedTransactions().filter { it.seriesId == seriesId && it.seriesDate == slot }
-
-    // =======================================================================================
-    // Donnees de controle
-    // =======================================================================================
-
-    private data class ControlState(
-        val seriesB: RecurringSeriesEntity?,
-        val persistedRowsOfB: List<PersistedTx>,
-        val punctualRow: PersistedTx?,
-        val visibleSlotsOfB: List<Long>,
-        val punctualVisible: Boolean,
-    )
-
-    private suspend fun controlState(): ControlState {
-        val visible = observeVisibleTransactions()
-        val persisted = persistedTransactions()
-        return ControlState(
-            seriesB = transactionRepo.getSeriesById(seriesBId),
-            persistedRowsOfB = persisted.filter { it.seriesId == seriesBId },
-            punctualRow = persisted.firstOrNull { it.id == punctualId },
-            visibleSlotsOfB = slotsOf(visible, seriesBId),
-            punctualVisible = visible.any { it.transaction.id == punctualId },
-        )
-    }
-
-    // =======================================================================================
-    // Dates
-    // =======================================================================================
-
-    private fun startOfDay(year: Int, month: Int, day: Int): Long =
-        LocalDate.of(year, month, day).atStartOfDay(zone).toInstant().toEpochMilli()
-
-    private fun endOfDay(year: Int, month: Int, day: Int): Long =
-        LocalDate.of(year, month, day)
-            .atTime(23, 59, 59, 999_000_000)
-            .atZone(zone)
-            .toInstant()
-            .toEpochMilli()
 }
