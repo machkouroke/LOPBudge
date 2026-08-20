@@ -139,10 +139,11 @@ interface TransactionDao : TransactionOperations {
 
     @Transaction
     override suspend fun saveWithTags(tx: TransactionEntity, tagIds: List<Long>): Long {
-        val txId = upsert(tx)
-        clearTags(txId)
-        tagIds.forEach { addTagCrossRef(TransactionTagCrossRef(txId, it)) }
-        return txId
+        val upsertId = upsert(tx)
+        val finalId = if (tx.id > 0) tx.id else upsertId
+        clearTags(finalId)
+        tagIds.forEach { addTagCrossRef(TransactionTagCrossRef(finalId, it)) }
+        return finalId
     }
 
     @Transaction

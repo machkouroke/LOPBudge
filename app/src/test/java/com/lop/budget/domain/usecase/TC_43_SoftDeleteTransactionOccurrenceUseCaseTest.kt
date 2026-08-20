@@ -20,7 +20,7 @@ import java.time.Instant
  * JUnit - SoftDeleteTransactionOccurrenceUseCase : occurrence réelle et virtuelle
  * TC-43 - Unit tests for orchestration of transaction soft deletion.
  */
-class TC_43_SoftDeleteTransactionOccurrenceUseCaseTest {
+class SoftDeleteTransactionOccurrenceUseCaseTest {
 
     private lateinit var sut: SoftDeleteTransactionOccurrenceUseCase
     private val transactionRepo = mockk<TransactionRepository>()

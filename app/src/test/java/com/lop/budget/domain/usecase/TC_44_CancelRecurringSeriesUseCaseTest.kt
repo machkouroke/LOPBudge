@@ -19,7 +19,7 @@ import java.time.Instant
  * JUnit - CancelRecurringSeriesUseCase : portées FUTURE et ALL
  * TC-44 - Unit tests for orchestration of recurring series cancellation.
  */
-class TC_44_CancelRecurringSeriesUseCaseTest {
+class CancelRecurringSeriesUseCaseTest {
 
     private lateinit var sut: CancelRecurringSeriesUseCase
     private val transactionRepo = mockk<TransactionRepository>()
