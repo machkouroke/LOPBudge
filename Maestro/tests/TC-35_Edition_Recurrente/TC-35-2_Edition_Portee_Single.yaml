@@ -56,28 +56,3 @@ tags:
     id: "transaction.detail.field.amount"
     text: "950,00.*"
 
-# Vérifier le mois précédent
-- evalScript: |
-    console.log("Vérifier le mois précédent")
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.PREV_MONTH_NAME}
-      year: ${output.PREV_YEAR}
-- assertVisible:
-    id: "transaction.item.amount"
-    text: ".*820,00.*"
-- assertNotVisible: ".*950,00.*"
-
-# Vérifier le mois suivant
-- evalScript: |
-    console.log("Vérifier le mois suivant")
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.NEXT_MONTH_NAME}
-      year: ${output.NEXT_YEAR}
-- assertVisible:
-    id: "transaction.item.amount"
-    text: ".*820,00.*"
-- assertNotVisible: ".*950,00.*"

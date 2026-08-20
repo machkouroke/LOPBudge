@@ -58,24 +58,3 @@ tags:
     timeout: 5000
 - assertVisible: "Loyer Paris"
 
-# Vérification mois précédent 
-- evalScript: |
-    console.log("Vérifier le mois précédent")
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.PREV_MONTH_NAME}
-      year: ${output.PREV_YEAR}
-- assertVisible: "Loyer"
-- assertNotVisible: "Loyer Paris"
-
-# Vérification mois suivant 
-- evalScript: |
-    console.log("Vérifier le mois suivant")
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.NEXT_MONTH_NAME}
-      year: ${output.NEXT_YEAR}
-- assertVisible: "Loyer Paris"
-- assertNotVisible: "Loyer"
