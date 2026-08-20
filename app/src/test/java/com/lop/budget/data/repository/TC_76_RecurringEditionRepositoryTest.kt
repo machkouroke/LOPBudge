@@ -4,7 +4,9 @@ import android.app.Application
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.lop.budget.data.local.LopDatabase
+import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
+import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.RecurrenceFrequency
@@ -15,6 +17,7 @@ import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
 import com.lop.budget.domain.usecase.SaveTransactionUseCase
+import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.domain.usecase.SyncProgressUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -32,30 +35,32 @@ import java.time.ZoneId
 import java.util.TimeZone
 
 /**
- * Room — edition contextuelle recurrente : persistance et liste fusionnee (ticket ref. 45/TC-76).
+ * Room — édition contextuelle récurrente : persistance et liste fusionnée (ticket TC-76).
  *
- * Niveau : test composant JVM (Robolectric + Room en memoire).
- * Systeme teste : EditTransactionWithScopeUseCase -> TransactionRepository -> Room -> ObserveTransactionsUseCase.
- * Aucun mock, aucun spy : seuls des composants reels sont instancies.
+ * Niveau : test composant JVM (Robolectric + Room en mémoire).
+ * Système testé : EditTransactionWithScopeUseCase -> TransactionRepository -> Room -> ObserveTransactionsUseCase.
+ * Aucun mock, aucun spy : seuls des composants réels sont instanciés.
  *
  * Correspondance E-xx -> CA -> fonction -> assertion :
- * E-00  CA-11/I-2  ObserveTransactionsUseCase        Unicite seriesId+seriesDate, JDD present
- * E-01  CA-02/I-5  EditTransactionWithScope(SINGLE)  Exception persistee, serie inchangee
- * E-02  CA-02/I-2  EditTransactionWithScope(SINGLE)  Idempotence de slot (mise a jour)
- * E-03  CA-09/I-1  EditTransactionWithScope(SINGLE)  Deplacement de date (date vs seriesDate)
- * E-04  CA-03/I-5  EditTransactionWithScope(FUTURE)  Troncature serie A, nouvelle serie creee
- * E-05  CA-03/CA-09 EditTransactionWithScope(FUTURE) Troncature, date reculee (aucune occ. au 1 fev)
- * E-06  CA-03/CA-09 EditTransactionWithScope(FUTURE) Troncature, date avancee (pas de doublon)
+ * E-00  CA-11/I-2  ObserveTransactionsUseCase        Unicité seriesId+seriesDate, JDD présent
+ * E-01  CA-02/I-5  EditTransactionWithScope(SINGLE)  Exception persistée, série inchangée, adjacents OK
+ * E-02  CA-02/I-2  EditTransactionWithScope(SINGLE)  Idempotence de slot (RED: retour -1)
+ * E-03  CA-09/I-1  EditTransactionWithScope(SINGLE)  Déplacement de date (date vs seriesDate)
+ * E-04  CA-03/I-5  EditTransactionWithScope(FUTURE)  Tronculture série A, nouvelle série créée, adjacents OK
+ * E-05  CA-03/CA-09 EditTransactionWithScope(FUTURE) Troncature, date reculée (aucune occ. au 1 fév)
+ * E-06  CA-03/CA-09 EditTransactionWithScope(FUTURE) Troncature, date avancée (pas de doublon)
  * E-07  Ref 97 CA-07 EditTransactionWithScope(FUTURE) Conservation de PAID sur l'occurrence pivot
- * E-08  CA-03/I-4  EditTransactionWithScope(FUTURE) Troncature n'affecte pas les exceptions passees
- * E-09  CA-04/I-5  EditTransactionWithScope(ALL)     Mise a jour de la serie en place
- * E-10  CA-04/CA-09 EditTransactionWithScope(ALL)    startDate recalage jour-du-mois
- * E-11  CA-05/I-7  EditTransactionWithScope(ALL)     Propag. partielle (RED: ecrase tout)
- * E-12  CA-05/I-7  EditTransactionWithScope(ALL)     Propag. inconditionnelle (RED: reecrit tout)
- * E-13  CA-10      EditTransactionWithScope(ALL)     Retrait endDate, tombstones preserves
- * E-14  CA-11      EditTransactionWithScope(S/F/A)   Isolation (serie B et ponctuelle intactes)
- * E-15  CA-11/I-2  Common Assertion                  Unicite seriesId+seriesDate apres action
- * E-16  I-5        EditTransactionWithScope(SINGLE)  Garde-fou NONE (RED: tronque la serie)
+ * E-08  CA-03/I-4  EditTransactionWithScope(FUTURE)  Troncature n'affecte pas les exceptions passées (isolation)
+ * E-09  CA-04/I-5  EditTransactionWithScope(ALL)     Mise à jour de la série en place, adjacents OK
+ * E-10  CA-04/CA-09 EditTransactionWithScope(ALL)    startDate recalage jour-du-mois, double affichage 5 fév
+ * E-11  CA-05/I-7  EditTransactionWithScope(ALL)     Propag. partielle (RED: écrase tout)
+ * E-12  CA-05/I-7  EditTransactionWithScope(ALL)     Propag. inconditionnelle (RED: réécrit tout)
+ * E-13  CA-10      EditTransactionWithScope(ALL)     Retrait endDate, tombstones préservés
+ * E-14a CA-11      EditTransactionWithScope(SINGLE)  Isolation série B et ponctuelle
+ * E-14b CA-11      EditTransactionWithScope(FUTURE)  Isolation série B et ponctuelle
+ * E-14c CA-11      EditTransactionWithScope(ALL)     Isolation série B et ponctuelle
+ * E-15  CA-11/I-2  Common Assertion                  Unicité seriesId+seriesDate après action (vérifié partout)
+ * E-16  I-5        EditTransactionWithScope(SINGLE)  Garde-fou NONE (RED: tronque la série)
  * E-17  CA-12      EditTransactionWithScope(SINGLE)  Conservation tags (RED: upsert -1)
  * E-18  CA-12      EditTransactionWithScope(SINGLE)  Suppression tag (RED: upsert -1)
  */
@@ -74,6 +79,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
     private lateinit var syncProgressUseCase: SyncProgressUseCase
     private lateinit var saveTransactionUseCase: SaveTransactionUseCase
     private lateinit var cancelRecurringSeriesUseCase: CancelRecurringSeriesUseCase
+    private lateinit var softDeleteUseCase: SoftDeleteTransactionOccurrenceUseCase
     private lateinit var editTransactionWithScopeUseCase: EditTransactionWithScopeUseCase
     private lateinit var observeTransactionsUseCase: ObserveTransactionsUseCase
 
@@ -107,6 +113,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         syncProgressUseCase = SyncProgressUseCase(transactionRepo, goalRepo, debtRepo)
         saveTransactionUseCase = SaveTransactionUseCase(transactionRepo, syncProgressUseCase)
         cancelRecurringSeriesUseCase = CancelRecurringSeriesUseCase(transactionRepo, syncProgressUseCase)
+        softDeleteUseCase = SoftDeleteTransactionOccurrenceUseCase(transactionRepo, syncProgressUseCase)
         editTransactionWithScopeUseCase = EditTransactionWithScopeUseCase(
             transactionRepo,
             saveTransactionUseCase,
@@ -160,8 +167,15 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
             scope = EditScope.SINGLE
         )
 
-        val slotsOfA = observeSlotsOf(seriesAId, observeTransactionsUseCase)
-        assertEquals(listOf(januarySlot, februarySlot, marchSlot), slotsOfA)
+        val visible = observeVisibleTransactions(observeTransactionsUseCase)
+        assertEquals(listOf(januarySlot, februarySlot, marchSlot), slotsOf(visible, seriesAId))
+        assertNoDuplicates(visible)
+
+        // Vérification adjacents
+        val jan = visible.single { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == januarySlot }
+        assertEquals(800.0, jan.transaction.amount, 0.0)
+        val mar = visible.single { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == marchSlot }
+        assertEquals(800.0, mar.transaction.amount, 0.0)
 
         val persistedRows = persistedRowsForSlot(seriesAId, februarySlot)
         assertEquals(1, persistedRows.size)
@@ -187,12 +201,15 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         val edition2 = editionFrom(februaryOccurrence, title = "Ed 2")
 
         val id1 = editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition1, EditScope.SINGLE)
+        assertTrue("L'ID retourne doit etre positif (RED: propagation du -1 d'upsert)", id1 > 0)
+        
         val id2 = editTransactionWithScopeUseCase(id1, seriesAId, februarySlot, edition2, EditScope.SINGLE)
 
         assertEquals(id1, id2)
         val persistedRows = persistedRowsForSlot(seriesAId, februarySlot)
         assertEquals(1, persistedRows.size)
         assertEquals("Ed 2", persistedRows.single().title)
+        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
     }
 
     // =======================================================================================
@@ -217,6 +234,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         val visibleOfA = observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.seriesId == seriesAId }
         assertTrue(visibleOfA.any { it.transaction.date == movedDate && it.transaction.seriesDate == februarySlot })
         assertTrue(visibleOfA.none { it.transaction.date == februarySlot })
+        assertNoDuplicates(visibleOfA)
     }
 
     // =======================================================================================
@@ -232,19 +250,22 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition, EditScope.FUTURE)
 
         val seriesA = transactionRepo.getSeriesById(seriesAId)!!
-        assertEquals(februarySlot - 1, seriesA.endDate)
+        assertEquals("La serie A doit etre tronquee au slot - 1ms", februarySlot - 1, seriesA.endDate)
+        assertFalse(seriesA.isCancelled)
 
         val allSeries = db.recurringSeriesDao().observeActiveSeries().first()
         val newSeries = allSeries.single { it.id != seriesAId && it.id != seriesBId }
         assertEquals(februarySlot, newSeries.startDate)
         assertEquals(850.0, newSeries.amount, 0.0)
 
-        val visibleOfA = observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.title == "Loyer" }
+        val visible = observeVisibleTransactions(observeTransactionsUseCase)
+        val visibleOfA = visible.filter { it.transaction.title == "Loyer" }
         // Janvier (Série A), Février (Série Nouvelle), Mars (Série Nouvelle)
         assertEquals(3, visibleOfA.size)
         assertTrue(visibleOfA.any { it.transaction.date == januarySlot && it.transaction.amount == 800.0 })
         assertTrue(visibleOfA.any { it.transaction.date == februarySlot && it.transaction.amount == 850.0 })
         assertTrue(visibleOfA.any { it.transaction.date == marchSlot && it.transaction.amount == 850.0 })
+        assertNoDuplicates(visible)
     }
 
     // =======================================================================================
@@ -266,6 +287,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         assertTrue(visibleOfA.any { it.transaction.date == januarySlot })
         // Mars devrait aussi être décalé au 5 mars car la nouvelle série hérite du jour de `date`
         assertTrue(visibleOfA.any { it.transaction.date == startOfDay(2024, 3, 5) })
+        assertNoDuplicates(visibleOfA)
     }
 
     // =======================================================================================
@@ -310,6 +332,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         
         val others = visible.filter { it.transaction.seriesDate != februarySlot }
         assertTrue(others.all { it.transaction.status == TransactionStatus.PLANNED })
+        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
     }
 
     // =======================================================================================
@@ -320,7 +343,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
     fun `E-08 - Given exception in january, When FUTURE edition from february, Then january exception is untouched`() = runTest {
         seedCanonicalDataSet()
         val januaryExId = insertException(seriesAId, januarySlot, januarySlot)
-        db.query("UPDATE transactions SET amount = 999.0 WHERE id = $januaryExId", null)
+        execSQL("UPDATE transactions SET amount = 999.0 WHERE id = $januaryExId")
         val controlBefore = controlState(observeTransactionsUseCase)
 
         val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
@@ -332,7 +355,8 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         assertEquals(999.0, rowJan.amount, 0.0)
         assertFalse(rowJan.deleted)
 
-        assertNotEquals(controlBefore.visibleSlotsOfB, emptyList<Long>()) // Use it to satisfy analyzer
+        assertEquals("L'isolation de B et de la ponctuelle doit etre preservee", controlBefore, controlState(observeTransactionsUseCase))
+        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
     }
 
     // =======================================================================================
@@ -351,8 +375,11 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         assertEquals("Loyer National", seriesA.title)
         assertEquals(1000.0, seriesA.amount, 0.0)
         
-        val visibleOfA = observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.seriesId == seriesAId }
+        val visible = observeVisibleTransactions(observeTransactionsUseCase)
+        val visibleOfA = visible.filter { it.transaction.seriesId == seriesAId }
+        assertEquals(3, visibleOfA.size)
         assertTrue(visibleOfA.all { it.transaction.amount == 1000.0 })
+        assertNoDuplicates(visible)
     }
 
     // =======================================================================================
@@ -372,9 +399,11 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         assertEquals(startOfDay(2024, 1, 5), seriesA.startDate)
 
         val visibleOfA = observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.seriesId == seriesAId }
+        // Oracle exact: co-affichage au 5 fév (exception du slot jan décalée + virtuel du slot fév)
         assertTrue(visibleOfA.any { it.transaction.date == startOfDay(2024, 1, 5) })
-        assertTrue(visibleOfA.any { it.transaction.date == startOfDay(2024, 2, 5) })
+        assertEquals(2, visibleOfA.count { it.transaction.date == startOfDay(2024, 2, 5) })
         assertTrue(visibleOfA.any { it.transaction.date == startOfDay(2024, 3, 5) })
+        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
     }
 
     // =======================================================================================
@@ -385,7 +414,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
     fun `E-11 - Given ALL edition on title only, When january has custom amount, Then january amount is preserved`() = runTest {
         seedCanonicalDataSet()
         val januaryExId = insertException(seriesAId, januarySlot, januarySlot)
-        db.query("UPDATE transactions SET amount = 999.0, note = 'Ma note' WHERE id = $januaryExId", null)
+        execSQL("UPDATE transactions SET amount = 999.0, note = 'Ma note' WHERE id = $januaryExId")
 
         val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
         val edition = editionFrom(februaryOccurrence, title = "Nouveau Titre")
@@ -396,6 +425,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         assertEquals("Nouveau Titre", rowJan.title)
         assertEquals("CA-05: L'exception devrait conserver son montant personnalise", 999.0, rowJan.amount, 0.0)
         assertEquals("CA-05: L'exception devrait conserver sa note", "Ma note", rowJan.note)
+        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
     }
 
     // =======================================================================================
@@ -415,6 +445,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
 
         val after = persistedRow(januaryExId)
         assertEquals("CA-05: L'exception ne devrait pas etre reecrite si rien n'a change", before, after)
+        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
     }
 
     // =======================================================================================
@@ -431,9 +462,19 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         
         assertTrue(observeSlotsOf(seriesAId, observeTransactionsUseCase).none { it > startOfDay(2024, 2, 15) })
 
-        // 2. Supprimer un slot de mars (tombstone) - on doit le faire via SQL ou forcer la création
-        db.query("INSERT INTO transactions (title, amount, type, status, kind, date, accountId, categoryId, seriesId, seriesDate, deleted) " +
-                "VALUES ('Loyer', 800.0, 'EXPENSE', 'PLANNED', 'STANDARD', $marchSlot, $accountId, $categoryId, $seriesAId, $marchSlot, 1)", null)
+        // 2. Supprimer un slot de mars (tombstone) via use case
+        val marchTwr = TransactionWithRelations(
+            transaction = TransactionEntity(
+                title = "Loyer", amount = 800.0, type = TransactionType.EXPENSE,
+                status = TransactionStatus.PLANNED, kind = com.lop.budget.domain.model.TransactionKind.STANDARD,
+                date = marchSlot, accountId = accountId, categoryId = categoryId,
+                seriesId = seriesAId, seriesDate = marchSlot
+            ),
+            category = null,
+            account = null,
+            tags = emptyList()
+        )
+        softDeleteUseCase(marchTwr)
 
         // 3. Retirer la date de fin
         val edition2 = editionFrom(februaryOccurrence, endDate = null)
@@ -443,6 +484,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         assertTrue(visibleSlots.contains(januarySlot))
         assertTrue(visibleSlots.contains(februarySlot))
         assertFalse("CA-10: Le slot de mars supprime (tombstone) ne doit pas reapparaitre", visibleSlots.contains(marchSlot))
+        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
     }
 
     // =======================================================================================
@@ -450,27 +492,30 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
     // =======================================================================================
 
     @Test
-    fun `E-14 - Given S F A editions, When applied, Then series B and punctual remain untouched`() = runTest {
+    fun `E-14a - Given SINGLE edition, When applied, Then series B and punctual remain untouched`() = runTest {
         seedCanonicalDataSet()
         val controlBefore = controlState(observeTransactionsUseCase)
-
-        // SINGLE
         val febA = virtualOccurrenceOfA(februarySlot)
         editTransactionWithScopeUseCase(febA.transaction.id, seriesAId, februarySlot, editionFrom(febA, title = "S"), EditScope.SINGLE)
         assertEquals(controlBefore, controlState(observeTransactionsUseCase))
+    }
 
-        // FUTURE (depuis mars pour ne pas impacter février qui est devenu une exception)
+    @Test
+    fun `E-14b - Given FUTURE edition, When applied, Then series B and punctual remain untouched`() = runTest {
+        seedCanonicalDataSet()
+        val controlBefore = controlState(observeTransactionsUseCase)
         val marchA = observeVisibleTransactions(observeTransactionsUseCase).single { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == marchSlot }
         editTransactionWithScopeUseCase(marchA.transaction.id, seriesAId, marchSlot, editionFrom(marchA, title = "F"), EditScope.FUTURE)
         assertEquals(controlBefore, controlState(observeTransactionsUseCase))
+    }
 
-        // ALL (sur la série de contrôle B pour varier)
-        val febB = observeVisibleTransactions(observeTransactionsUseCase).single { it.transaction.seriesId == seriesBId && it.transaction.seriesDate == seriesBFebruarySlot }
-        editTransactionWithScopeUseCase(febB.transaction.id, seriesBId, seriesBFebruarySlot, editionFrom(febB, title = "ALL B"), EditScope.ALL)
-        // Ici on ne compare pas controlState car on a modifié B. On vérifie juste A et ponctuelle.
-        val visible = observeVisibleTransactions(observeTransactionsUseCase)
-        assertTrue(visible.any { it.transaction.id == punctualId })
-        assertTrue(visible.any { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == januarySlot })
+    @Test
+    fun `E-14c - Given ALL edition, When applied, Then series B and punctual remain untouched`() = runTest {
+        seedCanonicalDataSet()
+        val controlBefore = controlState(observeTransactionsUseCase)
+        val febA = virtualOccurrenceOfA(februarySlot)
+        editTransactionWithScopeUseCase(febA.transaction.id, seriesAId, februarySlot, editionFrom(febA, title = "ALL"), EditScope.ALL)
+        assertEquals(controlBefore, controlState(observeTransactionsUseCase))
     }
 
     // =======================================================================================
@@ -491,6 +536,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
 
         val visible = observeVisibleTransactions(observeTransactionsUseCase)
         assertTrue("L'occurrence doit rester liee a la serie", visible.any { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == februarySlot })
+        assertNoDuplicates(visible)
     }
 
     // =======================================================================================
@@ -500,11 +546,14 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
     @Test
     fun `E-17 - Given materialized exception with tags, When SINGLE edition, Then tags are preserved`() = runTest {
         seedCanonicalDataSet()
-        val t1 = tagRepo.upsert(com.lop.budget.data.local.entity.TagEntity(name = "T1", colorArgb = 0))
-        val t2 = tagRepo.upsert(com.lop.budget.data.local.entity.TagEntity(name = "T2", colorArgb = 0))
+        val t1 = tagRepo.upsert(TagEntity(name = "T1", colorArgb = 0))
+        val t2 = tagRepo.upsert(TagEntity(name = "T2", colorArgb = 0))
         
         val materializedId = transactionRepo.materializeOccurrence(seriesAId, januarySlot)
-        transactionRepo.saveWithTags(transactionRepo.getById(materializedId)!!.transaction, listOf(t1, t2))
+        // Setup manuel sans passer par le système testé
+        transactionRepo.clearTags(materializedId)
+        transactionRepo.addTagCrossRef(TransactionTagCrossRef(materializedId, t1))
+        transactionRepo.addTagCrossRef(TransactionTagCrossRef(materializedId, t2))
         
         val occurrence = transactionRepo.getById(materializedId)!!
         val edition = editionFrom(occurrence, title = "Titre Tag")
@@ -514,11 +563,11 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         val updated = transactionRepo.getById(materializedId)!!
         assertEquals(2, updated.tags.size)
         // RED CA-12: Si upsert retourne -1, clearTags(-1) et addTagCrossRef(-1, ...) sont appeles.
-        // On verifie aussi l'absence de lignes -1 en base.
         db.query("SELECT COUNT(*) FROM transaction_tags WHERE transactionId = -1", null).use { cursor ->
             cursor.moveToFirst()
             assertEquals("CA-12: Pas de tags sur transactionId = -1", 0, cursor.getInt(0))
         }
+        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
     }
 
     // =======================================================================================
@@ -528,9 +577,11 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
     @Test
     fun `E-18 - Given punctual with tags, When T2 is removed in edition, Then only T1 remains`() = runTest {
         seedCanonicalDataSet()
-        val t1 = tagRepo.upsert(com.lop.budget.data.local.entity.TagEntity(name = "T1", colorArgb = 0))
-        val t2 = tagRepo.upsert(com.lop.budget.data.local.entity.TagEntity(name = "T2", colorArgb = 0))
-        transactionRepo.saveWithTags(transactionRepo.getById(punctualId)!!.transaction, listOf(t1, t2))
+        val t1 = tagRepo.upsert(TagEntity(name = "T1", colorArgb = 0))
+        val t2 = tagRepo.upsert(TagEntity(name = "T2", colorArgb = 0))
+        transactionRepo.clearTags(punctualId)
+        transactionRepo.addTagCrossRef(TransactionTagCrossRef(punctualId, t1))
+        transactionRepo.addTagCrossRef(TransactionTagCrossRef(punctualId, t2))
 
         val punctual = transactionRepo.getById(punctualId)!!
         val edition = editionFrom(punctual, tagIds = listOf(t1))
@@ -540,6 +591,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         val updated = transactionRepo.getById(punctualId)!!
         assertEquals(1, updated.tags.size)
         assertEquals(t1, updated.tags.single().id)
+        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
     }
 
     // =======================================================================================
@@ -551,7 +603,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         title: String = twr.transaction.title,
         amount: Double = twr.transaction.amount,
         date: Long = twr.transaction.date,
-        frequency: RecurrenceFrequency = RecurrenceFrequency.MONTHLY,
+        frequency: RecurrenceFrequency? = null,
         endDate: Long? = null,
         tagIds: List<Long> = twr.tags.map { it.id }
     ) = TransactionEdition(
@@ -563,7 +615,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         categoryId = twr.transaction.categoryId,
         note = twr.transaction.note,
         status = twr.transaction.status,
-        frequency = frequency,
+        frequency = frequency ?: if (twr.transaction.seriesId != null) RecurrenceFrequency.MONTHLY else RecurrenceFrequency.NONE,
         interval = 1,
         daysOfWeek = emptySet(),
         endDate = endDate,
@@ -587,5 +639,9 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         }
         assertTrue("L'occurrence doit etre virtuelle", occurrence.transaction.id < 0)
         return occurrence
+    }
+
+    private fun execSQL(sql: String) {
+        db.openHelper.writableDatabase.execSQL(sql)
     }
 }
