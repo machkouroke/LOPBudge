@@ -68,20 +68,18 @@ class EditTransactionWithScopeUseCase @Inject constructor(
         finalStatus: TransactionStatus,
         currentTwr: TransactionWithRelations?
     ): Long {
-        if (edition.frequency == RecurrenceFrequency.NONE) {
-            if (seriesId != null) {
-                cancelRecurringSeriesUseCase(seriesId, SeriesCancelMode.Future(originalSeriesDate))
-                return saveSimpleEdition(finalEditingId, edition, finalStatus, currentTwr, null, null, false)
-            } else {
-                return saveSimpleEdition(finalEditingId, edition, finalStatus, currentTwr, null, null, false)
-            }
-        } else {
-            if (seriesId != null) {
-                return saveSimpleEdition(finalEditingId, edition, finalStatus, currentTwr, seriesId, originalSeriesDate, true)
-            } else {
+        return when {
+            // Garde-fou I-5 : SINGLE ne modifie jamais la série et ne détache jamais l'occurrence.
+            seriesId != null -> saveSimpleEdition(
+                finalEditingId, edition, finalStatus, currentTwr, seriesId, originalSeriesDate, true
+            )
+            edition.frequency == RecurrenceFrequency.NONE -> saveSimpleEdition(
+                finalEditingId, edition, finalStatus, currentTwr, null, null, false
+            )
+            else -> {
                 transactionRepo.hardDelete(finalEditingId)
                 val newSeriesId = transactionRepo.upsertSeries(edition.toSeriesEntity())
-                return transactionRepo.materializeOccurrence(newSeriesId, edition.date)
+                transactionRepo.materializeOccurrence(newSeriesId, edition.date)
             }
         }
     }

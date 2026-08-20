@@ -112,8 +112,10 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
 
         syncProgressUseCase = SyncProgressUseCase(transactionRepo, goalRepo, debtRepo)
         saveTransactionUseCase = SaveTransactionUseCase(transactionRepo, syncProgressUseCase)
-        cancelRecurringSeriesUseCase = CancelRecurringSeriesUseCase(transactionRepo, syncProgressUseCase)
-        softDeleteUseCase = SoftDeleteTransactionOccurrenceUseCase(transactionRepo, syncProgressUseCase)
+        cancelRecurringSeriesUseCase =
+            CancelRecurringSeriesUseCase(transactionRepo, syncProgressUseCase)
+        softDeleteUseCase =
+            SoftDeleteTransactionOccurrenceUseCase(transactionRepo, syncProgressUseCase)
         editTransactionWithScopeUseCase = EditTransactionWithScopeUseCase(
             transactionRepo,
             saveTransactionUseCase,
@@ -136,463 +138,651 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
     // =======================================================================================
 
     @Test
-    fun `E-00 - Given the canonical data set, When observing, Then JDD is present and unique`() = runTest {
-        seedCanonicalDataSet()
+    fun `E-00 - Given the canonical data set, When observing, Then JDD is present and unique`() =
+        runTest {
+            seedCanonicalDataSet()
 
-        val visible = observeVisibleTransactions(observeTransactionsUseCase)
+            val visible = observeVisibleTransactions(observeTransactionsUseCase)
 
-        assertEquals(listOf(januarySlot, februarySlot, marchSlot), slotsOf(visible, seriesAId))
-        assertEquals(listOf(seriesBJanuarySlot, seriesBFebruarySlot, seriesBMarchSlot), slotsOf(visible, seriesBId))
-        assertEquals(1, visible.count { it.transaction.id == punctualId })
+            assertEquals(listOf(januarySlot, februarySlot, marchSlot), slotsOf(visible, seriesAId))
+            assertEquals(
+                listOf(seriesBJanuarySlot, seriesBFebruarySlot, seriesBMarchSlot),
+                slotsOf(visible, seriesBId)
+            )
+            assertEquals(1, visible.count { it.transaction.id == punctualId })
 
-        assertNoDuplicates(visible)
-        assertEquals(listOf(punctualId), persistedTransactions().map { it.id })
-    }
+            assertNoDuplicates(visible)
+            assertEquals(listOf(punctualId), persistedTransactions().map { it.id })
+        }
 
     // =======================================================================================
     // E-01
     // =======================================================================================
 
     @Test
-    fun `E-01 - Given virtual february occurrence, When SINGLE edition, Then it is persisted as exception and series A is unchanged`() = runTest {
-        seedCanonicalDataSet()
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val edition = editionFrom(februaryOccurrence, title = "Loyer Modifie", amount = 900.0)
+    fun `E-01 - Given virtual february occurrence, When SINGLE edition, Then it is persisted as exception and series A is unchanged`() =
+        runTest {
+            seedCanonicalDataSet()
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val edition = editionFrom(februaryOccurrence, title = "Loyer Modifie", amount = 900.0)
 
-        editTransactionWithScopeUseCase(
-            editingId = februaryOccurrence.transaction.id,
-            seriesId = seriesAId,
-            seriesDate = februarySlot,
-            edition = edition,
-            scope = EditScope.SINGLE
-        )
+            editTransactionWithScopeUseCase(
+                editingId = februaryOccurrence.transaction.id,
+                seriesId = seriesAId,
+                seriesDate = februarySlot,
+                edition = edition,
+                scope = EditScope.SINGLE
+            )
 
-        val visible = observeVisibleTransactions(observeTransactionsUseCase)
-        assertEquals(listOf(januarySlot, februarySlot, marchSlot), slotsOf(visible, seriesAId))
-        assertNoDuplicates(visible)
+            val visible = observeVisibleTransactions(observeTransactionsUseCase)
+            assertEquals(listOf(januarySlot, februarySlot, marchSlot), slotsOf(visible, seriesAId))
+            assertNoDuplicates(visible)
 
-        // Vérification adjacents
-        val jan = visible.single { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == januarySlot }
-        assertEquals(800.0, jan.transaction.amount, 0.0)
-        val mar = visible.single { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == marchSlot }
-        assertEquals(800.0, mar.transaction.amount, 0.0)
+            // Vérification adjacents
+            val jan =
+                visible.single { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == januarySlot }
+            assertEquals(800.0, jan.transaction.amount, 0.0)
+            val mar =
+                visible.single { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == marchSlot }
+            assertEquals(800.0, mar.transaction.amount, 0.0)
 
-        val persistedRows = persistedRowsForSlot(seriesAId, februarySlot)
-        assertEquals(1, persistedRows.size)
-        val row = persistedRows.single()
-        assertTrue(row.isException)
-        assertEquals("Loyer Modifie", row.title)
-        assertEquals(900.0, row.amount, 0.0)
+            val persistedRows = persistedRowsForSlot(seriesAId, februarySlot)
+            assertEquals(1, persistedRows.size)
+            val row = persistedRows.single()
+            assertTrue(row.isException)
+            assertEquals("Loyer Modifie", row.title)
+            assertEquals(900.0, row.amount, 0.0)
 
-        val seriesA = transactionRepo.getSeriesById(seriesAId)!!
-        assertEquals("Loyer", seriesA.title)
-        assertEquals(800.0, seriesA.amount, 0.0)
-    }
+            val seriesA = transactionRepo.getSeriesById(seriesAId)!!
+            assertEquals("Loyer", seriesA.title)
+            assertEquals(800.0, seriesA.amount, 0.0)
+        }
 
     // =======================================================================================
     // E-02
     // =======================================================================================
 
     @Test
-    fun `E-02 - Given same slot edited twice in SINGLE, When executed, Then it remains idempotent with a single row`() = runTest {
-        seedCanonicalDataSet()
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val edition1 = editionFrom(februaryOccurrence, title = "Ed 1")
-        val edition2 = editionFrom(februaryOccurrence, title = "Ed 2")
+    fun `E-02 - Given same slot edited twice in SINGLE, When executed, Then it remains idempotent with a single row`() =
+        runTest {
+            seedCanonicalDataSet()
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val edition1 = editionFrom(februaryOccurrence, title = "Ed 1")
+            val edition2 = editionFrom(februaryOccurrence, title = "Ed 2")
 
-        val id1 = editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition1, EditScope.SINGLE)
-        assertTrue("L'ID retourne doit etre positif (RED: propagation du -1 d'upsert)", id1 > 0)
-        
-        val id2 = editTransactionWithScopeUseCase(id1, seriesAId, februarySlot, edition2, EditScope.SINGLE)
+            val id1 = editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition1,
+                EditScope.SINGLE
+            )
+            assertTrue("L'ID retourne doit etre positif (RED: propagation du -1 d'upsert)", id1 > 0)
 
-        assertEquals(id1, id2)
-        val persistedRows = persistedRowsForSlot(seriesAId, februarySlot)
-        assertEquals(1, persistedRows.size)
-        assertEquals("Ed 2", persistedRows.single().title)
-        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
-    }
+            val id2 = editTransactionWithScopeUseCase(
+                id1,
+                seriesAId,
+                februarySlot,
+                edition2,
+                EditScope.SINGLE
+            )
+
+            assertEquals(id1, id2)
+            val persistedRows = persistedRowsForSlot(seriesAId, februarySlot)
+            assertEquals(1, persistedRows.size)
+            assertEquals("Ed 2", persistedRows.single().title)
+            assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
+        }
 
     // =======================================================================================
     // E-03
     // =======================================================================================
 
     @Test
-    fun `E-03 - Given SINGLE with date move, When executed, Then date changes but seriesDate remains unchanged`() = runTest {
-        seedCanonicalDataSet()
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val movedDate = startOfDay(2024, 2, 5)
-        val edition = editionFrom(februaryOccurrence, date = movedDate)
+    fun `E-03 - Given SINGLE with date move, When executed, Then date changes but seriesDate remains unchanged`() =
+        runTest {
+            seedCanonicalDataSet()
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val movedDate = startOfDay(2024, 2, 5)
+            val edition = editionFrom(februaryOccurrence, date = movedDate)
 
-        editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition, EditScope.SINGLE)
+            editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition,
+                EditScope.SINGLE
+            )
 
-        val persistedRows = persistedRowsForSlot(seriesAId, februarySlot)
-        assertEquals(1, persistedRows.size)
-        val row = persistedRows.single()
-        assertEquals(movedDate, row.date)
-        assertEquals(februarySlot, row.seriesDate)
+            val persistedRows = persistedRowsForSlot(seriesAId, februarySlot)
+            assertEquals(1, persistedRows.size)
+            val row = persistedRows.single()
+            assertEquals(movedDate, row.date)
+            assertEquals(februarySlot, row.seriesDate)
 
-        val visibleOfA = observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.seriesId == seriesAId }
-        assertTrue(visibleOfA.any { it.transaction.date == movedDate && it.transaction.seriesDate == februarySlot })
-        assertTrue(visibleOfA.none { it.transaction.date == februarySlot })
-        assertNoDuplicates(visibleOfA)
-    }
+            val visibleOfA =
+                observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.seriesId == seriesAId }
+            assertTrue(visibleOfA.any { it.transaction.date == movedDate && it.transaction.seriesDate == februarySlot })
+            assertTrue(visibleOfA.none { it.transaction.date == februarySlot })
+            assertNoDuplicates(visibleOfA)
+        }
 
     // =======================================================================================
     // E-04
     // =======================================================================================
 
     @Test
-    fun `E-04 - Given FUTURE edition from february, When executed, Then series A is truncated and a new series is created`() = runTest {
-        seedCanonicalDataSet()
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val edition = editionFrom(februaryOccurrence, amount = 850.0)
+    fun `E-04 - Given FUTURE edition from february, When executed, Then series A is truncated and a new series is created`() =
+        runTest {
+            seedCanonicalDataSet()
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val edition = editionFrom(februaryOccurrence, amount = 850.0)
 
-        editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition, EditScope.FUTURE)
+            editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition,
+                EditScope.FUTURE
+            )
 
-        val seriesA = transactionRepo.getSeriesById(seriesAId)!!
-        assertEquals("La serie A doit etre tronquee au slot - 1ms", februarySlot - 1, seriesA.endDate)
-        assertFalse(seriesA.isCancelled)
+            val seriesA = transactionRepo.getSeriesById(seriesAId)!!
+            assertEquals(
+                "La serie A doit etre tronquee au slot - 1ms",
+                februarySlot - 1,
+                seriesA.endDate
+            )
+            assertFalse(seriesA.isCancelled)
 
-        val allSeries = db.recurringSeriesDao().observeActiveSeries().first()
-        val newSeries = allSeries.single { it.id != seriesAId && it.id != seriesBId }
-        assertEquals(februarySlot, newSeries.startDate)
-        assertEquals(850.0, newSeries.amount, 0.0)
+            val allSeries = db.recurringSeriesDao().observeActiveSeries().first()
+            val newSeries = allSeries.single { it.id != seriesAId && it.id != seriesBId }
+            assertEquals(februarySlot, newSeries.startDate)
+            assertEquals(850.0, newSeries.amount, 0.0)
 
-        val visible = observeVisibleTransactions(observeTransactionsUseCase)
-        val visibleOfA = visible.filter { it.transaction.title == "Loyer" }
-        // Janvier (Série A), Février (Série Nouvelle), Mars (Série Nouvelle)
-        assertEquals(3, visibleOfA.size)
-        assertTrue(visibleOfA.any { it.transaction.date == januarySlot && it.transaction.amount == 800.0 })
-        assertTrue(visibleOfA.any { it.transaction.date == februarySlot && it.transaction.amount == 850.0 })
-        assertTrue(visibleOfA.any { it.transaction.date == marchSlot && it.transaction.amount == 850.0 })
-        assertNoDuplicates(visible)
-    }
+            val visible = observeVisibleTransactions(observeTransactionsUseCase)
+            val visibleOfA = visible.filter { it.transaction.title == "Loyer" }
+            // Janvier (Série A), Février (Série Nouvelle), Mars (Série Nouvelle)
+            assertEquals(3, visibleOfA.size)
+            assertTrue(visibleOfA.any { it.transaction.date == januarySlot && it.transaction.amount == 800.0 })
+            assertTrue(visibleOfA.any { it.transaction.date == februarySlot && it.transaction.amount == 850.0 })
+            assertTrue(visibleOfA.any { it.transaction.date == marchSlot && it.transaction.amount == 850.0 })
+            assertNoDuplicates(visible)
+        }
 
     // =======================================================================================
     // E-05
     // =======================================================================================
 
     @Test
-    fun `E-05 - Given FUTURE with moved back date (1 feb to 5 feb), When executed, Then old slot is gone and new one is at 5 feb`() = runTest {
-        seedCanonicalDataSet()
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val movedDate = startOfDay(2024, 2, 5)
-        val edition = editionFrom(februaryOccurrence, date = movedDate)
+    fun `E-05 - Given FUTURE with moved back date (1 feb to 5 feb), When executed, Then old slot is gone and new one is at 5 feb`() =
+        runTest {
+            seedCanonicalDataSet()
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val movedDate = startOfDay(2024, 2, 5)
+            val edition = editionFrom(februaryOccurrence, date = movedDate)
 
-        editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition, EditScope.FUTURE)
+            editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition,
+                EditScope.FUTURE
+            )
 
-        val visibleOfA = observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.title == "Loyer" }
-        assertTrue(visibleOfA.none { it.transaction.date == februarySlot })
-        assertTrue(visibleOfA.any { it.transaction.date == movedDate })
-        assertTrue(visibleOfA.any { it.transaction.date == januarySlot })
-        // Mars devrait aussi être décalé au 5 mars car la nouvelle série hérite du jour de `date`
-        assertTrue(visibleOfA.any { it.transaction.date == startOfDay(2024, 3, 5) })
-        assertNoDuplicates(visibleOfA)
-    }
+            val visibleOfA =
+                observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.title == "Loyer" }
+            assertTrue(visibleOfA.none { it.transaction.date == februarySlot })
+            assertTrue(visibleOfA.any { it.transaction.date == movedDate })
+            assertTrue(visibleOfA.any { it.transaction.date == januarySlot })
+            // Mars devrait aussi être décalé au 5 mars car la nouvelle série hérite du jour de `date`
+            assertTrue(visibleOfA.any { it.transaction.date == startOfDay(2024, 3, 5) })
+            assertNoDuplicates(visibleOfA)
+        }
 
     // =======================================================================================
     // E-06
     // =======================================================================================
 
     @Test
-    fun `E-06 - Given FUTURE with moved forward date (1 feb to 25 jan), When executed, Then old slot of jan is preserved and no duplicates`() = runTest {
-        seedCanonicalDataSet()
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val movedDate = startOfDay(2024, 1, 25)
-        val edition = editionFrom(februaryOccurrence, date = movedDate)
+    fun `E-06 - Given FUTURE with moved forward date (1 feb to 25 jan), When executed, Then old slot of jan is preserved and no duplicates`() =
+        runTest {
+            seedCanonicalDataSet()
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val movedDate = startOfDay(2024, 1, 25)
+            val edition = editionFrom(februaryOccurrence, date = movedDate)
 
-        editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition, EditScope.FUTURE)
+            editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition,
+                EditScope.FUTURE
+            )
 
-        val visibleOfA = observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.title == "Loyer" }
-        assertTrue(visibleOfA.any { it.transaction.date == januarySlot })
-        assertTrue(visibleOfA.any { it.transaction.date == movedDate })
-        assertNoDuplicates(visibleOfA)
-    }
+            val visibleOfA =
+                observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.title == "Loyer" }
+            assertTrue(visibleOfA.any { it.transaction.date == januarySlot })
+            assertTrue(visibleOfA.any { it.transaction.date == movedDate })
+            assertNoDuplicates(visibleOfA)
+        }
 
     // =======================================================================================
     // E-07
     // =======================================================================================
 
     @Test
-    fun `E-07 - Given PAID materialized occurrence, When FUTURE edition, Then new materialized occurrence is also PAID`() = runTest {
-        seedCanonicalDataSet()
-        val materializedId = transactionRepo.materializeOccurrence(seriesAId, februarySlot)
-        val materializedTx = transactionRepo.getById(materializedId)!!.transaction
-        transactionRepo.upsert(materializedTx.copy(status = TransactionStatus.PAID, paidAt = 123456789L))
-        
-        val februaryOccurrence = requireNotNull(transactionRepo.getById(materializedId))
-        val edition = editionFrom(februaryOccurrence, title = "Loyer PAID")
+    fun `E-07 - Given PAID materialized occurrence, When FUTURE edition, Then new materialized occurrence is also PAID`() =
+        runTest {
+            seedCanonicalDataSet()
+            val materializedId = transactionRepo.materializeOccurrence(seriesAId, februarySlot)
+            val materializedTx = transactionRepo.getById(materializedId)!!.transaction
+            transactionRepo.upsert(
+                materializedTx.copy(
+                    status = TransactionStatus.PAID,
+                    paidAt = 123456789L
+                )
+            )
 
-        editTransactionWithScopeUseCase(materializedId, seriesAId, februarySlot, edition, EditScope.FUTURE)
+            val februaryOccurrence = requireNotNull(transactionRepo.getById(materializedId))
+            val edition = editionFrom(februaryOccurrence, title = "Loyer PAID")
 
-        val visible = observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.title == "Loyer PAID" }
-        val pivot = visible.single { it.transaction.seriesDate == februarySlot }
-        assertEquals(TransactionStatus.PAID, pivot.transaction.status)
-        assertEquals(123456789L, pivot.transaction.paidAt)
-        
-        val others = visible.filter { it.transaction.seriesDate != februarySlot }
-        assertTrue(others.all { it.transaction.status == TransactionStatus.PLANNED })
-        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
-    }
+            editTransactionWithScopeUseCase(
+                materializedId,
+                seriesAId,
+                februarySlot,
+                edition,
+                EditScope.FUTURE
+            )
+
+            val visible =
+                observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.title == "Loyer PAID" }
+            val pivot = visible.single { it.transaction.seriesDate == februarySlot }
+            assertEquals(TransactionStatus.PAID, pivot.transaction.status)
+            assertEquals(123456789L, pivot.transaction.paidAt)
+
+            val others = visible.filter { it.transaction.seriesDate != februarySlot }
+            assertTrue(others.all { it.transaction.status == TransactionStatus.PLANNED })
+            assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
+        }
 
     // =======================================================================================
     // E-08
     // =======================================================================================
 
     @Test
-    fun `E-08 - Given exception in january, When FUTURE edition from february, Then january exception is untouched`() = runTest {
-        seedCanonicalDataSet()
-        val januaryExId = insertException(seriesAId, januarySlot, januarySlot)
-        execSQL("UPDATE transactions SET amount = 999.0 WHERE id = $januaryExId")
-        val controlBefore = controlState(observeTransactionsUseCase)
+    fun `E-08 - Given exception in january, When FUTURE edition from february, Then january exception is untouched`() =
+        runTest {
+            seedCanonicalDataSet()
+            val januaryExId = insertException(seriesAId, januarySlot, januarySlot)
+            execSQL("UPDATE transactions SET amount = 999.0 WHERE id = $januaryExId")
+            val controlBefore = controlState(observeTransactionsUseCase)
 
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val edition = editionFrom(februaryOccurrence, title = "Future Loyer")
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val edition = editionFrom(februaryOccurrence, title = "Future Loyer")
 
-        editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition, EditScope.FUTURE)
+            editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition,
+                EditScope.FUTURE
+            )
 
-        val rowJan = persistedRow(januaryExId)
-        assertEquals(999.0, rowJan.amount, 0.0)
-        assertFalse(rowJan.deleted)
+            val rowJan = persistedRow(januaryExId)
+            assertEquals(999.0, rowJan.amount, 0.0)
+            assertFalse(rowJan.deleted)
 
-        assertEquals("L'isolation de B et de la ponctuelle doit etre preservee", controlBefore, controlState(observeTransactionsUseCase))
-        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
-    }
+            assertEquals(
+                "L'isolation de B et de la ponctuelle doit etre preservee",
+                controlBefore,
+                controlState(observeTransactionsUseCase)
+            )
+            assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
+        }
 
     // =======================================================================================
     // E-09
     // =======================================================================================
 
     @Test
-    fun `E-09 - Given ALL edition without date change, When executed, Then series is updated in place`() = runTest {
-        seedCanonicalDataSet()
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val edition = editionFrom(februaryOccurrence, title = "Loyer National", amount = 1000.0)
+    fun `E-09 - Given ALL edition without date change, When executed, Then series is updated in place`() =
+        runTest {
+            seedCanonicalDataSet()
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val edition = editionFrom(februaryOccurrence, title = "Loyer National", amount = 1000.0)
 
-        editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition, EditScope.ALL)
+            editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition,
+                EditScope.ALL
+            )
 
-        val seriesA = transactionRepo.getSeriesById(seriesAId)!!
-        assertEquals("Loyer National", seriesA.title)
-        assertEquals(1000.0, seriesA.amount, 0.0)
-        
-        val visible = observeVisibleTransactions(observeTransactionsUseCase)
-        val visibleOfA = visible.filter { it.transaction.seriesId == seriesAId }
-        assertEquals(3, visibleOfA.size)
-        assertTrue(visibleOfA.all { it.transaction.amount == 1000.0 })
-        assertNoDuplicates(visible)
-    }
+            val seriesA = transactionRepo.getSeriesById(seriesAId)!!
+            assertEquals("Loyer National", seriesA.title)
+            assertEquals(1000.0, seriesA.amount, 0.0)
+
+            val visible = observeVisibleTransactions(observeTransactionsUseCase)
+            val visibleOfA = visible.filter { it.transaction.seriesId == seriesAId }
+            assertEquals(3, visibleOfA.size)
+            assertTrue(visibleOfA.all { it.transaction.amount == 1000.0 })
+            assertNoDuplicates(visible)
+        }
 
     // =======================================================================================
     // E-10
     // =======================================================================================
 
     @Test
-    fun `E-10 - Given ALL edition with day change, When executed, Then startDate is recalibrated`() = runTest {
-        seedCanonicalDataSet()
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val movedDate = startOfDay(2024, 2, 5)
-        val edition = editionFrom(februaryOccurrence, date = movedDate)
+    fun `E-10 - Given ALL edition with day change, When executed, Then startDate is recalibrated`() =
+        runTest {
+            seedCanonicalDataSet()
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val movedDate = startOfDay(2024, 2, 5)
+            val edition = editionFrom(februaryOccurrence, date = movedDate)
 
-        editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition, EditScope.ALL)
+            editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition,
+                EditScope.ALL
+            )
 
-        val seriesA = transactionRepo.getSeriesById(seriesAId)!!
-        assertEquals(startOfDay(2024, 1, 5), seriesA.startDate)
+            val seriesA = transactionRepo.getSeriesById(seriesAId)!!
+            assertEquals(startOfDay(2024, 1, 5), seriesA.startDate)
 
-        val visibleOfA = observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.seriesId == seriesAId }
-        // Oracle exact: co-affichage au 5 fév (exception du slot jan décalée + virtuel du slot fév)
-        assertTrue(visibleOfA.any { it.transaction.date == startOfDay(2024, 1, 5) })
-        assertEquals(2, visibleOfA.count { it.transaction.date == startOfDay(2024, 2, 5) })
-        assertTrue(visibleOfA.any { it.transaction.date == startOfDay(2024, 3, 5) })
-        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
-    }
+            val visibleOfA =
+                observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.seriesId == seriesAId }
+            // Oracle exact: co-affichage au 5 fév (exception du slot jan décalée + virtuel du slot fév)
+            assertTrue(visibleOfA.any { it.transaction.date == startOfDay(2024, 1, 5) })
+            assertEquals(2, visibleOfA.count { it.transaction.date == startOfDay(2024, 2, 5) })
+            assertTrue(visibleOfA.any { it.transaction.date == startOfDay(2024, 3, 5) })
+            assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
+        }
 
     // =======================================================================================
     // E-11 (RED CA-05)
     // =======================================================================================
 
     @Test
-    fun `E-11 - Given ALL edition on title only, When january has custom amount, Then january amount is preserved`() = runTest {
-        seedCanonicalDataSet()
-        val januaryExId = insertException(seriesAId, januarySlot, januarySlot)
-        execSQL("UPDATE transactions SET amount = 999.0, note = 'Ma note' WHERE id = $januaryExId")
+    fun `E-11 - Given ALL edition on title only, When january has custom amount, Then january amount is preserved`() =
+        runTest {
+            seedCanonicalDataSet()
+            val januaryExId = insertException(seriesAId, januarySlot, januarySlot)
+            execSQL("UPDATE transactions SET amount = 999.0, note = 'Ma note' WHERE id = $januaryExId")
 
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val edition = editionFrom(februaryOccurrence, title = "Nouveau Titre")
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val edition = editionFrom(februaryOccurrence, title = "Nouveau Titre")
 
-        editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition, EditScope.ALL)
+            editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition,
+                EditScope.ALL
+            )
 
-        val rowJan = persistedRow(januaryExId)
-        assertEquals("Nouveau Titre", rowJan.title)
-        assertEquals("CA-05: L'exception devrait conserver son montant personnalise", 999.0, rowJan.amount, 0.0)
-        assertEquals("CA-05: L'exception devrait conserver sa note", "Ma note", rowJan.note)
-        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
-    }
+            val rowJan = persistedRow(januaryExId)
+            assertEquals("Nouveau Titre", rowJan.title)
+            assertEquals(
+                "CA-05: L'exception devrait conserver son montant personnalise",
+                999.0,
+                rowJan.amount,
+                0.0
+            )
+            assertEquals("CA-05: L'exception devrait conserver sa note", "Ma note", rowJan.note)
+            assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
+        }
 
     // =======================================================================================
     // E-12 (RED CA-05)
     // =======================================================================================
 
     @Test
-    fun `E-12 - Given ALL edition equal to series values, When executed, Then existing exceptions are strictly unchanged`() = runTest {
-        seedCanonicalDataSet()
-        val januaryExId = insertException(seriesAId, januarySlot, januarySlot)
-        val before = persistedRow(januaryExId)
+    fun `E-12 - Given ALL edition equal to series values, When executed, Then existing exceptions are strictly unchanged`() =
+        runTest {
+            seedCanonicalDataSet()
+            val januaryExId = insertException(seriesAId, januarySlot, januarySlot)
+            val before = persistedRow(januaryExId)
 
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val edition = editionFrom(februaryOccurrence) // Aucune modification
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val edition = editionFrom(februaryOccurrence) // Aucune modification
 
-        editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition, EditScope.ALL)
+            editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition,
+                EditScope.ALL
+            )
 
-        val after = persistedRow(januaryExId)
-        assertEquals("CA-05: L'exception ne devrait pas etre reecrite si rien n'a change", before, after)
-        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
-    }
+            val after = persistedRow(januaryExId)
+            assertEquals(
+                "CA-05: L'exception ne devrait pas etre reecrite si rien n'a change",
+                before,
+                after
+            )
+            assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
+        }
 
     // =======================================================================================
     // E-13
     // =======================================================================================
 
     @Test
-    fun `E-13 - Given series with endDate and tombstone in march, When endDate is removed in ALL, Then march slot remains deleted`() = runTest {
-        seedCanonicalDataSet()
-        // 1. Poser une date de fin au 15 fév
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val edition1 = editionFrom(februaryOccurrence, endDate = startOfDay(2024, 2, 15))
-        editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition1, EditScope.ALL)
-        
-        assertTrue(observeSlotsOf(seriesAId, observeTransactionsUseCase).none { it > startOfDay(2024, 2, 15) })
+    fun `E-13 - Given series with endDate and tombstone in march, When endDate is removed in ALL, Then march slot remains deleted`() =
+        runTest {
+            seedCanonicalDataSet()
+            // 1. Poser une date de fin au 15 fév
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val edition1 = editionFrom(februaryOccurrence, endDate = startOfDay(2024, 2, 15))
+            editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition1,
+                EditScope.ALL
+            )
 
-        // 2. Supprimer un slot de mars (tombstone) via use case
-        val marchTwr = TransactionWithRelations(
-            transaction = TransactionEntity(
-                title = "Loyer", amount = 800.0, type = TransactionType.EXPENSE,
-                status = TransactionStatus.PLANNED, kind = com.lop.budget.domain.model.TransactionKind.STANDARD,
-                date = marchSlot, accountId = accountId, categoryId = categoryId,
-                seriesId = seriesAId, seriesDate = marchSlot
-            ),
-            category = null,
-            account = null,
-            tags = emptyList()
-        )
-        softDeleteUseCase(marchTwr)
+            assertTrue(observeSlotsOf(seriesAId, observeTransactionsUseCase).none {
+                it > startOfDay(
+                    2024,
+                    2,
+                    15
+                )
+            })
 
-        // 3. Retirer la date de fin
-        val edition2 = editionFrom(februaryOccurrence, endDate = null)
-        editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition2, EditScope.ALL)
+            // 2. Supprimer un slot de mars (tombstone) via use case
+            val marchTwr = TransactionWithRelations(
+                transaction = TransactionEntity(
+                    title = "Loyer",
+                    amount = 800.0,
+                    type = TransactionType.EXPENSE,
+                    status = TransactionStatus.PLANNED,
+                    kind = com.lop.budget.domain.model.TransactionKind.STANDARD,
+                    date = marchSlot,
+                    accountId = accountId,
+                    categoryId = categoryId,
+                    seriesId = seriesAId,
+                    seriesDate = marchSlot
+                ),
+                category = null,
+                account = null,
+                tags = emptyList()
+            )
+            softDeleteUseCase(marchTwr)
 
-        val visibleSlots = observeSlotsOf(seriesAId, observeTransactionsUseCase)
-        assertTrue(visibleSlots.contains(januarySlot))
-        assertTrue(visibleSlots.contains(februarySlot))
-        assertFalse("CA-10: Le slot de mars supprime (tombstone) ne doit pas reapparaitre", visibleSlots.contains(marchSlot))
-        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
-    }
+            // 3. Retirer la date de fin
+            val edition2 = editionFrom(februaryOccurrence, endDate = null)
+            editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition2,
+                EditScope.ALL
+            )
+
+            val visibleSlots = observeSlotsOf(seriesAId, observeTransactionsUseCase)
+            assertTrue(visibleSlots.contains(januarySlot))
+            assertTrue(visibleSlots.contains(februarySlot))
+            assertFalse(
+                "CA-10: Le slot de mars supprime (tombstone) ne doit pas reapparaitre",
+                visibleSlots.contains(marchSlot)
+            )
+            assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
+        }
 
     // =======================================================================================
     // E-14
     // =======================================================================================
 
     @Test
-    fun `E-14a - Given SINGLE edition, When applied, Then series B and punctual remain untouched`() = runTest {
-        seedCanonicalDataSet()
-        val controlBefore = controlState(observeTransactionsUseCase)
-        val febA = virtualOccurrenceOfA(februarySlot)
-        editTransactionWithScopeUseCase(febA.transaction.id, seriesAId, februarySlot, editionFrom(febA, title = "S"), EditScope.SINGLE)
-        assertEquals(controlBefore, controlState(observeTransactionsUseCase))
-    }
+    fun `E-14a - Given SINGLE edition, When applied, Then series B and punctual remain untouched`() =
+        runTest {
+            seedCanonicalDataSet()
+            val controlBefore = controlState(observeTransactionsUseCase)
+            val febA = virtualOccurrenceOfA(februarySlot)
+            editTransactionWithScopeUseCase(
+                febA.transaction.id,
+                seriesAId,
+                februarySlot,
+                editionFrom(febA, title = "S"),
+                EditScope.SINGLE
+            )
+            assertEquals(controlBefore, controlState(observeTransactionsUseCase))
+        }
 
     @Test
-    fun `E-14b - Given FUTURE edition, When applied, Then series B and punctual remain untouched`() = runTest {
-        seedCanonicalDataSet()
-        val controlBefore = controlState(observeTransactionsUseCase)
-        val marchA = observeVisibleTransactions(observeTransactionsUseCase).single { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == marchSlot }
-        editTransactionWithScopeUseCase(marchA.transaction.id, seriesAId, marchSlot, editionFrom(marchA, title = "F"), EditScope.FUTURE)
-        assertEquals(controlBefore, controlState(observeTransactionsUseCase))
-    }
+    fun `E-14b - Given FUTURE edition, When applied, Then series B and punctual remain untouched`() =
+        runTest {
+            seedCanonicalDataSet()
+            val controlBefore = controlState(observeTransactionsUseCase)
+            val marchA =
+                observeVisibleTransactions(observeTransactionsUseCase).single { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == marchSlot }
+            editTransactionWithScopeUseCase(
+                marchA.transaction.id,
+                seriesAId,
+                marchSlot,
+                editionFrom(marchA, title = "F"),
+                EditScope.FUTURE
+            )
+            assertEquals(controlBefore, controlState(observeTransactionsUseCase))
+        }
 
     @Test
-    fun `E-14c - Given ALL edition, When applied, Then series B and punctual remain untouched`() = runTest {
-        seedCanonicalDataSet()
-        val controlBefore = controlState(observeTransactionsUseCase)
-        val febA = virtualOccurrenceOfA(februarySlot)
-        editTransactionWithScopeUseCase(febA.transaction.id, seriesAId, februarySlot, editionFrom(febA, title = "ALL"), EditScope.ALL)
-        assertEquals(controlBefore, controlState(observeTransactionsUseCase))
-    }
+    fun `E-14c - Given ALL edition, When applied, Then series B and punctual remain untouched`() =
+        runTest {
+            seedCanonicalDataSet()
+            val controlBefore = controlState(observeTransactionsUseCase)
+            val febA = virtualOccurrenceOfA(februarySlot)
+            editTransactionWithScopeUseCase(
+                febA.transaction.id,
+                seriesAId,
+                februarySlot,
+                editionFrom(febA, title = "ALL"),
+                EditScope.ALL
+            )
+            assertEquals(controlBefore, controlState(observeTransactionsUseCase))
+        }
 
     // =======================================================================================
     // E-16 (RED I-5)
     // =======================================================================================
 
     @Test
-    fun `E-16 - Given SINGLE edition with frequency NONE, When executed, Then series is NOT truncated`() = runTest {
-        seedCanonicalDataSet()
-        val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-        val edition = editionFrom(februaryOccurrence, frequency = RecurrenceFrequency.NONE)
+    fun `E-16 - Given SINGLE edition with frequency NONE, When executed, Then series is NOT truncated`() =
+        runTest {
+            seedCanonicalDataSet()
+            val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val edition = editionFrom(februaryOccurrence, frequency = RecurrenceFrequency.NONE)
 
-        editTransactionWithScopeUseCase(februaryOccurrence.transaction.id, seriesAId, februarySlot, edition, EditScope.SINGLE)
+            editTransactionWithScopeUseCase(
+                februaryOccurrence.transaction.id,
+                seriesAId,
+                februarySlot,
+                edition,
+                EditScope.SINGLE
+            )
 
-        val seriesA = transactionRepo.getSeriesById(seriesAId)!!
-        assertFalse("I-5: La serie ne doit pas etre annulee", seriesA.isCancelled)
-        assertTrue("I-5: La serie ne doit pas etre tronquee", seriesA.endDate == null || seriesA.endDate!! > marchSlot)
+            val seriesA = transactionRepo.getSeriesById(seriesAId)!!
+            assertFalse("I-5: La serie ne doit pas etre annulee", seriesA.isCancelled)
+            assertTrue(
+                "I-5: La serie ne doit pas etre tronquee",
+                seriesA.endDate == null || seriesA.endDate!! > marchSlot
+            )
 
-        val visible = observeVisibleTransactions(observeTransactionsUseCase)
-        assertTrue("L'occurrence doit rester liee a la serie", visible.any { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == februarySlot })
-        assertNoDuplicates(visible)
-    }
+            val visible = observeVisibleTransactions(observeTransactionsUseCase)
+            assertTrue(
+                "L'occurrence doit rester liee a la serie",
+                visible.any { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == februarySlot })
+            assertNoDuplicates(visible)
+        }
 
     // =======================================================================================
     // E-17 (RED CA-12)
     // =======================================================================================
 
     @Test
-    fun `E-17 - Given materialized exception with tags, When SINGLE edition, Then tags are preserved`() = runTest {
-        seedCanonicalDataSet()
-        val t1 = tagRepo.upsert(TagEntity(name = "T1", colorArgb = 0))
-        val t2 = tagRepo.upsert(TagEntity(name = "T2", colorArgb = 0))
-        
-        val materializedId = transactionRepo.materializeOccurrence(seriesAId, januarySlot)
-        // Setup manuel sans passer par le système testé
-        transactionRepo.clearTags(materializedId)
-        transactionRepo.addTagCrossRef(TransactionTagCrossRef(materializedId, t1))
-        transactionRepo.addTagCrossRef(TransactionTagCrossRef(materializedId, t2))
-        
-        val occurrence = transactionRepo.getById(materializedId)!!
-        val edition = editionFrom(occurrence, title = "Titre Tag")
+    fun `E-17 - Given materialized exception with tags, When SINGLE edition, Then tags are preserved`() =
+        runTest {
+            seedCanonicalDataSet()
+            val t1 = tagRepo.upsert(TagEntity(name = "T1", colorArgb = 0))
+            val t2 = tagRepo.upsert(TagEntity(name = "T2", colorArgb = 0))
 
-        editTransactionWithScopeUseCase(materializedId, seriesAId, januarySlot, edition, EditScope.SINGLE)
+            val materializedId = transactionRepo.materializeOccurrence(seriesAId, januarySlot)
+            // Setup manuel sans passer par le système testé
+            transactionRepo.clearTags(materializedId)
+            transactionRepo.addTagCrossRef(TransactionTagCrossRef(materializedId, t1))
+            transactionRepo.addTagCrossRef(TransactionTagCrossRef(materializedId, t2))
 
-        val updated = transactionRepo.getById(materializedId)!!
-        assertEquals(2, updated.tags.size)
-        // RED CA-12: Si upsert retourne -1, clearTags(-1) et addTagCrossRef(-1, ...) sont appeles.
-        db.query("SELECT COUNT(*) FROM transaction_tags WHERE transactionId = -1", null).use { cursor ->
-            cursor.moveToFirst()
-            assertEquals("CA-12: Pas de tags sur transactionId = -1", 0, cursor.getInt(0))
+            val occurrence = transactionRepo.getById(materializedId)!!
+            val edition = editionFrom(occurrence, title = "Titre Tag")
+
+            editTransactionWithScopeUseCase(
+                materializedId,
+                seriesAId,
+                januarySlot,
+                edition,
+                EditScope.SINGLE
+            )
+
+            val updated = transactionRepo.getById(materializedId)!!
+            assertEquals(2, updated.tags.size)
+            // RED CA-12: Si upsert retourne -1, clearTags(-1) et addTagCrossRef(-1, ...) sont appeles.
+            db.query("SELECT COUNT(*) FROM transaction_tags WHERE transactionId = -1", null)
+                .use { cursor ->
+                    cursor.moveToFirst()
+                    assertEquals("CA-12: Pas de tags sur transactionId = -1", 0, cursor.getInt(0))
+                }
+            assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
         }
-        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
-    }
 
     // =======================================================================================
     // E-18 (RED CA-12)
     // =======================================================================================
 
     @Test
-    fun `E-18 - Given punctual with tags, When T2 is removed in edition, Then only T1 remains`() = runTest {
-        seedCanonicalDataSet()
-        val t1 = tagRepo.upsert(TagEntity(name = "T1", colorArgb = 0))
-        val t2 = tagRepo.upsert(TagEntity(name = "T2", colorArgb = 0))
-        transactionRepo.clearTags(punctualId)
-        transactionRepo.addTagCrossRef(TransactionTagCrossRef(punctualId, t1))
-        transactionRepo.addTagCrossRef(TransactionTagCrossRef(punctualId, t2))
+    fun `E-18 - Given punctual with tags, When T2 is removed in edition, Then only T1 remains`() =
+        runTest {
+            seedCanonicalDataSet()
+            val t1 = tagRepo.upsert(TagEntity(name = "T1", colorArgb = 0))
+            val t2 = tagRepo.upsert(TagEntity(name = "T2", colorArgb = 0))
+            transactionRepo.clearTags(punctualId)
+            transactionRepo.addTagCrossRef(TransactionTagCrossRef(punctualId, t1))
+            transactionRepo.addTagCrossRef(TransactionTagCrossRef(punctualId, t2))
 
-        val punctual = transactionRepo.getById(punctualId)!!
-        val edition = editionFrom(punctual, tagIds = listOf(t1))
+            val punctual = transactionRepo.getById(punctualId)!!
+            val edition = editionFrom(punctual, tagIds = listOf(t1))
 
-        editTransactionWithScopeUseCase(punctualId, null, null, edition, EditScope.SINGLE)
+            editTransactionWithScopeUseCase(punctualId, null, null, edition, EditScope.SINGLE)
 
-        val updated = transactionRepo.getById(punctualId)!!
-        assertEquals(1, updated.tags.size)
-        assertEquals(t1, updated.tags.single().id)
-        assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
-    }
+            val updated = transactionRepo.getById(punctualId)!!
+            assertEquals(1, updated.tags.size)
+            assertEquals(t1, updated.tags.single().id)
+            assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
+        }
 
     // =======================================================================================
     // Helpers
@@ -615,7 +805,8 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         categoryId = twr.transaction.categoryId,
         note = twr.transaction.note,
         status = twr.transaction.status,
-        frequency = frequency ?: if (twr.transaction.seriesId != null) RecurrenceFrequency.MONTHLY else RecurrenceFrequency.NONE,
+        frequency = frequency
+            ?: if (twr.transaction.seriesId != null) RecurrenceFrequency.MONTHLY else RecurrenceFrequency.NONE,
         interval = 1,
         daysOfWeek = emptySet(),
         endDate = endDate,
