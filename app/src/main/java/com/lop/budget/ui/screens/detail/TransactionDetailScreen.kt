@@ -70,6 +70,7 @@ import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
+import kotlinx.coroutines.flow.first
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,12 +91,12 @@ fun TransactionDetailScreen(
 
     LaunchedEffect(state.transaction, state.isLoaded, pendingDeletes) {
         val currentId = state.transaction?.transaction?.id
-        if ((state.isLoaded && state.transaction == null) || (currentId != null && currentId in pendingDeletes)) {
-            // On ne revient en arrière que si l'écran est au premier plan
-            // pour éviter de fermer l'écran d'édition qui serait par-dessus
-            if (lifecycleOwner.lifecycle.currentState == Lifecycle.State.RESUMED) {
-                onBack()
-            }
+        val shouldClose = (state.isLoaded && state.transaction == null) ||
+                (currentId != null && currentId in pendingDeletes)
+        if (shouldClose) {
+            lifecycleOwner.lifecycle.currentStateFlow
+                .first { it.isAtLeast(Lifecycle.State.RESUMED) }
+            onBack()
         }
     }
     var showCategorySheet by remember { mutableStateOf(false) }

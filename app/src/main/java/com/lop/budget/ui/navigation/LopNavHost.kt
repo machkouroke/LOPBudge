@@ -352,6 +352,7 @@ fun LopNavHost(startRoute: String? = null) {
                     composableAnimated(
                         Routes.EDIT,
                         NavAnimationType.MAIN,
+
                         arguments = listOf(
                             navArgument("id") { type = NavType.LongType },
                             navArgument("scope") {
@@ -368,8 +369,7 @@ fun LopNavHost(startRoute: String? = null) {
                         val editingId = entry.arguments?.getLong("id") ?: 0L
                         TransactionEditScreen(
                             onDone = { newId ->
-                                if (newId != editingId && newId > 0) {
-                                    // Troncature FUTURE ou ALL (si rematérialisé) : on remplace le détail
+                                if (newId != editingId && newId != 0L) {
                                     navController.navigate(Routes.detail(newId)) {
                                         popUpTo(Routes.detail(editingId)) { inclusive = true }
                                         launchSingleTop = true

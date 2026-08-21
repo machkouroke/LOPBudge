@@ -4,6 +4,7 @@ import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.TransactionRepository
+import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
@@ -63,6 +64,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
             EditScope.ALL -> editAll(
                 editingId,
                 seriesId,
+                originalSeriesDate,
                 edition,
                 status,
                 current
@@ -210,6 +212,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
     private suspend fun editAll(
         editingId: Long,
         seriesId: Long?,
+        originalSeriesDate: Long,
         edition: TransactionEdition,
         status: TransactionStatus,
         current: TransactionWithRelations?,
@@ -283,10 +286,30 @@ class EditTransactionWithScopeUseCase @Inject constructor(
                 )
             // Virtuelle : JAMAIS matérialisée en ALL (I-6) — elle reflétera la série mise à jour.
             // Un changement de statut/tags par occurrence passe par la portée SINGLE (CA-07).
-            else -> editingId
+            else -> displayIdAfterAll(seriesId, originalSeriesDate, fallbackId = editingId)
         }
     }
 
+    // À appeler APRÈS updateSeries (la grille doit être la nouvelle).
+// Modifs associées : invoke passe originalSeriesDate à editAll ; editAll prend le paramètre ;
+// la branche finale `else -> editingId` devient `else -> displayIdAfterAll(seriesId, originalSeriesDate, fallbackId = editingId)`.
+// Imports à ajouter : com.lop.budget.domain.RecurrenceEngine, kotlin.math.abs.
+    private suspend fun displayIdAfterAll(
+        seriesId: Long,
+        originalSlot: Long,
+        fallbackId: Long,
+    ): Long {
+        val series = transactionRepo.getSeriesById(seriesId) ?: return fallbackId
+        val window = 45L * 24 * 60 * 60 * 1000 // ±45 jours autour de l'ancien slot
+        val slot = RecurrenceEngine
+            .generateOccurrences(series, originalSlot - window, originalSlot + window)
+            .mapNotNull { it.seriesDate }
+            .minByOrNull { kotlin.math.abs(it - originalSlot) }
+            ?: series.startDate
+        val real = transactionRepo.getExceptionsBySeries(seriesId) // filtre déjà deleted = 0
+            .firstOrNull { it.seriesDate == slot }
+        return real?.id ?: RecurrenceEngine.calculateVirtualId(seriesId, slot)
+    }
     // --------------------------------------------------------------- Helpers
 
     /**
