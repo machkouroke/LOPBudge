@@ -126,7 +126,11 @@ class EditTransactionWithScopeUseCase @Inject constructor(
     ): Long {
         if (seriesId != null) {
             transactionRepo.getSeriesById(seriesId)?.let { existing ->
-                val newStartDate = if (edition.date != originalSeriesDate) alignDayOfMonth(existing.startDate, edition.date) else existing.startDate
+                val newStartDate = if (edition.date != originalSeriesDate) {
+                    alignTimeOfDay(alignDayOfMonth(existing.startDate, edition.date), edition.date)
+                } else {
+                    existing.startDate
+                }
 
                 transactionRepo.updateSeries(
                     existing.copy(
@@ -147,7 +151,11 @@ class EditTransactionWithScopeUseCase @Inject constructor(
                     )
                 )
 
-                val targetSlot = if (edition.date != originalSeriesDate) alignTimeOfDay(newStartDate, edition.date) else originalSeriesDate
+                val targetSlot = if (edition.date != originalSeriesDate) {
+                    alignTimeOfDay(alignDayOfMonth(originalSeriesDate, edition.date), edition.date)
+                } else {
+                    originalSeriesDate
+                }
 
                 transactionRepo.updateSeriesExceptions(seriesId, edition.title, edition.amount, edition.type, edition.categoryId, edition.accountId, edition.note)
 
