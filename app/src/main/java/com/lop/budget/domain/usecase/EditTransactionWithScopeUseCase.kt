@@ -39,7 +39,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
         scope: EditScope
     ): Long {
         val initialTwr = transactionRepo.getById(editingId)
-        val originalSeriesDate = seriesDate ?: initialTwr?.transaction?.seriesDate ?: initialTwr?.transaction?.date ?: edition.date
+        val originalSeriesDate = seriesDate?.takeIf { it > 0L } ?: initialTwr?.transaction?.seriesDate ?: initialTwr?.transaction?.date ?: edition.date
 
         var finalEditingId = editingId
         var currentTwr = initialTwr

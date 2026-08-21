@@ -295,7 +295,7 @@ class TransactionEditViewModel @Inject constructor(
             editTransactionWithScopeUseCase(
                 editingId = editingTransactionId!!,
                 seriesId = f.seriesId,
-                seriesDate = seriesDate,
+                seriesDate = seriesDate?.takeIf { it > 0L },
                 edition = edition,
                 scope = editScope,
             )

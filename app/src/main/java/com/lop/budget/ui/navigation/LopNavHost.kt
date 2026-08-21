@@ -521,7 +521,7 @@ fun LopNavHost(startRoute: String? = null) {
                                     navController.navigate(Routes.edit(transaction.id, "FUTURE", transaction.date))
                                 }
                                 com.lop.budget.domain.model.EditScope.ALL -> {
-                                    navController.navigate(Routes.edit(transaction.id, "ALL", null))
+                                    navController.navigate(Routes.edit(transaction.id, "ALL", transaction.date))
                                 }
                             }
                         }
