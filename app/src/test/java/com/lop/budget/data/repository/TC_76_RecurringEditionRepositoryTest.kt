@@ -474,11 +474,16 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
     // E-10
     // =======================================================================================
 
+// =======================================================================================
+// E-10 (RED Réf. 98)
+// =======================================================================================
+
     @Test
-    fun `E-10 - Given ALL edition with day change, When executed, Then startDate is recalibrated`() =
+    fun `E-10 - Given ALL edition with day change, When executed, Then one occurrence per month at the new day and the edited row is attached to the edited month slot`() =
         runTest {
             seedCanonicalDataSet()
             val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
+            val controlBefore = controlState(observeTransactionsUseCase)
             val movedDate = startOfDay(2024, 2, 5)
             val edition = editionFrom(februaryOccurrence, date = movedDate)
 
@@ -490,16 +495,30 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
                 EditScope.ALL
             )
 
-            val seriesA = transactionRepo.getSeriesById(seriesAId)!!
+            // La série est recalibrée sur le nouveau jour : conforme, ce n'est pas le défaut de la Réf. 98.
+            val seriesA = requireNotNull(transactionRepo.getSeriesById(seriesAId))
             assertEquals(startOfDay(2024, 1, 5), seriesA.startDate)
 
-            val visibleOfA =
-                observeVisibleTransactions(observeTransactionsUseCase).filter { it.transaction.seriesId == seriesAId }
-            // Oracle exact: co-affichage au 5 fév (exception du slot jan décalée + virtuel du slot fév)
-            assertTrue(visibleOfA.any { it.transaction.date == startOfDay(2024, 1, 5) })
-            assertEquals(2, visibleOfA.count { it.transaction.date == startOfDay(2024, 2, 5) })
-            assertTrue(visibleOfA.any { it.transaction.date == startOfDay(2024, 3, 5) })
+            // Réf. 98 CA-01/CA-02 : une seule occurrence au nouveau jour sur chaque mois, aucune à l'ancien jour.
+            // RED aujourd'hui : le code affiche [5 fév (exception), 5 fév (virtuel), 5 mars] — doublon au 5 fév, trou au 5 jan.
+            val visibleDatesOfA = observeVisibleTransactions(observeTransactionsUseCase)
+                .filter { it.transaction.seriesId == seriesAId }
+                .map { it.transaction.date }
+                .sorted()
+            assertEquals(
+                "Réf. 98 : une occurrence au 5 sur chaque mois, aucune au 1er",
+                listOf(startOfDay(2024, 1, 5), startOfDay(2024, 2, 5), startOfDay(2024, 3, 5)),
+                visibleDatesOfA,
+            )
+
+            // Réf. 98 CA-05 : la ligne éditée est rattachée au slot du mois édité sur la nouvelle grille.
+            val editedRows = persistedRowsForSlot(seriesAId, startOfDay(2024, 2, 5))
+            assertEquals(1, editedRows.size)
+            assertEquals(startOfDay(2024, 2, 5), editedRows.single().date)
+            assertTrue(editedRows.single().isException)
+
             assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
+            assertEquals(controlBefore, controlState(observeTransactionsUseCase))
         }
 
     // =======================================================================================
