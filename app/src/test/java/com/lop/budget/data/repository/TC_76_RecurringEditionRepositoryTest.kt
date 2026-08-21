@@ -8,9 +8,11 @@ import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
+import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
@@ -24,7 +26,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -119,7 +120,6 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         editTransactionWithScopeUseCase = EditTransactionWithScopeUseCase(
             transactionRepo,
             saveTransactionUseCase,
-            cancelRecurringSeriesUseCase
         )
         observeTransactionsUseCase = newObserveTransactionsUseCase()
     }
@@ -449,8 +449,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         runTest {
             seedCanonicalDataSet()
             val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-            val edition = editionFrom(februaryOccurrence, title = "Loyer National", amount = 1000.0)
-
+            val edition = allEditionFrom(seriesAId, title = "Loyer National", amount = 1000.0)
             editTransactionWithScopeUseCase(
                 februaryOccurrence.transaction.id,
                 seriesAId,
@@ -460,6 +459,14 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
             )
 
             val seriesA = transactionRepo.getSeriesById(seriesAId)!!
+            assertEquals("Loyer National", seriesA.title)
+            assertEquals(1000.0, seriesA.amount, 0.0)
+            assertEquals(
+                "CA-09 ALL : sans changement du champ date, startDate est inchangé",
+                januarySlot,
+                seriesA.startDate
+            )
+
             assertEquals("Loyer National", seriesA.title)
             assertEquals(1000.0, seriesA.amount, 0.0)
 
@@ -484,9 +491,10 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
             seedCanonicalDataSet()
             val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
             val controlBefore = controlState(observeTransactionsUseCase)
-            val movedDate = startOfDay(2024, 2, 5)
-            val edition = editionFrom(februaryOccurrence, date = movedDate)
 
+            val movedStart =
+                startOfDay(2024, 1, 5) // l'utilisateur voit "1 jan" (startDate) et le passe au 5
+            val edition = allEditionFrom(seriesAId, date = movedStart)
             editTransactionWithScopeUseCase(
                 februaryOccurrence.transaction.id,
                 seriesAId,
@@ -494,29 +502,17 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
                 edition,
                 EditScope.ALL
             )
-
-            // La série est recalibrée sur le nouveau jour : conforme, ce n'est pas le défaut de la Réf. 98.
-            val seriesA = requireNotNull(transactionRepo.getSeriesById(seriesAId))
-            assertEquals(startOfDay(2024, 1, 5), seriesA.startDate)
-
-            // Réf. 98 CA-01/CA-02 : une seule occurrence au nouveau jour sur chaque mois, aucune à l'ancien jour.
-            // RED aujourd'hui : le code affiche [5 fév (exception), 5 fév (virtuel), 5 mars] — doublon au 5 fév, trou au 5 jan.
+            assertEquals(movedStart, transactionRepo.getSeriesById(seriesAId)!!.startDate)
             val visibleDatesOfA = observeVisibleTransactions(observeTransactionsUseCase)
-                .filter { it.transaction.seriesId == seriesAId }
-                .map { it.transaction.date }
+                .filter { it.transaction.seriesId == seriesAId }.map { it.transaction.date }
                 .sorted()
             assertEquals(
-                "Réf. 98 : une occurrence au 5 sur chaque mois, aucune au 1er",
+                "CA-09 ALL : la grille entière (passé virtuel inclus) est régénérée depuis la nouvelle date de début",
                 listOf(startOfDay(2024, 1, 5), startOfDay(2024, 2, 5), startOfDay(2024, 3, 5)),
                 visibleDatesOfA,
             )
 
-            // Réf. 98 CA-05 : la ligne éditée est rattachée au slot du mois édité sur la nouvelle grille.
-            val editedRows = persistedRowsForSlot(seriesAId, startOfDay(2024, 2, 5))
-            assertEquals(1, editedRows.size)
-            assertEquals(startOfDay(2024, 2, 5), editedRows.single().date)
-            assertTrue(editedRows.single().isException)
-
+            assertTrue(persistedTransactions().none { it.seriesId == seriesAId })
             assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
             assertEquals(controlBefore, controlState(observeTransactionsUseCase))
         }
@@ -596,7 +592,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
             seedCanonicalDataSet()
             // 1. Poser une date de fin au 15 fév
             val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-            val edition1 = editionFrom(februaryOccurrence, endDate = startOfDay(2024, 2, 15))
+            val edition1 = allEditionFrom(seriesAId, endDate = startOfDay(2024, 2, 15))
             editTransactionWithScopeUseCase(
                 februaryOccurrence.transaction.id,
                 seriesAId,
@@ -616,25 +612,18 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
             // 2. Supprimer un slot de mars (tombstone) via use case
             val marchTwr = TransactionWithRelations(
                 transaction = TransactionEntity(
-                    title = "Loyer",
-                    amount = 800.0,
-                    type = TransactionType.EXPENSE,
-                    status = TransactionStatus.PLANNED,
-                    kind = com.lop.budget.domain.model.TransactionKind.STANDARD,
-                    date = marchSlot,
-                    accountId = accountId,
-                    categoryId = categoryId,
-                    seriesId = seriesAId,
-                    seriesDate = marchSlot
+                    id = RecurrenceEngine.calculateVirtualId(seriesAId, marchSlot),
+                    title = "Loyer", amount = 800.0, type = TransactionType.EXPENSE,
+                    status = TransactionStatus.PLANNED, kind = TransactionKind.STANDARD,
+                    date = marchSlot, accountId = accountId, categoryId = categoryId,
+                    seriesId = seriesAId, seriesDate = marchSlot,
                 ),
-                category = null,
-                account = null,
-                tags = emptyList()
+                category = null, account = null, tags = emptyList(),
             )
             softDeleteUseCase(marchTwr)
 
             // 3. Retirer la date de fin
-            val edition2 = editionFrom(februaryOccurrence, endDate = null)
+            val edition2 = allEditionFrom(seriesAId)
             editTransactionWithScopeUseCase(
                 februaryOccurrence.transaction.id,
                 seriesAId,

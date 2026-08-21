@@ -8,7 +8,6 @@ import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.entity.TransactionWithRelations
-import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
 
 data class SeriesSlot(val seriesId: Long, val seriesDate: Long)
@@ -27,7 +26,7 @@ interface TransactionOperations {
     suspend fun clearTags(txId: Long)
     suspend fun addTagCrossRef(crossRef: TransactionTagCrossRef)
     suspend fun saveWithTags(tx: TransactionEntity, tagIds: List<Long>): Long
-    suspend fun updateSeriesExceptions(seriesId: Long, title: String, amount: Double, type: TransactionType, categoryId: Long, accountId: Long, note: String?)
+    suspend fun getExceptionsBySeries(seriesId: Long): List<TransactionEntity>
     suspend fun softDeleteTransactionsBySeries(seriesId: Long)
     suspend fun softDeleteTransactionsBySeriesFrom(seriesId: Long, fromDate: Long)
 
@@ -41,97 +40,123 @@ interface TransactionDao : TransactionOperations {
     override fun observeAll(): Flow<List<TransactionWithRelations>>
 
     @Transaction
-    @Query("""
+    @Query(
+        """
         SELECT * FROM transactions 
         WHERE accountId = :accountId AND deleted = 0 
         ORDER BY date DESC
-    """)
+    """
+    )
     override fun observeByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
 
     @Transaction
-    @Query("""
+    @Query(
+        """
         SELECT * FROM transactions 
         WHERE accountId = :accountId AND status = 'PAID' AND deleted = 0 
         ORDER BY date DESC
-    """)
+    """
+    )
     override fun observePaidByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
 
     @Transaction
-    @Query("""
+    @Query(
+        """
         SELECT * FROM transactions 
         WHERE accountId = :accountId AND status = 'PLANNED' AND deleted = 0 
         ORDER BY date DESC
-    """)
+    """
+    )
     override fun observePlannedByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
 
     @Transaction
-    @Query("""
+    @Query(
+        """
         SELECT * FROM transactions 
         WHERE date BETWEEN :start AND :end AND deleted = 0 
         ORDER BY date ASC
-    """)
+    """
+    )
     override fun observeBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>>
 
     @Transaction
-    @Query("""
+    @Query(
+        """
         SELECT * FROM transactions 
         WHERE id = :id AND deleted = 0
-    """)
+    """
+    )
     override fun observeById(id: Long): Flow<TransactionWithRelations?>
 
     @Transaction
-    @Query("""
+    @Query(
+        """
         SELECT * FROM transactions 
         WHERE seriesId = :seriesId AND deleted = 0
-    """)
+    """
+    )
     override fun observeSeries(seriesId: Long): Flow<List<TransactionWithRelations>>
 
     @Transaction
-    @Query("""
+    @Query(
+        """
         SELECT * FROM transactions 
         WHERE id = :id AND deleted = 0
-    """)
+    """
+    )
     override suspend fun getById(id: Long): TransactionWithRelations?
 
-    @Query("""
+    @Query(
+        """
         SELECT * FROM transactions 
         WHERE title = :title AND date = :date AND deleted = 0 
         LIMIT 1
-    """)
+    """
+    )
     suspend fun getByTitleAndDate(title: String, date: Long): TransactionEntity?
 
     @Upsert
     override suspend fun upsert(tx: TransactionEntity): Long
 
-    @Query("""
+    @Query(
+        """
         UPDATE transactions 
         SET deleted = 1 
         WHERE id = :id
-    """)
+    """
+    )
     override suspend fun softDeleteTransaction(id: Long)
 
-    @Query("""
+    @Query(
+        """
         DELETE FROM transactions 
         WHERE id = :id
-    """)
+    """
+    )
     override suspend fun hardDelete(id: Long)
 
-    @Query("""
+    @Query(
+        """
         SELECT SUM(amount) FROM transactions 
         WHERE linkedGoalId = :goalId AND deleted = 0 AND status = 'PAID'
-    """)
+    """
+    )
     suspend fun getSumForGoal(goalId: Long): Double
 
-    @Query("""
+    @Query(
+        """
         SELECT SUM(amount) FROM transactions 
         WHERE linkedDebtId = :debtId AND deleted = 0 AND status = 'PAID'
-    """)
+    """
+    )
     suspend fun getSumForDebt(debtId: Long): Double
 
-    @Query("""
+    @Query(
+        """
         DELETE FROM transaction_tags 
         WHERE transactionId = :txId
-    """)
+    """
+    )
     override suspend fun clearTags(txId: Long)
 
     @Upsert
@@ -155,45 +180,35 @@ interface TransactionDao : TransactionOperations {
         val existing = getBySeriesSlot(seriesId, seriesDate)
         if (existing != null) return existing.id
 
-        return upsert(TransactionEntity(
-            title = series.title,
-            amount = series.amount,
-            type = series.type,
-            status = com.lop.budget.domain.model.TransactionStatus.PLANNED,
-            kind = com.lop.budget.domain.model.TransactionKind.STANDARD,
-            date = seriesDate,
-            accountId = series.accountId,
-            categoryId = series.categoryId,
-            seriesId = seriesId,
-            seriesDate = seriesDate,
-            isException = true,
-            note = series.note,
-            linkedGoalId = series.linkedGoalId,
-            linkedDebtId = series.linkedDebtId
-        ))
+        return upsert(
+            TransactionEntity(
+                title = series.title,
+                amount = series.amount,
+                type = series.type,
+                status = com.lop.budget.domain.model.TransactionStatus.PLANNED,
+                kind = com.lop.budget.domain.model.TransactionKind.STANDARD,
+                date = seriesDate,
+                accountId = series.accountId,
+                categoryId = series.categoryId,
+                seriesId = seriesId,
+                seriesDate = seriesDate,
+                isException = true,
+                note = series.note,
+                linkedGoalId = series.linkedGoalId,
+                linkedDebtId = series.linkedDebtId
+            )
+        )
     }
 
-    @Query("""
+    @Query(
+        """
         SELECT * FROM transactions 
         WHERE seriesId = :seriesId AND seriesDate = :seriesDate
         LIMIT 1
-    """)
+    """
+    )
     suspend fun getBySeriesSlot(seriesId: Long, seriesDate: Long): TransactionEntity?
 
-    @Query("""
-        UPDATE transactions 
-        SET title = :title, amount = :amount, type = :type, categoryId = :categoryId, accountId = :accountId, note = :note 
-        WHERE seriesId = :seriesId AND isException = 1 AND deleted = 0
-    """)
-    override suspend fun updateSeriesExceptions(
-        seriesId: Long,
-        title: String,
-        amount: Double,
-        type: TransactionType,
-        categoryId: Long,
-        accountId: Long,
-        note: String?
-    )
 
 
     @Query(
@@ -206,22 +221,36 @@ interface TransactionDao : TransactionOperations {
     )
     override fun observeOccupiedSeriesSlots(start: Long, end: Long): Flow<List<SeriesSlot>>
 
-    @Query("""
+    @Query(
+        """
         UPDATE transactions 
         SET deleted = 1 
         WHERE seriesId = :seriesId
-    """)
+    """
+    )
     override suspend fun softDeleteTransactionsBySeries(seriesId: Long)
 
-    @Query("""
+    @Query(
+        """
         UPDATE transactions 
         SET deleted = 1 
         WHERE seriesId = :seriesId AND date >= :fromDate
-    """)
+    """
+    )
     override suspend fun softDeleteTransactionsBySeriesFrom(seriesId: Long, fromDate: Long)
 
-    @Query("""
+    @Query(
+        """
         DELETE FROM transactions
-    """)
+    """
+    )
     fun deleteAll()
+
+    @Query(
+        """
+    SELECT * FROM transactions 
+    WHERE seriesId = :seriesId AND isException = 1 AND deleted = 0
+"""
+    )
+    override suspend fun getExceptionsBySeries(seriesId: Long): List<TransactionEntity>
 }

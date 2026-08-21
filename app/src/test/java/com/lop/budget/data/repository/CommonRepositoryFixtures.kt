@@ -8,9 +8,11 @@ import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.model.toDaysOfWeekSet
 import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
 import kotlinx.coroutines.flow.first
 import org.junit.Assert.assertTrue
@@ -50,7 +52,34 @@ interface RepositoryTestInfrastructure {
     val periodEnd: Long get() = endOfDay(2024, 3, 31)
 
     // --- JDD Setup -------------------------------------------------------------------------
-
+    /** Simule le formulaire ALL conforme CA-08 : prérempli avec les valeurs de BASE de la série. */
+    suspend fun allEditionFrom(
+        seriesId: Long,
+        title: String? = null,
+        amount: Double? = null,
+        date: Long? = null,
+        endDate: Long? = null,
+    ): TransactionEdition {
+        val s = requireNotNull(transactionRepo.getSeriesById(seriesId))
+        return TransactionEdition(
+            title = title ?: s.title,
+            amount = amount ?: s.amount,
+            type = s.type,
+            date = date ?: s.startDate, // CA-08/CA-09 : en ALL, date == startDate
+            accountId = s.accountId,
+            categoryId = s.categoryId,
+            note = s.note,
+            status = null,
+            frequency = s.frequency,
+            interval = s.interval,
+            daysOfWeek = s.daysOfWeek.toDaysOfWeekSet(),
+            endDate = endDate,
+            maxOccurrences = s.maxOccurrences,
+            linkedGoalId = s.linkedGoalId,
+            linkedDebtId = s.linkedDebtId,
+            tagIds = emptyList(),
+        )
+    }
     suspend fun seedCanonicalDataSet() {
         accountId = db.accountDao().upsert(
             AccountEntity(
