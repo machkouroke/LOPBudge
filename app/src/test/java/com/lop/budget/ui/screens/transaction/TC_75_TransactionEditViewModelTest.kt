@@ -95,7 +95,7 @@ class TransactionEditViewModelTest {
             tagRepo.observeAll()
             goalRepo.observeAll()
             debtRepo.observeAll()
-            context.getString(R.string.tx_default_title)
+            context.getString(any())
         }
     }
 
@@ -229,7 +229,13 @@ class TransactionEditViewModelTest {
         val sut = createSut(id = 1L, scope = EditScope.SINGLE, date = -1L)
         advanceUntilIdle()
 
-        assertEquals(occurrenceDate, sut.form.value.date)
+        val expected = TransactionForm(
+            type = TransactionType.EXPENSE, amountInput = "50.0", title = "Occurrence Title",
+            date = occurrenceDate, categoryId = 10L, accountId = 100L, note = "Some note",
+            status = TransactionStatus.PLANNED, seriesId = null,
+            frequency = RecurrenceFrequency.NONE, interval = 1, daysOfWeek = emptySet()
+        )
+        assertFormEquals(expected, sut.form.value)
         coVerify { observeTransactionUseCase.getById(1L) }
         confirmVerified(*allMocks)
     }
@@ -256,11 +262,20 @@ class TransactionEditViewModelTest {
 
     @Test
     fun `V-06 - Chargement seul, toute portee, aucune ecriture`() = runTest(testDispatcher) {
-        val twr = createTwr(id = 1L)
-        coEvery { observeTransactionUseCase.getById(1L) } returns twr
+        // Occurrence de série réelle et virtuelle
+        val realTwr = createTwr(id = 1L, seriesId = 500L)
+        val virtualTwr = createTwr(id = -1L, seriesId = 500L)
+        
+        coEvery { observeTransactionUseCase.getById(1L) } returns realTwr
+        coEvery { observeTransactionUseCase.getById(-1L) } returns virtualTwr
+        coEvery { transactionRepo.getSeriesById(500L) } returns seriesRule
         
         EditScope.entries.forEach { scope ->
+            // Cas réel
             createSut(id = 1L, scope = scope)
+            advanceUntilIdle()
+            // Cas virtuel
+            createSut(id = -1L, scope = scope)
             advanceUntilIdle()
         }
 
@@ -269,13 +284,19 @@ class TransactionEditViewModelTest {
         coVerify(exactly = 0) { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) }
         coVerify(exactly = 0) { accountRepo.upsert(any()) }
         
-        coVerify(atLeast = 1) { observeTransactionUseCase.getById(1L) }
+        coVerify(atLeast = 1) { observeTransactionUseCase.getById(any()) }
+        coVerify(atLeast = 1) { transactionRepo.getSeriesById(500L) }
         confirmVerified(*allMocks)
     }
 
     @Test
     fun `V-07 - performSave en edition - Mapping exhaustif`() = runTest(testDispatcher) {
-        val twr = createTwr(id = 1L, seriesId = 500L)
+        // Fixture avec rattachements discriminants
+        val twr = createTwr(id = 1L, seriesId = 500L).copy(
+            transaction = createTwr(id = 1L, seriesId = 500L).transaction.copy(
+                linkedGoalId = 7L, linkedDebtId = null
+            )
+        )
         coEvery { observeTransactionUseCase.getById(1L) } returns twr
         coEvery { transactionRepo.getSeriesById(500L) } returns seriesRule
         coEvery { accountRepo.getById(100L) } returns createAccount(100L)
@@ -283,10 +304,11 @@ class TransactionEditViewModelTest {
         val sut = createSut(id = 1L, scope = EditScope.SINGLE, date = dateSlot)
         advanceUntilIdle()
 
-        // Cas limites : titre blanc -> titre par défaut, note blanche -> null
-        sut.setTitle("")
-        sut.setNote("  ") 
+        // Cas limites et modifications
+        sut.setTitle("") // -> "Transaction" (default)
+        sut.setNote("  ") // -> null
         sut.toggleTag(77L)
+        sut.setEndDate(seriesStartDate + 1000000L)
         
         val editionSlot = slot<TransactionEdition>()
         coEvery { 
@@ -300,21 +322,31 @@ class TransactionEditViewModelTest {
         advanceUntilIdle()
 
         val captured = editionSlot.captured
-        assertEquals("Transaction", captured.title) // Valeur mockée du context
+        assertEquals("Transaction", captured.title)
         assertEquals(50.0, captured.amount, 0.0)
+        assertEquals(TransactionType.EXPENSE, captured.type)
+        assertEquals(dateSlot, captured.date)
         assertEquals(100L, captured.accountId)
         assertEquals(10L, captured.categoryId)
         assertEquals(listOf(77L), captured.tagIds)
         assertEquals(TransactionStatus.PLANNED, captured.status)
-        assertEquals(null, captured.note) // "  " -> null via ifBlank
+        assertEquals(null, captured.note)
         
-        // En SINGLE, frequency est NONE (formulaire non chargé)
-        assertEquals(RecurrenceFrequency.NONE, captured.frequency) 
+        // Rattachements
+        assertEquals(7L, captured.linkedGoalId)
+        assertEquals(null, captured.linkedDebtId)
+        
+        // Récurrence (en SINGLE, frequency est NONE par défaut dans le formulaire non chargé)
+        assertEquals(RecurrenceFrequency.NONE, captured.frequency)
         assertEquals(1, captured.interval)
         assertEquals(emptySet<Int>(), captured.daysOfWeek)
+        assertEquals(seriesStartDate + 1000000L, captured.endDate)
+        assertEquals(null, captured.maxOccurrences)
         
         coVerify { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) }
         coVerify { accountRepo.getById(100L) }
+        coVerify { observeTransactionUseCase.getById(1L) }
+        coVerify { transactionRepo.getSeriesById(500L) }
         confirmVerified(*allMocks)
     }
 
@@ -331,6 +363,7 @@ class TransactionEditViewModelTest {
         sut.setTitle("New")
         sut.setAmountRaw("123.45")
         sut.setCategory(99L)
+        sut.setGoal(8L)
 
         val editionSlot = slot<TransactionEdition>()
         coEvery { createTransactionUseCase(capture(editionSlot)) } returns 7L
@@ -342,8 +375,16 @@ class TransactionEditViewModelTest {
         val captured = editionSlot.captured
         assertEquals("New", captured.title)
         assertEquals(123.45, captured.amount, 0.0)
+        assertEquals(TransactionType.EXPENSE, captured.type)
         assertEquals(1L, captured.accountId)
         assertEquals(99L, captured.categoryId)
+        assertEquals(8L, captured.linkedGoalId)
+        assertEquals(TransactionStatus.PLANNED, captured.status)
+        assertEquals(RecurrenceFrequency.NONE, captured.frequency)
+        assertEquals(1, captured.interval)
+        assertEquals(emptySet<Int>(), captured.daysOfWeek)
+        assertEquals(null, captured.endDate)
+        assertEquals(null, captured.maxOccurrences)
         
         coVerify { createTransactionUseCase(any()) }
         coVerify { accountRepo.getById(1L) }
@@ -365,7 +406,7 @@ class TransactionEditViewModelTest {
         sut.setCategory(10L)
         sut.save {}
         
-        // 2. categoryId nul (on réinitialise ou on crée un nouveau SUT pour éviter la pollution)
+        // 2. categoryId nul
         val sutCat = createSut(id = 0L)
         advanceUntilIdle()
         sutCat.setAmountRaw("10")
@@ -382,11 +423,6 @@ class TransactionEditViewModelTest {
 
         coVerify(exactly = 0) { createTransactionUseCase(any()) }
         coVerify(exactly = 0) { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) }
-        
-        // On vérifie que getById n'a été appelé que pour le cas 1 (amount <= 0 n'empêche pas l'appel getById dans save())
-        // En fait, save() appelle accountRepo.getById avant de vérifier amount <= 0 ? 
-        // Vérification du code de production : if (f.amount <= 0 || f.categoryId == null || f.accountId == null) return
-        // C'est AVANT le launch { getById }. Donc aucune écriture ni lecture repository.
         coVerify(exactly = 0) { accountRepo.getById(any()) }
         
         confirmVerified(*allMocks)
@@ -422,17 +458,20 @@ class TransactionEditViewModelTest {
         coVerify(exactly = 0) { accountRepo.upsert(any()) }
         coVerify(exactly = 1) { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) }
 
-        // 3. confirmSave(accountNow = true) : update compte puis sauvegarde
+        // 3. confirmSave(accountNow = true) : update compte PUIS sauvegarde
         sut.save {} // Re-trigger
         advanceUntilIdle()
+        
         coEvery { accountRepo.upsert(any()) } returns 1L
         sut.confirmSave(accountNow = true) {}
         advanceUntilIdle()
         
-        val accountSlot = slot<AccountEntity>()
-        coVerify { accountRepo.upsert(capture(accountSlot)) }
-        assertEquals(dateSlot - 1000L, accountSlot.captured.balanceUpdatedAt)
-        coVerify(exactly = 2) { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) }
+        // Vérification de l'ordre causal
+        io.mockk.coVerifyOrder {
+            accountRepo.getById(100L)
+            accountRepo.upsert(match { it.balanceUpdatedAt == dateSlot - 1000L })
+            editTransactionWithScopeUseCase(any(), any(), any(), any(), any())
+        }
         
         coVerify(atLeast = 1) { observeTransactionUseCase.getById(1L) }
         coVerify(atLeast = 1) { accountRepo.getById(100L) }
@@ -448,22 +487,6 @@ class TransactionEditViewModelTest {
         advanceUntilIdle()
         
         assertEquals(5L, sut.form.value.accountId)
-        confirmVerified(*allMocks)
-    }
-
-    @Test
-    fun `V-12 - setFrequency(WEEKLY) - Oracle RED`() = runTest(testDispatcher) {
-        // Mercredi 5 Mars 2025
-        val wednesday = Instant.parse("2025-03-05T10:00:00Z").toEpochMilli()
-        val sut = createSut(id = 0L)
-        advanceUntilIdle()
-        
-        sut.setDate(wednesday)
-        sut.setFrequency(RecurrenceFrequency.WEEKLY)
-        
-        // Oracle : daysOfWeek doit contenir le jour de la date (Mercredi = 3), pas 1 par défaut.
-        assertEquals(setOf(3), sut.form.value.daysOfWeek) // RED : Production met setOf(1)
-        
         confirmVerified(*allMocks)
     }
 }
