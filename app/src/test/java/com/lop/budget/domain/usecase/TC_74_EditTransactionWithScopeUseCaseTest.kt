@@ -458,7 +458,8 @@ class EditTransactionWithScopeUseCaseTest {
     fun `S-19 - FUTURE nominal - ordre complet, migration diff, controle 999 intact`() = runTest {
         val row = rowEntity(seriesDate = slotFeb, date = slotFeb)
         coEvery { transactionRepo.getById(20L) } returns twr(row)
-        val oldSeries = baseSeries(startDate = janStart)
+        // Diff réel : la série AVANT édition porte amount = 100.0 (l'édition porte 80.0).
+        val oldSeries = baseSeries(startDate = janStart).copy(amount = 100.0)
         coEvery { transactionRepo.getSeriesById(100L) } returns oldSeries
         coEvery { transactionRepo.updateSeries(any()) } just Runs
         coEvery { transactionRepo.upsertSeries(any()) } returns 60L
@@ -470,13 +471,14 @@ class EditTransactionWithScopeUseCaseTest {
         coEvery { transactionRepo.upsert(capture(migrated)) } returns 30L
         val saved = slot<TransactionEntity>()
         coEvery { saveTransactionUseCase.saveSimple(capture(saved), emptyList()) } returns 20L
-        val ed = edition(date = slotFeb, amount = 80.0) // diff : amount 100 -> 80 (title inchangé)
+        val ed = edition(date = slotFeb, amount = 80.0) // seul diff vs oldSeries : amount 100 -> 80
 
         val result = sut(20L, 100L, slotFeb, ed, EditScope.FUTURE)
 
         assertEquals(20L, result)
-        // I-7 : seul le diff est propagé — title "Custom" conservé, date/seriesDate intacts (I-1).
-        assertEquals(migrating.copy(amount = 80.0, note = "Edited note", seriesId = 60L), migrated.captured)
+        // I-7 : seul le diff est propagé — title "Custom" ET note "Row note" conservés,
+        // date/seriesDate intacts (I-1). Pas de patch note : note édition == note base.
+        assertEquals(migrating.copy(amount = 80.0, seriesId = 60L), migrated.captured)
         coVerify(exactly = 1) { transactionRepo.upsert(any()) } // 999 jamais touché
         coVerifyOrder {
             transactionRepo.getById(20L)
@@ -496,7 +498,6 @@ class EditTransactionWithScopeUseCaseTest {
         )
         confirmAll()
     }
-
     @Test
     fun `S-20 - FUTURE sans serie - lecture seule et retour id entrant`() = runTest {
         val row = rowEntity(id = 10L, seriesId = null, seriesDate = null)
@@ -579,31 +580,32 @@ class EditTransactionWithScopeUseCaseTest {
 
     @Test
     fun `S-23 - ALL propagation du diff seul, personnalisations conservees`() = runTest {
-        // Remplace l'oracle updateSeriesExceptions (API disparue) : overlay + upsert conditionnel.
         val row = rowEntity(seriesDate = slotFeb, date = slotFeb)
         coEvery { transactionRepo.getById(20L) } returns twr(row)
-        val existing = baseSeries(startDate = slotFeb).copy(amount = 100.0, linkedDebtId = null)
+        val existing = baseSeries(startDate = slotFeb).copy(amount = 100.0)
         coEvery { transactionRepo.getSeriesById(100L) } returns existing
         coEvery { transactionRepo.updateSeries(any()) } just Runs
+        // 30L : personnalisée (title) et non alignée -> sera patchée.
         val custom = rowEntity(id = 30L, seriesDate = marchDate, date = marchDate, title = "Custom", amount = 100.0)
+        // 40L : DÉJÀ alignée sur TOUT le diff (amount 80 ET linkedDebtId 8) -> aucun upsert.
         val alreadyPatched = rowEntity(id = 40L, seriesDate = janStart, date = janStart, amount = 80.0)
+            .copy(linkedDebtId = 8L)
         coEvery { transactionRepo.getExceptionsBySeries(100L) } returns listOf(custom, alreadyPatched)
         val patched = slot<TransactionEntity>()
         coEvery { transactionRepo.upsert(capture(patched)) } returns 30L
         val saved = slot<TransactionEntity>()
         coEvery { saveTransactionUseCase.saveSimple(capture(saved), emptyList()) } returns 20L
-        // Diff vs base : amount 100 -> 80, linkedDebtId null -> 8 (rattachement propagé, S-27 ALL)
+        // Diff vs base : amount 100 -> 80, linkedDebtId null -> 8 (rattachement propagé, S-27 ALL).
+        // La note ne fait PAS partie du diff (note édition == note base).
         val ed = edition(date = slotFeb, amount = 80.0, linkedDebtId = 8L)
 
         sut(20L, 100L, slotFeb, ed, EditScope.ALL)
 
-        // 30L : patch amount + linkedDebtId, title "Custom" conservé (I-7), date/seriesDate intacts.
-        assertEquals(custom.copy(amount = 80.0, note = "Edited note", linkedDebtId = 8L), patched.captured)
-        // 40L : amount déjà 80... mais note/linkedDebtId diffèrent -> patché aussi ? Non :
-        // un seul upsert attendu SI 40L est déjà entièrement aligné. Ici note diffère,
-        // donc pour garder l'oracle exact, 40L est aligné sur TOUT le diff :
-        // (voir fixture : note = "Edited note", linkedDebtId = 8L ci-dessous si nécessaire)
-        coVerify(exactly = 1) { transactionRepo.upsert(any()) }
+        // 30L : patch amount + linkedDebtId ; title "Custom" et note "Row note" conservés (I-7).
+        assertEquals(custom.copy(amount = 80.0, linkedDebtId = 8L), patched.captured)
+        coVerify(exactly = 1) { transactionRepo.upsert(any()) } // 40L jamais réécrite
+        // Consultée : même règle de diff + statut réappliqué ; date/seriesDate intacts (I-1).
+        assertEquals(row.copy(amount = 80.0, linkedDebtId = 8L, status = TransactionStatus.PLANNED), saved.captured)
         coVerify(exactly = 1) { transactionRepo.getById(20L) }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(100L) }
         coVerify(exactly = 1) { transactionRepo.updateSeries(any()) }
@@ -611,7 +613,6 @@ class EditTransactionWithScopeUseCaseTest {
         coVerify(exactly = 1) { saveTransactionUseCase.saveSimple(saved.captured, emptyList()) }
         confirmAll()
     }
-
     @Test
     fun `S-24 - ALL edition egale a la serie - aucune propagation`() = runTest {
         // Était RED au 3f5d2ac1 ; la propagation par diff est en prod -> GREEN qui l'épingle (CA-05/I-7).
