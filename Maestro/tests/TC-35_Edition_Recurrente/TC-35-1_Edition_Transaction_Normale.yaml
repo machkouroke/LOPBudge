@@ -1,21 +1,23 @@
 appId: com.lop.budget
-name: "TC-35-1: Édition Transaction Normale"
+name: "TC-35-1: Édition ponctuelle sans choix de portée"
 tags:
   - edition
+  - TC_35
 ---
 - runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 
 - evalScript: |
-    console.log("--- CAS 1 : Transaction ponctuelle (Courses Hebdomadaires) ---")
+    console.log("Scénario ponctuel : pas de bottom sheet, prefill, rename, isolation")
 
 - tapOn: "Courses Hebdomadaires"
 - assertVisible: { id: "screen.transaction.detail" }
 - tapOn: { id: "transaction.detail.edit" }
 
-# Vérifier accès direct (Pas de BottomSheet)
+# CA-01 : accès direct, AUCUNE bottom sheet de portée
+- assertNotVisible: "Modifier la transaction ?"
 - assertVisible: { id: "screen.transaction.edit" }
 
-# VÉRIFICATION EXHAUSTIVE PRÉ-REMPLISSAGE (Data-Binding)
+# Prefill exhaustif (data-binding)
 - runFlow:
     file: ../../.maestro/subflows/assert_edit_form_prefilled.yaml
     env:
@@ -24,24 +26,37 @@ tags:
       category: "Courses"
       account: "Compte courant"
 
-# Vérifier que le bloc récurrence est MASQUÉ (car ponctuel)
+# Section récurrence préremplie SANS récurrence
 - scrollUntilVisible:
     element: { id: "transaction.edit.block.recurrence" }
 - assertVisible: "Ne se répète pas"
 
+# Modification du libellé + sauvegarde
 - scrollUntilVisible:
     element: { id: "transaction.edit.field.title" }
     direction: UP
-
-# Modifier et enregistrer
 - runFlow:
     file: ../../.maestro/subflows/update_amount.yaml
     env:
       target_id: "transaction.edit.field.title"
-      new_value: "Courses Hebdo"
+      new_value: "Courses modifiées"
 
-# Vérifier retour et modification effective
 - extendedWaitUntil:
     visible: { id: "screen.transaction.detail" }
     timeout: 5000
-- assertVisible: "Courses Hebdo"
+- assertVisible: "Courses modifiées"
+
+# Résultat en liste : nouveau libellé présent, ancien absent, contrôles intacts
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.CURRENT_MONTH_NAME}
+      year: ${output.CURRENT_YEAR}
+- scrollUntilVisible:
+    element: "Courses modifiées"
+    direction: DOWN
+- scroll
+- assertNotVisible: "Courses Hebdomadaires"
+# Isolation : les autres transactions ne bougent pas
+- assertVisible: "Loyer"
+- assertVisible: "Salaire"

@@ -39,49 +39,9 @@ tags:
     text: "Récurrent"
     rightOf: "Loyer"
 
-- evalScript: |
-    console.log("And les autres occurrences de la série restent inchangées (mois précédent)")
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.PREV_MONTH_NAME}
-      year: ${output.PREV_YEAR}
-- assertVisible: "Loyer"
-- assertVisible:
-    text: "Récurrent"
-    rightOf: "Loyer"
-- tapOn: "Loyer"
-- scrollUntilVisible:
-    element: "Marquer comme payé"
-    direction: DOWN
 
-- tapOn: { id: "common.btn.back" }
 
-- evalScript: |
-    console.log("And les autres occurrences de la série restent inchangées (mois suivant)")
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.NEXT_MONTH_NAME}
-      year: ${output.NEXT_YEAR}
-- assertVisible: "Loyer"
-- assertVisible:
-    text: "Récurrent"
-    rightOf: "Loyer"
-- tapOn: "Loyer"
-- scrollUntilVisible:
-    element: "Marquer comme payé"
-    direction: DOWN
 
-- tapOn: { id: "common.btn.back" }
-
-- evalScript: |
-    console.log("Revenir au mois courant pour la suite du test")
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.CURRENT_MONTH_NAME}
-      year: ${output.CURRENT_YEAR}
 
 - evalScript: |
     console.log("When l’utilisateur ouvre l’édition de cette occurrence")

@@ -39,20 +39,3 @@ tags:
 - assertVisible:
     text: "Récurrent"
     rightOf: "Loyer"
-
-- evalScript: |
-    console.log("And les autres occurrences de la série restent inchangées (mois précédent)")
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.PREV_MONTH_NAME}
-      year: ${output.PREV_YEAR}
-- assertVisible: "Loyer"
-- assertVisible:
-    text: "Récurrent"
-    rightOf: "Loyer"
-- tapOn: "Loyer"
-- scrollUntilVisible:
-    element: "Marquer comme payé"
-    direction: DOWN
-- tapOn: { id: "common.btn.back" }

@@ -10,7 +10,7 @@ flows:
 testOutputDir: build/maestro-results
 
 includeTags:
-  - edition
+  - TC_35
 # Tags: Exclude work-in-progress or unstable tests by default
 excludeTags:
   - wip

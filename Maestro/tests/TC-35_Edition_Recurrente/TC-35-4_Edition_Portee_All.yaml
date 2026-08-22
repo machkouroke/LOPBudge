@@ -1,13 +1,14 @@
 appId: com.lop.budget
-name: "TC-35-4: Édition Portée ALL"
+name: "TC-35-4: Portée ALL — toute la série, passé compris"
 tags:
   - edition
   - recurrence
+  - TC_35
 ---
 - runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 
 - evalScript: |
-      console.log("--- CAS 3 : Portée 'ALL' (Global) ---")
+    console.log("ALL : prefill = valeurs de la série, effet M-1, M et M+1, zéro doublon")
 
 - runFlow:
     file: ../../.maestro/subflows/navigate_to_edit.yaml
@@ -15,11 +16,7 @@ tags:
       transactionName: "Loyer"
       scopeSelection: "Toute la série"
 
-- extendedWaitUntil:
-      visible: { id: "common.btn.save" }
-      timeout: 5000
-
-# VÉRIFICATION PRÉ-REMPLISSAGE RÉCURRENCE (EXHAUSTIF)
+# CA-08 : prefill = valeurs de BASE de la série
 - runFlow:
     file: ../../.maestro/subflows/assert_edit_form_prefilled.yaml
     env:
@@ -29,32 +26,61 @@ tags:
       account: "Compte courant"
 
 - scrollUntilVisible:
-      element: { id: "transaction.edit.block.recurrence" }
-
+    element: { id: "transaction.edit.block.recurrence" }
 - assertVisible: "Tous les mois"
-
 - tapOn: { id: "transaction.edit.btn.advanced" }
 - scrollUntilVisible:
-      element: "occurrences"
-
+    element: "occurrences"
 - assertVisible:
-      id: "transaction.edit.field.interval"
-      text: "1"
+    id: "transaction.edit.field.interval"
+    text: "1"
 
-# Modifier Titre pour le futur (Input Safety)
 - scrollUntilVisible:
-      element: { id: "transaction.edit.field.title" }
-      direction: UP
-
+    element: { id: "transaction.edit.field.title" }
+    direction: UP
 - runFlow:
     file: ../../.maestro/subflows/update_amount.yaml
     env:
       target_id: "transaction.edit.field.title"
-      new_value: "Loyer Total"
+      new_value: "Loyer modifié"
 
-# Vérification Ecran détail
+# Réf. 107 : la sauvegarde doit ramener sur un écran de détail fonctionnel (pas de "Chargement")
 - extendedWaitUntil:
-      visible: { id: "screen.transaction.detail" }
-      timeout: 5000
-- assertVisible: "Loyer Total"
+    visible: { id: "screen.transaction.detail" }
+    timeout: 5000
+- assertVisible: "Loyer modifié"
 
+# Les TROIS mois portent le nouveau libellé, sans doublon
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.CURRENT_MONTH_NAME}
+      year: ${output.CURRENT_YEAR}
+- scrollUntilVisible:
+    element: "Loyer modifié"
+    direction: DOWN
+- scroll
+- assertNotVisible: "Loyer"
+- assertVisible: "Salaire"
+
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- scrollUntilVisible:
+    element: "Loyer modifié"
+    direction: DOWN
+- scroll
+- assertNotVisible: "Loyer"
+
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.PREV_MONTH_NAME}
+      year: ${output.PREV_YEAR}
+- scrollUntilVisible:
+    element: "Loyer modifié"
+    direction: DOWN
+- scroll
+- assertNotVisible: "Loyer"

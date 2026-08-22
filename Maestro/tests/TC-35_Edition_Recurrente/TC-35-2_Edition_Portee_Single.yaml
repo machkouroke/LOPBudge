@@ -1,13 +1,14 @@
 appId: com.lop.budget
-name: "TC-35-2: Édition Portée SINGLE"
+name: "TC-35-2: Portée SINGLE — seule l'occurrence ciblée change"
 tags:
   - edition
   - recurrence
+  - TC_35
 ---
 - runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
 
 - evalScript: |
-    console.log("--- CAS 2 : Portée SINGLE (Loyer) ---")
+    console.log("SINGLE : prefill occurrence, récurrence masquée, effet limité au mois courant")
 
 - runFlow:
     file: ../../.maestro/subflows/navigate_to_edit.yaml
@@ -15,11 +16,7 @@ tags:
       transactionName: "Loyer"
       scopeSelection: "Cette occurrence uniquement"
 
-- extendedWaitUntil:
-    visible: { id: "common.btn.save" }
-    timeout: 5000
-
-# VÉRIFICATION EXHAUSTIVE
+# Prefill = valeurs de l'occurrence ciblée
 - runFlow:
     file: ../../.maestro/subflows/assert_edit_form_prefilled.yaml
     env:
@@ -28,31 +25,61 @@ tags:
       category: "Loyer"
       account: "Compte courant"
 
-# Vérifier que le bloc récurrence est MASQUÉ (car portée SINGLE)
+# CA-02 : section récurrence MASQUÉE en portée SINGLE
 - repeat:
     times: 3
     commands:
       - scroll
 - assertNotVisible: { id: "transaction.edit.block.recurrence" }
 
+# Modification du LIBELLÉ (observable en liste, contrairement au montant)
 - scrollUntilVisible:
-    element: { id: "transaction.edit.field.amount" }
+    element: { id: "transaction.edit.field.title" }
     direction: UP
-
-# Modifier montant à 950 (Input Safety)
 - runFlow:
     file: ../../.maestro/subflows/update_amount.yaml
     env:
-      target_id: "transaction.edit.field.amount"
-      new_value: "950"
+      target_id: "transaction.edit.field.title"
+      new_value: "Loyer modifié"
 
-# Vérification Isolation (Scan M-1)
 - extendedWaitUntil:
     visible: { id: "screen.transaction.detail" }
     timeout: 5000
+- assertVisible: "Loyer modifié"
 
-# Option 3 : Séparer l'ID du Texte pour plus de robustesse
-- assertVisible:
-    id: "transaction.detail.field.amount"
-    text: "950,00.*"
+# Mois courant : occurrence modifiée, pas de doublon de l'ancien libellé
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.CURRENT_MONTH_NAME}
+      year: ${output.CURRENT_YEAR}
+- scrollUntilVisible:
+    element: "Loyer modifié"
+    direction: DOWN
+- scroll
+- assertNotVisible: "Loyer"
+- assertVisible: "Salaire"
 
+# Mois suivant : occurrence INCHANGÉE
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+- scrollUntilVisible:
+    element: "Loyer"
+    direction: DOWN
+- scroll
+- assertNotVisible: "Loyer modifié"
+
+# Mois précédent : occurrence INCHANGÉE (la série démarre au 1er du mois précédent)
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.PREV_MONTH_NAME}
+      year: ${output.PREV_YEAR}
+- scrollUntilVisible:
+    element: "Loyer"
+    direction: DOWN
+- scroll
+- assertNotVisible: "Loyer modifié"
