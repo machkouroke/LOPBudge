@@ -51,25 +51,7 @@ object DatabaseSeeder {
                 )
             }
 
-            suspend fun getOrUpsertCat(
-                name: String,
-                type: TransactionType,
-                color: Int,
-                icon: String,
-                parentId: Long? = null
-            ): Long {
-                val existing = categoryDao.getByNameAndParent(name, parentId)
-                if (existing != null) return existing.id
-                return categoryDao.upsert(
-                    CategoryEntity(
-                        name = name,
-                        type = type,
-                        colorArgb = color,
-                        icon = icon,
-                        parentCategoryId = parentId
-                    )
-                )
-            }
+
 
             // --- JDD ---
             val checking = getOrUpsertAccount(
@@ -81,39 +63,11 @@ object DatabaseSeeder {
             )
 
             // Catégories
-            val catIncome =
-                getOrUpsertCat("Revenus", TransactionType.INCOME, 0xFF4CAF50.toInt(), "trending_up")
-            val salaryCat = getOrUpsertCat(
-                "Salaire",
-                TransactionType.INCOME,
-                0xFF4CAF50.toInt(),
-                "work",
-                catIncome
-            )
-
-            val catFood = getOrUpsertCat(
-                "Alimentation",
-                TransactionType.EXPENSE,
-                0xFFFF9800.toInt(),
-                "restaurant"
-            )
-            val groceryCat = getOrUpsertCat(
-                "Courses",
-                TransactionType.EXPENSE,
-                0xFFFFB74D.toInt(),
-                "shopping_cart",
-                catFood
-            )
-
-            val catHouse =
-                getOrUpsertCat("Logement", TransactionType.EXPENSE, 0xFFF44336.toInt(), "home")
-            val rentCat = getOrUpsertCat(
-                "Loyer",
-                TransactionType.EXPENSE,
-                0xFFEF5350.toInt(),
-                "home",
-                catHouse
-            )
+            DefaultCategorySeedData.seed(categoryDao)
+            
+            val salaryCat = categoryDao.getByNameAndParent("Salaire", categoryDao.getByNameAndParent("Revenus", null)?.id)?.id ?: 1L
+            val rentCat = categoryDao.getByNameAndParent("Loyer", categoryDao.getByNameAndParent("Logement", null)?.id)?.id ?: 2L
+            val groceryCat = categoryDao.getByNameAndParent("Courses", categoryDao.getByNameAndParent("Alimentation", null)?.id)?.id ?: 3L
 
             val today = LocalDate.now()
             val first = today.withDayOfMonth(1)
