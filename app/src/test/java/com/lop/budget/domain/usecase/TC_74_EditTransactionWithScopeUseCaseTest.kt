@@ -467,7 +467,7 @@ class EditTransactionWithScopeUseCaseTest {
         val control = rowEntity(id = 999L, seriesDate = janStart, date = janStart)
         coEvery { transactionRepo.getExceptionsBySeries(100L) } returns listOf(migrating, control)
         val migrated = slot<TransactionEntity>()
-        coEvery { transactionRepo.upsert(capture(migrated)) } just Runs
+        coEvery { transactionRepo.upsert(capture(migrated)) } returns 30L
         val saved = slot<TransactionEntity>()
         coEvery { saveTransactionUseCase.saveSimple(capture(saved), emptyList()) } returns 20L
         val ed = edition(date = slotFeb, amount = 80.0) // diff : amount 100 -> 80 (title inchangé)
@@ -589,7 +589,7 @@ class EditTransactionWithScopeUseCaseTest {
         val alreadyPatched = rowEntity(id = 40L, seriesDate = janStart, date = janStart, amount = 80.0)
         coEvery { transactionRepo.getExceptionsBySeries(100L) } returns listOf(custom, alreadyPatched)
         val patched = slot<TransactionEntity>()
-        coEvery { transactionRepo.upsert(capture(patched)) } just Runs
+        coEvery { transactionRepo.upsert(capture(patched)) } returns 30L
         val saved = slot<TransactionEntity>()
         coEvery { saveTransactionUseCase.saveSimple(capture(saved), emptyList()) } returns 20L
         // Diff vs base : amount 100 -> 80, linkedDebtId null -> 8 (rattachement propagé, S-27 ALL)
