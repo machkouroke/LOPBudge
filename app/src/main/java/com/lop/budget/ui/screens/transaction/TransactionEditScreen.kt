@@ -234,35 +234,15 @@ fun TransactionEditScreen(
             FloatingCard {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     val selectedCat = categories.find { it.id == form.categoryId }
-                    val effectiveParent = if (selectedCat?.parentCategoryId != null) {
-                        categories.find { it.id == selectedCat.parentCategoryId }
-                    } else {
-                        selectedCat
-                    }
 
                     SelectorRow(
                         label = stringResource(R.string.tx_category_label),
-                        value = effectiveParent?.name ?: stringResource(R.string.tx_select_category),
-                        icon = effectiveParent?.let { IconMapper.get(it.icon) } ?: Icons.Filled.Category,
-                        iconTint = effectiveParent?.let { Color(it.colorArgb) },
+                        value = selectedCat?.name ?: stringResource(R.string.tx_select_category),
+                        icon = selectedCat?.let { IconMapper.get(it.icon) } ?: Icons.Filled.Category,
+                        iconTint = selectedCat?.let { Color(it.colorArgb) },
                         onClick = { showCategorySheet = true },
                         modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_CATEGORY)
                     )
-
-                    if (effectiveParent != null) {
-                        val subCats = categories.filter { it.parentCategoryId == effectiveParent.id }
-                        if (subCats.isNotEmpty()) {
-                            val selectedSub = if (selectedCat?.parentCategoryId != null) selectedCat else null
-                            SelectorRow(
-                                label = "Sous-catégorie",
-                                value = selectedSub?.name ?: "Choisir une sous-catégorie...",
-                                icon = selectedSub?.let { IconMapper.get(it.icon) } ?: Icons.Filled.KeyboardArrowDown,
-                                iconTint = selectedSub?.let { Color(it.colorArgb) },
-                                onClick = { showCategorySheet = true },
-                                modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_SUBCATEGORY)
-                            )
-                        }
-                    }
 
                     val selectedAcc = accounts.find { it.id == form.accountId }
                     SelectorRow(

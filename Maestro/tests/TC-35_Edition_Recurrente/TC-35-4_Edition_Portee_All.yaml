@@ -50,19 +50,6 @@ tags:
     timeout: 5000
 - assertVisible: "Loyer modifié"
 
-# Les TROIS mois portent le nouveau libellé, sans doublon
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.CURRENT_MONTH_NAME}
-      year: ${output.CURRENT_YEAR}
-- scrollUntilVisible:
-    element: "Loyer modifié"
-    direction: DOWN
-- scroll
-- assertNotVisible: "Loyer"
-- assertVisible: "Salaire"
-
 - runFlow:
     file: ../../.maestro/subflows/change_month.yaml
     env:

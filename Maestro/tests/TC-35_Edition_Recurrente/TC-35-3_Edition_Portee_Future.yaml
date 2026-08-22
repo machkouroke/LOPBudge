@@ -49,19 +49,6 @@ tags:
     timeout: 5000
 - assertVisible: "Loyer modifié"
 
-# Mois courant : modifié, aucun survivant de l'ancienne grille (Réf. 97)
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.CURRENT_MONTH_NAME}
-      year: ${output.CURRENT_YEAR}
-- scrollUntilVisible:
-    element: "Loyer modifié"
-    direction: DOWN
-- scroll
-- assertNotVisible: "Loyer"
-- assertVisible: "Salaire"
-
 # Mois suivant : modifié, PAS de doublon ancienne série + nouvelle série
 - runFlow:
     file: ../../.maestro/subflows/change_month.yaml

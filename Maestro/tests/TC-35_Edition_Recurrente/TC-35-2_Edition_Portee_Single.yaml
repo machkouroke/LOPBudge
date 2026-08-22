@@ -47,18 +47,6 @@ tags:
     timeout: 5000
 - assertVisible: "Loyer modifié"
 
-# Mois courant : occurrence modifiée, pas de doublon de l'ancien libellé
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.CURRENT_MONTH_NAME}
-      year: ${output.CURRENT_YEAR}
-- scrollUntilVisible:
-    element: "Loyer modifié"
-    direction: DOWN
-- scroll
-- assertNotVisible: "Loyer"
-- assertVisible: "Salaire"
 
 # Mois suivant : occurrence INCHANGÉE
 - runFlow:

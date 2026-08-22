@@ -1,5 +1,6 @@
 package com.lop.budget.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -132,7 +133,50 @@ fun CategoryBottomSheet(
                     }
                 }
 
-                if (filteredCategories.isEmpty()) {
+                if (searchQuery.isBlank() && currentParent != null) {
+                    item(span = { GridItemSpan(3) }) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { onSelect(currentParent!!.id) },
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val cat = currentParent!!
+                                val color = Color(cat.colorArgb)
+                                CircleIcon(
+                                    icon = IconMapper.get(cat.icon),
+                                    tint = color,
+                                    background = color.copy(alpha = 0.15f),
+                                    size = 40.dp
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = "Sélectionner la catégorie principale",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = cat.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    item(span = { GridItemSpan(3) }) {
+                        Text("Sous-catégories", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp))
+                    }
+                }
+
+                if (filteredCategories.isEmpty() && (searchQuery.isNotBlank() || currentParent == null)) {
                     item(span = { GridItemSpan(3) }) {
                         Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                             Text("Aucune catégorie trouvée", color = MaterialTheme.colorScheme.onSurfaceVariant)

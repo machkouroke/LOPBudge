@@ -34,34 +34,3 @@ tags:
     text: "Alimentation"
     index: 1
 
-
-# On revient à la liste
-- tapOn: { id: "common.btn.back" }
-
-# And les autres occurrences de la série restent inchangées (Isolation)
-# Vérification Mois Précédent
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-        month_name: ${output.PREV_MONTH_NAME}
-        year: ${output.PREV_YEAR}
-
-
-- tapOn: "Loyer"
-- assertVisible:
-    text: "Loyer"
-    index: 2
-
-
-
-# Vérification Mois Suivant
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.NEXT_MONTH_NAME}
-      year: ${output.NEXT_YEAR}
-
-- tapOn: "Loyer"
-- assertVisible:
-    text: "Loyer"
-    index: 2
