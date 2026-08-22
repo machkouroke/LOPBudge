@@ -146,9 +146,10 @@ object DefaultCategorySeedData {
         SeedCategory("Autres revenus", TransactionType.INCOME, "payments", 0xFF4CAF50.toInt())
     )
 
+    val allCategories = expenses + incomes
+
     suspend fun seed(categoryDao: CategoryDao) {
-        val all = expenses + incomes
-        for (seedCat in all) {
+        for (seedCat in allCategories) {
             val existing = categoryDao.getByNameAndParent(seedCat.name, null)
             val parentId = if (existing != null) {
                 existing.id
