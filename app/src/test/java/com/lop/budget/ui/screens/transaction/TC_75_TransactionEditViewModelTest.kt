@@ -90,6 +90,11 @@ class TransactionEditViewModelTest {
 
         // Exclure les lectures d'initialisation de confirmVerified pour éviter le bruit
         excludeRecords {
+            categoryRepo.observeByType(any())
+            accountRepo.observeAll()
+            tagRepo.observeAll()
+            goalRepo.observeAll()
+            debtRepo.observeAll()
             context.getString(R.string.tx_default_title)
         }
     }
