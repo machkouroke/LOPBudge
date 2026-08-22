@@ -48,7 +48,7 @@ import org.junit.Test
 import java.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class TC_75_TransactionEditViewModelTest {
+class TransactionEditViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -90,11 +90,6 @@ class TC_75_TransactionEditViewModelTest {
 
         // Exclure les lectures d'initialisation de confirmVerified pour éviter le bruit
         excludeRecords {
-            categoryRepo.observeByType(any())
-            accountRepo.observeAll()
-            tagRepo.observeAll()
-            goalRepo.observeAll()
-            debtRepo.observeAll()
             context.getString(R.string.tx_default_title)
         }
     }
