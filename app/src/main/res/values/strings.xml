@@ -81,6 +81,16 @@
     <string name="tx_tags_create_title">Créer une étiquette</string>
     <string name="tx_tags_name_label">Nom de l\'étiquette</string>
 
+    <string-array name="tx_days_short">
+        <item>L</item>
+        <item>M</item>
+        <item>M</item>
+        <item>J</item>
+        <item>V</item>
+        <item>S</item>
+        <item>D</item>
+    </string-array>
+
     <!-- Transaction Detail Screen -->
     <string name="tx_detail_category">Catégorie</string>
     <string name="tx_detail_date">Date</string>

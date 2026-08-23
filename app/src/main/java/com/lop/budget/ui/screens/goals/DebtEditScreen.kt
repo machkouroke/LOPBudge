@@ -38,7 +38,7 @@ import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopTextField
-import com.lop.budget.ui.screens.transaction.SelectorRow
+import com.lop.budget.ui.components.SelectorRow
 import com.lop.budget.util.Format
 
 @OptIn(ExperimentalMaterial3Api::class)

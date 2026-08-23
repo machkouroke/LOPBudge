@@ -59,6 +59,7 @@ data class TransactionForm(
     val maxOccurrences: Int? = null,
 ) {
     val amount: Double get() = amountInput.toDoubleOrNull() ?: 0.0
+    val isValid: Boolean get() = amount > 0.0 && categoryId != null && accountId != null
 }
 
 /**
@@ -106,6 +107,9 @@ class TransactionEditViewModel @Inject constructor(
     private val _showBalanceImpactAlert = MutableStateFlow(false)
     val showBalanceImpactAlert = _showBalanceImpactAlert.asStateFlow()
 
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving = _isSaving.asStateFlow()
+
     /** Photo du formulaire après chargement — base du dirty-check (CA-06). */
     private var initialForm: TransactionForm? = null
 
@@ -129,6 +133,9 @@ class TransactionEditViewModel @Inject constructor(
      */
     val isRecurrenceSectionVisible: Boolean
         get() = !(editScope == EditScope.SINGLE && _form.value.seriesId != null)
+
+    val canEditRecurrence: Boolean
+        get() = !(_form.value.seriesId != null && editScope == EditScope.SINGLE)
 
     init {
         viewModelScope.launch {
@@ -256,7 +263,10 @@ class TransactionEditViewModel @Inject constructor(
     }
 
     fun toggleTag(id: Long) = update {
-        it.copy(tagIds = if (id in it.tagIds) it.tagIds - id else it.tagIds + id)
+        val newTags = if (id in it.tagIds) it.tagIds - id
+        else if (it.tagIds.size < 3) it.tagIds + id
+        else it.tagIds
+        it.copy(tagIds = newTags)
     }
 
     fun toggleDayOfWeek(day: Int) = update {
@@ -281,10 +291,10 @@ class TransactionEditViewModel @Inject constructor(
 
     fun save(onDone: (Long) -> Unit) {
         val f = _form.value
-        if (f.amount <= 0 || f.categoryId == null || f.accountId == null) return
+        if (!f.isValid || _isSaving.value) return
 
         viewModelScope.launch {
-            val account = accountRepo.getById(f.accountId)
+            val account = accountRepo.getById(f.accountId!!)
             if (account != null && f.status == TransactionStatus.PAID && f.date < account.balanceUpdatedAt) {
                 _showBalanceImpactAlert.value = true
             } else {
@@ -295,6 +305,7 @@ class TransactionEditViewModel @Inject constructor(
 
     fun confirmSave(accountNow: Boolean, onDone: (Long) -> Unit) {
         _showBalanceImpactAlert.value = false
+        if (_isSaving.value) return
         viewModelScope.launch {
             if (accountNow) {
                 val f = _form.value
@@ -313,19 +324,24 @@ class TransactionEditViewModel @Inject constructor(
     private suspend fun performSave(onDone: (Long) -> Unit) {
         val f = _form.value
         if (f.accountId == null || f.categoryId == null) return
-        val edition = f.toEdition(context.getString(R.string.tx_default_title))
+        _isSaving.value = true
+        try {
+            val edition = f.toEdition(context.getString(R.string.tx_default_title))
 
-        val newId = if (isEditing) {
-            editTransactionWithScopeUseCase(
-                editingId = editingTransactionId!!,
-                seriesId = f.seriesId,
-                seriesDate = seriesDate?.takeIf { it > 0L },
-                edition = edition,
-                scope = editScope,
-            )
-        } else {
-            createTransactionUseCase(edition)
+            val newId = if (isEditing) {
+                editTransactionWithScopeUseCase(
+                    editingId = editingTransactionId!!,
+                    seriesId = f.seriesId,
+                    seriesDate = seriesDate?.takeIf { it > 0L },
+                    edition = edition,
+                    scope = editScope,
+                )
+            } else {
+                createTransactionUseCase(edition)
+            }
+            onDone(newId)
+        } finally {
+            _isSaving.value = false
         }
-        onDone(newId)
     }
 }

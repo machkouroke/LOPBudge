@@ -14,7 +14,7 @@ tags:
 - tapOn: { id: "transaction.detail.edit" }
 
 # CA-01 : accès direct, AUCUNE bottom sheet de portée
-- assertNotVisible: "Modifier la transaction ?"
+- assertNotVisible: "Cette transaction fait partie d'une série récurrente."
 - assertVisible: { id: "screen.transaction.edit" }
 
 # Prefill exhaustif (data-binding)
