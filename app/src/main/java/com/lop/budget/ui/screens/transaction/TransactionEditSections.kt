@@ -301,16 +301,19 @@ fun RecurrenceSection(
                     stringResource(R.string.tx_repeat_label),
                     style = MaterialTheme.typography.titleMedium
                 )
-                TextButton(
-                    onClick = { showAdvanced = !showAdvanced },
-                    modifier = Modifier.testTag(TestTags.TX_EDIT_BTN_ADVANCED)
-                ) {
-                    Text(if (showAdvanced) "Moins" else stringResource(R.string.tx_repeat_advanced))
-                    Icon(
-                        if (showAdvanced) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
-                        null
-                    )
+                if (form.frequency != RecurrenceFrequency.NONE) {
+                    TextButton(
+                        onClick = { showAdvanced = !showAdvanced },
+                        modifier = Modifier.testTag(TestTags.TX_EDIT_BTN_ADVANCED)
+                    ) {
+                        Text(if (showAdvanced) "Moins" else stringResource(R.string.tx_repeat_advanced))
+                        Icon(
+                            if (showAdvanced) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
+                            null
+                        )
+                    }
                 }
+
             }
 
             // Frequency Selector

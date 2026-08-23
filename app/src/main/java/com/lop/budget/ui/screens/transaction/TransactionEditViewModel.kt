@@ -135,12 +135,10 @@ class TransactionEditViewModel @Inject constructor(
     /**
      * CA-08 : la section récurrence est masquée en SINGLE sur une occurrence de série.
      * Elle reste visible pour une ponctuelle (ajout de récurrence) et en FUTURE/ALL.
+     * Mais aussi est toujours visible lors de la création
      */
     val isRecurrenceSectionVisible: Boolean
-        get() = !(editScope == EditScope.SINGLE && _form.value.seriesId != null)
-
-    val canEditRecurrence: Boolean
-        get() = !(_form.value.seriesId != null && editScope == EditScope.SINGLE)
+        get() = editScope != EditScope.SINGLE || !isEditing
 
     init {
         viewModelScope.launch {

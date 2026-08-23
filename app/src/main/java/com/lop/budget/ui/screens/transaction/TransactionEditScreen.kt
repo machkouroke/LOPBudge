@@ -127,7 +127,7 @@ fun TransactionEditScreen(
             )
         }
 
-        if (vm.canEditRecurrence) {
+        if (vm.isRecurrenceSectionVisible) {
             item {
                 RecurrenceSection(
                     form = form,
