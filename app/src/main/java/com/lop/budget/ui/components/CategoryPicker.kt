@@ -76,8 +76,6 @@ fun CategoryBottomSheet(
                 IconButton(onClick = { currentParent = null }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
                 }
-            } else {
-                Spacer(Modifier.width(48.dp))
             }
             Text(
                 text = when {
@@ -91,9 +89,6 @@ fun CategoryBottomSheet(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            IconButton(onClick = onDismiss) {
-                Icon(Icons.Default.Close, contentDescription = "Fermer")
-            }
         }
 
         LopSearchBar(
@@ -112,6 +107,12 @@ fun CategoryBottomSheet(
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (!isSearching && currentParent != null) {
+                SelectParentRow(parent = currentParent!!) {
+                    onSelect(currentParent!!.id)
+                }
+                SectionLabel("Sous-catégories")
+            }
             if (!isSearching && currentParent == null && recents.isNotEmpty()) {
                 SectionLabel("Récente")
                 CategoryTileRow(

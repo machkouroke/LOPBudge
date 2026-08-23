@@ -6,7 +6,7 @@ import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -26,9 +26,13 @@ import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +48,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
+import com.lop.budget.ui.motion.MotionSpec
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -55,17 +60,55 @@ fun LopBottomSheet(
     maxHeightFraction: Float = 0.75f,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val maxHeight = LocalConfiguration.current.screenHeightDp.dp * maxHeightFraction
+    val configuration = LocalConfiguration.current
     val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
-    val offsetY = remember { Animatable(0f) }
+    val maxHeight = configuration.screenHeightDp.dp * maxHeightFraction
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
     val dismissPx = with(density) { 140.dp.toPx() }
     val lightIcons = MaterialTheme.colorScheme.background.luminance() > 0.5f
 
-    BackHandler(onBack = onDismiss)
+    val scope = rememberCoroutineScope()
+    val offsetY = remember { Animatable(screenHeightPx) }
+    val scrimAlpha = remember { Animatable(0f) }
+    var closing by remember { mutableStateOf(false) }
+
+    fun animateClose() {
+        if (closing) return
+        closing = true
+        scope.launch {
+            launch {
+                scrimAlpha.animateTo(
+                    0f,
+                    tween(MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut),
+                )
+            }
+            offsetY.animateTo(
+                screenHeightPx,
+                tween(MotionSpec.SLOW_MS, easing = MotionSpec.easeOut),
+            )
+            onDismiss()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        launch {
+            offsetY.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(MotionSpec.SLOW_MS, easing = MotionSpec.easeOut),
+            )
+        }
+        launch {
+            scrimAlpha.animateTo(
+                targetValue = 0.55f,
+                animationSpec = tween(MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut),
+            )
+        }
+    }
+
+    BackHandler(onBack = ::animateClose)
 
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = ::animateClose,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             decorFitsSystemWindows = false,
@@ -97,11 +140,11 @@ fun LopBottomSheet(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.55f))
+                    .background(Color.Black.copy(alpha = scrimAlpha.value))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = onDismiss,
+                        onClick = ::animateClose,
                     ),
             )
 
@@ -112,7 +155,13 @@ fun LopBottomSheet(
                     .offset { IntOffset(0, offsetY.value.roundToInt()) }
                     .heightIn(max = maxHeight)
                     .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                    .background(MaterialTheme.colorScheme.surface),
+                    .background(MaterialTheme.colorScheme.surface)
+                    // Empêche le clic header / zones vides d’atteindre le scrim.
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {},
+                    ),
             ) {
                 Box(
                     Modifier
@@ -125,9 +174,14 @@ fun LopBottomSheet(
                                     scope.launch { offsetY.snapTo(next) }
                                 },
                                 onDragEnd = {
-                                    scope.launch {
-                                        if (offsetY.value > dismissPx) onDismiss()
-                                        else offsetY.animateTo(0f, spring())
+                                    if (offsetY.value > dismissPx) animateClose()
+                                    else {
+                                        scope.launch {
+                                            offsetY.animateTo(
+                                                0f,
+                                                tween(MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut),
+                                            )
+                                        }
                                     }
                                 },
                             )
@@ -137,7 +191,6 @@ fun LopBottomSheet(
                     BottomSheetDefaults.DragHandle()
                 }
                 content()
-                // Le fond cream continue sous la gesture bar ; le contenu, lui, est relevé.
                 Spacer(Modifier.navigationBarsPadding())
             }
         }
