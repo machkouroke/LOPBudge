@@ -18,12 +18,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,7 +61,10 @@ fun CategoryBottomSheet(
             categories.filter { it.parentCategoryId == currentParent?.id }
         }
     }
-
+    val rootCategories = remember(categories) {
+        categories.filter { it.parentCategoryId == null }
+    }
+    val recents = remember(rootCategories) { rootCategories.take(3) }
     LopBottomSheet(onDismiss = onDismiss) {
         Row(
             modifier = Modifier
@@ -96,28 +96,11 @@ fun CategoryBottomSheet(
             }
         }
 
-        OutlinedTextField(
+        LopSearchBar(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            placeholder = { Text("Chercher une catégorie...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { searchQuery = "" }) {
-                        Icon(Icons.Default.Close, contentDescription = "Effacer")
-                    }
-                }
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-            ),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            placeholder = "Chercher une catégorie...",
         )
 
         Column(
@@ -129,15 +112,19 @@ fun CategoryBottomSheet(
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (!isSearching && currentParent != null) {
-                SelectParentRow(parent = currentParent!!) { onSelect(currentParent!!.id) }
-                Text(
-                    "Sous-catégories",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
+            if (!isSearching && currentParent == null && recents.isNotEmpty()) {
+                SectionLabel("Récente")
+                CategoryTileRow(
+                    tiles = recents.map { CategoryTile.Item(it) },
+                    selectedId = selectedId,
+                    parentIds = parentIds,
+                    onOpenParent = { currentParent = it },
+                    onSelect = onSelect,
                 )
+                SectionLabel("Toutes")
             }
 
+// puis la grille `visible` + tuile Ajouter, comme maintenant
             if (visible.isEmpty() && onCreate == null) {
                 Text(
                     "Aucune catégorie trouvée",
@@ -321,6 +308,53 @@ private fun AddCategoryTile(
                 color = color,
                 fontWeight = FontWeight.SemiBold,
             )
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+    )
+}
+
+@Composable
+private fun CategoryTileRow(
+    tiles: List<CategoryTile>,
+    selectedId: Long?,
+    parentIds: Set<Long>,
+    onOpenParent: (CategoryEntity) -> Unit,
+    onSelect: (Long) -> Unit,
+    isSearching: Boolean = false,
+    onCreate: (() -> Unit)? = null,
+) {
+    tiles.chunked(4).forEach { row ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            row.forEach { tile ->
+                when (tile) {
+                    is CategoryTile.Item -> CategoryGridItem(
+                        cat = tile.cat,
+                        isSelected = selectedId == tile.cat.id,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (tile.cat.id in parentIds && !isSearching) onOpenParent(tile.cat)
+                            else onSelect(tile.cat.id)
+                        },
+                    )
+                    CategoryTile.Add -> AddCategoryTile(
+                        modifier = Modifier.weight(1f),
+                        onClick = onCreate!!,
+                    )
+                }
+            }
+            repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
