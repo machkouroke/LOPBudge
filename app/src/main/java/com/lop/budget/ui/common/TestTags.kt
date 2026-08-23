@@ -37,6 +37,11 @@ object TestTags {
     const val NAV_ANALYTICS = "nav.analytics"
     const val NAV_GOALS = "nav.goals"
 
+    // Add action sheet
+    const val ADD_ACTION_SHEET = "add.action.sheet"
+    const val ADD_ACTION_EXPENSE = "add.action.expense"
+    const val ADD_ACTION_INCOME = "add.action.income"
+
     // Home Screen
     const val HOME_MONTH_PICKER = "home.month.picker"
     const val HOME_GO_TO_TODAY = "home.go.to.today"

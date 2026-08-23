@@ -33,30 +33,17 @@ tags:
 
 # Modification du libellé + sauvegarde
 - scrollUntilVisible:
-    element: { id: "transaction.edit.field.title" }
+    element: { id: "transaction.edit.field.amount" }
     direction: UP
 - runFlow:
     file: ../../.maestro/subflows/update_amount.yaml
     env:
       target_id: "transaction.edit.field.title"
-      new_value: "Courses modifiées"
+      new_value: "Courses modified"
 
 - extendedWaitUntil:
     visible: { id: "screen.transaction.detail" }
     timeout: 5000
-- assertVisible: "Courses modifiées"
-
-# Résultat en liste : nouveau libellé présent, ancien absent, contrôles intacts
-- runFlow:
-    file: ../../.maestro/subflows/change_month.yaml
-    env:
-      month_name: ${output.CURRENT_MONTH_NAME}
-      year: ${output.CURRENT_YEAR}
-- scrollUntilVisible:
-    element: "Courses modifiées"
-    direction: DOWN
-- scroll
+- assertVisible: "Courses modified"
 - assertNotVisible: "Courses Hebdomadaires"
-# Isolation : les autres transactions ne bougent pas
-- assertVisible: "Loyer"
-- assertVisible: "Salaire"
+

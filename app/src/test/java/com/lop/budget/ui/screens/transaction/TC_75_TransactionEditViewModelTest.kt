@@ -104,11 +104,12 @@ class TransactionEditViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun createSut(id: Long? = null, scope: EditScope? = null, date: Long? = null): TransactionEditViewModel {
+    private fun createSut(id: Long? = null, scope: EditScope? = null, date: Long? = null, type: TransactionType? = null): TransactionEditViewModel {
         val map = mutableMapOf<String, Any>()
         if (id != null) map["id"] = id
         if (scope != null) map["scope"] = scope.name
         if (date != null) map["date"] = date
+        if (type != null) map["type"] = type.name
         
         return TransactionEditViewModel(
             accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, debtRepo,
@@ -487,6 +488,18 @@ class TransactionEditViewModelTest {
         advanceUntilIdle()
         
         assertEquals(5L, sut.form.value.accountId)
+        confirmVerified(*allMocks)
+    }
+
+    @Test
+    fun `V-12 - Initialisation avec le type INCOME depuis SavedStateHandle`() = runTest(testDispatcher) {
+        val account = createAccount(id = 1L)
+        every { accountRepo.observeAll() } returns flowOf(listOf(account))
+        
+        val sut = createSut(id = 0L, type = TransactionType.INCOME)
+        advanceUntilIdle()
+        
+        assertEquals(TransactionType.INCOME, sut.form.value.type)
         confirmVerified(*allMocks)
     }
 }

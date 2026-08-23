@@ -23,7 +23,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +40,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.ui.components.AddActionSheet
 import com.lop.budget.ui.components.DeleteConfirmationDialog
 import com.lop.budget.ui.components.FloatingBottomBar
 import com.lop.budget.ui.components.RecurringDeleteSheet
@@ -85,6 +90,7 @@ fun LopNavHost(startRoute: String? = null) {
     val pendingConfirmation by actionVm.pendingConfirmation.collectAsStateWithLifecycle()
     val editRequest by actionVm.editRequest.collectAsStateWithLifecycle()
 
+    var showAddActions by rememberSaveable { mutableStateOf(false) }
 
     val showBar =
         (currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts")
@@ -333,7 +339,17 @@ fun LopNavHost(startRoute: String? = null) {
                         TagsManageScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composableAnimated(Routes.ADD, NavAnimationType.MAIN) {
+                    composableAnimated(
+                        Routes.ADD,
+                        NavAnimationType.MAIN,
+                        arguments = listOf(
+                            navArgument("type") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = TransactionType.EXPENSE.name
+                            }
+                        )
+                    ) {
                         TransactionEditScreen(
                             onDone = { newId ->
                                 if (newId > 0) {
@@ -450,7 +466,7 @@ fun LopNavHost(startRoute: String? = null) {
                                 restoreState = true
                             }
                         },
-                        onAdd = { navController.navigate(Routes.ADD) },
+                        onAdd = { showAddActions = true },
                         hazeState = hazeState,
                     )
                 }
@@ -477,6 +493,16 @@ fun LopNavHost(startRoute: String? = null) {
                     hazeState = hazeState
                 )
             }
+
+            AddActionSheet(
+                visible = showAddActions,
+                onDismiss = { showAddActions = false },
+                onSelect = { type ->
+                    showAddActions = false
+                    navController.navigate(Routes.add(type))
+                },
+                hazeState = hazeState,
+            )
 
             // SIBLING 4: Global Delete Request Handler
             deleteRequest?.let { toDelete ->

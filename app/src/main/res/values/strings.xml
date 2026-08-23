@@ -242,4 +242,8 @@
     <string name="nav_home">Accueil</string>
     <string name="nav_analytics">Analyse</string>
     <string name="nav_goals">Objectif</string>
+
+    <!-- Add actions -->
+    <string name="add_action_expense">Dépense</string>
+    <string name="add_action_income">Revenu</string>
 </resources>

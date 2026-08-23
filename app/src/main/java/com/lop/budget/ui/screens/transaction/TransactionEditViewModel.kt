@@ -119,6 +119,11 @@ class TransactionEditViewModel @Inject constructor(
     private val seriesDate: Long? = savedStateHandle["date"]
     var isLoaded = false
 
+    private val initialType: TransactionType =
+        savedStateHandle.get<String>("type")
+            ?.let { raw -> runCatching { TransactionType.valueOf(raw) }.getOrNull() }
+            ?: TransactionType.EXPENSE
+
     val isEditing: Boolean get() = editingTransactionId != null && editingTransactionId != 0L
 
     /**
@@ -142,6 +147,7 @@ class TransactionEditViewModel @Inject constructor(
             if (isEditing) {
                 loadTransaction(editingTransactionId!!)
             } else {
+                update { f -> f.copy(type = initialType) }
                 // Nouvelle transaction : présélectionner le premier compte disponible.
                 val accounts = accountRepo.observeAll().firstOrNull().orEmpty()
                 accounts.firstOrNull()?.let { update { f -> f.copy(accountId = it.id) } }
