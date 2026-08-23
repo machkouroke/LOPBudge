@@ -43,6 +43,8 @@ import com.lop.budget.R
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CategoryBottomSheet
+import com.lop.budget.ui.components.DonutChart
+import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopSearchBar
 import com.lop.budget.ui.components.transactionDayGroups
@@ -120,12 +122,12 @@ fun MonthlyTransactionsScreen(
             }
 
             item {
-                com.lop.budget.ui.components.FloatingCard(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+               FloatingCard(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                         if (slices.isEmpty()) {
                             Text(stringResource(R.string.monthly_no_data), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(40.dp))
                         } else {
-                            com.lop.budget.ui.components.DonutChart(slices = slices) {
+                            DonutChart(slices = slices) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text("Total", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Text(
