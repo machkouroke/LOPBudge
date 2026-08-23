@@ -12,6 +12,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -22,7 +23,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.lop.budget.R
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.ui.common.TestTags
@@ -31,6 +34,7 @@ import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.PickerBottomSheet
 import com.lop.budget.util.IconMapper
+
 
 enum class EditSheet { Category, Account, Tags, Goal, Debt, Frequency, Date, EndDate }
 
@@ -50,8 +54,20 @@ fun TransactionEditScreen(
     val showAlert by vm.showBalanceImpactAlert.collectAsStateWithLifecycle()
     val isSaving by vm.isSaving.collectAsStateWithLifecycle()
 
-    var activeSheet by rememberSaveable { mutableStateOf<EditSheet?>(if (vm.isEditing) null else EditSheet.Category) }
 
+    var activeSheet by rememberSaveable { mutableStateOf<EditSheet?>(null) }
+    var autoOpenedCategory by rememberSaveable { mutableStateOf(false) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+
+    LaunchedEffect(vm.isEditing) {
+        if (vm.isEditing || autoOpenedCategory) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            if (!autoOpenedCategory) {
+                activeSheet = EditSheet.Category
+                autoOpenedCategory = true
+            }
+        }
+    }
     if (showAlert) {
         BalanceImpactDialog(
             onConfirm = { accountNow -> vm.confirmSave(accountNow, onDone) },
