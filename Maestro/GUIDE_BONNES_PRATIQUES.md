@@ -178,3 +178,18 @@ Maestro résout les chemins de `runFlow` et `runScript` relativement au fichier 
 - **Règle** : Utiliser `env` pour passer des paramètres.
 - **Règle** : Les constantes définies dans un subflow écrasent celles du parent.
 - **Doc** : [Parameters and constants](https://docs.maestro.dev/maestro-flows/flow-control-and-logic/parameters-and-constants)
+
+## 19. Exécution en CI (Sharding)
+
+Pour optimiser le temps d'exécution, la suite Maestro est parallélisée sur GitHub Actions.
+
+- **Principe** : La suite est divisée en **shards** (sous-ensembles de flows) répartis sur plusieurs runners.
+- **Commande CI** :
+  ```bash
+  maestro test Maestro/ \
+    --shard-split <NOMBRE_TOTAL_SHARDS> \
+    --shard-index <INDEX_DU_SHARD_COURANT> \
+    --format junit \
+    --output build/maestro-junit.xml
+  ```
+- **Règle** : L'isolation de chaque flow (cf Règle 14) est indispensable pour que le sharding soit fiable. Un flow ne doit jamais dépendre d'un autre car l'ordre et la répartition entre shards sont gérés dynamiquement par Maestro.
