@@ -83,19 +83,15 @@ jobs:
           disable-animations: true
           script: |
             adb wait-for-device
-#             Force locale
             adb shell setprop persist.sys.locale fr-FR
             adb shell setprop persist.sys.language fr
             adb shell setprop persist.sys.country FR
-            # Redémarre le framework Android pour appliquer
             adb shell stop
             adb shell start
             adb wait-for-device
             
-            # Optionnel mais utile sur Android récents
             adb shell settings put system system_locales fr-FR || true
             
-            # Vérification
             adb shell getprop persist.sys.locale
             adb shell getprop persist.sys.language
             adb shell getprop persist.sys.country
