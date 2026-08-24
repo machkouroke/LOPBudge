@@ -80,6 +80,7 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-metrics -no-snapshot-save -memory 3072
           disable-animations: true
+          locale: fr_FR
           script: |
             adb wait-for-device
             adb install -r app/build/outputs/apk/debug/app-debug.apk
