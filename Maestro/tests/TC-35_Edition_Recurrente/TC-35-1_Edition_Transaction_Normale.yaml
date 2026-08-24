@@ -26,10 +26,12 @@ tags:
       category: "Courses"
       account: "Compte courant"
 
-# Section récurrence préremplie SANS récurrence
-- scrollUntilVisible:
-    element: { id: "transaction.edit.block.recurrence" }
-- assertVisible: "Ne se répète pas"
+# CA-02 : section récurrence MASQUÉE en portée SINGLE
+- repeat:
+    times: 3
+    commands:
+      - scroll
+- assertNotVisible: { id: "transaction.edit.block.recurrence" }
 
 # Modification du libellé + sauvegarde
 - scrollUntilVisible:
