@@ -40,12 +40,12 @@ tags:
     file: ../../.maestro/subflows/update_amount.yaml
     env:
       target_id: "transaction.edit.field.title"
-      new_value: "Loyer modifié"
+      new_value: "Loyer updated"
 
 - extendedWaitUntil:
     visible: { id: "screen.transaction.detail" }
     timeout: 5000
-- assertVisible: "Loyer modifié"
+- assertVisible: "Loyer updated"
 
 
 # Mois suivant : occurrence INCHANGÉE
@@ -58,7 +58,7 @@ tags:
     element: "Loyer"
     direction: DOWN
 - scroll
-- assertNotVisible: "Loyer modifié"
+- assertNotVisible: "Loyer updated"
 
 # Mois précédent : occurrence INCHANGÉE (la série démarre au 1er du mois précédent)
 - runFlow:
@@ -70,4 +70,4 @@ tags:
     element: "Loyer"
     direction: DOWN
 - scroll
-- assertNotVisible: "Loyer modifié"
+- assertNotVisible: "Loyer updated"

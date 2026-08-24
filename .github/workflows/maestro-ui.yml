@@ -87,6 +87,13 @@ jobs:
             cat /tmp/maestro-shard.yaml
             maestro test --config /tmp/maestro-shard.yaml Maestro/ --format junit --output build/maestro-junit-shard-${{ matrix.shard }}.xml --test-output-dir build/maestro-results
 
+      - name: Zip Maestro Results
+        if: always()
+        run: |
+          if [ -d "build/maestro-results" ]; then
+            zip -r build/maestro-results-shard-${{ matrix.shard }}.zip build/maestro-results
+          fi
+
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
         if: always()
@@ -94,7 +101,7 @@ jobs:
           name: maestro-shard-ubuntu-${{ matrix.shard }}
           path: |
             build/maestro-junit-shard-${{ matrix.shard }}.xml
-            build/maestro-results
+            build/maestro-results-shard-${{ matrix.shard }}.zip
 
   report:
     name: Merge Results (Ubuntu)
