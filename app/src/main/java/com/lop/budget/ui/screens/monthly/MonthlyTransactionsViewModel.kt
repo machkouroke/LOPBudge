@@ -65,8 +65,9 @@ class MonthlyTransactionsViewModel @Inject constructor(
     settings: SettingsRepository,
 ) : ViewModel() {
 
+    // Dans MonthlyTransactionsViewModel.kt
+
     private val initialType = savedStateHandle.get<String>("type")?.let { TransactionType.valueOf(it) }
-        ?: TransactionType.EXPENSE
     private val initialMonth = savedStateHandle.get<String>("ym")?.let { YearMonth.parse(it) }
         ?: YearMonth.now()
     private val initialMode = savedStateHandle.get<String>("mode") ?: "HISTORY"

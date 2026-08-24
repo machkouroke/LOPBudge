@@ -46,7 +46,7 @@ fun BalanceDashboardWidget(
     currency: String,
     onPrevMonth: () -> Unit,
     onNextMonth: () -> Unit,
-    onOpenMonthly: (com.lop.budget.domain.model.TransactionType) -> Unit,
+    onOpenMonthly: (com.lop.budget.domain.model.TransactionType?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current

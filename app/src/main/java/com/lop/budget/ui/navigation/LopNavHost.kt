@@ -232,7 +232,10 @@ fun LopNavHost(startRoute: String? = null) {
                         Routes.MONTHLY,
                         NavAnimationType.SECONDARY,
                         arguments = listOf(
-                            navArgument("type") { type = NavType.StringType },
+                            navArgument("type") { 
+                                type = NavType.StringType 
+                                nullable = true 
+                            },
                             navArgument("ym") { type = NavType.StringType },
                             navArgument("mode") { 
                                 type = NavType.StringType 

@@ -198,7 +198,11 @@ fun HomeContent(
                     currency = state.currency,
                     onPrevMonth = onPrevMonth,
                     onNextMonth = onNextMonth,
-                    onOpenMonthly = { onOpenMonthly(it, targetMonth) }
+                    onOpenMonthly = {
+                        if (it != null) {
+                            onOpenMonthly(it, targetMonth)
+                        }
+                    }
                 )
             }
         }
