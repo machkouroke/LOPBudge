@@ -68,15 +68,9 @@ jobs:
           script: |
             adb wait-for-device
             adb install -r app/build/outputs/apk/debug/app-debug.apk
-            python3 Maestro/scripts/shard_flows.py \
-              --index ${{ matrix.shard }} \
-              --count 2 \
-              --write-config /tmp/maestro-shard.yaml
+            python3 Maestro/scripts/shard_flows.py --index ${{ matrix.shard }} --count 2 --write-config /tmp/maestro-shard.yaml
             cat /tmp/maestro-shard.yaml
-            maestro test --config /tmp/maestro-shard.yaml Maestro/ \
-              --format junit \
-              --output build/maestro-junit-shard-${{ matrix.shard }}.xml \
-              --test-output-dir build/maestro-results
+            maestro test --config /tmp/maestro-shard.yaml Maestro/ --format junit --output build/maestro-junit-shard-${{ matrix.shard }}.xml --test-output-dir build/maestro-results
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
