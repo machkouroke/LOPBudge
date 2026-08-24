@@ -83,19 +83,14 @@ jobs:
           disable-animations: true
           script: |
             adb wait-for-device
-            adb shell setprop persist.sys.locale fr-FR
-            adb shell setprop persist.sys.language fr
-            adb shell setprop persist.sys.country FR
-            adb shell stop
-            adb shell start
-            adb wait-for-device
             
+            adb shell cmd locale set-app-locales --user 0 com.android.systemui fr-FR || true
             adb shell settings put system system_locales fr-FR || true
+            adb shell settings put global device_locale fr-FR || true
             
-            adb shell getprop persist.sys.locale
-            adb shell getprop persist.sys.language
-            adb shell getprop persist.sys.country
-            adb shell getprop ro.product.locale
+            adb shell getprop ro.product.locale || true
+            adb shell getprop persist.sys.locale || true
+            adb shell settings get system system_locales || true
                     
                     
             adb install -r app/build/outputs/apk/debug/app-debug.apk
