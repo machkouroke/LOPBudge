@@ -73,7 +73,6 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         env:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "600000"
-          MAESTRO_SHARD_INDEX: ${{ matrix.shard }}
         with:
           api-level: 36
           target: google_apis
@@ -84,7 +83,15 @@ jobs:
           script: |
             adb wait-for-device
             adb install -r app/build/outputs/apk/debug/app-debug.apk
-            maestro test Maestro/ --shard-split 2 --format junit --output build/maestro-junit-shard-${{ matrix.shard }}.xml --test-output-dir build/maestro-results
+            python3 Maestro/scripts/shard_flows.py \
+              --index ${{ matrix.shard }} \
+              --count 2 \
+              --write-config /tmp/maestro-shard.yaml
+            cat /tmp/maestro-shard.yaml
+            maestro test --config /tmp/maestro-shard.yaml Maestro/ \
+              --format junit \
+              --output build/maestro-junit-shard-${{ matrix.shard }}.xml \
+              --test-output-dir build/maestro-results
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
@@ -94,3 +101,28 @@ jobs:
           path: |
             build/maestro-junit-shard-${{ matrix.shard }}.xml
             build/maestro-results
+
+  report:
+    name: Merge Results (Ubuntu)
+    needs: maestro
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all shards results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: maestro-shard-ubuntu-*
+          path: build/shards
+          merge-multiple: true
+
+      - name: Merge JUnit reports
+        run: |
+          python3 Maestro/scripts/merge_junit.py build/shards/*.xml -o build/maestro-junit-merged.xml
+
+      - name: Upload Merged Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-junit-ubuntu-merged
+          path: build/maestro-junit-merged.xml
