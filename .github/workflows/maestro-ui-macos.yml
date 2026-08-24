@@ -58,6 +58,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         env:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "600000"
+          MAESTRO_SHARD_INDEX: ${{ matrix.shard }}
         with:
           api-level: 36
           target: google_apis
@@ -68,7 +69,7 @@ jobs:
           script: |
             adb wait-for-device
             adb install -r app/build/outputs/apk/debug/app-debug.apk
-            maestro test Maestro/ --shard-split 2 --shard-index ${{ matrix.shard }} --format junit --output build/maestro-junit-shard-${{ matrix.shard }}.xml --test-output-dir build/maestro-results
+            maestro test Maestro/ --shard-split 2 --format junit --output build/maestro-junit-shard-${{ matrix.shard }}.xml --test-output-dir build/maestro-results
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
         if: always()
