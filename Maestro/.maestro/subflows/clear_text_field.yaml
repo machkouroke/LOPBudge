@@ -13,12 +13,18 @@ appId: com.lop.budget
 - longPressOn:
     id: ${target_id}
 
-# 3. Si "Tout sélectionner" n'est pas visible directement, on passe par les options supplémentaires
+# 3. Laisser le temps au menu système d'apparaître (critique en CI)
+# On attend jusqu'à 2s, mais c'est optionnel pour ne pas faire échouer si c'est dans l'overflow
+- extendedWaitUntil:
+    visible: "Tout sélectionner|Select all"
+    timeout: 2000
+    optional: true
+
 - runFlow:
     when:
       notVisible: "Tout sélectionner|Select all"
     commands:
-      # On tente l'ID standard Android, ou les variantes de texte fr/en
+      # Si vraiment absent, on tente l'overflow
       - tapOn:
           id: "android:id/overflow"
           optional: true
@@ -26,8 +32,9 @@ appId: com.lop.budget
           text: "Options supplémentaires|Plus d'options|More options"
           optional: true
 
-# 4. Sélectionner tout
-- tapOn: "Tout sélectionner|Select all"
+# 4. Sélectionner tout (on utilise un sélecteur explicite pour la regex)
+- tapOn:
+    text: "Tout sélectionner|Select all"
 
 # 5. Supprimer
 - eraseText: 1
