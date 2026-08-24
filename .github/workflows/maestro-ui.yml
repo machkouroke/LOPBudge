@@ -78,8 +78,13 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-metrics -no-snapshot-save -memory 3072
+          force-avd-creation: true
+          emulator-options: >
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -camera-back none -no-metrics -no-snapshot-save -memory 3072
+            -prop persist.sys.language=fr
+            -prop persist.sys.country=FR
+            -prop persist.sys.locale=fr-FR
           disable-animations: true
           script: |
             adb wait-for-device
