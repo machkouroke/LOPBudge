@@ -11,21 +11,16 @@ appId: com.lop.budget
 # Si "Tout sélectionner" n'est pas visible directement, on passe par les options supplémentaires
 - runFlow:
     when:
-      notVisible: "Tout sélectionner"
+      notVisible: "Tout sélectionner|Select all"
     commands:
       # On tente l'ID standard Android, ou les variantes de texte fr/en
       - tapOn:
           id: "android:id/overflow"
           optional: true
       - tapOn:
-          text: "Plus d'options"
-          optional: true
-      - tapOn:
-          text: "Options supplémentaires"
-          optional: true
-      - tapOn:
-          text: "More options"
+          text: "Options supplémentaires|Plus d'options|More options"
           optional: true
 
-- tapOn: "Tout sélectionner"
+
+- tapOn: "Tout sélectionner|Select all"
 - eraseText: 1
