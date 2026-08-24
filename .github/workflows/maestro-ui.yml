@@ -80,9 +80,9 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-metrics -no-snapshot-save -memory 3072
           disable-animations: true
-          locale: fr_FR
           script: |
             adb wait-for-device
+            adb shell settings put system system_locales fr-FR
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             python3 Maestro/scripts/shard_flows.py --index ${{ matrix.shard }} --count 2 --write-config /tmp/maestro-shard.yaml
             cat /tmp/maestro-shard.yaml
