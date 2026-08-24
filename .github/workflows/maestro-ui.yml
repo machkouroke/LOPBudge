@@ -79,11 +79,12 @@ jobs:
           arch: x86_64
           profile: pixel_6
           force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-metrics -no-snapshot-save -memory 3072
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-metrics -no-snapshot-save -memory 3072 -prop persist.sys.locale=fr-FR -prop persist.sys.language=fr -prop persist.sys.country=FR
           disable-animations: true
           script: |
             adb wait-for-device
             adb shell settings put system system_locales fr-FR
+            adb shell am broadcast -a android.intent.action.LOCALE_CHANGED
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             python3 Maestro/scripts/shard_flows.py --index ${{ matrix.shard }} --count 2 --write-config /tmp/maestro-shard.yaml
             cat /tmp/maestro-shard.yaml
