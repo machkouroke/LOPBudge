@@ -5,10 +5,15 @@ appId: com.lop.budget
 # Paramètres: 
 #   - target_id: l'ID de l'élément cible
 
+# 1. Focus le champ pour garantir que le curseur est prêt
+- tapOn:
+    id: ${target_id}
+
+# 2. Long press pour faire apparaître le menu contextuel
 - longPressOn:
     id: ${target_id}
 
-# Si "Tout sélectionner" n'est pas visible directement, on passe par les options supplémentaires
+# 3. Si "Tout sélectionner" n'est pas visible directement, on passe par les options supplémentaires
 - runFlow:
     when:
       notVisible: "Tout sélectionner|Select all"
@@ -21,6 +26,8 @@ appId: com.lop.budget
           text: "Options supplémentaires|Plus d'options|More options"
           optional: true
 
-
+# 4. Sélectionner tout
 - tapOn: "Tout sélectionner|Select all"
+
+# 5. Supprimer
 - eraseText: 1

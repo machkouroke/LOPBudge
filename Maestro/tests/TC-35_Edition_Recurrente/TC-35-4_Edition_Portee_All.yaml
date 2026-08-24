@@ -42,13 +42,13 @@ tags:
     file: ../../.maestro/subflows/update_amount.yaml
     env:
       target_id: "transaction.edit.field.title"
-      new_value: "Loyer modifié"
+      new_value: "Loyer updated"
 
 # Réf. 107 : la sauvegarde doit ramener sur un écran de détail fonctionnel (pas de "Chargement")
 - extendedWaitUntil:
     visible: { id: "screen.transaction.detail" }
     timeout: 5000
-- assertVisible: "Loyer modifié"
+- assertVisible: "Loyer updated"
 
 - runFlow:
     file: ../../.maestro/subflows/change_month.yaml
@@ -56,7 +56,7 @@ tags:
       month_name: ${output.NEXT_MONTH_NAME}
       year: ${output.NEXT_YEAR}
 - scrollUntilVisible:
-    element: "Loyer modifié"
+    element: "Loyer updated"
     direction: DOWN
 - scroll
 - assertNotVisible: "Loyer"
@@ -67,7 +67,7 @@ tags:
       month_name: ${output.PREV_MONTH_NAME}
       year: ${output.PREV_YEAR}
 - scrollUntilVisible:
-    element: "Loyer modifié"
+    element: "Loyer updated"
     direction: DOWN
 - scroll
 - assertNotVisible: "Loyer"

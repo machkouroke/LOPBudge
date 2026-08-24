@@ -9,11 +9,18 @@ tags:
 - evalScript: |
     console.log("Scénario 1 : Vérification via Swipe")
 
+- scrollUntilVisible:
+    element: "Loyer"
+
 - swipe:
     from: { text: "Loyer" }
     direction: LEFT
+    duration: 1000
 
 # Vérification présence des 3 options (CA-03)
+- extendedWaitUntil:
+    visible: "Cette occurrence"
+    timeout: 5000
 - assertVisible: "Cette occurrence"
 - assertVisible: "Les suivantes uniquement"
 - assertVisible: "Toute la série"
