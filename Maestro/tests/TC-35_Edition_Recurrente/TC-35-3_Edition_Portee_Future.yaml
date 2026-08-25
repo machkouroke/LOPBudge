@@ -40,20 +40,21 @@ tags:
 - repeat:
     times: 3
     commands:
-      - scroll:
-          direction: UP
+      - swipe:
+          direction: DOWN
 - scrollUntilVisible:
     element: { id: "transaction.edit.field.title" }
+    direction: UP
 - runFlow:
     file: ../../.maestro/subflows/update_amount.yaml
     env:
       target_id: "transaction.edit.field.title"
-      new_value: "Loyer modifié"
+      new_value: "Loyer updated"
 
 - extendedWaitUntil:
     visible: { id: "screen.transaction.detail" }
     timeout: 5000
-- assertVisible: "Loyer modifié"
+- assertVisible: "Loyer updated"
 
 # Mois suivant : modifié, PAS de doublon ancienne série + nouvelle série
 - runFlow:
@@ -62,7 +63,7 @@ tags:
       month_name: ${output.NEXT_MONTH_NAME}
       year: ${output.NEXT_YEAR}
 - scrollUntilVisible:
-    element: "Loyer modifié"
+    element: "Loyer updated"
     direction: DOWN
 - scroll
 - assertNotVisible: "Loyer"
@@ -77,4 +78,4 @@ tags:
     element: "Loyer"
     direction: DOWN
 - scroll
-- assertNotVisible: "Loyer modifié"
+- assertNotVisible: "Loyer updated"

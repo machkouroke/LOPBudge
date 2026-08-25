@@ -39,10 +39,11 @@ tags:
 - repeat:
     times: 3
     commands:
-      - scroll:
-          direction: UP
+      - swipe:
+          direction: DOWN
 - scrollUntilVisible:
     element: { id: "transaction.edit.field.title" }
+    direction: UP
 - runFlow:
     file: ../../.maestro/subflows/update_amount.yaml
     env:
