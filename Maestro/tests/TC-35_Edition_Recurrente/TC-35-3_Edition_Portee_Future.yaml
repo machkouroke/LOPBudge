@@ -16,6 +16,7 @@ tags:
       transactionName: "Loyer"
       scopeSelection: "Cette occurrence et les suivantes"
 
+# Prefill = valeurs de l'occurrence ciblée
 - runFlow:
     file: ../../.maestro/subflows/assert_edit_form_prefilled.yaml
     env:
@@ -35,10 +36,14 @@ tags:
     id: "transaction.edit.field.interval"
     text: "1"
 
-- hideKeyboard
+
+- repeat:
+    times: 3
+    commands:
+      - scroll:
+          direction: UP
 - scrollUntilVisible:
     element: { id: "transaction.edit.field.title" }
-    direction: UP
 - runFlow:
     file: ../../.maestro/subflows/update_amount.yaml
     env:
