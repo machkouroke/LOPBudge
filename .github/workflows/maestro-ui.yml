@@ -203,6 +203,15 @@ jobs:
           allure_history: allure-history
           keep_histories: 20
 
+      - name: Prepare Allure History for Pages Publish
+        if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+        run: |
+          if [ -d "allure-history/.git" ]; then
+            chmod -R u+rwX allure-history/.git || true
+            rm -rf allure-history/.git
+          fi
+          chmod -R u+rwX allure-history || true
+
       - name: Deploy Allure Report to GitHub Pages
         if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
         uses: peaceiris/actions-gh-pages@v4
@@ -210,3 +219,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-history
+          force_orphan: true
