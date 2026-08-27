@@ -141,8 +141,31 @@ jobs:
         run: |
           python3 Maestro/scripts/merge_junit.py build/shards/*.xml -o build/maestro-junit-merged.xml
 
-      - name: Upload Merged Report
+      - name: Unzip and merge maestro-results
+        if: always()
+        run: |
+          mkdir -p build/unzipped
+          i=0
+          for z in build/shards/maestro-results-shard-*.zip; do
+            [ -f "$z" ] || continue
+            mkdir -p "build/unzipped/shard-$i"
+            unzip -q "$z" -d "build/unzipped/shard-$i"
+            i=$((i + 1))
+          done
+          python3 Maestro/scripts/merge_maestro_results.py \
+            build/unzipped/shard-*/build/maestro-results \
+            -o build/maestro-results-merged
+          zip -r build/maestro-results-merged.zip build/maestro-results-merged
+
+      - name: Upload Merged JUnit Report
         uses: actions/upload-artifact@v4
         with:
           name: maestro-junit-ubuntu-merged
           path: build/maestro-junit-merged.xml
+
+      - name: Upload Merged Maestro Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: maestro-results-merged
+          path: build/maestro-results-merged.zip
