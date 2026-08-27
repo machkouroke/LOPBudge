@@ -13,9 +13,15 @@ tags:
     element: "Loyer"
 
 # Swipe horizontal franc de droite à gauche sur la zone du Loyer
+- assertVisible:
+    id: "transaction.item.title"
+    text: "Loyer"
 - swipe:
-    from: { text: "Loyer" }
+    from:
+      id: "transaction.item.title"
+      text: "Loyer"
     direction: LEFT
+    duration: 500
 
 # Vérification présence des 3 options (CA-03)
 - extendedWaitUntil:
