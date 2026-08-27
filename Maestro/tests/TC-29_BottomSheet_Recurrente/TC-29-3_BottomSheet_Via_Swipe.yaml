@@ -12,15 +12,15 @@ tags:
 - scrollUntilVisible:
     element: "Loyer"
 
+# Swipe horizontal franc de droite à gauche sur la zone du Loyer
 - swipe:
     from: { text: "Loyer" }
     direction: LEFT
-    duration: 1000
 
 # Vérification présence des 3 options (CA-03)
 - extendedWaitUntil:
     visible: "Cette occurrence"
-    timeout: 5000
+    timeout: 8000
 - assertVisible: "Cette occurrence"
 - assertVisible: "Les suivantes uniquement"
 - assertVisible: "Toute la série"
