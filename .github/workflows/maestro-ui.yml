@@ -206,11 +206,8 @@ jobs:
       - name: Prepare Allure History for Pages Publish
         if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
         run: |
-          if [ -d "allure-history/.git" ]; then
-            chmod -R u+rwX allure-history/.git || true
-            rm -rf allure-history/.git
-          fi
-          chmod -R u+rwX allure-history || true
+          mkdir -p build/allure-history-publish
+          rsync -a --delete --exclude='.git' allure-history/ build/allure-history-publish/
 
       - name: Deploy Allure Report to GitHub Pages
         if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
@@ -218,5 +215,6 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: allure-history
+          publish_dir: build/allure-history-publish
           force_orphan: true
+          exclude_assets: .github,.git
