@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1]
+        shard: [0, 1, 2, 3]
     steps:
       - uses: actions/checkout@v4
 
@@ -102,7 +102,7 @@ jobs:
                     
                     
             adb install -r app/build/outputs/apk/debug/app-debug.apk
-            python3 Maestro/scripts/shard_flows.py --index ${{ matrix.shard }} --count 2 --write-config /tmp/maestro-shard.yaml
+            python3 Maestro/scripts/shard_flows.py --index ${{ matrix.shard }} --count 4 --write-config /tmp/maestro-shard.yaml
             cat /tmp/maestro-shard.yaml
             maestro test --config /tmp/maestro-shard.yaml Maestro/ --format junit --output build/maestro-junit-shard-${{ matrix.shard }}.xml --test-output-dir build/maestro-results
 
