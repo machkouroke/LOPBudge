@@ -170,51 +170,45 @@ jobs:
           name: maestro-results-merged
           path: build/maestro-results-merged.zip
 
-      - name: Load Allure history
+      - name: Checkout gh-pages (history)
         uses: actions/checkout@v4
         if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
         continue-on-error: true
         with:
           ref: gh-pages
-          path: gh-pages
+          path: .gh-pages-history
 
-      - name: Setup Allure Results with History
-        if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+      - name: Setup Allure
+        if: always()
         run: |
-          mkdir -p build/allure-results
-          if [ -d "gh-pages/history" ]; then
-            cp -r gh-pages/history build/allure-results/
-          fi
+          ALLURE_VERSION=2.30.0
+          wget https://github.com/allure-framework/allure2/releases/download/$ALLURE_VERSION/allure-$ALLURE_VERSION.tgz
+          tar -zxf allure-$ALLURE_VERSION.tgz
+          echo "$(pwd)/allure-$ALLURE_VERSION/bin" >> $GITHUB_PATH
 
       - name: Generate Allure Results
         if: always()
         run: |
+          mkdir -p build/allure-results
+          # Inject history if available
+          if [ -d ".gh-pages-history/history" ]; then
+            cp -r .gh-pages-history/history build/allure-results/
+          fi
+          
           python3 Maestro/scripts/maestro_to_allure.py \
             --junit build/maestro-junit-merged.xml \
             --results build/maestro-results-merged \
             --output build/allure-results
 
       - name: Generate Allure Report
-        uses: simple-elf/allure-report-action@master
         if: always()
-        with:
-          allure_results: build/allure-results
-          allure_report: allure-report
-          allure_history: allure-history
-          keep_histories: 20
-
-      - name: Prepare Allure History for Pages Publish
-        if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
         run: |
-          mkdir -p build/allure-history-publish
-          rsync -a --delete --exclude='.git' allure-history/ build/allure-history-publish/
+          allure generate build/allure-results -o build/allure-report --clean
 
-      - name: Deploy Allure Report to GitHub Pages
+      - name: Deploy to GitHub Pages
         if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: build/allure-history-publish
-          force_orphan: true
-          exclude_assets: .github,.git
+          publish_dir: build/allure-report
