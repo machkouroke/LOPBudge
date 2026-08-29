@@ -36,6 +36,7 @@ jobs:
     name: Shard ${{ matrix.shard }}
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -73,6 +74,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         env:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "600000"
+          MAESTRO_CLI_NO_ANALYTICS: "true"
         with:
           api-level: 36
           target: google_apis
