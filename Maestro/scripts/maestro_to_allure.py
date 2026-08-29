@@ -77,8 +77,25 @@ def main():
             allure_result["statusDetails"] = {"message": message}
 
         # Look for attachments in maestro-results-merged/merged/<name>
-        # Note: merge_maestro_results.py puts them in args.results / "merged" / flow_name
+        # Note: Maestro might replace special characters with underscores in directory names
+        # We try the exact name first, then a normalized version
         flow_results_dir = args.results / "merged" / name
+        if not flow_results_dir.exists():
+            normalized_name = "".join([c if c.isalnum() else "_" for c in name])
+            # Maestro sometimes leaves multiple underscores as one
+            import re
+            normalized_name = re.sub(r"_+", "_", normalized_name).strip("_")
+            flow_results_dir = args.results / "merged" / normalized_name
+
+        # If still not found, try to find by prefix matching
+        if not flow_results_dir.exists():
+            merged_dir = args.results / "merged"
+            if merged_dir.exists():
+                potential_dirs = [d for d in merged_dir.iterdir() if d.is_dir() and (d.name.startswith(name[:10]) or name.startswith(d.name[:10]))]
+                if potential_dirs:
+                    # Pick the one with the highest similarity or just the first one if unique
+                    flow_results_dir = potential_dirs[0]
+
         if flow_results_dir.exists():
             # Add screenshots
             screenshots_dir = flow_results_dir / "screenshots"

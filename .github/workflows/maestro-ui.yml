@@ -122,9 +122,34 @@ jobs:
             build/maestro-junit-shard-${{ matrix.shard }}.xml
             build/maestro-results-shard-${{ matrix.shard }}.zip
 
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run Unit Tests
+        run: ./gradlew :app:testDebugUnitTest --no-daemon
+
+      - name: Upload Unit Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: app/build/test-results/testDebugUnitTest/*.xml
+
   report:
     name: Merge Results (Ubuntu)
-    needs: maestro
+    needs: [maestro, unit-tests]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -136,6 +161,13 @@ jobs:
           pattern: maestro-shard-ubuntu-*
           path: build/shards
           merge-multiple: true
+
+      - name: Download unit test results
+        uses: actions/download-artifact@v4
+        with:
+          name: unit-test-results
+          path: build/unit-tests
+        continue-on-error: true
 
       - name: Merge JUnit reports
         run: |
@@ -193,6 +225,11 @@ jobs:
           # Inject history if available
           if [ -d ".gh-pages-history/history" ]; then
             cp -r .gh-pages-history/history build/allure-results/
+          fi
+          
+          # Add unit test results to allure-results
+          if [ -d "build/unit-tests" ]; then
+            cp build/unit-tests/*.xml build/allure-results/
           fi
           
           python3 Maestro/scripts/maestro_to_allure.py \

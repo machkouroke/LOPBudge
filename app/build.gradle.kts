@@ -137,6 +137,7 @@ dependencies {
 
     // Testing
     testImplementation("junit:junit:4.13.2")
+    testImplementation("io.qameta.allure:allure-junit4:2.35.4")
     testImplementation("org.robolectric:robolectric:4.12.2")
     testImplementation("androidx.test:core-ktx:1.6.1")
     testImplementation("androidx.test.ext:junit-ktx:1.2.1")
