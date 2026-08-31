@@ -1,9 +1,11 @@
 package com.lop.budget.domain.usecase
 
 import com.lop.budget.data.local.dao.SeriesSlot
+import com.lop.budget.data.local.dao.SeriesTag
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
+import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
@@ -38,7 +40,8 @@ class ObserveTransactionsUseCase @Inject constructor(
             transactionRepo.observeOccupiedSeriesSlots(start, end),
             _pendingDeletes,
             _pendingSeriesDeletes,
-            _pendingSeriesFromDates
+            _pendingSeriesFromDates,
+            transactionRepo.observeAllSeriesTags()
         ) { args ->
             @Suppress("UNCHECKED_CAST") val allInPeriod = args[0] as List<TransactionWithRelations>
             @Suppress("UNCHECKED_CAST") val seriesList = args[1] as List<RecurringSeriesEntity>
@@ -47,6 +50,7 @@ class ObserveTransactionsUseCase @Inject constructor(
             @Suppress("UNCHECKED_CAST") val occupiedSlots = args[4] as List<SeriesSlot>
             @Suppress("UNCHECKED_CAST") val pending = args[5] as Set<Long>
             @Suppress("UNCHECKED_CAST") val pendingSeries = args[6] as Map<Long, SeriesCancelMode>
+            @Suppress("UNCHECKED_CAST") val seriesTags = args[8] as List<SeriesTag>
 
             mergeRealAndVirtual(
                 allInPeriod = allInPeriod,
@@ -56,6 +60,11 @@ class ObserveTransactionsUseCase @Inject constructor(
                 occupiedSlots = occupiedSlots.mapTo(HashSet()) { it.seriesId to it.seriesDate },
                 pendingDeletes = pending,
                 pendingSeriesDeletes = pendingSeries,
+                tagsBySeriesId = seriesTags
+                    .groupBy { it.seriesId }
+                    .mapValues { (_, tags) ->
+                        tags.map { TagEntity(id = it.id, name = it.name, colorArgb = it.colorArgb) }
+                    },
                 start = start,
                 end = end
             )
@@ -89,6 +98,7 @@ class ObserveTransactionsUseCase @Inject constructor(
         occupiedSlots: Set<Pair<Long, Long>>,
         pendingDeletes: Set<Long>,
         pendingSeriesDeletes: Map<Long, SeriesCancelMode>,
+        tagsBySeriesId: Map<Long, List<TagEntity>>,
         start: Long,
         end: Long
     ): List<TransactionWithRelations> {
@@ -114,7 +124,8 @@ class ObserveTransactionsUseCase @Inject constructor(
                         occurrence,
                         categoriesById[series.categoryId],
                         accountsById[series.accountId],
-                        emptyList()
+                        // CA-05 : une occurrence virtuelle porte les tags de sa série.
+                        tagsBySeriesId[series.id].orEmpty()
                     )
                 }
         }

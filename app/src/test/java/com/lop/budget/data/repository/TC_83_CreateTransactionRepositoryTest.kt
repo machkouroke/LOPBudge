@@ -56,11 +56,11 @@ import java.util.TimeZone
  * cardinalites "exactement 3" de R-02 ne doivent pas dependre d'un helper partage modifiable
  * par un autre ticket.
  *
- * ANO connue (non corrigee par ce ticket) : CreateTransactionUseCase appelle
- * transactionRepo.materializeOccurrence(...) pour toute serie recurrente, ce qui insere une
- * TransactionEntity reelle des la creation et viole I-4/CA-07 ("aucune occurrence materialisee
- * a la creation"). R-02 est ecrit avec l'oracle strict du ticket : il est attendu rouge tant que
- * cette anomalie n'est pas corrigee. L'oracle n'est pas assoupli.
+ * ANO I-4/CA-07 (corrigee) : CreateTransactionUseCase appelait transactionRepo.materializeOccurrence(...)
+ * pour toute serie recurrente, ce qui inserait une TransactionEntity reelle des la creation.
+ * R-02, ecrit rouge avec l'oracle strict du ticket, a servi de filet ; la branche recurrente
+ * cree desormais la seule serie et retourne l'id virtuel de l'occurrence d'ancrage.
+ * L'oracle n'a jamais ete assoupli.
  *
  * Hors de ce ticket : portees d'edition/suppression (TC_32, TC_76), mocks UseCase (ticket 82),
  * Maestro/ViewModel. I-6 (masquage du toggle paye en mode recurrent) est une regle de

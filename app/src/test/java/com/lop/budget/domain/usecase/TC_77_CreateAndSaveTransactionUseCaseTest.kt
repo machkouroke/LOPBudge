@@ -3,6 +3,7 @@ package com.lop.budget.domain.usecase
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.repository.TransactionRepository
+import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
@@ -29,6 +30,10 @@ import java.time.Instant
  * tags à `transactionRepo.saveWithTags(tx, tagIds)` (DAO @Transaction — I-P04 résolu).
  * L'oracle unitaire est donc « saveWithTags appelé une fois avec la liste exacte » ;
  * l'ordre interne upsert → clearTags → addTagCrossRef relève du test Room du repository.
+ *
+ * W-03 : depuis le fix de l'ANO I-4/CA-07, la création récurrente ne matérialise plus aucune
+ * occurrence. Elle crée la série (tags compris, CA-05) et retourne l'id virtuel de l'occurrence
+ * d'ancrage. Le pendant Room de cet oracle est TC_83 R-02.
  */
 class CreateAndSaveTransactionUseCaseTest {
 
@@ -163,11 +168,10 @@ class CreateAndSaveTransactionUseCaseTest {
     }
 
     @Test
-    fun `W-03 - Creation recurrente - upsertSeries puis materialisation, statut ignore`() =
+    fun `W-03 - Creation recurrente - serie seule, aucune materialisation, statut ignore`() =
         runTest {
-            // Statut PAID volontairement fourni : hors périmètre figé n°1 de la Réf. 103 —
-            // la série n'a pas de statut et l'occurrence matérialisée naît PLANNED côté Room.
-            // Ce test DOCUMENTE ce comportement sans le « corriger ».
+            // Statut PAID volontairement fourni : la série ne porte pas de statut et I-6 masque
+            // le toggle payé dès qu'une récurrence est actée. edition.status est donc ignoré.
             // daysOfWeek désordonné (3,1) : prouve le tri du mapper -> CSV "1,3".
             val ed = edition(
                 status = TransactionStatus.PAID,
@@ -179,13 +183,15 @@ class CreateAndSaveTransactionUseCaseTest {
                 tagIds = listOf(11L),
             )
             val seriesSlot = slot<RecurringSeriesEntity>()
-            coEvery { transactionRepo.upsertSeries(capture(seriesSlot)) } returns 55L
-            coEvery { transactionRepo.materializeOccurrence(55L, editionDate) } returns 999L
+            coEvery {
+                transactionRepo.saveSeriesWithTags(capture(seriesSlot), listOf(11L))
+            } returns 55L
 
             val result = createUseCase(ed)
 
-            // Retour = id de l'occurrence matérialisée.
-            assertEquals(999L, result)
+            // I-4 / CA-07 : retour = id virtuel de l'occurrence d'ancrage, aucune ligne créée.
+            assertEquals(RecurrenceEngine.calculateVirtualId(55L, editionDate), result)
+            assertTrue("L'id virtuel doit être négatif", result < 0L)
             // Série capturée ENTIÈRE : startDate = edition.date, isCancelled = false.
             val expectedSeries = RecurringSeriesEntity(
                 title = "Créée",
@@ -205,11 +211,10 @@ class CreateAndSaveTransactionUseCaseTest {
                 linkedDebtId = null,
             )
             assertEquals(expectedSeries, seriesSlot.captured)
-            // Ordre exact de la chaîne d'écriture.
-            coVerifyOrder {
-                transactionRepo.upsertSeries(any())
-                transactionRepo.materializeOccurrence(55L, editionDate)
-            }
+            // CA-05 : les tags sont portés par la série.
+            coVerify(exactly = 1) { transactionRepo.saveSeriesWithTags(any(), listOf(11L)) }
+            // I-4 : aucune matérialisation à la création.
+            coVerify(exactly = 0) { transactionRepo.materializeOccurrence(any(), any()) }
             coVerify(exactly = 0) { saveTransactionUseCase.saveSimple(any(), any()) }
             confirmVerified(*allMocks())
         }

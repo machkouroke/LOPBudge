@@ -36,3 +36,35 @@ data class TransactionTagCrossRef(
     val transactionId: Long,
     val tagId: Long,
 )
+
+/**
+ * Table de jointure série récurrente <-> tag.
+ *
+ * Une série ne matérialise aucune occurrence à sa création (I-4) : les tags saisis au formulaire
+ * doivent donc être portés par la série elle-même, sinon ils seraient perdus (CA-05). Ils sont
+ * ensuite propagés aux occurrences virtuelles à l'affichage, et recopiés sur la ligne réelle au
+ * moment de la matérialisation.
+ */
+@Entity(
+    tableName = "series_tags",
+    primaryKeys = ["seriesId", "tagId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = RecurringSeriesEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["seriesId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("tagId")],
+)
+data class SeriesTagCrossRef(
+    val seriesId: Long,
+    val tagId: Long,
+)

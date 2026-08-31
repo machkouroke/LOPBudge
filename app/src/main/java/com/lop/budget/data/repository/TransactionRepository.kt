@@ -5,6 +5,7 @@ import com.lop.budget.data.local.dao.RecurringSeriesOperations
 import com.lop.budget.data.local.dao.TransactionDao
 import com.lop.budget.data.local.dao.TransactionOperations
 import com.lop.budget.data.local.entity.TransactionEntity
+import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.domain.model.SeriesCancelMode
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,7 +26,21 @@ class TransactionRepository @Inject constructor(
     suspend fun materializeOccurrence(seriesId: Long, seriesDate: Long): Long {
         val series = getSeriesById(seriesId)
             ?: error("Série récurrente introuvable (ID: $seriesId).")
-        return transactionDao.getOrCreateException(seriesId, seriesDate, series)
+        val alreadyMaterialized = transactionDao.getBySeriesSlot(seriesId, seriesDate) != null
+        val txId = transactionDao.getOrCreateException(seriesId, seriesDate, series)
+
+        // CA-05 : les tags portés par la série suivent l'occurrence lorsqu'elle devient réelle.
+        // Uniquement à la première matérialisation : au-delà, la ligne a sa vie propre et ses
+        // tags peuvent avoir été modifiés par l'utilisateur.
+        if (!alreadyMaterialized) {
+            val seriesTagIds = recurringSeriesDao.getTagsForSeries(seriesId).map { it.id }
+            if (seriesTagIds.isNotEmpty()) {
+                seriesTagIds.forEach {
+                    transactionDao.addTagCrossRef(TransactionTagCrossRef(txId, it))
+                }
+            }
+        }
+        return txId
     }
 
     /**

@@ -17,6 +17,7 @@ import com.lop.budget.data.local.entity.DebtEntity
 import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
 import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
+import com.lop.budget.data.local.entity.SeriesTagCrossRef
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
@@ -29,11 +30,12 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         TransactionEntity::class,
         RecurringSeriesEntity::class,
         TransactionTagCrossRef::class,
+        SeriesTagCrossRef::class,
         GoalEntity::class,
         DebtEntity::class,
         DetectedTransactionProposalEntity::class,
     ],
-    version = 17,
+    version = 18,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -49,6 +51,28 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        /**
+         * Ajoute la table de jointure série <-> tag (CA-05 sur création récurrente).
+         * Aucune reprise de données : avant cette version, les tags d'une création récurrente
+         * étaient purement et simplement perdus.
+         */
+        val MIGRATION_17_18 = object : androidx.room.migration.Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `series_tags` (
+                        `seriesId` INTEGER NOT NULL,
+                        `tagId` INTEGER NOT NULL,
+                        PRIMARY KEY(`seriesId`, `tagId`),
+                        FOREIGN KEY(`seriesId`) REFERENCES `recurring_series`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE ,
+                        FOREIGN KEY(`tagId`) REFERENCES `tags`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_series_tags_tagId` ON `series_tags` (`tagId`)")
+            }
+        }
 
         val MIGRATION_16_17 = object : androidx.room.migration.Migration(16, 17) {
             override fun migrate(db: SupportSQLiteDatabase) {
