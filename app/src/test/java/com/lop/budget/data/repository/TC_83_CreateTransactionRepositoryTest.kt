@@ -44,8 +44,17 @@ import java.util.TimeZone
  *  R-01  CA-06       CreateTransactionUseCase (frequence NONE) -> SaveTransactionUseCase.saveSimple
  *  R-02  CA-07       CreateTransactionUseCase (MONTHLY) -> upsertSeries + observeBetween/merge
  *  R-03  CA-08 I-5   SaveTransactionUseCase.saveSimple (regle de coherence PAID -> paidAt)
- *  R-04  CA-08       Statut de l'occurrence materialisee (getOrCreateException force PLANNED)
+ *  R-04a CA-08       Serie recurrente PLANNED : aucune ligne persistee payee pour la serie
+ *  R-04b CA-08 I-5   Ponctuel PLANNED : statut persiste et paidAt null (oracle non vacant)
  *  R-05  CA-05       TransactionDao.saveWithTags (note + cross-ref tag)
+ *
+ * R-04a devient vacant si I-4 est respecte (plus aucune ligne pour la serie) : c'est voulu, il
+ * n'est qu'un garde-fou de non-regression. L'oracle CA-08 reellement porte par Room vit dans
+ * R-04b (ponctuel PLANNED), que le ticket autorise explicitement ("recurrent (ou ponctuel)").
+ *
+ * Fenetre d'observation declaree localement (windowStart/windowEnd) plutot qu'heritee : les
+ * cardinalites "exactement 3" de R-02 ne doivent pas dependre d'un helper partage modifiable
+ * par un autre ticket.
  *
  * ANO connue (non corrigee par ce ticket) : CreateTransactionUseCase appelle
  * transactionRepo.materializeOccurrence(...) pour toute serie recurrente, ce qui insere une
@@ -89,6 +98,12 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
     // --- Dates du JDD (ticket 83) ------------------------------------------------------------
     private val punctualDateTime: Long
         get() = LocalDate.of(2024, 1, 15).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+
+    /** Fenetre du ticket : 1 jan -> 31 mars 2024, declaree ici et non heritee. */
+    private val windowStart: Long get() = startOfDay(2024, 1, 1)
+    private val windowEnd: Long get() = endOfDay(2024, 3, 31)
+
+    private suspend fun observeWindow() = getTransactions(windowStart, windowEnd).first()
 
     @Before
     fun setUp() {
@@ -210,13 +225,24 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
             assertNull("Aucun lien serie sur une transaction ponctuelle", row.seriesId)
             assertNull(row.seriesDate)
             assertFalse(row.deleted)
-            assertEquals(42.5, row.amount, 0.0)
+
+            // CA-06 : type, montant, libelle, date, categorie, compte et statut persistes tels que saisis.
+            val created = requireNotNull(transactionRepo.getById(createdId)).transaction
+            assertEquals("TC-create-p", created.title)
+            assertEquals(42.5, created.amount, 0.0)
+            assertEquals(TransactionType.EXPENSE, created.type)
+            assertEquals(punctualDateTime, created.date)
+            assertEquals(categoryId, created.categoryId)
+            assertEquals(accountId, created.accountId)
+            assertEquals(TransactionStatus.PLANNED, created.status)
+            assertNull("PLANNED => paidAt null (I-5)", created.paidAt)
+            assertFalse(created.isException)
 
             val seriesWithThisTitle = transactionRepo.observeActiveSeries().first()
                 .count { it.title == "TC-create-p" }
             assertEquals("Aucune serie ne doit etre creee pour un ponctuel", 0, seriesWithThisTitle)
 
-            val visible = observeVisibleTransactions(getTransactions)
+            val visible = observeWindow()
             assertEquals(1, visible.count { it.transaction.id == createdId })
             assertTrue(
                 "Aucun id virtuel ne doit exister pour ce titre",
@@ -248,7 +274,7 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
                 materializedRows.size,
             )
 
-            val visibleOfSeries = observeVisibleTransactions(getTransactions)
+            val visibleOfSeries = observeWindow()
                 .filter { it.transaction.seriesId == series.id }
             assertEquals(3, visibleOfSeries.size)
             assertEquals(
@@ -285,20 +311,36 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
     // R-04
     // =======================================================================================
 
+    /**
+     * Garde-fou de non-regression : si I-4 est respecte, aucune ligne n'existe pour la serie et
+     * l'oracle devient vacant par construction. L'oracle CA-08 porte par Room vit dans R-04b.
+     */
     @Test
-    fun `R-04 - Given the recurring dataset with status PLANNED, When CreateTransactionUseCase runs, Then no persisted row of the series is PAID`() =
+    fun `R-04a - Given the recurring dataset with status PLANNED, When CreateTransactionUseCase runs, Then the series exists and no persisted row of it is PAID`() =
         runTest {
             seedAccountCategoryAndTag()
             createTransaction(recurringEdition(status = TransactionStatus.PLANNED))
 
             val series = transactionRepo.observeActiveSeries().first().single { it.title == "TC-create-r" }
-            val rows = persistedTransactions().filter { it.seriesId == series.id }
+            assertFalse(series.isCancelled)
 
+            val rows = persistedTransactions().filter { it.seriesId == series.id }
             rows.forEach { row ->
                 val entity = requireNotNull(transactionRepo.getById(row.id)).transaction
                 assertFalse("La ligne ${row.id} ne doit pas etre PAID", entity.status == TransactionStatus.PAID)
                 assertNull("La ligne ${row.id} ne doit pas avoir paidAt renseigne", entity.paidAt)
             }
+        }
+
+    @Test
+    fun `R-04b - Given the punctual dataset with status PLANNED, When CreateTransactionUseCase runs, Then the row is persisted as PLANNED with paidAt null`() =
+        runTest {
+            seedAccountCategoryAndTag()
+            val createdId = createTransaction(punctualEdition(status = TransactionStatus.PLANNED))
+
+            val created = requireNotNull(transactionRepo.getById(createdId)).transaction
+            assertEquals(TransactionStatus.PLANNED, created.status)
+            assertNull("PLANNED => paidAt null (I-5)", created.paidAt)
         }
 
     // =======================================================================================
