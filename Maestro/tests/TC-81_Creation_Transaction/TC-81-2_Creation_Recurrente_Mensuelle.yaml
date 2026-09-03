@@ -84,6 +84,13 @@ tags:
 - tapOn: "Tous les mois"
 - assertVisible: "Tous les mois"
 
+# And il remonte et le champ marqué comme payé disparaît (Mise à jour 03/09/26)
+- scrollUntilVisible:
+    element:
+      id: "transaction.edit.field.title"
+    direction: UP
+- assertNotVisible: { id: "transaction.detail.toggle.paid" }
+
 # And il sauvegarde
 - tapOn: { id: "common.btn.save" }
 
