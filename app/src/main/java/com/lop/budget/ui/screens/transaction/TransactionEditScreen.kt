@@ -96,6 +96,7 @@ fun TransactionEditScreen(
         item {
             MainSection(
                 form = form,
+                isPaidToggleVisible = vm.isPaidToggleVisible,
                 onSetType = vm::setType,
                 onSetAmount = vm::setAmountRaw,
                 onSetTitle = vm::setTitle,

@@ -77,6 +77,7 @@ import com.lop.budget.util.IconMapper
 @Composable
 fun MainSection(
     form: TransactionForm,
+    isPaidToggleVisible: Boolean = true,
     onSetType: (TransactionType) -> Unit,
     onSetAmount: (String) -> Unit,
     onSetTitle: (String) -> Unit,
@@ -132,25 +133,27 @@ fun MainSection(
                 textStyle = MaterialTheme.typography.bodyLarge,
             )
 
-            Spacer(Modifier.height(8.dp))
+            if (isPaidToggleVisible) {
+                Spacer(Modifier.height(8.dp))
 
-            // Status Toggle
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = stringResource(R.string.tx_detail_mark_as_paid),
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                LopSwitch(
-                    checked = form.status == TransactionStatus.PAID,
-                    onCheckedChange = { isChecked -> 
-                        onSetStatus(if (isChecked) TransactionStatus.PAID else TransactionStatus.PLANNED)
-                    },
-                    modifier = Modifier.testTag(TestTags.TRANSACTION_DETAIL_TOGGLE_PAID)
-                )
+                // Status Toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = stringResource(R.string.tx_detail_mark_as_paid),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    LopSwitch(
+                        checked = form.status == TransactionStatus.PAID,
+                        onCheckedChange = { isChecked -> 
+                            onSetStatus(if (isChecked) TransactionStatus.PAID else TransactionStatus.PLANNED)
+                        },
+                        modifier = Modifier.testTag(TestTags.TRANSACTION_DETAIL_TOGGLE_PAID)
+                    )
+                }
             }
         }
     }

@@ -140,6 +140,17 @@ class TransactionEditViewModel @Inject constructor(
     val isRecurrenceSectionVisible: Boolean
         get() = editScope != EditScope.SINGLE || !isEditing
 
+    /**
+     * Le toggle "Marqué comme payé" est masqué en création si une récurrence est activée (frequency != NONE).
+     * En édition, il n'est affiché QUE si la portée "cette occurrence" (EditScope.SINGLE) est choisie.
+     */
+    val isPaidToggleVisible: Boolean
+        get() = if (isEditing) {
+            editScope == EditScope.SINGLE
+        } else {
+            _form.value.frequency == RecurrenceFrequency.NONE
+        }
+
     init {
         viewModelScope.launch {
             if (isEditing) {
@@ -263,7 +274,8 @@ class TransactionEditViewModel @Inject constructor(
         val days =
             if (freq == RecurrenceFrequency.WEEKLY && it.daysOfWeek.isEmpty()) setOf(1)
             else it.daysOfWeek
-        it.copy(frequency = freq, daysOfWeek = days)
+        val status = if (freq != RecurrenceFrequency.NONE) TransactionStatus.PLANNED else it.status
+        it.copy(frequency = freq, daysOfWeek = days, status = status)
     }
 
     fun toggleTag(id: Long) = update {

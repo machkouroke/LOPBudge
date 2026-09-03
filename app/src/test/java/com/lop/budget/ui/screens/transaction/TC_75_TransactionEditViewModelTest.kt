@@ -502,4 +502,44 @@ class TransactionEditViewModelTest {
         assertEquals(TransactionType.INCOME, sut.form.value.type)
         confirmVerified(*allMocks)
     }
+
+    @Test
+    fun `V-13 - Visibilite du toggle paye selon mode creation ou scope edition`() = runTest(testDispatcher) {
+        val account = createAccount(id = 1L)
+        every { accountRepo.observeAll() } returns flowOf(listOf(account))
+        
+        // 1. Mode création : visible par défaut (frequency = NONE)
+        val sutCreation = createSut(id = 0L)
+        advanceUntilIdle()
+        assertTrue("Toggle payé devrait être visible en création ponctuelle", sutCreation.isPaidToggleVisible)
+        
+        // Bascule en récurrence : le toggle devient masqué et le statut repasse à PLANNED
+        sutCreation.setStatus(TransactionStatus.PAID)
+        sutCreation.setFrequency(RecurrenceFrequency.MONTHLY)
+        assertFalse("Toggle payé devrait être masqué en création récurrente", sutCreation.isPaidToggleVisible)
+        assertEquals(TransactionStatus.PLANNED, sutCreation.form.value.status)
+
+        // 2. Mode édition en portée SINGLE : toujours visible
+        val twr = createTwr(id = 1L, seriesId = 500L)
+        coEvery { observeTransactionUseCase.getById(1L) } returns twr
+        coEvery { transactionRepo.getSeriesById(500L) } returns seriesRule
+
+        val sutSingle = createSut(id = 1L, scope = EditScope.SINGLE)
+        advanceUntilIdle()
+        assertTrue("Toggle payé devrait être visible en édition SINGLE", sutSingle.isPaidToggleVisible)
+
+        // 3. Mode édition en portée FUTURE : masqué
+        val sutFuture = createSut(id = 1L, scope = EditScope.FUTURE)
+        advanceUntilIdle()
+        assertFalse("Toggle payé devrait être masqué en édition FUTURE", sutFuture.isPaidToggleVisible)
+
+        // 4. Mode édition en portée ALL : masqué
+        val sutAll = createSut(id = 1L, scope = EditScope.ALL)
+        advanceUntilIdle()
+        assertFalse("Toggle payé devrait être masqué en édition ALL", sutAll.isPaidToggleVisible)
+
+        coVerify(atLeast = 1) { observeTransactionUseCase.getById(1L) }
+        coVerify(atLeast = 1) { transactionRepo.getSeriesById(500L) }
+        confirmVerified(*allMocks)
+    }
 }
