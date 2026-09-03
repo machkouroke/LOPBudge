@@ -49,6 +49,39 @@ noms de classes, signatures, champs d'entités, valeurs de retour réelles.
 C'est de la **vérification**, pas de l'inspiration : on confirme que le symbole existe et
 ce qu'il fait, on n'en déduit pas ce que le test devrait attendre.
 
+#### Étudier la structure de l'app pour en déduire les **actions**
+
+Avant d'écrire un test de parcours, lire la structure réelle de l'écran : quels widgets
+existent, quelles branches d'affichage, quels états intermédiaires s'interposent entre deux
+étapes du scénario. Le ticket décrit *ce qu'on veut prouver* ; il ne décrit presque jamais
+*le chemin exact pour y arriver*.
+
+La ligne de partage est stricte :
+
+| Ce qu'on tire de la structure | Ce qu'on n'en tire **jamais** |
+|---|---|
+| Le chemin : quel sélecteur, quel ordre, quel écran intermédiaire | L'oracle : ce que le test doit attendre |
+| Les branches d'UI à éviter ou à traverser | La justification qu'un comportement est correct |
+| Le libellé réel d'un bouton, d'un placeholder, d'un statut | Le périmètre du test |
+
+> Vécu : le picker de catégorie s'ouvre **seul** en mode ajout, et un tap sur une catégorie
+> ayant des enfants ouvre un drill-down (« Sélectionner la catégorie principale » /
+> « Sous-catégories ») au lieu de la sélectionner. Rien de tout cela n'est dans le ticket.
+> En lisant le composable, on voit que le mode recherche court-circuite cette branche
+> (`if (parent && !isSearching)`) : la sélection par recherche devient le chemin robuste.
+> Choix d'**action**, déduit de la structure ; les assertions, elles, n'ont pas bougé.
+
+**Préférer systématiquement le chemin le moins dépendant de la mise en page** : recherche
+plutôt que scroll dans une grille, sélecteur stable plutôt que position, saisie plutôt que
+navigation. Un élément hors viewport, une section « Récente » qui duplique un libellé ou un
+ordre de grille qui change sont des sources de flake évitables.
+
+**Cette phase peut révéler des bugs — c'est un résultat, pas un obstacle.** Si la structure
+contredit la spec (libellé absent, branche impossible, navigation qui n'atterrit pas où le
+ticket l'annonce), on le **signale** et on ouvre une ANO si c'est un défaut. On ne réécrit
+pas l'oracle pour épouser la structure : la spec reste la source de vérité, et l'écart
+constaté est précisément l'information à remonter.
+
 ### 3 · Choisir le niveau de test d'après ce qu'on veut prouver
 
 | On veut prouver… | Niveau | Pourquoi |

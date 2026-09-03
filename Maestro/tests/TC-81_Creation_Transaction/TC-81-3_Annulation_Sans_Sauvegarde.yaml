@@ -51,15 +51,20 @@ tags:
 - tapOn: { id: "nav.add.button" }
 - assertVisible: { id: "add.action.sheet" }
 - tapOn: { id: "add.action.expense" }
-- assertVisible: { id: "screen.transaction.edit" }
 
-# And il saisit une catégorie dépense (picker auto-ouvert en mode ajout)
-- scrollUntilVisible:
-    element:
-      text: "Santé"
-    direction: DOWN
-- tapOn: "Santé"
-- tapOn: "Pharmacie"
+# And il saisit une catégorie dépense (picker auto-ouvert) — sélection PAR LA RECHERCHE
+# En mode recherche le tap sélectionne directement, ce qui court-circuite le
+# drill-down et sa section « Sélectionner la catégorie principale » / « Sous-catégories ».
+- assertVisible: "Choisir une catégorie"
+- tapOn: "Chercher une catégorie..."
+- inputText: "Pharmacie"
+- hideKeyboard
+# index 1 car index 0 est le champ de recherche, qui contient désormais le même texte.
+- tapOn:
+    text: "Pharmacie"
+    index: 1
+
+- assertVisible: { id: "screen.transaction.edit" }
 
 # And il saisit le titre "TC-create-annule" et un montant valide
 - tapOn: { id: "transaction.edit.field.title" }

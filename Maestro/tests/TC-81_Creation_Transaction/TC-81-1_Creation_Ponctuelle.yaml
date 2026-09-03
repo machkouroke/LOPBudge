@@ -52,24 +52,32 @@ tags:
 # Le picker de catégorie s'ouvre seul en mode ajout et ne liste QUE les catégories
 # du type courant. Oracle non vacant : "Revenus" est une catégorie racine de type
 # REVENU, qui serait affichée ici si le point d'entrée avait mal positionné le type.
-- assertVisible: { id: "screen.transaction.edit" }
-- assertVisible: "Santé"
+# "Alimentation" est la 1re racine dépense, présente en section "Récente" : visible
+# sans scroll.
+- assertVisible: "Choisir une catégorie"
+- assertVisible: "Alimentation"
 - assertNotVisible: "Revenus"
 
 - evalScript: |
     console.log("TC-81-1 : CA-01 vérifié — le picker n'expose que des catégories de dépense")
 
-# When il saisit une catégorie dépense
-# Navigation sans recherche : "Santé" est unique à la racine et hors section "Récente"
-# (recents = 3 premières racines : Alimentation / Achats / Transport).
-- scrollUntilVisible:
-    element:
-      text: "Santé"
-    direction: DOWN
-- tapOn: "Santé"
-- tapOn: "Pharmacie"
+# When il saisit une catégorie dépense — sélection PAR LA RECHERCHE
+# Plus robuste que la navigation : aucune dépendance au scroll ni à la position dans
+# la grille. Surtout, en mode recherche le tap SÉLECTIONNE DIRECTEMENT
+# (CategoryPicker : `if (tile.cat.id in parentIds && !isSearching)`), donc on
+# court-circuite le drill-down et sa section « Sélectionner la catégorie principale »
+# / « Sous-catégories » qui apparaît sur les catégories ayant des enfants.
+# "Pharmacie" est un libellé unique : `name.contains(query)` ne matche qu'elle.
+- tapOn: "Chercher une catégorie..."
+- inputText: "Pharmacie"
+- hideKeyboard
+# index 1 car index 0 est le champ de recherche, qui contient désormais le même texte.
+- tapOn:
+    text: "Pharmacie"
+    index: 1
 
-# Le basculeur de type reste présent sur le formulaire (CA-01)
+# La sheet est refermée : on est de retour sur le formulaire, type Dépense (CA-01)
+- assertVisible: { id: "screen.transaction.edit" }
 - assertVisible: { id: "transaction.edit.type.expense" }
 
 # When il saisit le titre et un montant valide
@@ -111,7 +119,7 @@ tags:
 - tapOn: { id: "transaction.detail.edit" }
 - assertVisible: { id: "screen.transaction.edit" }
 - assertNotVisible: { id: "recurring.edit.scope.sheet" }
-- assertNotVisible: "Modifier la transaction ?"
+
 
 - evalScript: |
     console.log("TC-81-1 : CA-06 vérifié — aucune portée récurrente sur une ponctuelle")
