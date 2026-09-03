@@ -1,0 +1,16 @@
+appId: com.lop.budget
+---
+# Subflow: go_to_home
+# Responsabilité : ramener sur l'écran Home, seul contexte où la barre flottante
+#   (donc le bouton `+` / nav.add.button) est rendue.
+#   Routes.rootRoutes = {HOME, ANALYTICS, GOALS, ACCOUNTS} : l'écran `monthly`
+#   n'en fait PAS partie, la barre y est masquée.
+# Précondition : l'application est lancée.
+# État de sortie : `home.month.picker` est visible (on est sur Home).
+# Paramètres : aucun.
+
+- repeat:
+    while:
+      notVisible: { id: "home.month.picker" }
+    commands:
+      - tapOn: { id: "common.btn.back" }
