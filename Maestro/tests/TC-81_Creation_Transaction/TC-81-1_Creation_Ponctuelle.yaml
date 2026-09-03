@@ -1,0 +1,131 @@
+appId: com.lop.budget
+name: "TC-81-1 - Création ponctuelle visible liste et détail"
+tags:
+  - tc-81
+  - creation
+---
+# =====================================================================================
+# TC-81-1 — Création ponctuelle : visible en liste ET en détail
+# -------------------------------------------------------------------------------------
+# Niveau        : E2E / UI (Maestro). Parcours visible uniquement.
+# US            : LOP-2 — Création de transaction : formulaire d'ajout + écriture en base
+# Ticket        : TC-81
+# Chaîne        : + (nav.add.button) -> AddActionSheet -> TransactionEditScreen (mode ajout)
+#                 -> CreateTransactionUseCase -> détail -> liste du mois courant
+#
+# cas -> CA / invariant :
+#   étape 1  -> CA-01  type du formulaire selon le point d'entrée
+#   étape 6  -> CA-11  le détail reflète les données saisies
+#   étape 7  -> CA-06 / I-4  ponctuel = aucun lien série (pas de portée d'édition)
+#   étape 8  -> CA-11  la liste du mois courant reflète les données, sans doublon
+#
+# Écarts spec/code assumés (la logique du Gherkin prime, les libellés suivent le code) :
+#   - Le Gherkin dit « récurrence à Aucune » : le libellé réel est « Ne se répète pas »
+#     (R.string.tx_repeat_none).
+#   - Le Gherkin place la liste AVANT le détail. En réalité, la création ponctuelle
+#     retourne un id positif, donc LopNavHost navigue directement vers le détail
+#     (popUpTo(HOME)). L'ordre est inversé ici, les assertions sont identiques.
+#   - Le sélecteur de catégorie s'ouvre automatiquement en mode ajout
+#     (TransactionEditScreen : LaunchedEffect sur !isEditing).
+#
+# Hors périmètre (ne pas ajouter ici) :
+#   - Écriture réelle en base / cardinalités Room : porté par TC-83 (Repository).
+#   - Branche du use case (appels) : porté par TC-82.
+#   - Scénario Revenu, tags, anti double-soumission (CA-10) : hors ticket.
+# =====================================================================================
+
+# Given l'application est ouverte (seeder mensuel), état propre (clearState)
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+# Le bouton `+` n'est rendu que sur Home (l'écran monthly n'est pas une route racine)
+- runFlow: ../../.maestro/subflows/go_to_home.yaml
+
+- evalScript: |
+    console.log("TC-81-1 : ouverture du menu d'ajout puis choix Dépense")
+
+# When l'utilisateur ouvre l'ajout via + puis Dépense
+- tapOn: { id: "nav.add.button" }
+- assertVisible: { id: "add.action.sheet" }
+- tapOn: { id: "add.action.expense" }
+
+# Then le formulaire est en type Dépense (CA-01)
+# Le picker de catégorie s'ouvre seul en mode ajout et ne liste QUE les catégories
+# du type courant. Oracle non vacant : "Revenus" est une catégorie racine de type
+# REVENU, qui serait affichée ici si le point d'entrée avait mal positionné le type.
+- assertVisible: { id: "screen.transaction.edit" }
+- assertVisible: "Santé"
+- assertNotVisible: "Revenus"
+
+- evalScript: |
+    console.log("TC-81-1 : CA-01 vérifié — le picker n'expose que des catégories de dépense")
+
+# When il saisit une catégorie dépense
+# Navigation sans recherche : "Santé" est unique à la racine et hors section "Récente"
+# (recents = 3 premières racines : Alimentation / Achats / Transport).
+- scrollUntilVisible:
+    element:
+      text: "Santé"
+    direction: DOWN
+- tapOn: "Santé"
+- tapOn: "Pharmacie"
+
+# Le basculeur de type reste présent sur le formulaire (CA-01)
+- assertVisible: { id: "transaction.edit.type.expense" }
+
+# When il saisit le titre et un montant valide
+- tapOn: { id: "transaction.edit.field.title" }
+- inputText: "TC-create-ponctuel"
+- hideKeyboard
+
+- tapOn: { id: "transaction.edit.field.amount" }
+- inputText: "12.34"
+- hideKeyboard
+
+# And il laisse la récurrence à sa valeur par défaut (Gherkin : « Aucune »)
+- scrollUntilVisible:
+    element:
+      id: "transaction.edit.block.recurrence"
+    direction: DOWN
+- assertVisible: "Ne se répète pas"
+
+# And il sauvegarde
+- tapOn: { id: "common.btn.save" }
+
+# Then il n'est plus sur l'écran d'édition
+- assertNotVisible: { id: "screen.transaction.edit" }
+
+# And le détail affiche le titre et le montant saisis (CA-11)
+# Le montant est rendu par Format.money (Locale.FRANCE, EUR) : l'espace avant le
+# symbole est insécable, on cible donc les chiffres par expression régulière.
+- assertVisible: { id: "screen.transaction.detail" }
+- assertVisible: "TC-create-ponctuel"
+- assertVisible: ".*12,34.*"
+
+- evalScript: |
+    console.log("TC-81-1 : CA-11 vérifié sur l'écran de détail")
+
+# And ce n'est pas présenté comme une série (CA-06 / I-4)
+# L'assertion négative est posée APRÈS avoir déclenché l'édition : c'est le seul
+# contexte où la bottom sheet de portée apparaîtrait si la transaction était une
+# occurrence de série. Posée à l'arrivée sur le détail, elle serait vacante.
+- tapOn: { id: "transaction.detail.edit" }
+- assertVisible: { id: "screen.transaction.edit" }
+- assertNotVisible: { id: "recurring.edit.scope.sheet" }
+- assertNotVisible: "Modifier la transaction ?"
+
+- evalScript: |
+    console.log("TC-81-1 : CA-06 vérifié — aucune portée récurrente sur une ponctuelle")
+
+# And "TC-create-ponctuel" est visible sur la liste du mois courant, une seule fois (CA-11)
+- tapOn: { id: "common.btn.back" }
+- runFlow: ../../.maestro/subflows/go_to_home.yaml
+- runFlow: ../../.maestro/subflows/open_monthly_history.yaml
+
+- scrollUntilVisible:
+    element:
+      text: "TC-create-ponctuel"
+    direction: DOWN
+- assertVisible: "TC-create-ponctuel"
+- assertNotVisible:
+    text: "TC-create-ponctuel"
+    index: 1

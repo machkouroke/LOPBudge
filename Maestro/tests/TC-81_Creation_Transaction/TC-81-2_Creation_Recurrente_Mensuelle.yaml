@@ -1,0 +1,128 @@
+appId: com.lop.budget
+name: "TC-81-2 - Création récurrente mensuelle, occurrence virtuelle, pas de doublon"
+tags:
+  - tc-81
+  - creation
+---
+# =====================================================================================
+# TC-81-2 — Création récurrente mensuelle : occurrence virtuelle, pas de doublon
+# -------------------------------------------------------------------------------------
+# Niveau        : E2E / UI (Maestro). Parcours visible uniquement.
+# US            : LOP-2 — Création de transaction : formulaire d'ajout + écriture en base
+# Ticket        : TC-81
+# Chaîne        : + (nav.add.button) -> AddActionSheet -> TransactionEditScreen (mode ajout)
+#                 -> CreateTransactionUseCase (branche série) -> liste mois courant
+#                 -> liste mois suivant (occurrence générée par RecurrenceEngine)
+#
+# cas -> CA / invariant :
+#   étape 4  -> CA-07 / I-4  la série est visible une seule fois sur le mois courant
+#   étape 5  -> CA-07 / I-4  occurrence VIRTUELLE sur le mois suivant, sans doublon
+#   étape 6  -> isolation    aucune fuite depuis TC-81-1
+#
+# Écarts spec/code assumés :
+#   - La création récurrente retourne un id VIRTUEL NÉGATIF
+#     (RecurrenceEngine.calculateVirtualId). Le garde `newId > 0` de LopNavHost échoue
+#     donc volontairement et la navigation fait popBackStack() : on revient sur Home,
+#     et non sur un écran de détail. C'est le comportement attendu (une occurrence
+#     virtuelle n'a pas de ligne à afficher).
+#   - Le sélecteur de catégorie s'ouvre automatiquement en mode ajout.
+#
+# CAS LIMITE CONNU (dépendance à la date d'exécution) :
+#   Le scénario ancre la série sur AUJOURD'HUI. Exécuté un 29, 30 ou 31, l'occurrence
+#   du mois suivant est RABOTÉE au dernier jour de ce mois par Calendar.add(MONTH)
+#   (RecurrenceEngine.moveCalendar). La cardinalité « une fois par mois » testée ici
+#   reste vraie : c'est la DATE de l'occurrence qui glisse, et aucune assertion de ce
+#   flow ne porte sur la date.
+#
+# Hors périmètre (ne pas ajouter ici) :
+#   - Absence de matérialisation en base (0 ligne transaction) : porté par TC-83.
+#   - Statut / toggle payé masqué en récurrent (I-6) : hors ticket.
+#   - Anti double-soumission (CA-10) : flaky en Maestro, porté au niveau ViewModel.
+# =====================================================================================
+
+# Given l'application est ouverte, état propre (clearState)
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+- runFlow: ../../.maestro/subflows/go_to_home.yaml
+
+- evalScript: |
+    console.log("TC-81-2 : création d'une série mensuelle ancrée sur aujourd'hui")
+
+# When l'utilisateur ouvre l'ajout via + puis Dépense
+- tapOn: { id: "nav.add.button" }
+- assertVisible: { id: "add.action.sheet" }
+- tapOn: { id: "add.action.expense" }
+- assertVisible: { id: "screen.transaction.edit" }
+
+# And il saisit une catégorie dépense
+- scrollUntilVisible:
+    element:
+      text: "Santé"
+    direction: DOWN
+- tapOn: "Santé"
+- tapOn: "Pharmacie"
+
+# And il saisit le titre et le montant
+- tapOn: { id: "transaction.edit.field.title" }
+- inputText: "TC-create-recurrent"
+- hideKeyboard
+
+- tapOn: { id: "transaction.edit.field.amount" }
+- inputText: "12.34"
+- hideKeyboard
+
+# And il choisit une récurrence Tous les mois (ancrage = date du formulaire = aujourd'hui)
+- scrollUntilVisible:
+    element:
+      id: "transaction.edit.field.frequency"
+    direction: DOWN
+- tapOn: { id: "transaction.edit.field.frequency" }
+- tapOn: "Tous les mois"
+- assertVisible: "Tous les mois"
+
+# And il sauvegarde
+- tapOn: { id: "common.btn.save" }
+
+# Then il n'est plus sur l'écran d'édition — retour Home (id virtuel négatif)
+- assertNotVisible: { id: "screen.transaction.edit" }
+- assertVisible: { id: "home.month.picker" }
+
+- evalScript: |
+    console.log("TC-81-2 : série créée, retour Home (id virtuel) — contrôle du mois courant")
+
+# Then "TC-create-recurrent" est visible une seule fois sur le mois courant (CA-07)
+- runFlow: ../../.maestro/subflows/open_monthly_history.yaml
+- scrollUntilVisible:
+    element:
+      text: "TC-create-recurrent"
+    direction: DOWN
+- assertVisible: "TC-create-recurrent"
+- assertNotVisible:
+    text: "TC-create-recurrent"
+    index: 1
+
+# When il passe au mois suivant
+- runFlow:
+    file: ../../.maestro/subflows/change_month.yaml
+    env:
+      month_name: ${output.NEXT_MONTH_NAME}
+      year: ${output.NEXT_YEAR}
+
+- evalScript: |
+    console.log("TC-81-2 : mois suivant = " + output.NEXT_MONTH_NAME + " " + output.NEXT_YEAR)
+
+# Then "TC-create-recurrent" est visible une seule fois (occurrence virtuelle) (CA-07 / I-4)
+# And aucun doublon
+- scrollUntilVisible:
+    element:
+      text: "TC-create-recurrent"
+    direction: DOWN
+- assertVisible: "TC-create-recurrent"
+- assertNotVisible:
+    text: "TC-create-recurrent"
+    index: 1
+
+- evalScript: |
+    console.log("TC-81-2 : CA-07 vérifié — occurrence virtuelle unique sur le mois suivant")
+
+# Contrôle d'isolation : ce flow est indépendant, la ponctuelle de TC-81-1 n'existe pas
+- assertNotVisible: "TC-create-ponctuel"

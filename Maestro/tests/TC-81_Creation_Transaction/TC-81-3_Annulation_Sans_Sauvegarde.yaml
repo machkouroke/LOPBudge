@@ -1,0 +1,94 @@
+appId: com.lop.budget
+name: "TC-81-3 - Annulation, retour arrière sans sauvegarde"
+tags:
+  - tc-81
+  - creation
+---
+# =====================================================================================
+# TC-81-3 — Annulation : retour arrière sans sauvegarde, rien n'est écrit
+# -------------------------------------------------------------------------------------
+# Niveau        : E2E / UI (Maestro). Parcours visible uniquement.
+# US            : LOP-2 — Création de transaction : formulaire d'ajout + écriture en base
+# Ticket        : TC-81
+# Chaîne        : + (nav.add.button) -> AddActionSheet -> TransactionEditScreen (mode ajout)
+#                 -> retour arrière (onDone(0L) -> popBackStack) -> liste du mois courant
+#
+# cas -> CA / invariant :
+#   étape 1  -> précondition : le libellé n'existe pas avant le scénario
+#   étape 4  -> CA-09 / I-3  annuler ou revenir en arrière n'écrit rien
+#   étape 5  -> contrôle d'isolation : la liste observée est bien peuplée
+#
+# Portée de l'oracle : au niveau UI, CA-09 est prouvé par son PROXY VISIBLE — le libellé
+# n'apparaît nulle part dans la liste. L'oracle de persistance (0 ligne en base) relève
+# de TC-83 (Repository, Room réel) ; le ticket interdit explicitement toute inspection
+# Room depuis Maestro. Ne pas tenter de le couvrir ici.
+#
+# Note code : le retour arrière appelle onDone(vm.editingTransactionId ?: 0L) ; en mode
+# ajout editingTransactionId est null, donc onDone(0L) et le garde `newId > 0` échoue :
+# popBackStack() sans sauvegarde. vm.save() n'est jamais appelé.
+#
+# Hors périmètre (ne pas ajouter ici) :
+#   - Bottom sheet « quitter sans enregistrer » (hasUnsavedChanges) : hors CA de ce ticket.
+#   - Vérification en base : TC-83.
+# =====================================================================================
+
+# Given l'application est ouverte, état propre (clearState)
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+# And "TC-create-annule" n'existe pas dans la liste (précondition)
+# Scroll avant l'assertion négative : sans cela on prouverait seulement que l'élément
+# est hors viewport.
+- assertVisible: { id: "screen.monthly" }
+- scroll
+- assertNotVisible: "TC-create-annule"
+
+- evalScript: |
+    console.log("TC-81-3 : précondition OK — TC-create-annule absent avant le scénario")
+
+- runFlow: ../../.maestro/subflows/go_to_home.yaml
+
+# When l'utilisateur ouvre l'ajout via + puis Dépense
+- tapOn: { id: "nav.add.button" }
+- assertVisible: { id: "add.action.sheet" }
+- tapOn: { id: "add.action.expense" }
+- assertVisible: { id: "screen.transaction.edit" }
+
+# And il saisit une catégorie dépense (picker auto-ouvert en mode ajout)
+- scrollUntilVisible:
+    element:
+      text: "Santé"
+    direction: DOWN
+- tapOn: "Santé"
+- tapOn: "Pharmacie"
+
+# And il saisit le titre "TC-create-annule" et un montant valide
+- tapOn: { id: "transaction.edit.field.title" }
+- inputText: "TC-create-annule"
+- hideKeyboard
+
+- tapOn: { id: "transaction.edit.field.amount" }
+- inputText: "12.34"
+- hideKeyboard
+
+# And il appuie retour / fermer SANS sauvegarder
+- evalScript: |
+    console.log("TC-81-3 : retour arrière sans sauvegarde")
+
+- tapOn: { id: "common.btn.back" }
+- assertNotVisible: { id: "screen.transaction.edit" }
+
+# Then "TC-create-annule" n'apparaît nulle part dans la liste du mois courant (CA-09 / I-3)
+- runFlow: ../../.maestro/subflows/go_to_home.yaml
+- runFlow: ../../.maestro/subflows/open_monthly_history.yaml
+
+- assertVisible: { id: "screen.monthly" }
+- scroll
+- assertNotVisible: "TC-create-annule"
+
+# Contrôle d'isolation : la liste observée est réellement peuplée.
+# Sans ce contrôle, l'assertion négative ci-dessus passerait aussi sur une liste vide
+# ou sur un écran mal chargé, et ne prouverait rien.
+- assertVisible: "Loyer"
+
+- evalScript: |
+    console.log("TC-81-3 : CA-09 vérifié — aucune écriture visible après annulation")
