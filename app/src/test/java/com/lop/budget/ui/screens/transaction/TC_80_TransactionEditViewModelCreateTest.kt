@@ -27,6 +27,7 @@ import io.mockk.every
 import io.mockk.excludeRecords
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -42,6 +43,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -73,6 +75,8 @@ import java.time.ZoneId
  * | A-06  | CA-05          | `TransactionEditViewModel.performSave`, `toEdition`        |
  * | A-07  | CA-10, I-2     | `TransactionEditViewModel.save` / `performSave`            |
  * | A-08  | CA-09, I-3     | `TransactionEditViewModel.init` + setters                  |
+ * | A-09  | CA-04          | `TransactionEditViewModel.clearFieldError` via les setters  |
+ * | A-07d | CA-10          | `save` — branche `catch (CancellationException)`            |
  *
  * ## Anomalies — état courant
  * Les oracles sont ceux de la spécification et n'ont jamais été assouplis.
@@ -87,25 +91,22 @@ import java.time.ZoneId
  * - **ANO-D** (A-01, A-02) — `SettingsRepository` était injecté et jamais utilisé.
  *   Corrigé : le ViewModel expose `currency`, alimenté par `settings.currency`.
  *
- * Ouvertes — rouge attendu :
- * - **ANO-C** (A-04, A-05, A-07c) — aucun état d'erreur par champ n'existe (ni dans le
- *   ViewModel, ni dans `TransactionEditScreen`). Le volet « l'erreur est affichée près du
- *   champ concerné » de CA-04 est donc **non couvert ici, faute d'observable** : ces cas
- *   n'assertent que le volet « la sauvegarde est bloquée ».
- * - **ANO-M4** (A-07c) — l'exception du use case remonte non capturée hors de
- *   `viewModelScope.launch` (aucun `catch`, aucun `CoroutineExceptionHandler`).
- *   Les assertions du test s'exécutent, puis `runTest` échoue sur l'exception non
- *   gérée : c'est la manifestation de l'anomalie, pas un défaut du test.
+ * - **ANO-C** (A-04, A-05, A-09) — aucun état d'erreur par champ n'existait. Corrigé par
+ *   l'enabler « Erreurs de formulaire de transaction » : `validate()` rattache chaque
+ *   manquement à son champ dans `fieldErrors`, et les setters purgent l'erreur corrigée.
+ * - **ANO-M4** (A-07c) — l'exception du use case remontait non capturée hors de
+ *   `viewModelScope.launch`. Corrigé : `catch` avec re-`throw` de `CancellationException`
+ *   et alimentation de `saveError`.
  *
- * ANO-C et ANO-M4 sont portées par l'enabler « Erreurs de formulaire de transaction »,
- * qui devra durcir A-04, A-05 et A-07c et ajouter un cas A-09.
+ * Aucune anomalie ouverte : la suite doit être entièrement verte.
  *
  * ## Hors périmètre (explicitement non couvert ici)
  * - Portées SINGLE/FUTURE/ALL et préremplissage en édition → TC-75.
  * - Cardinalités et lignes Room réellement écrites (I-4) → TC-82 (appels use case) et
  *   TC-83 (lignes Room). Un mock ne voit pas les INSERT.
  * - I-6 (masquage du toggle « payé » en récurrent) : règle d'UI, → tickets Compose/Maestro.
- * - CA-04 volet message d'erreur → attend un enabler de production (ANO-C).
+ * - Rendu visuel des erreurs (position, Snackbar) : règle d'UI, → tickets Compose/Maestro.
+ *   Ce fichier prouve l'état du ViewModel, pas ce que l'écran en fait.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TransactionEditViewModelCreateTest {
@@ -270,6 +271,10 @@ class TransactionEditViewModelCreateTest {
                 "CA-01 : le formulaire d'ajout ne doit porter aucun rattachement de série",
                 form.seriesId != null
             )
+            assertEquals(
+                "CA-04 : un formulaire fraîchement ouvert est vide, pas fautif — aucune erreur affichée",
+                emptyMap<TransactionFormField, Int>(), sut.fieldErrors.value
+            )
             verifyNoWrite()
 
             // CA-01 — devise de l'application (ANO-D corrigée).
@@ -377,11 +382,12 @@ class TransactionEditViewModelCreateTest {
 
     // ------------------------------------------- A-04 : validation du montant (CA-04, I-1)
 
-    /**
-     * Volet testable de CA-04 : la sauvegarde est bloquée. Le volet « erreur affichée près du
-     * champ montant » n'a aucun observable (ANO-C) et n'est donc pas asserté ici.
-     */
-    private fun assertAmountBlocksSave(rawAmount: String, label: String) = runTest(testDispatcher) {
+    /** CA-04 : la sauvegarde est bloquée **et** l'erreur est rattachée au champ montant. */
+    private fun assertAmountBlocksSave(
+        rawAmount: String,
+        label: String,
+        expectedError: Int,
+    ) = runTest(testDispatcher) {
         val sut = createSut(type = TransactionType.EXPENSE)
         advanceUntilIdle()
 
@@ -401,20 +407,50 @@ class TransactionEditViewModelCreateTest {
             "CA-04/I-1 : montant $label — aucune sauvegarde ne doit aboutir, onDone ne doit pas être invoqué",
             emptyList<Long>(), doneIds
         )
+        assertEquals(
+            "CA-04 : montant $label — l'erreur doit porter sur le champ montant, et sur lui seul",
+            setOf(TransactionFormField.AMOUNT), sut.fieldErrors.value.keys
+        )
+        assertEquals(
+            "CA-04 : montant $label — message attendu sur le champ montant",
+            expectedError, sut.fieldErrors.value[TransactionFormField.AMOUNT]
+        )
         confirmVerified(*allMocks)
     }
 
+    /**
+     * Garde anti-oracle vacant : si les deux `@StringRes` de montant valaient le même entier
+     * (cas classique d'un R non résolu en test unitaire), les oracles d'A-04a et d'A-04b
+     * passeraient sans rien discriminer.
+     */
     @Test
-    fun `A-04a - Given montant absent - When save - Then aucune ecriture (CA-04, I-1)`() =
-        assertAmountBlocksSave(rawAmount = "", label = "absent")
+    fun `A-04 - Les deux messages d'erreur de montant sont des ressources distinctes`() {
+        assertNotEquals(
+            "CA-04 : « montant absent » et « montant non positif » doivent être deux messages distincts",
+            R.string.tx_error_amount_required, R.string.tx_error_amount_positive
+        )
+    }
 
     @Test
-    fun `A-04b - Given montant nul - When save - Then aucune ecriture (CA-04, I-1)`() =
-        assertAmountBlocksSave(rawAmount = "0", label = "nul")
+    fun `A-04a - Given montant absent - When save - Then aucune ecriture et erreur sur le montant (CA-04, I-1)`() =
+        assertAmountBlocksSave(
+            rawAmount = "", label = "absent",
+            expectedError = R.string.tx_error_amount_required
+        )
 
     @Test
-    fun `A-04c - Given montant negatif - When save - Then aucune ecriture (CA-04, I-1)`() =
-        assertAmountBlocksSave(rawAmount = "-5", label = "négatif")
+    fun `A-04b - Given montant nul - When save - Then aucune ecriture et erreur sur le montant (CA-04, I-1)`() =
+        assertAmountBlocksSave(
+            rawAmount = "0", label = "nul",
+            expectedError = R.string.tx_error_amount_positive
+        )
+
+    @Test
+    fun `A-04c - Given montant negatif - When save - Then aucune ecriture et erreur sur le montant (CA-04, I-1)`() =
+        assertAmountBlocksSave(
+            rawAmount = "-5", label = "négatif",
+            expectedError = R.string.tx_error_amount_positive
+        )
 
     // --------------------------------- A-05 : champs obligatoires manquants (CA-04)
 
@@ -439,6 +475,15 @@ class TransactionEditViewModelCreateTest {
             assertEquals(
                 "CA-04 : catégorie manquante — onDone ne doit pas être invoqué",
                 emptyList<Long>(), doneIds
+            )
+            assertEquals(
+                "CA-04 : l'erreur doit porter sur la catégorie, et sur elle seule — le montant est valide",
+                setOf(TransactionFormField.CATEGORY), sut.fieldErrors.value.keys
+            )
+            assertEquals(
+                "CA-04 : message attendu près du champ catégorie",
+                R.string.tx_error_category_required,
+                sut.fieldErrors.value[TransactionFormField.CATEGORY]
             )
             confirmVerified(*allMocks)
         }
@@ -467,6 +512,15 @@ class TransactionEditViewModelCreateTest {
             assertEquals(
                 "CA-04 : compte manquant — onDone ne doit pas être invoqué",
                 emptyList<Long>(), doneIds
+            )
+            assertEquals(
+                "CA-04 : l'erreur doit porter sur le compte, et sur lui seul — montant et catégorie sont valides",
+                setOf(TransactionFormField.ACCOUNT), sut.fieldErrors.value.keys
+            )
+            assertEquals(
+                "CA-04 : message attendu près du champ compte",
+                R.string.tx_error_account_required,
+                sut.fieldErrors.value[TransactionFormField.ACCOUNT]
             )
             confirmVerified(*allMocks)
         }
@@ -632,10 +686,46 @@ class TransactionEditViewModelCreateTest {
                 "I-2 : un échec ne doit pas produire de seconde écriture, ni invoquer onDone",
                 emptyList<Long>(), doneIds
             )
-            // ANO-C : « l'échec affiche une erreur claire » (CA-10) n'a aucun observable —
-            // non asserté ici, à couvrir après l'enabler de gestion d'erreur.
-            // ANO-M4 : l'exception remonte non capturée hors de viewModelScope.launch ;
-            // runTest échoue ensuite dessus. C'est la manifestation de l'anomalie.
+            // CA-10 : l'échec affiche une erreur claire. Que ce test se termine prouve aussi
+            // que l'exception ne s'échappe plus de viewModelScope.launch.
+            assertEquals(
+                "CA-10 : un échec de sauvegarde doit être signalé à l'utilisateur",
+                R.string.tx_error_save_failed, sut.saveError.value
+            )
+            coVerify { accountRepo.getById(primaryAccount.id) }
+            confirmVerified(*allMocks)
+        }
+
+    @Test
+    fun `A-07d - Given sauvegarde annulee - When CancellationException - Then aucune erreur affichee (CA-10)`() =
+        runTest(testDispatcher) {
+            coEvery { accountRepo.getById(primaryAccount.id) } returns primaryAccount
+            coEvery { createTransactionUseCase(any()) } throws CancellationException("scope annulé")
+
+            val sut = createSut(type = TransactionType.EXPENSE)
+            advanceUntilIdle()
+
+            sut.setTitle("Courses")
+            sut.setAmountRaw("42.50")
+            sut.setCategory(expenseCategory.id)
+
+            sut.save(onDone)
+            advanceUntilIdle()
+
+            assertNull(
+                "CA-10 : une annulation du scope n'est pas un échec de sauvegarde — " +
+                    "aucune erreur ne doit être présentée à l'utilisateur",
+                sut.saveError.value
+            )
+            assertFalse(
+                "CA-10 : le verrou de sauvegarde doit être relâché même sur annulation",
+                sut.isSaving.value
+            )
+            assertEquals(
+                "CA-10 : une sauvegarde annulée n'aboutit pas, onDone ne doit pas être invoqué",
+                emptyList<Long>(), doneIds
+            )
+            coVerify(exactly = 1) { createTransactionUseCase(any()) }
             coVerify { accountRepo.getById(primaryAccount.id) }
             confirmVerified(*allMocks)
         }
@@ -661,6 +751,45 @@ class TransactionEditViewModelCreateTest {
                 sut.form.value.isValid
             )
             verifyNoWrite()
+            confirmVerified(*allMocks)
+        }
+
+    // -------------------------------- A-09 : purge des erreurs à la correction (CA-04)
+
+    @Test
+    fun `A-09 - Given erreurs affichees - When le champ fautif est corrige - Then seule son erreur disparait (CA-04)`() =
+        runTest(testDispatcher) {
+            val sut = createSut(type = TransactionType.EXPENSE)
+            advanceUntilIdle()
+
+            sut.setTitle("Courses")
+            // Ni montant ni catégorie : deux champs fautifs, le compte est présélectionné.
+            sut.save(onDone)
+            advanceUntilIdle()
+
+            assertEquals(
+                "CA-04 : les deux champs manquants doivent être signalés",
+                setOf(TransactionFormField.AMOUNT, TransactionFormField.CATEGORY),
+                sut.fieldErrors.value.keys
+            )
+
+            sut.setAmountRaw("42.50")
+            assertEquals(
+                "CA-04 : corriger le montant ne doit lever que l'erreur du montant",
+                setOf(TransactionFormField.CATEGORY), sut.fieldErrors.value.keys
+            )
+
+            sut.setCategory(expenseCategory.id)
+            assertEquals(
+                "CA-04 : le dernier champ corrigé lève la dernière erreur",
+                emptyMap<TransactionFormField, Int>(), sut.fieldErrors.value
+            )
+
+            verifyNoWrite()
+            assertEquals(
+                "CA-04 : corriger les champs n'écrit rien tant que save() n'est pas rappelé",
+                emptyList<Long>(), doneIds
+            )
             confirmVerified(*allMocks)
         }
 }

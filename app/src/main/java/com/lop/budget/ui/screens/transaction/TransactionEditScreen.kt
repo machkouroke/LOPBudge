@@ -10,11 +10,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -54,6 +57,25 @@ fun TransactionEditScreen(
     val showAlert by vm.showBalanceImpactAlert.collectAsStateWithLifecycle()
     val isSaving by vm.isSaving.collectAsStateWithLifecycle()
     val currency by vm.currency.collectAsStateWithLifecycle()
+    val fieldErrors by vm.fieldErrors.collectAsStateWithLifecycle()
+    val saveError by vm.saveError.collectAsStateWithLifecycle()
+
+    // CA-04 : résolution des @StringRes au plus près de l'affichage ; le ViewModel ne
+    // manipule que des identifiants de ressource, jamais de texte localisé.
+    val amountError = fieldErrors[TransactionFormField.AMOUNT]?.let { stringResource(it) }
+    val categoryError = fieldErrors[TransactionFormField.CATEGORY]?.let { stringResource(it) }
+    val accountError = fieldErrors[TransactionFormField.ACCOUNT]?.let { stringResource(it) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val saveErrorMessage = saveError?.let { stringResource(it) }
+    // CA-10 : l'échec de sauvegarde est signalé, puis l'état est purgé pour qu'une nouvelle
+    // tentative puisse le réafficher.
+    LaunchedEffect(saveErrorMessage) {
+        saveErrorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.dismissSaveError()
+        }
+    }
 
 
     var activeSheet by rememberSaveable { mutableStateOf<EditSheet?>(null) }
@@ -81,6 +103,7 @@ fun TransactionEditScreen(
         onBack = { onDone(vm.editingTransactionId ?: 0L) },
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
         modifier = Modifier.testTag(TestTags.SCREEN_EDIT),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             Box(Modifier.fillMaxWidth().padding(20.dp)) {
                 Button(
@@ -98,6 +121,7 @@ fun TransactionEditScreen(
             MainSection(
                 form = form,
                 currency = currency,
+                amountError = amountError,
                 isPaidToggleVisible = vm.isPaidToggleVisible,
                 onSetType = vm::setType,
                 onSetAmount = vm::setAmountRaw,
@@ -114,6 +138,8 @@ fun TransactionEditScreen(
                 goals = goals,
                 debts = debts,
                 tags = tags,
+                categoryError = categoryError,
+                accountError = accountError,
                 onOpenCategory = { activeSheet = EditSheet.Category },
                 onOpenAccount = { activeSheet = EditSheet.Account },
                 onOpenGoal = { activeSheet = EditSheet.Goal },

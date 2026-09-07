@@ -28,6 +28,7 @@ import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.ObserveTransactionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +62,13 @@ data class TransactionForm(
     val amount: Double get() = amountInput.toDoubleOrNull() ?: 0.0
     val isValid: Boolean get() = amount > 0.0 && categoryId != null && accountId != null
 }
+
+/**
+ * Champs du formulaire susceptibles de porter une erreur de validation (CA-04).
+ * L'erreur n'est pas un champ de [TransactionForm] : elle ne doit pas entrer dans le
+ * dirty-check de `hasUnsavedChanges()`, qui compare le formulaire complet.
+ */
+enum class TransactionFormField { AMOUNT, CATEGORY, ACCOUNT }
 
 /**
  * Unique mapper UI -> domaine. Préconditions garanties par save() : amount > 0,
@@ -109,6 +117,24 @@ class TransactionEditViewModel @Inject constructor(
 
     private val _isSaving = MutableStateFlow(false)
     val isSaving = _isSaving.asStateFlow()
+
+    private val _fieldErrors = MutableStateFlow<Map<TransactionFormField, Int>>(emptyMap())
+
+    /**
+     * CA-04 : erreurs de validation par champ, la valeur est un `@StringRes`.
+     * Vide tant qu'aucune sauvegarde n'a été tentée : un formulaire fraîchement ouvert est
+     * vide, pas fautif.
+     */
+    val fieldErrors: StateFlow<Map<TransactionFormField, Int>> = _fieldErrors.asStateFlow()
+
+    private val _saveError = MutableStateFlow<Int?>(null)
+
+    /** CA-10 : message d'échec de sauvegarde (`@StringRes`), null si aucun échec en cours. */
+    val saveError: StateFlow<Int?> = _saveError.asStateFlow()
+
+    fun dismissSaveError() {
+        _saveError.value = null
+    }
 
     /** Photo du formulaire après chargement — base du dirty-check (CA-06). */
     private var initialForm: TransactionForm? = null
@@ -270,8 +296,15 @@ class TransactionEditViewModel @Inject constructor(
     }
     fun setTitle(title: String) = update { it.copy(title = title) }
     fun setStatus(status: TransactionStatus) = update { it.copy(status = status) }
-    fun setCategory(id: Long) = update { it.copy(categoryId = id) }
-    fun setAccount(id: Long) = update { it.copy(accountId = id) }
+    fun setCategory(id: Long) {
+        update { it.copy(categoryId = id) }
+        clearFieldError(TransactionFormField.CATEGORY)
+    }
+
+    fun setAccount(id: Long) {
+        update { it.copy(accountId = id) }
+        clearFieldError(TransactionFormField.ACCOUNT)
+    }
     fun setNote(note: String) = update { it.copy(note = note) }
     fun setDate(date: Long) = update { it.copy(date = date) }
     fun setGoal(id: Long?) = update { it.copy(linkedGoalId = id, linkedDebtId = null) }
@@ -284,6 +317,16 @@ class TransactionEditViewModel @Inject constructor(
         val cleaned = amount.replace(",", ".")
         if (cleaned.isEmpty() || cleaned == "." || cleaned.toDoubleOrNull() != null) {
             update { it.copy(amountInput = cleaned) }
+            // CA-04 : l'erreur ne se purge que si la saisie a effectivement été retenue ;
+            // une frappe rejetée laisse le champ inchangé, donc l'erreur pertinente.
+            clearFieldError(TransactionFormField.AMOUNT)
+        }
+    }
+
+    /** CA-04 : une erreur affichée disparaît dès que son champ est corrigé, et elle seule. */
+    private fun clearFieldError(field: TransactionFormField) {
+        if (_fieldErrors.value.containsKey(field)) {
+            _fieldErrors.value = _fieldErrors.value - field
         }
     }
 
@@ -333,9 +376,26 @@ class TransactionEditViewModel @Inject constructor(
     private fun tryAcquireSaveLock(): Boolean =
         _isSaving.compareAndSet(expect = false, update = true)
 
+    /**
+     * CA-04 / I-1 : le montant est obligatoire et strictement positif ; catégorie et compte
+     * sont obligatoires. Chaque manquement est rattaché à **son** champ, pour que l'écran
+     * puisse afficher le message au bon endroit plutôt que de refuser en silence.
+     */
+    private fun validate(f: TransactionForm): Map<TransactionFormField, Int> = buildMap {
+        if (f.amountInput.isBlank()) {
+            put(TransactionFormField.AMOUNT, R.string.tx_error_amount_required)
+        } else if (f.amount <= 0.0) {
+            put(TransactionFormField.AMOUNT, R.string.tx_error_amount_positive)
+        }
+        if (f.categoryId == null) put(TransactionFormField.CATEGORY, R.string.tx_error_category_required)
+        if (f.accountId == null) put(TransactionFormField.ACCOUNT, R.string.tx_error_account_required)
+    }
+
     fun save(onDone: (Long) -> Unit) {
         val f = _form.value
-        if (!f.isValid) return
+        val errors = validate(f)
+        _fieldErrors.value = errors
+        if (errors.isNotEmpty()) return
         if (!tryAcquireSaveLock()) return
 
         viewModelScope.launch {
@@ -348,6 +408,12 @@ class TransactionEditViewModel @Inject constructor(
                 } else {
                     performSave(onDone)
                 }
+            } catch (e: CancellationException) {
+                // L'annulation du viewModelScope n'est pas un échec de sauvegarde.
+                throw e
+            } catch (e: Throwable) {
+                // CA-10 : l'échec affiche une erreur claire au lieu de remonter non capturé.
+                _saveError.value = R.string.tx_error_save_failed
             } finally {
                 _isSaving.value = false
             }
@@ -366,6 +432,10 @@ class TransactionEditViewModel @Inject constructor(
                     }
                 }
                 performSave(onDone)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                _saveError.value = R.string.tx_error_save_failed
             } finally {
                 _isSaving.value = false
             }

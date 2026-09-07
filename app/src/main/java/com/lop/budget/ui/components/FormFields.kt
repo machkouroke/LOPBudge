@@ -51,6 +51,7 @@ fun FilledField(
     leading: @Composable (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
     minLines: Int = 1,
+    errorMessage: String? = null,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -67,6 +68,8 @@ fun FilledField(
             leadingIcon = leading,
             trailingIcon = trailing,
             minLines = minLines,
+            isError = errorMessage != null,
+            supportingText = errorMessage?.let { { Text(it) } },
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
@@ -87,49 +90,65 @@ fun SelectorRow(
     iconTint: Color? = null,
     trailingChevron: Boolean = true,
     modifier: Modifier = Modifier,
+    errorMessage: String? = null,
     onClick: () -> Unit,
 ) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Surface(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(onClick = onClick),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            border = BorderStroke(
+                1.dp,
+                if (errorMessage != null) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+            ),
         ) {
-            if (icon != null) {
-                CircleIcon(
-                    icon = icon,
-                    tint = iconTint ?: MaterialTheme.colorScheme.primary,
-                    background = (iconTint ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.12f),
-                    size = 36.dp
-                )
-                Spacer(Modifier.width(12.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (icon != null) {
+                    CircleIcon(
+                        icon = icon,
+                        tint = iconTint ?: MaterialTheme.colorScheme.primary,
+                        background = (iconTint ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.12f),
+                        size = 36.dp
+                    )
+                    Spacer(Modifier.width(12.dp))
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
 
-            if (trailingChevron) {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
+                if (trailingChevron) {
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
             }
+        }
+
+        if (errorMessage != null) {
+            Text(
+                text = errorMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+            )
         }
     }
 }

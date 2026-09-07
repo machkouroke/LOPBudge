@@ -78,6 +78,7 @@ import com.lop.budget.util.IconMapper
 fun MainSection(
     form: TransactionForm,
     currency: String = "EUR",
+    amountError: String? = null,
     isPaidToggleVisible: Boolean = true,
     onSetType: (TransactionType) -> Unit,
     onSetAmount: (String) -> Unit,
@@ -124,7 +125,9 @@ fun MainSection(
                 trailing = {
                     // CA-01 : devise de l'application, plus de symbole en dur.
                     Text(Format.currencySymbol(currency), style = MaterialTheme.typography.titleLarge)
-                }
+                },
+                // CA-04 : l'erreur de montant s'affiche sous son propre champ.
+                errorMessage = amountError
             )
 
             // Title
@@ -171,6 +174,8 @@ fun ClassificationSection(
     goals: List<GoalEntity>,
     debts: List<DebtEntity>,
     tags: List<TagEntity>,
+    categoryError: String? = null,
+    accountError: String? = null,
     onOpenCategory: () -> Unit,
     onOpenAccount: () -> Unit,
     onOpenGoal: () -> Unit,
@@ -187,6 +192,7 @@ fun ClassificationSection(
                 icon = selectedCat?.let { IconMapper.get(it.icon) } ?: Icons.Filled.Category,
                 iconTint = selectedCat?.let { Color(it.colorArgb) },
                 onClick = onOpenCategory,
+                errorMessage = categoryError,
                 modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_CATEGORY)
             )
 
@@ -196,6 +202,7 @@ fun ClassificationSection(
                 value = selectedAcc?.name ?: stringResource(R.string.tx_select_account),
                 onClick = onOpenAccount,
                 trailingChevron = true,
+                errorMessage = accountError,
                 modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_ACCOUNT)
             )
 
