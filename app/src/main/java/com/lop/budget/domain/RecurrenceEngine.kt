@@ -27,30 +27,80 @@ object RecurrenceEngine {
         val calendar = Calendar.getInstance().apply { timeInMillis = series.startDate }
         
         var count = 0
+        val selectedDays = parseDaysOfWeek(series.daysOfWeek)
         
         // On boucle tant qu'on n'a pas dépassé la fin de la période demandée 
         // et qu'on respecte les limites de la série (endDate, maxOccurrences)
         while (calendar.timeInMillis <= endRange) {
-            val currentDate = calendar.timeInMillis
-            
-            // Vérifier si la date est dans la plage demandée
-            if (currentDate >= startRange) {
-                // Vérifier les limites de la série
-                if (series.endDate != null && currentDate > series.endDate) break
-                if (series.maxOccurrences != null && count >= series.maxOccurrences) break
+            if (series.frequency == RecurrenceFrequency.WEEKLY && selectedDays.isNotEmpty()) {
+                val currentIsoDay = when (calendar.get(Calendar.DAY_OF_WEEK)) {
+                    Calendar.SUNDAY -> 7
+                    else -> calendar.get(Calendar.DAY_OF_WEEK) - 1
+                }
+                val weekMonday = (calendar.clone() as Calendar).apply {
+                    add(Calendar.DAY_OF_YEAR, -(currentIsoDay - 1))
+                }
+
+                var stopLoop = false
+                for (day in selectedDays) {
+                    val dayCal = (weekMonday.clone() as Calendar).apply {
+                        add(Calendar.DAY_OF_YEAR, day - 1)
+                    }
+                    val currentDate = dayCal.timeInMillis
+
+                    if (currentDate < series.startDate) continue
+                    if (currentDate > endRange) {
+                        stopLoop = true
+                        break
+                    }
+
+                    if (currentDate >= startRange) {
+                        if (series.endDate != null && currentDate > series.endDate) {
+                            stopLoop = true
+                            break
+                        }
+                        if (series.maxOccurrences != null && count >= series.maxOccurrences) {
+                            stopLoop = true
+                            break
+                        }
+
+                        occurrences.add(createVirtualTransaction(series, currentDate))
+                        count++
+                    }
+                }
+                if (stopLoop) break
+
+                moveCalendar(calendar, series.frequency, series.interval)
+            } else {
+                val currentDate = calendar.timeInMillis
                 
-                occurrences.add(createVirtualTransaction(series, currentDate))
+                // Vérifier si la date est dans la plage demandée
+                if (currentDate >= startRange) {
+                    // Vérifier les limites de la série
+                    if (series.endDate != null && currentDate > series.endDate) break
+                    if (series.maxOccurrences != null && count >= series.maxOccurrences) break
+                    
+                    occurrences.add(createVirtualTransaction(series, currentDate))
+                    count++
+                }
+                
+                // Incrémenter selon la fréquence
+                moveCalendar(calendar, series.frequency, series.interval)
             }
-            
-            // Incrémenter selon la fréquence
-            moveCalendar(calendar, series.frequency, series.interval)
-            count++
             
             // Sécurité pour éviter les boucles infinies si NONE ou intervalle invalide
             if (series.frequency == RecurrenceFrequency.NONE || series.interval <= 0) break
         }
         
         return occurrences
+    }
+
+    private fun parseDaysOfWeek(raw: String?): List<Int> {
+        if (raw.isNullOrBlank()) return emptyList()
+        return raw.split(",")
+            .mapNotNull { it.trim().toIntOrNull() }
+            .filter { it in 1..7 }
+            .sorted()
     }
 
     /**
