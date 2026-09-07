@@ -352,6 +352,7 @@ class RecurrenceEngineGridTest {
         // Fenêtre 2 : Mêmes dates pour vérifier la répétabilité
         val list2 = RecurrenceEngine.generateOccurrences(series, rangeStart1, rangeEnd1)
         assertCommonInvariants(seriesCopy, series, list2, expectedDates1)
+        assertEquals("Tous les IDs restent stables entre deux lectures identiques", list1.map { it.id }, list2.map { it.id })
 
         // Fenêtre 3 : Février à Juin 2026 (5 occurrences : 10 fév, 10 mars, 10 avr, 10 mai, 10 juin)
         val rangeStart3 = startOfDayMilli(2026, 2, 1)
