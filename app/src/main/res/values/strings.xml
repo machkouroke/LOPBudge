@@ -252,6 +252,8 @@
     <string name="nav_goals">Objectif</string>
 
     <!-- Add actions -->
+    <string name="add_action_title">Ajouter</string>
+    <string name="add_action_subtitle">Quel type de transaction ?</string>
     <string name="add_action_expense">Dépense</string>
     <string name="add_action_income">Revenu</string>
 </resources>

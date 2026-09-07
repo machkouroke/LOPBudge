@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,13 +27,14 @@ import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
@@ -48,8 +50,18 @@ import com.lop.budget.ui.screens.settings.SettingsViewModel
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.ui.theme.ThemeMode
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 
+/**
+ * Menu d'ajout (CA-01, CA-02) : carte **flottante** posée au-dessus de l'écran courant.
+ *
+ * Ordre de dessin du flou — c'est le point qui était faux : `hazeEffect` peint le rendu
+ * flouté *par-dessus* ce que les modificateurs précédents ont dessiné. Un `background()`
+ * chaîné **avant** lui est donc entièrement recouvert et la teinte du scrim n'a aucun effet
+ * prévisible. Le scrim doit venir **après** le flou, et la carte porte son propre flou pour
+ * lire comme du verre plutôt que comme une surface opaque.
+ */
 @Composable
 fun AddActionSheet(
     visible: Boolean,
@@ -66,6 +78,14 @@ fun AddActionSheet(
         BackHandler(onBack = onDismiss)
     }
 
+    // Scrim : teinte appliquée par haze lui-même, pas par un background() séparé.
+    val scrimColor = if (isDark) Color.Black.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.30f)
+    val hazeBackground = MaterialTheme.colorScheme.background
+    // La carte est opaque : rien du contenu sous-jacent ne doit transparaître.
+    val sheetColor = MaterialTheme.colorScheme.surface
+    val sheetBorder =
+        if (isDark) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.07f)
+
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(tween(MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut)),
@@ -75,8 +95,22 @@ fun AddActionSheet(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(if (isDark) Color.Black.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.20f))
-                .then(if (hazeState != null) Modifier.hazeEffect(state = hazeState) else Modifier)
+                // `hazeEffect(state)` seul retombe sur HazeDefaults.blurRadius (20 dp), trop
+                // faible : le texte du fond restait lisible. Rayon et teinte sont donc
+                // explicites, et la teinte passe par haze (un background() chaîné avant
+                // l'effet est recouvert par le rendu flouté, chaîné après il l'aplatit).
+                .then(
+                    if (hazeState != null) {
+                        Modifier.hazeEffect(state = hazeState) {
+                            blurRadius = 40.dp
+                            noiseFactor = 0f
+                            backgroundColor = hazeBackground
+                            tints = listOf(HazeTint(scrimColor))
+                        }
+                    } else {
+                        Modifier.background(scrimColor)
+                    }
+                )
                 .clickableNoRipple(onDismiss),
         ) {
             AnimatedVisibility(
@@ -89,45 +123,74 @@ fun AddActionSheet(
                 ) { it } + fadeOut(tween(MotionSpec.FAST_MS, easing = MotionSpec.easeOut)),
                 modifier = Modifier.align(Alignment.BottomCenter),
             ) {
-                Surface(
-                    modifier = Modifier
+                val sheetShape = RoundedCornerShape(32.dp)
+
+                // Marges sur les quatre côtés : la carte flotte au lieu d'être collée au bord.
+                Box(
+                    Modifier
                         .fillMaxWidth()
-                        .clickableNoRipple { /* bloque le dismiss du scrim */ }
-                        .testTag(TestTags.ADD_ACTION_SHEET),
-                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 2.dp,
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 16.dp),
                 ) {
-                    Column(
-                        Modifier
+                    Box(
+                        modifier = Modifier
                             .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(horizontal = 24.dp)
-                            .padding(top = 20.dp, bottom = 28.dp),
+                            .shadow(elevation = 24.dp, shape = sheetShape, clip = false)
+                            .clip(sheetShape)
+                            // Opaque : la carte de choix ne laisse rien transparaître.
+                            // Un hazeEffect ici ne floutait rien de toute façon — le
+                            // `shadow` au-dessus ouvre une nouvelle couche graphique et
+                            // le contenu réapparaissait net.
+                            .background(sheetColor)
+                            .border(1.dp, sheetBorder, sheetShape)
+                            .clickableNoRipple { /* bloque le dismiss du scrim */ }
+                            .testTag(TestTags.ADD_ACTION_SHEET),
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp)
+                                .padding(top = 22.dp, bottom = 20.dp),
                         ) {
-                            AddActionTile(
-                                label = stringResource(R.string.add_action_expense),
-                                icon = Icons.AutoMirrored.Filled.CallReceived,
-                                tint = LopTheme.extended.expense,
-                                testTag = TestTags.ADD_ACTION_EXPENSE,
-                                modifier = Modifier.weight(1f),
-                                onClick = { onSelect(TransactionType.EXPENSE) },
+                            Text(
+                                text = stringResource(R.string.add_action_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
-                            AddActionTile(
-                                label = stringResource(R.string.add_action_income),
-                                icon = Icons.AutoMirrored.Filled.CallMade,
-                                tint = LopTheme.extended.income,
-                                testTag = TestTags.ADD_ACTION_INCOME,
-                                modifier = Modifier.weight(1f),
-                                onClick = { onSelect(TransactionType.INCOME) },
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(R.string.add_action_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            // 2 slots vides : réserve la grille 4 colonnes pour de futures actions
-                            Spacer(Modifier.weight(1f))
-                            Spacer(Modifier.weight(1f))
+
+                            Spacer(Modifier.height(18.dp))
+
+                            // Deux tuiles de largeur égale : plus de colonnes fantômes qui
+                            // tassaient les actions sur la moitié gauche de la carte.
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                AddActionTile(
+                                    label = stringResource(R.string.add_action_expense),
+                                    icon = Icons.AutoMirrored.Filled.CallReceived,
+                                    tint = LopTheme.extended.expense,
+                                    testTag = TestTags.ADD_ACTION_EXPENSE,
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { onSelect(TransactionType.EXPENSE) },
+                                )
+                                AddActionTile(
+                                    label = stringResource(R.string.add_action_income),
+                                    icon = Icons.AutoMirrored.Filled.CallMade,
+                                    tint = LopTheme.extended.income,
+                                    testTag = TestTags.ADD_ACTION_INCOME,
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { onSelect(TransactionType.INCOME) },
+                                )
+                            }
                         }
                     }
                 }
@@ -136,6 +199,10 @@ fun AddActionSheet(
     }
 }
 
+/**
+ * Tuile d'action : la zone cliquable **et** le testTag portent sur toute la carte, pas
+ * seulement sur la pastille d'icône — la cible de tap couvre désormais la tuile entière.
+ */
 @Composable
 private fun AddActionTile(
     label: String,
@@ -145,34 +212,40 @@ private fun AddActionTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val tileShape = RoundedCornerShape(24.dp)
+
     Column(
-        modifier = modifier.pressScaleClickable(
-            intent = HapticIntent.Selection,
-            pressedScale = 0.96f,
-            onClick = onClick,
-        ),
+        modifier = modifier
+            .clip(tileShape)
+            .background(tint.copy(alpha = 0.10f))
+            .border(1.dp, tint.copy(alpha = 0.22f), tileShape)
+            .pressScaleClickable(
+                intent = HapticIntent.Selection,
+                pressedScale = 0.96f,
+                onClick = onClick,
+            )
+            .padding(vertical = 18.dp)
+            .testTag(testTag),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Surface(
+        Box(
             modifier = Modifier
-                .size(64.dp)
-                .testTag(testTag),
-            shape = CircleShape,
-            color = tint.copy(alpha = 0.14f),
+                .size(52.dp)
+                .clip(CircleShape)
+                .background(tint.copy(alpha = 0.18f)),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = tint,
-                    modifier = Modifier.size(28.dp),
-                )
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = tint,
+                modifier = Modifier.size(26.dp),
+            )
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
         )
