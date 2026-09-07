@@ -33,4 +33,16 @@ object MotionSpec {
         dampingRatio = Spring.DampingRatioMediumBouncy,
         stiffness = Spring.StiffnessMedium,
     )
+
+    /** Spring élastique naturel pour l'apparition des cartes/overlays flottants (iOS/Material 3 feel). */
+    fun <T> sheetEnterSpring() = spring<T>(
+        dampingRatio = 0.78f,
+        stiffness = 380f,
+    )
+
+    /** Spring ferme et rapide pour la fermeture directe des cartes/overlays. */
+    fun <T> sheetExitSpring() = spring<T>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = 500f,
+    )
 }

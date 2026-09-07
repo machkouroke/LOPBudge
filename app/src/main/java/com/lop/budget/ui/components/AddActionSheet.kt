@@ -2,9 +2,12 @@ package com.lop.budget.ui.components
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -36,7 +39,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -86,6 +91,13 @@ fun AddActionSheet(
     val sheetBorder =
         if (isDark) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.07f)
 
+    val density = LocalDensity.current
+    val contentProgress by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = if (visible) MotionSpec.sheetEnterSpring() else MotionSpec.sheetExitSpring(),
+        label = "sheetContentCascade",
+    )
+
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(tween(MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut)),
@@ -116,11 +128,25 @@ fun AddActionSheet(
             AnimatedVisibility(
                 visible = visible,
                 enter = slideInVertically(
-                    animationSpec = tween(MotionSpec.SLOW_MS, easing = MotionSpec.easeOut),
-                ) { it } + fadeIn(tween(MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut)),
+                    animationSpec = MotionSpec.sheetEnterSpring(),
+                ) { fullHeight -> (fullHeight * 0.4f).toInt() } +
+                        scaleIn(
+                            initialScale = 0.92f,
+                            animationSpec = MotionSpec.sheetEnterSpring(),
+                        ) +
+                        fadeIn(
+                            animationSpec = tween(MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut),
+                        ),
                 exit = slideOutVertically(
-                    animationSpec = tween(MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut),
-                ) { it } + fadeOut(tween(MotionSpec.FAST_MS, easing = MotionSpec.easeOut)),
+                    animationSpec = MotionSpec.sheetExitSpring(),
+                ) { fullHeight -> (fullHeight * 0.4f).toInt() } +
+                        scaleOut(
+                            targetScale = 0.94f,
+                            animationSpec = MotionSpec.sheetExitSpring(),
+                        ) +
+                        fadeOut(
+                            animationSpec = tween(MotionSpec.FAST_MS, easing = MotionSpec.easeOut),
+                        ),
                 modifier = Modifier.align(Alignment.BottomCenter),
             ) {
                 val sheetShape = RoundedCornerShape(32.dp)
@@ -153,23 +179,35 @@ fun AddActionSheet(
                                 .padding(horizontal = 20.dp)
                                 .padding(top = 22.dp, bottom = 20.dp),
                         ) {
-                            Text(
-                                text = stringResource(R.string.add_action_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                text = stringResource(R.string.add_action_subtitle),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            val headerAlpha = contentProgress.coerceIn(0f, 1f)
+                            val headerTranslationY = with(density) { (1f - headerAlpha) * 10.dp.toPx() }
+
+                            Column(
+                                modifier = Modifier.graphicsLayer {
+                                    alpha = headerAlpha
+                                    translationY = headerTranslationY
+                                },
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.add_action_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = stringResource(R.string.add_action_subtitle),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
 
                             Spacer(Modifier.height(18.dp))
 
-                            // Deux tuiles de largeur égale : plus de colonnes fantômes qui
-                            // tassaient les actions sur la moitié gauche de la carte.
+                            // Deux tuiles de largeur égale avec animation en cascade.
+                            val expenseProgress = ((contentProgress - 0.12f) / 0.88f).coerceIn(0f, 1f)
+                            val incomeProgress = ((contentProgress - 0.22f) / 0.78f).coerceIn(0f, 1f)
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -179,7 +217,14 @@ fun AddActionSheet(
                                     icon = Icons.AutoMirrored.Filled.CallReceived,
                                     tint = LopTheme.extended.expense,
                                     testTag = TestTags.ADD_ACTION_EXPENSE,
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .graphicsLayer {
+                                            alpha = expenseProgress
+                                            scaleX = 0.94f + (0.06f * expenseProgress)
+                                            scaleY = 0.94f + (0.06f * expenseProgress)
+                                            translationY = with(density) { (1f - expenseProgress) * 16.dp.toPx() }
+                                        },
                                     onClick = { onSelect(TransactionType.EXPENSE) },
                                 )
                                 AddActionTile(
@@ -187,7 +232,14 @@ fun AddActionSheet(
                                     icon = Icons.AutoMirrored.Filled.CallMade,
                                     tint = LopTheme.extended.income,
                                     testTag = TestTags.ADD_ACTION_INCOME,
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .graphicsLayer {
+                                            alpha = incomeProgress
+                                            scaleX = 0.94f + (0.06f * incomeProgress)
+                                            scaleY = 0.94f + (0.06f * incomeProgress)
+                                            translationY = with(density) { (1f - incomeProgress) * 16.dp.toPx() }
+                                        },
                                     onClick = { onSelect(TransactionType.INCOME) },
                                 )
                             }
