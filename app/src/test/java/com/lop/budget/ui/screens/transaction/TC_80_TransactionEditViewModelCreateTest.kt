@@ -27,12 +27,14 @@ import io.mockk.every
 import io.mockk.excludeRecords
 import io.mockk.mockk
 import io.mockk.slot
-import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -72,29 +74,31 @@ import java.time.ZoneId
  * | A-07  | CA-10, I-2     | `TransactionEditViewModel.save` / `performSave`            |
  * | A-08  | CA-09, I-3     | `TransactionEditViewModel.init` + setters                  |
  *
- * ## Anomalies connues — rouges attendus, oracles NON assouplis
- * Les oracles ci-dessous sont ceux de la spécification. Ils échouent contre le code au
- * HEAD `e468aa8` ; c'est le résultat attendu tant que les ANO ne sont pas traitées.
+ * ## Anomalies — état courant
+ * Les oracles sont ceux de la spécification et n'ont jamais été assouplis.
  * Voir le commentaire d'ANO déposé sur le ticket Notion TC-80.
  *
- * - **ANO-A** (A-03) — `setType` (L253) ne réinitialise pas `categoryId` devenu
- *   incohérent. CA-03 l'exige. → A-03 **RED**.
- * - **ANO-B** (A-07a) — `_isSaving` n'est levé que dans `performSave` (L343), après le
- *   `launch` et le `getById` suspendu ; `performSave` n'a aucune garde. Deux `save()`
- *   successifs franchissent la garde de `save()` (L310) et produisent 2 écritures,
- *   en violation de I-2. → A-07a **RED**.
+ * Traitées (les cas correspondants sont verts) :
+ * - **ANO-A** (A-03) — `setType` ne réinitialisait pas `categoryId` devenu incohérent.
+ *   Corrigé : `setType` vide la catégorie sur changement effectif de type.
+ * - **ANO-B** (A-07a) — `_isSaving` n'était levé que dans `performSave`, après le `launch`,
+ *   si bien que deux `save()` successifs franchissaient la garde. Corrigé : verrou pris
+ *   atomiquement et synchroniquement par `tryAcquireSaveLock()`.
+ * - **ANO-D** (A-01, A-02) — `SettingsRepository` était injecté et jamais utilisé.
+ *   Corrigé : le ViewModel expose `currency`, alimenté par `settings.currency`.
+ *
+ * Ouvertes — rouge attendu :
  * - **ANO-C** (A-04, A-05, A-07c) — aucun état d'erreur par champ n'existe (ni dans le
  *   ViewModel, ni dans `TransactionEditScreen`). Le volet « l'erreur est affichée près du
  *   champ concerné » de CA-04 est donc **non couvert ici, faute d'observable** : ces cas
  *   n'assertent que le volet « la sauvegarde est bloquée ».
- * - **ANO-D** (A-01, A-02) — `SettingsRepository` est injecté (L99) et jamais utilisé ;
- *   `TransactionForm` ne porte aucune devise. L'oracle est conservé sous sa forme
- *   minimale observable au niveau ViewModel — le VM doit lire `settings.currency` —
- *   et échoue. → A-01 et A-02 **RED**.
  * - **ANO-M4** (A-07c) — l'exception du use case remonte non capturée hors de
  *   `viewModelScope.launch` (aucun `catch`, aucun `CoroutineExceptionHandler`).
  *   Les assertions du test s'exécutent, puis `runTest` échoue sur l'exception non
  *   gérée : c'est la manifestation de l'anomalie, pas un défaut du test.
+ *
+ * ANO-C et ANO-M4 sont portées par l'enabler « Erreurs de formulaire de transaction »,
+ * qui devra durcir A-04, A-05 et A-07c et ajouter un cas A-09.
  *
  * ## Hors périmètre (explicitement non couvert ici)
  * - Portées SINGLE/FUTURE/ALL et préremplissage en édition → TC-75.
@@ -166,7 +170,8 @@ class TransactionEditViewModelCreateTest {
         every { settings.currency } returns flowOf(appCurrency)
 
         // Lectures d'initialisation : exclues du bilan de `confirmVerified`.
-        // `settings.currency` n'est PAS exclu — A-01/A-02 vérifient précisément cet accès.
+        // `settings.currency` en fait partie : l'oracle de devise d'A-01/A-02 porte sur la
+        // valeur exposée par `vm.currency`, pas sur le fait qu'un getter ait été touché.
         excludeRecords {
             categoryRepo.observeByType(any())
             accountRepo.observeAll()
@@ -174,6 +179,7 @@ class TransactionEditViewModelCreateTest {
             goalRepo.observeAll()
             debtRepo.observeAll()
             context.getString(any())
+            settings.currency
         }
     }
 
@@ -215,6 +221,21 @@ class TransactionEditViewModelCreateTest {
     private fun civilDayOf(epochMillis: Long): LocalDate =
         Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate()
 
+    /**
+     * `TransactionEditViewModel.currency` est partagé en `SharingStarted.WhileSubscribed` :
+     * sans abonné, `value` reste la valeur initiale de repli et non celle des settings.
+     * On souscrit dans le `backgroundScope` du test pour lire la valeur réellement exposée.
+     */
+    private fun TestScope.currencyExposedBy(sut: TransactionEditViewModel): String {
+        // `UnconfinedTestDispatcher` : l'abonnement doit démarrer immédiatement, sinon il
+        // reste en file d'attente et le partage `WhileSubscribed` ne s'amorce jamais.
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            sut.currency.collect { }
+        }
+        advanceUntilIdle()
+        return sut.currency.value
+    }
+
     // ------------------------------------------------------- A-01 / A-02 : défauts
 
     @Test
@@ -251,12 +272,11 @@ class TransactionEditViewModelCreateTest {
             )
             verifyNoWrite()
 
-            // ANO-D — oracle « devise de l'application » (CA-01). Forme minimale observable au
-            // niveau ViewModel : le VM doit lire la devise auprès de SettingsRepository.
-            // RED attendu : `settings` est injecté et jamais utilisé.
-            verify(exactly = 1) {
-                settings.currency
-            }
+            // CA-01 — devise de l'application (ANO-D corrigée).
+            assertEquals(
+                "CA-01 : la devise exposée au formulaire doit être celle des settings",
+                appCurrency, currencyExposedBy(sut)
+            )
             confirmVerified(*allMocks)
         }
 
@@ -287,10 +307,11 @@ class TransactionEditViewModelCreateTest {
             )
             verifyNoWrite()
 
-            // ANO-D — même oracle qu'en A-01 : « le reste des défauts comme A-01 ».
-            verify(exactly = 1) {
-                settings.currency
-            }
+            // CA-01 — même oracle qu'en A-01 : « le reste des défauts comme A-01 ».
+            assertEquals(
+                "CA-01 : la devise exposée ne dépend pas du type d'ouverture",
+                appCurrency, currencyExposedBy(sut)
+            )
             confirmVerified(*allMocks)
         }
 
@@ -321,7 +342,6 @@ class TransactionEditViewModelCreateTest {
                 "CA-03 : le montant reste cohérent après changement de type, il ne doit pas être réinitialisé",
                 "42.50", form.amountInput
             )
-            // RED attendu — ANO-A : `setType` (L253) ne recopie que `type`.
             assertNull(
                 "CA-03/ANO-A : une catégorie de dépense devient incohérente en INCOME, " +
                     "TransactionEditViewModel.setType doit la vider",
@@ -527,8 +547,6 @@ class TransactionEditViewModelCreateTest {
                 "CA-10 : isSaving doit être retombé à false une fois la sauvegarde terminée",
                 sut.isSaving.value
             )
-            // RED attendu — ANO-B : la garde de save() (L310) lit un _isSaving qui n'est levé
-            // que plus tard, dans performSave (L343). Les deux appels passent.
             coVerify(exactly = 1) {
                 createTransactionUseCase(any())
             }

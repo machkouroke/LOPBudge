@@ -53,6 +53,7 @@ fun TransactionEditScreen(
     val debts by vm.debts.collectAsStateWithLifecycle()
     val showAlert by vm.showBalanceImpactAlert.collectAsStateWithLifecycle()
     val isSaving by vm.isSaving.collectAsStateWithLifecycle()
+    val currency by vm.currency.collectAsStateWithLifecycle()
 
 
     var activeSheet by rememberSaveable { mutableStateOf<EditSheet?>(null) }
@@ -96,6 +97,7 @@ fun TransactionEditScreen(
         item {
             MainSection(
                 form = form,
+                currency = currency,
                 isPaidToggleVisible = vm.isPaidToggleVisible,
                 onSetType = vm::setType,
                 onSetAmount = vm::setAmountRaw,

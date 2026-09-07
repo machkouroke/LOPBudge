@@ -17,6 +17,11 @@ object Format {
         }.getOrElse { String.format(locale, "%.2f %s", amount, currencyCode) }
     }
 
+    /** Symbole seul ("EUR" -> "€"), pour les champs de saisie qui affichent déjà le nombre. */
+    fun currencySymbol(currencyCode: String = "EUR", locale: Locale = Locale.FRANCE): String =
+        runCatching { Currency.getInstance(currencyCode).getSymbol(locale) }
+            .getOrElse { currencyCode }
+
     private val dayMonth = DateTimeFormatter.ofPattern("d MMM", Locale.FRANCE)
     private val full = DateTimeFormatter.ofPattern("EEEE d MMMM yyyy", Locale.FRANCE)
     private val monthYear = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.FRANCE)

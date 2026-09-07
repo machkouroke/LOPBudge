@@ -87,6 +87,9 @@ class TransactionEditViewModelTest {
         every { tagRepo.observeAll() } returns flowOf(emptyList())
         every { goalRepo.observeAll() } returns flowOf(emptyList())
         every { debtRepo.observeAll() } returns flowOf(emptyList())
+        // CA-01 : le VM lit la devise applicative à l'init pour l'exposer au champ montant.
+        // Hors périmètre de ce ticket (couvert par TC-80 A-01/A-02) : simple stub d'init.
+        every { settings.currency } returns flowOf("EUR")
 
         // Exclure les lectures d'initialisation de confirmVerified pour éviter le bruit
         excludeRecords {
@@ -96,6 +99,7 @@ class TransactionEditViewModelTest {
             goalRepo.observeAll()
             debtRepo.observeAll()
             context.getString(any())
+            settings.currency
         }
     }
 

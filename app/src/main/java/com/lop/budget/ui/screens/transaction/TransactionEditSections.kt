@@ -77,6 +77,7 @@ import com.lop.budget.util.IconMapper
 @Composable
 fun MainSection(
     form: TransactionForm,
+    currency: String = "EUR",
     isPaidToggleVisible: Boolean = true,
     onSetType: (TransactionType) -> Unit,
     onSetAmount: (String) -> Unit,
@@ -120,7 +121,10 @@ fun MainSection(
                 modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_AMOUNT),
                 textStyle = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
                 leading = { Text(if (form.type == TransactionType.EXPENSE) "−" else "+", style = MaterialTheme.typography.displaySmall) },
-                trailing = { Text("€", style = MaterialTheme.typography.titleLarge) }
+                trailing = {
+                    // CA-01 : devise de l'application, plus de symbole en dur.
+                    Text(Format.currencySymbol(currency), style = MaterialTheme.typography.titleLarge)
+                }
             )
 
             // Title

@@ -244,13 +244,30 @@ class TransactionEditViewModel @Inject constructor(
     val debts: StateFlow<List<DebtEntity>> = debtRepo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /**
+     * CA-01 : devise de l'application, affichée par le champ montant. Donnée d'affichage
+     * uniquement — elle n'est pas persistée sur la transaction, d'où une exposition dédiée
+     * plutôt qu'un champ de `TransactionForm`.
+     */
+    val currency: StateFlow<String> = settings.currency
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "EUR")
+
     // ------------------------------------------------------------------ Setters
 
     private inline fun update(block: (TransactionForm) -> TransactionForm) {
         _form.value = block(_form.value)
     }
 
-    fun setType(type: TransactionType) = update { it.copy(type = type) }
+    /**
+     * CA-03 : changer de type ne réinitialise que les valeurs devenues incohérentes.
+     * Le sélecteur n'offre que des catégories du type courant (voir [categories], alimenté
+     * par `observeByType`) : toute catégorie déjà choisie appartient donc au type précédent
+     * et devient incohérente dès que le type change réellement. Un `setType` vers le type
+     * déjà sélectionné ne touche à rien.
+     */
+    fun setType(type: TransactionType) = update {
+        if (type == it.type) it else it.copy(type = type, categoryId = null)
+    }
     fun setTitle(title: String) = update { it.copy(title = title) }
     fun setStatus(status: TransactionStatus) = update { it.copy(status = status) }
     fun setCategory(id: Long) = update { it.copy(categoryId = id) }
@@ -305,31 +322,53 @@ class TransactionEditViewModel @Inject constructor(
 
     // --------------------------------------------------------------- Sauvegarde
 
+    /**
+     * I-2 / CA-10 : prise atomique du verrou de sauvegarde.
+     *
+     * Le drapeau est levé **synchroniquement**, avant tout `launch` : sans cela, deux appuis
+     * rapides successifs lisent tous deux un `_isSaving` encore à `false` et produisent deux
+     * écritures. Le verrou appartient à l'appelant ([save] / [confirmSave]), qui le relâche
+     * dans son `finally` ; [performSave] n'y touche pas.
+     */
+    private fun tryAcquireSaveLock(): Boolean =
+        _isSaving.compareAndSet(expect = false, update = true)
+
     fun save(onDone: (Long) -> Unit) {
         val f = _form.value
-        if (!f.isValid || _isSaving.value) return
+        if (!f.isValid) return
+        if (!tryAcquireSaveLock()) return
 
         viewModelScope.launch {
-            val account = accountRepo.getById(f.accountId!!)
-            if (account != null && f.status == TransactionStatus.PAID && f.date < account.balanceUpdatedAt) {
-                _showBalanceImpactAlert.value = true
-            } else {
-                performSave(onDone)
+            try {
+                val account = accountRepo.getById(f.accountId!!)
+                if (account != null && f.status == TransactionStatus.PAID && f.date < account.balanceUpdatedAt) {
+                    // L'écriture attend la décision de l'utilisateur : le verrou est relâché
+                    // par le `finally`, sinon l'écran resterait bloqué en « sauvegarde en cours ».
+                    _showBalanceImpactAlert.value = true
+                } else {
+                    performSave(onDone)
+                }
+            } finally {
+                _isSaving.value = false
             }
         }
     }
 
     fun confirmSave(accountNow: Boolean, onDone: (Long) -> Unit) {
         _showBalanceImpactAlert.value = false
-        if (_isSaving.value) return
+        if (!tryAcquireSaveLock()) return
         viewModelScope.launch {
-            if (accountNow) {
-                val f = _form.value
-                accountRepo.getById(f.accountId!!)?.let {
-                    accountRepo.upsert(it.copy(balanceUpdatedAt = f.date))
+            try {
+                if (accountNow) {
+                    val f = _form.value
+                    accountRepo.getById(f.accountId!!)?.let {
+                        accountRepo.upsert(it.copy(balanceUpdatedAt = f.date))
+                    }
                 }
+                performSave(onDone)
+            } finally {
+                _isSaving.value = false
             }
-            performSave(onDone)
         }
     }
 
@@ -337,27 +376,23 @@ class TransactionEditViewModel @Inject constructor(
         _showBalanceImpactAlert.value = false
     }
 
+    /** Le cycle de vie de `_isSaving` appartient à [save] / [confirmSave] (voir [tryAcquireSaveLock]). */
     private suspend fun performSave(onDone: (Long) -> Unit) {
         val f = _form.value
         if (f.accountId == null || f.categoryId == null) return
-        _isSaving.value = true
-        try {
-            val edition = f.toEdition(context.getString(R.string.tx_default_title))
+        val edition = f.toEdition(context.getString(R.string.tx_default_title))
 
-            val newId = if (isEditing) {
-                editTransactionWithScopeUseCase(
-                    editingId = editingTransactionId!!,
-                    seriesId = f.seriesId,
-                    seriesDate = seriesDate?.takeIf { it > 0L },
-                    edition = edition,
-                    scope = editScope,
-                )
-            } else {
-                createTransactionUseCase(edition)
-            }
-            onDone(newId)
-        } finally {
-            _isSaving.value = false
+        val newId = if (isEditing) {
+            editTransactionWithScopeUseCase(
+                editingId = editingTransactionId!!,
+                seriesId = f.seriesId,
+                seriesDate = seriesDate?.takeIf { it > 0L },
+                edition = edition,
+                scope = editScope,
+            )
+        } else {
+            createTransactionUseCase(edition)
         }
+        onDone(newId)
     }
 }
