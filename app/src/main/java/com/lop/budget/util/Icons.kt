@@ -1,9 +1,39 @@
 package com.lop.budget.util
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.CarRepair
+import androidx.compose.material.icons.filled.Celebration
+import androidx.compose.material.icons.filled.Chair
+import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.CurrencyBitcoin
+import androidx.compose.material.icons.filled.DeliveryDining
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Healing
+import androidx.compose.material.icons.filled.HealthAndSafety
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.LocalTaxi
+import androidx.compose.material.icons.filled.LunchDining
+import androidx.compose.material.icons.filled.MiscellaneousServices
+import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material.icons.filled.SetMeal
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Toys
+import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.AppShortcut
 import androidx.compose.material.icons.filled.BeachAccess
@@ -103,6 +133,39 @@ object IconMapper {
             "store" -> Icons.Filled.Store
             "security" -> Icons.Filled.Security
             "app_shortcut" -> Icons.Filled.AppShortcut
+
+            // Catalogue par défaut : icônes propres aux sous-catégories.
+            "delivery_dining" -> Icons.Filled.DeliveryDining
+            "lunch_dining" -> Icons.Filled.LunchDining
+            "chair" -> Icons.Filled.Chair
+            "devices" -> Icons.Filled.Devices
+            "local_taxi" -> Icons.Filled.LocalTaxi
+            "car_repair" -> Icons.Filled.CarRepair
+            "key" -> Icons.Filled.Key
+            "water_drop" -> Icons.Filled.WaterDrop
+            "health_and_safety" -> Icons.Filled.HealthAndSafety
+            "celebration" -> Icons.Filled.Celebration
+            "flight" -> Icons.Filled.Flight
+            "smartphone" -> Icons.Filled.Smartphone
+            "newspaper" -> Icons.Filled.Newspaper
+            "miscellaneous_services" -> Icons.Filled.MiscellaneousServices
+            "toys" -> Icons.Filled.Toys
+            "set_meal" -> Icons.Filled.SetMeal
+            "healing" -> Icons.Filled.Healing
+            "content_cut" -> Icons.Filled.ContentCut
+            "receipt_long" -> Icons.AutoMirrored.Filled.ReceiptLong
+            "gavel" -> Icons.Filled.Gavel
+            "inventory_2" -> Icons.Filled.Inventory2
+            "schedule" -> Icons.Filled.Schedule
+            "star" -> Icons.Filled.Star
+            "sync" -> Icons.Filled.Sync
+            "group" -> Icons.Filled.Group
+            "replay" -> Icons.Filled.Replay
+            "sell" -> Icons.Filled.Sell
+            "storefront" -> Icons.Filled.Storefront
+            "currency_bitcoin" -> Icons.Filled.CurrencyBitcoin
+            "favorite" -> Icons.Filled.Favorite
+
             else -> Icons.Filled.Category
         }
     }

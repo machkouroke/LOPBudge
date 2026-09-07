@@ -6,13 +6,27 @@ import com.lop.budget.domain.model.TransactionType
 
 object DefaultCategorySeedData {
 
+    /**
+     * Sous-catégorie du catalogue par défaut. Elle porte **sa propre** icône : auparavant
+     * toutes les sous-catégories recopiaient celle de leur parent, si bien que « Carburant »,
+     * « Bus/train » ou « Parking » affichaient tous une voiture.
+     *
+     * La couleur, elle, reste héritée du parent : c'est ce qui donne le groupement visuel.
+     */
+    data class SeedSubCategory(
+        val name: String,
+        val icon: String,
+    )
+
     data class SeedCategory(
         val name: String,
         val type: TransactionType,
         val icon: String,
         val color: Int,
-        val subCategories: List<String> = emptyList()
+        val subCategories: List<SeedSubCategory> = emptyList()
     )
+
+    private fun sub(name: String, icon: String) = SeedSubCategory(name, icon)
 
     private val expenses = listOf(
         SeedCategory(
@@ -20,7 +34,13 @@ object DefaultCategorySeedData {
             TransactionType.EXPENSE,
             "restaurant",
             0xFFFF9800.toInt(),
-            listOf("Courses", "Restaurant", "Café", "Livraison", "Cantine")
+            listOf(
+                sub("Courses", "shopping_cart"),
+                sub("Restaurant", "restaurant"),
+                sub("Café", "local_cafe"),
+                sub("Livraison", "delivery_dining"),
+                sub("Cantine", "lunch_dining"),
+            )
         ),
         SeedCategory(
             "Achats",
@@ -28,11 +48,11 @@ object DefaultCategorySeedData {
             "shopping_bag",
             0xFFFF9800.toInt(),
             listOf(
-                "Vêtements",
-                "Cadeaux",
-                "Maison et ameublement",
-                "Électronique",
-                "Beauté et soins"
+                sub("Vêtements", "checkroom"),
+                sub("Cadeaux", "redeem"),
+                sub("Maison et ameublement", "chair"),
+                sub("Électronique", "devices"),
+                sub("Beauté et soins", "spa"),
             )
         ),
         SeedCategory(
@@ -40,7 +60,13 @@ object DefaultCategorySeedData {
             TransactionType.EXPENSE,
             "directions_car",
             0xFF2196F3.toInt(),
-            listOf("Carburant", "Bus/train", "Taxi/VTC", "Entretien véhicule", "Parking et péages")
+            listOf(
+                sub("Carburant", "local_gas_station"),
+                sub("Bus/train", "directions_bus"),
+                sub("Taxi/VTC", "local_taxi"),
+                sub("Entretien véhicule", "car_repair"),
+                sub("Parking et péages", "local_parking"),
+            )
         ),
         SeedCategory(
             "Logement",
@@ -48,12 +74,12 @@ object DefaultCategorySeedData {
             "home",
             0xFFF44336.toInt(),
             listOf(
-                "Loyer",
-                "Électricité",
-                "Eau",
-                "Internet",
-                "Assurance habitation",
-                "Entretien et réparations"
+                sub("Loyer", "key"),
+                sub("Électricité", "bolt"),
+                sub("Eau", "water_drop"),
+                sub("Internet", "router"),
+                sub("Assurance habitation", "shield"),
+                sub("Entretien et réparations", "construction"),
             )
         ),
         SeedCategory(
@@ -61,21 +87,39 @@ object DefaultCategorySeedData {
             TransactionType.EXPENSE,
             "local_hospital",
             0xFFE91E63.toInt(),
-            listOf("Médecin", "Pharmacie", "Mutuelle", "Sport/bien-être")
+            listOf(
+                sub("Médecin", "medical_services"),
+                sub("Pharmacie", "local_pharmacy"),
+                sub("Mutuelle", "health_and_safety"),
+                sub("Sport/bien-être", "fitness_center"),
+            )
         ),
         SeedCategory(
             "Loisirs",
             TransactionType.EXPENSE,
             "sports_esports",
             0xFF9C27B0.toInt(),
-            listOf("Sorties", "Jeux", "Voyages", "Culture (livres, cinéma…)")
+            listOf(
+                sub("Sorties", "celebration"),
+                sub("Jeux", "sports_esports"),
+                sub("Voyages", "flight"),
+                sub("Culture (livres, cinéma…)", "movie"),
+            )
         ),
         SeedCategory(
+            // Anciennement "smartphone", absent d'IconMapper : la catégorie retombait sur
+            // l'icône générique. "subscriptions" est mappée et décrit mieux le parent.
             "Abonnements",
             TransactionType.EXPENSE,
-            "smartphone",
+            "subscriptions",
             0xFF607D8B.toInt(),
-            listOf("Téléphone", "Logiciels", "Streaming", "Presse", "Autres services")
+            listOf(
+                sub("Téléphone", "smartphone"),
+                sub("Logiciels", "app_shortcut"),
+                sub("Streaming", "play_circle"),
+                sub("Presse", "newspaper"),
+                sub("Autres services", "miscellaneous_services"),
+            )
         ),
         SeedCategory(
             "Famille",
@@ -83,10 +127,10 @@ object DefaultCategorySeedData {
             "family_restroom",
             0xFFFFC107.toInt(),
             listOf(
-                "Garde d’enfants",
-                "École et fournitures",
-                "Activités enfants",
-                "Soutien familial"
+                sub("Garde d’enfants", "child_care"),
+                sub("École et fournitures", "school"),
+                sub("Activités enfants", "toys"),
+                sub("Soutien familial", "elderly"),
             )
         ),
         SeedCategory(
@@ -94,14 +138,24 @@ object DefaultCategorySeedData {
             TransactionType.EXPENSE,
             "pets",
             0xFF795548.toInt(),
-            listOf("Nourriture", "Vétérinaire", "Accessoires", "Toilettage")
+            listOf(
+                sub("Nourriture", "set_meal"),
+                sub("Vétérinaire", "healing"),
+                sub("Accessoires", "shopping_bag"),
+                sub("Toilettage", "content_cut"),
+            )
         ),
         SeedCategory(
             "Impôts et frais",
             TransactionType.EXPENSE,
             "receipt_long",
             0xFF9E9E9E.toInt(),
-            listOf("Impôts", "Frais bancaires", "Assurances (hors habitation)", "Amendes")
+            listOf(
+                sub("Impôts", "account_balance"),
+                sub("Frais bancaires", "credit_card"),
+                sub("Assurances (hors habitation)", "security"),
+                sub("Amendes", "gavel"),
+            )
         ),
         SeedCategory("Autres", TransactionType.EXPENSE, "inventory_2", 0xFF607D8B.toInt())
     )
@@ -112,7 +166,11 @@ object DefaultCategorySeedData {
             TransactionType.INCOME,
             "work",
             0xFF4CAF50.toInt(),
-            listOf("Salaire principal", "Bonus", "Heures supplémentaires")
+            listOf(
+                sub("Salaire principal", "payments"),
+                sub("Bonus", "star"),
+                sub("Heures supplémentaires", "schedule"),
+            )
         ),
         SeedCategory("Prime", TransactionType.INCOME, "redeem", 0xFF4CAF50.toInt()),
         SeedCategory(
@@ -120,28 +178,46 @@ object DefaultCategorySeedData {
             TransactionType.INCOME,
             "sync",
             0xFF4CAF50.toInt(),
-            listOf("Santé", "Ami/famille", "Professionnel", "Achat retourné")
+            listOf(
+                sub("Santé", "local_hospital"),
+                sub("Ami/famille", "group"),
+                sub("Professionnel", "work"),
+                sub("Achat retourné", "replay"),
+            )
         ),
         SeedCategory(
             "Vente",
             TransactionType.INCOME,
             "sell",
             0xFF4CAF50.toInt(),
-            listOf("Vente d’occasion", "Vente professionnelle")
+            listOf(
+                sub("Vente d’occasion", "store"),
+                sub("Vente professionnelle", "storefront"),
+            )
         ),
         SeedCategory(
+            // Anciennement "handshake", absent d'IconMapper.
             "Aide / allocation",
             TransactionType.INCOME,
-            "handshake",
+            "volunteer_activism",
             0xFF4CAF50.toInt(),
-            listOf("Allocations (CAF…)", "Bourse", "Autres aides")
+            listOf(
+                sub("Allocations (CAF…)", "payments"),
+                sub("Bourse", "school"),
+                sub("Autres aides", "favorite"),
+            )
         ),
         SeedCategory(
             "Investissement",
             TransactionType.INCOME,
             "trending_up",
             0xFF4CAF50.toInt(),
-            listOf("Intérêts", "Dividendes", "Crypto", "Plus-values")
+            listOf(
+                sub("Intérêts", "savings"),
+                sub("Dividendes", "show_chart"),
+                sub("Crypto", "currency_bitcoin"),
+                sub("Plus-values", "trending_up"),
+            )
         ),
         SeedCategory("Autres revenus", TransactionType.INCOME, "payments", 0xFF4CAF50.toInt())
     )
@@ -165,13 +241,13 @@ object DefaultCategorySeedData {
                 )
             }
 
-            for (subName in seedCat.subCategories) {
-                if (categoryDao.getByNameAndParent(subName, parentId) == null) {
+            for (subCat in seedCat.subCategories) {
+                if (categoryDao.getByNameAndParent(subCat.name, parentId) == null) {
                     categoryDao.upsert(
                         CategoryEntity(
-                            name = subName,
+                            name = subCat.name,
                             type = seedCat.type,
-                            icon = seedCat.icon,
+                            icon = subCat.icon,
                             colorArgb = seedCat.color,
                             parentCategoryId = parentId
                         )
