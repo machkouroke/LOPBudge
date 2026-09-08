@@ -1,6 +1,5 @@
 package com.lop.budget.domain.usecase
 
-import com.lop.budget.data.local.dao.SeriesSlot
 import com.lop.budget.data.local.dao.SeriesTag
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
@@ -33,31 +32,28 @@ class ObserveTransactionsUseCase @Inject constructor(
 
     operator fun invoke(start: Long, end: Long): Flow<List<TransactionWithRelations>> {
         return combine(
-            transactionRepo.observeBetween(start, end),
+            transactionRepo.observeForMerge(start, end),
             transactionRepo.observeActiveSeries(),
             accountRepo.observeAll(),
             categoryRepo.observeAll(),
-            transactionRepo.observeOccupiedSeriesSlots(start, end),
             _pendingDeletes,
             _pendingSeriesDeletes,
             _pendingSeriesFromDates,
             transactionRepo.observeAllSeriesTags()
         ) { args ->
-            @Suppress("UNCHECKED_CAST") val allInPeriod = args[0] as List<TransactionWithRelations>
+            @Suppress("UNCHECKED_CAST") val windowRows = args[0] as List<TransactionWithRelations>
             @Suppress("UNCHECKED_CAST") val seriesList = args[1] as List<RecurringSeriesEntity>
             @Suppress("UNCHECKED_CAST") val accounts = args[2] as List<AccountEntity>
             @Suppress("UNCHECKED_CAST") val categories = args[3] as List<CategoryEntity>
-            @Suppress("UNCHECKED_CAST") val occupiedSlots = args[4] as List<SeriesSlot>
-            @Suppress("UNCHECKED_CAST") val pending = args[5] as Set<Long>
-            @Suppress("UNCHECKED_CAST") val pendingSeries = args[6] as Map<Long, SeriesCancelMode>
-            @Suppress("UNCHECKED_CAST") val seriesTags = args[8] as List<SeriesTag>
+            @Suppress("UNCHECKED_CAST") val pending = args[4] as Set<Long>
+            @Suppress("UNCHECKED_CAST") val pendingSeries = args[5] as Map<Long, SeriesCancelMode>
+            @Suppress("UNCHECKED_CAST") val seriesTags = args[7] as List<SeriesTag>
 
             mergeRealAndVirtual(
-                allInPeriod = allInPeriod,
+                windowRows = windowRows,
                 seriesList = seriesList,
                 accountsById = accounts.associateBy { it.id },
                 categoriesById = categories.associateBy { it.id },
-                occupiedSlots = occupiedSlots.mapTo(HashSet()) { it.seriesId to it.seriesDate },
                 pendingDeletes = pending,
                 pendingSeriesDeletes = pendingSeries,
                 tagsBySeriesId = seriesTags
@@ -91,23 +87,37 @@ class ObserveTransactionsUseCase @Inject constructor(
     }
 
     private fun mergeRealAndVirtual(
-        allInPeriod: List<TransactionWithRelations>,
+        windowRows: List<TransactionWithRelations>,
         seriesList: List<RecurringSeriesEntity>,
         accountsById: Map<Long, AccountEntity>,
         categoriesById: Map<Long, CategoryEntity>,
-        occupiedSlots: Set<Pair<Long, Long>>,
         pendingDeletes: Set<Long>,
         pendingSeriesDeletes: Map<Long, SeriesCancelMode>,
         tagsBySeriesId: Map<Long, List<TagEntity>>,
         start: Long,
         end: Long
     ): List<TransactionWithRelations> {
-        val visibleReal = allInPeriod.filter {
-            transactionRepo.isTransactionVisible(
-                it.transaction,
-                pendingDeletes,
-                pendingSeriesDeletes
-            )
+        // I-3 : une ligne de série occupe son slot d'origine (`seriesDate`) ET la date où elle
+        // s'affiche (`date`). Les deux clés sont nécessaires : sans `seriesDate` une exception
+        // déplacée laisserait repousser son slot d'origine, sans `date` elle laisserait apparaître
+        // le virtuel du slot sur lequel elle a été déplacée (LOP-117).
+        // Les tombstones sont inclus : un slot supprimé ne doit pas se régénérer (I-5).
+        val occupiedSlots = HashSet<Pair<Long, Long>>()
+        windowRows.forEach { row ->
+            val seriesId = row.transaction.seriesId ?: return@forEach
+            row.transaction.seriesDate?.let { occupiedSlots += seriesId to it }
+            occupiedSlots += seriesId to row.transaction.date
+        }
+
+        // La source couvre volontairement plus large que la fenêtre d'affichage : on y restreint
+        // les lignes réellement rendues.
+        val visibleReal = windowRows.filter {
+            it.transaction.date in start..end &&
+                transactionRepo.isTransactionVisible(
+                    it.transaction,
+                    pendingDeletes,
+                    pendingSeriesDeletes
+                )
         }
 
         val visibleVirtual = seriesList.flatMap { series ->

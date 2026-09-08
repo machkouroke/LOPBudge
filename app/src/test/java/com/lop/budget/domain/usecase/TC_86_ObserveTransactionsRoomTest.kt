@@ -53,20 +53,19 @@ import kotlin.time.Duration.Companion.seconds
  *
  * ## Chaîne réellement exercée
  * `ObserveTransactionsUseCase.invoke(start, end)`
- *   → `TransactionRepository.observeBetween` / `observeActiveSeries` /
- *     `observeOccupiedSeriesSlots` / `observeAllSeriesTags`
+ *   → `TransactionRepository.observeForMerge` / `observeActiveSeries` / `observeAllSeriesTags`
  *   → `AccountRepository.observeAll`, `CategoryRepository.observeAll`
  *   → `TransactionDao` / `RecurringSeriesDao` → Room (SQLite natif Robolectric)
  *   → `mergeRealAndVirtual` / `visibleOccurrencesOf` → `RecurrenceEngine.generateOccurrences`
  *
  * ## Correspondance cas → CA / invariant → fonction de production
  * ```
- * L-01     CA-02, CA-03, CA-09, CA-13   observeBetween + generateOccurrences + mergeRealAndVirtual
- * L-02     CA-04, CA-07, I-3            observeOccupiedSeriesSlots + visibleOccurrencesOf
+ * L-01     CA-02, CA-03, CA-09, CA-13   observeForMerge + generateOccurrences + mergeRealAndVirtual
+ * L-02     CA-04, CA-07, I-3            occupiedSlots (dérivés) + visibleOccurrencesOf
  * L-03     CA-04, CA-07, I-3            idem, exception déplacée hors fenêtre
  * L-04     CA-07, I-3                   idem, exception déplacée sur un autre slot de la série
  * L-05     CA-02, CA-07, I-3            masquage cloisonné par série
- * L-06     CA-08, CA-10, I-5            observeBetween (deleted = 0) + slot occupé par tombstone
+ * L-06     CA-08, CA-10, I-5            isTransactionVisible + slot occupé par tombstone
  * L-07     CA-09, CA-12                 observeActiveSeries (isCancelled = 0)
  * L-08     CA-02, I-5                   bornes de génération vs exception persistée visible
  * L-09     CA-03, CA-05, CA-13          réactivité des flux Room sur observation ouverte
@@ -94,12 +93,27 @@ import kotlin.time.Duration.Companion.seconds
  *    `sortedBy`) n'est spécifié par aucun CA. Oracle = ensemble exact + chronologie globale.
  *
  * ## Anomalies connues
- * - **ANO L-04 / CA-07 / I-3 — rouge légitime attendu.** `observeOccupiedSeriesSlots` sélectionne
+ * - **ANO LOP-117 — L-04 / CA-07 / I-3 — rouge légitime attendu.**
+ *   https://app.notion.com/p/3d550f34a8c581dab735cb4f51c93e2c
+ *   `observeOccupiedSeriesSlots` sélectionne
  *   les slots par `seriesDate BETWEEN :start AND :end` (TransactionDao.kt:214) alors que le
  *   masquage compare la **date d'affichage** du virtuel (`(series.id to it.date) !in occupiedSlots`,
  *   ObserveTransactionsUseCase.kt:88). Une exception dont le `seriesDate` est hors de la fenêtre
  *   observée n'est donc pas remontée, et le virtuel situé à sa date d'affichage n'est pas masqué.
  *   I-3 exige le masquage « même `seriesDate` **ou** même `date` ». L'oracle n'est pas assoupli.
+ * - **ANO LOP-118 — L-09 / CA-07 / I-3 — rouge légitime, constaté à l'exécution.**
+ *   https://app.notion.com/p/3d550f34a8c581fd8d97f6f75df2b504
+ *   L'insertion d'une exception
+ *   provoque une **émission transitoire contenant deux lignes pour le même slot** : l'exception et
+ *   son virtuel encore non masqué. `invoke` combine deux requêtes Room indépendantes —
+ *   `observeBetween` (clé : date d'affichage) et `observeOccupiedSeriesSlots` (clé : `seriesDate`) —
+ *   que l'InvalidationTracker de Room notifie séparément. `combine` réémet dès que la première
+ *   atterrit : dans la fenêtre où la transaction est déjà lue mais le slot pas encore marqué occupé,
+ *   le virtuel survit. L'état final converge — L-02 prépare le même état et passe — mais l'émission
+ *   fautive est bien remontée aux écrans, donc affichable. Le ticket interdit explicitement de la
+ *   filtrer : « ne pas utiliser un filtre qui ferait disparaître silencieusement une émission
+ *   contenant un doublon ». Même origine que LOP-117 : l'occupation des slots est un canal
+ *   latéral, désynchronisable de la liste qu'elle est censée filtrer.
  *
  * ## Hors périmètre (ne pas revendiquer couvert par ce fichier)
  * - CA-01 et CA-06 : écritures de création et de matérialisation. Les écritures faites ici ne
@@ -934,17 +948,21 @@ class ObserveTransactionsRoomTest {
 
     /** I-3 / CA-07 : une seule représentation par slot `seriesId + seriesDate`. */
     private fun assertSlotUniqueness(rows: List<TransactionWithRelations>, label: String) {
-        rows.mapNotNull { row ->
-            val series = row.transaction.seriesId ?: return@mapNotNull null
-            val slot = row.transaction.seriesDate ?: return@mapNotNull null
-            series to slot
-        }.groupingBy { it }.eachCount().forEach { (slot, count) ->
-            assertEquals(
-                "$label — CA-07/I-3 : doublon sur le slot $slot (seriesId + seriesDate)",
-                1,
-                count,
-            )
-        }
+        rows.filter { it.transaction.seriesId != null && it.transaction.seriesDate != null }
+            .groupBy { it.transaction.seriesId!! to it.transaction.seriesDate!! }
+            .forEach { (slot, colliding) ->
+                assertEquals(
+                    "$label — CA-07/I-3 : doublon sur le slot (seriesId=${slot.first}, " +
+                        "seriesDate=${slot.second}). Lignes en collision : " +
+                        colliding.joinToString { row ->
+                            val tx = row.transaction
+                            "${if (tx.id < 0) "VIRTUEL" else "REEL"}(id=${tx.id}, date=${tx.date}, " +
+                                "titre='${tx.title}', montant=${tx.amount})"
+                        },
+                    1,
+                    colliding.size,
+                )
+            }
     }
 
     private fun virtualIdOf(rows: List<TransactionWithRelations>, seriesId: Long, date: Long): Long =

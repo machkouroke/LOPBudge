@@ -10,7 +10,6 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import kotlinx.coroutines.flow.Flow
 
-data class SeriesSlot(val seriesId: Long, val seriesDate: Long)
 interface TransactionOperations {
     fun observeAll(): Flow<List<TransactionWithRelations>>
     fun observeByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
@@ -30,7 +29,7 @@ interface TransactionOperations {
     suspend fun softDeleteTransactionsBySeries(seriesId: Long)
     suspend fun softDeleteTransactionsBySeriesFrom(seriesId: Long, fromDate: Long)
 
-    fun observeOccupiedSeriesSlots(start: Long, end: Long): Flow<List<SeriesSlot>>
+    fun observeForMerge(start: Long, end: Long): Flow<List<TransactionWithRelations>>
 }
 
 @Dao
@@ -211,15 +210,30 @@ interface TransactionDao : TransactionOperations {
 
 
 
+    /**
+     * Source unique de la fusion : toutes les lignes dont la date d'affichage **ou** le slot
+     * d'origine intersecte la fenêtre, tombstones compris.
+     *
+     * Les lignes visibles et les slots occupés en sont dérivés ensemble, donc toujours dans le même
+     * état : deux requêtes séparées étaient notifiées indépendamment par l'InvalidationTracker et
+     * laissaient passer une émission en doublon (LOP-118).
+     *
+     * `OR seriesDate` ramène les exceptions déplacées hors de la fenêtre observée ; sans elles,
+     * le virtuel de leur date d'affichage n'était masqué par rien (LOP-117).
+     *
+     * `deleted` n'est volontairement pas filtré ici : un tombstone continue d'occuper son slot
+     * (I-5). C'est `TransactionRepository.isTransactionVisible` qui décide de l'affichage.
+     */
+    @Transaction
     @Query(
         """
-    SELECT seriesId, seriesDate FROM transactions
-    WHERE seriesId IS NOT NULL
-      AND seriesDate IS NOT NULL
-      AND seriesDate BETWEEN :start AND :end
+        SELECT * FROM transactions
+        WHERE date BETWEEN :start AND :end
+           OR (seriesId IS NOT NULL AND seriesDate BETWEEN :start AND :end)
+        ORDER BY date ASC
     """
     )
-    override fun observeOccupiedSeriesSlots(start: Long, end: Long): Flow<List<SeriesSlot>>
+    override fun observeForMerge(start: Long, end: Long): Flow<List<TransactionWithRelations>>
 
     @Query(
         """
