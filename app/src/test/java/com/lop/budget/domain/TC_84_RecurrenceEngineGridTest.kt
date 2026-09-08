@@ -22,7 +22,7 @@ import java.util.TimeZone
 /**
  * TC-84 : Génération de la grille de récurrence (occurrences virtuelles).
  */
-class RecurrenceEngineGridTest {
+class TC_84_RecurrenceEngineGridTest {
 
     private val zoneId = ZoneId.of("Europe/Paris")
     private var defaultTimeZone: TimeZone? = null
