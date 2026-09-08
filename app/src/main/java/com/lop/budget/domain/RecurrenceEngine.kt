@@ -5,7 +5,9 @@ import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
-import java.util.Calendar
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
 
 /**
  * Moteur de récurrence centralisé.
@@ -22,77 +24,66 @@ object RecurrenceEngine {
         endRange: Long
     ): List<TransactionEntity> {
         if (series.isCancelled) return emptyList()
-        
+
         val occurrences = mutableListOf<TransactionEntity>()
-        val calendar = Calendar.getInstance().apply { timeInMillis = series.startDate }
-        
         var count = 0
-        val selectedDays = parseDaysOfWeek(series.daysOfWeek)
-        
-        // On boucle tant qu'on n'a pas dépassé la fin de la période demandée 
-        // et qu'on respecte les limites de la série (endDate, maxOccurrences)
-        while (calendar.timeInMillis <= endRange) {
-            if (series.frequency == RecurrenceFrequency.WEEKLY && selectedDays.isNotEmpty()) {
-                val currentIsoDay = when (calendar.get(Calendar.DAY_OF_WEEK)) {
-                    Calendar.SUNDAY -> 7
-                    else -> calendar.get(Calendar.DAY_OF_WEEK) - 1
-                }
-                val weekMonday = (calendar.clone() as Calendar).apply {
-                    add(Calendar.DAY_OF_YEAR, -(currentIsoDay - 1))
-                }
 
-                var stopLoop = false
-                for (day in selectedDays) {
-                    val dayCal = (weekMonday.clone() as Calendar).apply {
-                        add(Calendar.DAY_OF_YEAR, day - 1)
-                    }
-                    val currentDate = dayCal.timeInMillis
+        // Le compteur avance sur TOUS les slots de la série depuis startDate, y compris ceux
+        // situés avant la fenêtre : endDate et maxOccurrences sont des limites de série, jamais
+        // de fenêtre. La fenêtre ne fait que filtrer ce qui est retourné.
+        for (slot in slots(series)) {
+            if (slot > endRange) break
+            if (series.endDate != null && slot > series.endDate) break
+            if (series.maxOccurrences != null && count >= series.maxOccurrences) break
 
-                    if (currentDate < series.startDate) continue
-                    if (currentDate > endRange) {
-                        stopLoop = true
-                        break
-                    }
-
-                    if (currentDate >= startRange) {
-                        if (series.endDate != null && currentDate > series.endDate) {
-                            stopLoop = true
-                            break
-                        }
-                        if (series.maxOccurrences != null && count >= series.maxOccurrences) {
-                            stopLoop = true
-                            break
-                        }
-
-                        occurrences.add(createVirtualTransaction(series, currentDate))
-                        count++
-                    }
-                }
-                if (stopLoop) break
-
-                moveCalendar(calendar, series.frequency, series.interval)
-            } else {
-                val currentDate = calendar.timeInMillis
-                
-                // Vérifier si la date est dans la plage demandée
-                if (currentDate >= startRange) {
-                    // Vérifier les limites de la série
-                    if (series.endDate != null && currentDate > series.endDate) break
-                    if (series.maxOccurrences != null && count >= series.maxOccurrences) break
-                    
-                    occurrences.add(createVirtualTransaction(series, currentDate))
-                    count++
-                }
-                
-                // Incrémenter selon la fréquence
-                moveCalendar(calendar, series.frequency, series.interval)
-            }
-            
-            // Sécurité pour éviter les boucles infinies si NONE ou intervalle invalide
-            if (series.frequency == RecurrenceFrequency.NONE || series.interval <= 0) break
+            count++
+            if (slot >= startRange) occurrences.add(createVirtualTransaction(series, slot))
         }
-        
+
         return occurrences
+    }
+
+    /**
+     * Suite paresseuse des instants de slot de la série, dans l'ordre chronologique croissant.
+     *
+     * Chaque slot est calculé en décalant la date de début d'origine, jamais le slot précédent.
+     * C'est ce qui conserve l'ancrage calendaire quand un mois court impose un rabattement :
+     * 31 janvier puis 28 février puis 31 mars, et 29 février retrouvé en année bissextile.
+     */
+    private fun slots(series: RecurringSeriesEntity): Sequence<Long> = sequence {
+        val start = Instant.ofEpochMilli(series.startDate).atZone(ZoneId.systemDefault())
+        val selectedDays = parseDaysOfWeek(series.daysOfWeek)
+        val byWeekday = series.frequency == RecurrenceFrequency.WEEKLY && selectedDays.isNotEmpty()
+        val firstMonday = start.minusDays((start.dayOfWeek.value - 1).toLong())
+
+        var step = 0L
+        while (true) {
+            if (byWeekday) {
+                val monday = firstMonday.plusWeeks(step * series.interval)
+                for (isoDay in selectedDays) {
+                    val slot = monday.plusDays((isoDay - 1).toLong())
+                    if (!slot.isBefore(start)) yield(slot.toInstant().toEpochMilli())
+                }
+            } else {
+                yield(shift(start, series.frequency, step * series.interval).toInstant().toEpochMilli())
+            }
+
+            // Sécurité : une fréquence NONE ou un intervalle invalide ne produit pas de suite.
+            if (series.frequency == RecurrenceFrequency.NONE || series.interval <= 0) return@sequence
+            step++
+        }
+    }
+
+    private fun shift(
+        start: ZonedDateTime,
+        frequency: RecurrenceFrequency,
+        offset: Long
+    ): ZonedDateTime = when (frequency) {
+        RecurrenceFrequency.DAILY -> start.plusDays(offset)
+        RecurrenceFrequency.WEEKLY -> start.plusWeeks(offset)
+        RecurrenceFrequency.MONTHLY -> start.plusMonths(offset)
+        RecurrenceFrequency.YEARLY -> start.plusYears(offset)
+        RecurrenceFrequency.NONE -> start
     }
 
     private fun parseDaysOfWeek(raw: String?): List<Int> {
@@ -135,15 +126,5 @@ object RecurrenceEngine {
         val hash = 31 * seriesId + date
         val virtualId = -(hash.coerceAtLeast(1)) // Toujours < 0
         return if (virtualId >= 0) -1 else virtualId
-    }
-
-    private fun moveCalendar(calendar: Calendar, frequency: RecurrenceFrequency, interval: Int) {
-        when (frequency) {
-            RecurrenceFrequency.DAILY -> calendar.add(Calendar.DAY_OF_YEAR, interval)
-            RecurrenceFrequency.WEEKLY -> calendar.add(Calendar.WEEK_OF_YEAR, interval)
-            RecurrenceFrequency.MONTHLY -> calendar.add(Calendar.MONTH, interval)
-            RecurrenceFrequency.YEARLY -> calendar.add(Calendar.YEAR, interval)
-            RecurrenceFrequency.NONE -> { /* No-op */ }
-        }
     }
 }
