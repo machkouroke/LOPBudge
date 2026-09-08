@@ -72,7 +72,7 @@ import java.util.TimeZone
  * - Heures locales inexistantes ou ambiguës, fréquence `NONE`, intervalle nul ou négatif,
  *   données invalides : aucun scénario ajouté sans exigence définissant leur traitement.
  */
-class TC_85_RecurrenceEngineBoundsTest {
+class RecurrenceEngineBoundsTest {
 
     private val zoneId = ZoneId.of("Europe/Paris")
     private var defaultTimeZone: TimeZone? = null
