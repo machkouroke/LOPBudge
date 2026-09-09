@@ -133,7 +133,7 @@ class ObserveTransactionUseCase @Inject constructor(
         physicalId: Long?,
     ): TransactionWithRelations? {
         val persisted = slotRows.find { it.transaction.id == physicalId }
-            ?: slotRows.find { it.transaction.seriesId == seriesId && it.transaction.seriesDate == slotDate }
+            ?: slotRows.find { occupiesSlot(it, seriesId, slotDate) }
         if (persisted != null) return persisted.takeUnless { it.transaction.deleted }
 
         if (series == null) return null
@@ -156,9 +156,19 @@ class ObserveTransactionUseCase @Inject constructor(
         slotRows: List<TransactionWithRelations>,
         seriesId: Long,
         slotDate: Long,
-    ): Boolean = slotRows.any {
-        it.transaction.seriesId == seriesId && it.transaction.seriesDate == slotDate
-    }
+    ): Boolean = slotRows.any { occupiesSlot(it, seriesId, slotDate) }
+
+    /**
+     * I-3 : une ligne de série occupe son slot d'origine (`seriesDate`) **et** la date où elle
+     * s'affiche (`date`). Même règle que `occupiedSlots` côté liste — les deux vues doivent masquer
+     * exactement les mêmes slots, sinon le détail résout une occurrence que la liste n'affiche pas.
+     */
+    private fun occupiesSlot(
+        row: TransactionWithRelations,
+        seriesId: Long,
+        slotDate: Long,
+    ): Boolean = row.transaction.seriesId == seriesId &&
+        (row.transaction.seriesDate == slotDate || row.transaction.date == slotDate)
 
     private fun generates(series: RecurringSeriesEntity, slotDate: Long): Boolean =
         RecurrenceEngine.generateOccurrences(series, slotDate, slotDate)

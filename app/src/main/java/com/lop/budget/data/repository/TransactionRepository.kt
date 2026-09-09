@@ -4,9 +4,7 @@ import com.lop.budget.data.local.dao.RecurringSeriesDao
 import com.lop.budget.data.local.dao.RecurringSeriesOperations
 import com.lop.budget.data.local.dao.TransactionDao
 import com.lop.budget.data.local.dao.TransactionOperations
-import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
-import com.lop.budget.domain.model.SeriesCancelMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -43,46 +41,4 @@ class TransactionRepository @Inject constructor(
         return txId
     }
 
-    /**
-     * Calculates the sum of all transactions linked to a specific goal.
-     *
-     * @param goalId The ID of the goal.
-     * @return The total sum of transactions for the goal.
-     */
-    suspend fun getSumForGoal(goalId: Long) = transactionDao.getSumForGoal(goalId)
-
-    /**
-     * Calculates the sum of all transactions linked to a specific debt.
-     *
-     * @param debtId The ID of the debt.
-     * @return The total sum of transactions for the debt.
-     */
-    suspend fun getSumForDebt(debtId: Long) = transactionDao.getSumForDebt(debtId)
-
-    /**
-     * Determines if a transaction should be visible in the UI, taking into account its soft-delete status
-     * and any pending deletions (e.g., from a swipe-to-delete action not yet persisted).
-     *
-     * @param tx The transaction to check.
-     * @param pendingDeletes A set of transaction IDs that are marked for deletion in the UI.
-     * @param pendingSeriesDeletes A map of series IDs to their pending deletion mode.
-     * @return True if the transaction should be visible, false otherwise.
-     */
-    fun isTransactionVisible(
-        tx: TransactionEntity,
-        pendingDeletes: Set<Long>,
-        pendingSeriesDeletes: Map<Long, SeriesCancelMode>
-    ): Boolean {
-        if (tx.deleted || tx.id in pendingDeletes) return false
-
-        val seriesPendingMode = if (tx.seriesId != null) pendingSeriesDeletes[tx.seriesId] else null
-        val isSeriesPending = when (seriesPendingMode) {
-            is SeriesCancelMode.All -> true
-            is SeriesCancelMode.Future -> {
-                tx.date >= seriesPendingMode.fromDate
-            }
-            null -> false
-        }
-        return !isSeriesPending
-    }
 }

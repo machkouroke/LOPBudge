@@ -17,7 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -49,7 +50,29 @@ class TransactionDetailViewModel @Inject constructor(
      */
     fun load(id: Long) { txId.value = id }
 
-    private val txFlow = txId.filterNotNull().flatMapLatest { observeTransactionUseCase(it) }
+    /**
+     * Observation unique du slot consulté. `txFlow` alimente à la fois l'occurrence affichée et le
+     * calcul des prochaines échéances : deux `flatMapLatest` distincts sur le même identifiant
+     * résolvaient le slot deux fois à chaque émission.
+     */
+    private val txFlow = txId.filterNotNull()
+        .flatMapLatest { observeTransactionUseCase(it) }
+        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5000), replay = 1)
+
+    /**
+     * Prochaines échéances de la série consultée.
+     *
+     * La borne est demandée en **nombre** d'occurrences : aucune durée n'est décidée ici. Le
+     * calcul de récurrence reste entièrement dans le domaine (CA-13 de LOP-49).
+     */
+    private val upcomingFlow = txFlow.flatMapLatest { tx ->
+        val seriesId = tx?.transaction?.seriesId ?: return@flatMapLatest flowOf(emptyList())
+        observeTransactionsUseCase.observeUpcoming(
+            seriesId = seriesId,
+            after = tx.transaction.date,
+            count = UPCOMING_COUNT,
+        )
+    }
 
     val uiState: StateFlow<DetailUiState> =
         combine(
@@ -57,22 +80,7 @@ class TransactionDetailViewModel @Inject constructor(
             categoryRepo.observeAll(),
             accountRepo.observeAll(),
             updating,
-            txId.filterNotNull().flatMapLatest { id ->
-                observeTransactionUseCase(id).flatMapLatest { tx ->
-                    val seriesId = tx?.transaction?.seriesId
-                    if (seriesId != null) {
-                        val startTime = tx.transaction.date + 1
-                        val endTime = startTime + (5L * 365 * 24 * 60 * 60 * 1000) // + 5 ans
-                        observeTransactionsUseCase(startTime, endTime).map { list ->
-                            list.filter { 
-                                it.transaction.seriesId == seriesId && it.transaction.date > tx.transaction.date
-                            }.take(6)
-                        }
-                    } else {
-                        kotlinx.coroutines.flow.flowOf(emptyList())
-                    }
-                }
-            }
+            upcomingFlow,
         ) { tx, categories, accounts, isBusy, upcoming ->
             if (tx == null) {
                 return@combine DetailUiState(
@@ -93,9 +101,14 @@ class TransactionDetailViewModel @Inject constructor(
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DetailUiState())
 
-    /** 
-     * Les modifications rapides (Quick Edits) sont désormais déléguées 
+    /**
+     * Les modifications rapides (Quick Edits) sont désormais déléguées
      * au TransactionActionViewModel via l'orchestrateur central.
      * Cette classe ne conserve que l'état local du détail.
      */
+
+    private companion object {
+        /** Nombre d'échéances affichées par la section « prochaines occurrences ». */
+        const val UPCOMING_COUNT = 6
+    }
 }

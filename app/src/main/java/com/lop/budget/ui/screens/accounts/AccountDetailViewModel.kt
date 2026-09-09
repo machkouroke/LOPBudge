@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -70,20 +69,6 @@ class AccountDetailViewModel @Inject constructor(
             isLoaded = true
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountDetailUiState())
-
-    /**
-     * Materializes a virtual recurring occurrence into a real transaction and provides its new ID.
-     *
-     * @param seriesId The ID of the recurring series.
-     * @param date The date of the occurrence.
-     * @param onOpen A callback function with the newly created transaction's ID.
-     */
-    fun materializeAndOpen(seriesId: Long, date: Long, onOpen: (Long) -> Unit) {
-        viewModelScope.launch {
-            val id = transactionRepo.materializeOccurrence(seriesId, date)
-            onOpen(id)
-        }
-    }
 
     /**
      * Calculates the historical balance points based on an initial balance and a list of transactions.

@@ -48,6 +48,8 @@ import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.LopDateRangePicker
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopSearchBar
+import com.lop.budget.ui.components.StackedTransactionGroup
+import com.lop.budget.ui.components.TransactionRow
 import com.lop.budget.util.Format
 import dev.chrisbanes.haze.HazeState
 
@@ -247,16 +249,13 @@ fun SearchScreen(
                 }) { twr ->
                     val sid = twr.transaction.seriesId
                     if (sid != null && multiOccurrencesSeries.containsKey(sid)) {
-                        com.lop.budget.ui.components.StackedTransactionGroup(
+                        StackedTransactionGroup(
                             transactions = multiOccurrencesSeries[sid]!!,
                             currency = state.currency,
                             onOpenTransaction = onOpenTransaction,
-                            onMaterializeAndOpen = { seriesId, d ->
-                                vm.materializeAndOpen(seriesId, d, onOpenTransaction)
-                            }
                         )
                     } else {
-                        com.lop.budget.ui.components.TransactionRow(
+                        TransactionRow(
                             tx = twr,
                             currency = state.currency,
                             onOpenTransaction = onOpenTransaction

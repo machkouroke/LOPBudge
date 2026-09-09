@@ -26,6 +26,8 @@ interface TransactionOperations {
     suspend fun addTagCrossRef(crossRef: TransactionTagCrossRef)
     suspend fun saveWithTags(tx: TransactionEntity, tagIds: List<Long>): Long
     suspend fun getExceptionsBySeries(seriesId: Long): List<TransactionEntity>
+    suspend fun getSumForGoal(goalId: Long): Double
+    suspend fun getSumForDebt(debtId: Long): Double
     suspend fun softDeleteTransactionsBySeries(seriesId: Long)
     suspend fun softDeleteTransactionsBySeriesFrom(seriesId: Long, fromDate: Long)
 
@@ -87,12 +89,18 @@ interface TransactionDao : TransactionOperations {
      * (I-5). C'est l'appelant qui décide de la visibilité. L'ancien `observeSeries` filtrait
      * `deleted = 0` et rendait le tombstone invisible au détail, qui reconstruisait alors le virtuel
      * du slot supprimé.
+     *
+     * Les deux clés sont interrogées, comme dans [observeForMerge] : une ligne occupe son slot
+     * d'origine (`seriesDate`) **et** la date où elle s'affiche (`date`). Sans `date`, une exception
+     * déplacée sur un autre slot de sa série laisserait le détail résoudre un virtuel que la liste
+     * masque déjà (I-3).
      */
     @Transaction
     @Query(
         """
         SELECT * FROM transactions
-        WHERE seriesId IS NOT NULL AND seriesDate IN (:slotDates)
+        WHERE seriesId IS NOT NULL
+          AND (seriesDate IN (:slotDates) OR date IN (:slotDates))
     """
     )
     override fun observeSlotsAt(slotDates: List<Long>): Flow<List<TransactionWithRelations>>
@@ -141,7 +149,7 @@ interface TransactionDao : TransactionOperations {
         WHERE linkedGoalId = :goalId AND deleted = 0 AND status = 'PAID'
     """
     )
-    suspend fun getSumForGoal(goalId: Long): Double
+    override suspend fun getSumForGoal(goalId: Long): Double
 
     @Query(
         """
@@ -149,7 +157,7 @@ interface TransactionDao : TransactionOperations {
         WHERE linkedDebtId = :debtId AND deleted = 0 AND status = 'PAID'
     """
     )
-    suspend fun getSumForDebt(debtId: Long): Double
+    override suspend fun getSumForDebt(debtId: Long): Double
 
     @Query(
         """
@@ -223,7 +231,7 @@ interface TransactionDao : TransactionOperations {
      * le virtuel de leur date d'affichage n'était masqué par rien (LOP-117).
      *
      * `deleted` n'est volontairement pas filtré ici : un tombstone continue d'occuper son slot
-     * (I-5). C'est `TransactionRepository.isTransactionVisible` qui décide de l'affichage.
+     * (I-5). C'est `ObserveTransactionsUseCase` qui décide de l'affichage.
      */
     @Transaction
     @Query(

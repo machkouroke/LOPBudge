@@ -30,8 +30,9 @@ class CreateTransactionUseCase @Inject constructor(
         } else {
             // I-4 / CA-07 : la série porte la règle, les occurrences restent virtuelles.
             // Aucune matérialisation à la création — elle n'a lieu qu'à l'ouverture ou à
-            // l'édition d'une occurrence (voir EditTransactionWithScopeUseCase,
-            // SoftDeleteTransactionOccurrenceUseCase, *ViewModel.materializeAndOpen).
+            // l'édition ou la suppression d'une occurrence (voir EditTransactionWithScopeUseCase
+            // et SoftDeleteTransactionOccurrenceUseCase — ce sont les deux seuls points de
+            // matérialisation ; la consultation, elle, n'écrit rien).
             //
             // I-6 : le statut n'est pas applicable en récurrent (le toggle payé est masqué dès
             // qu'une récurrence est actée) ; edition.status est donc volontairement ignoré ici.

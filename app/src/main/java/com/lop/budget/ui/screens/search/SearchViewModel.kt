@@ -5,13 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.usecase.SearchTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class SearchUiState(
@@ -33,7 +31,6 @@ data class SearchUiState(
 class SearchViewModel @Inject constructor(
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
-    private val transactionRepo: TransactionRepository,
     private val searchTransactionsUseCase: SearchTransactionsUseCase,
     private val settings: SettingsRepository
 ) : ViewModel() {
@@ -106,10 +103,4 @@ class SearchViewModel @Inject constructor(
         _endDate.value = end
     }
 
-    fun materializeAndOpen(seriesId: Long, date: Long, onOpen: (Long) -> Unit) {
-        viewModelScope.launch {
-            val id = transactionRepo.materializeOccurrence(seriesId, date)
-            onOpen(id)
-        }
-    }
 }

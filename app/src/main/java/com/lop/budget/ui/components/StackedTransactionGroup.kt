@@ -30,7 +30,6 @@ fun StackedTransactionGroup(
     transactions: List<TransactionWithRelations>,
     currency: String,
     onOpenTransaction: (Long) -> Unit,
-    onMaterializeAndOpen: (Long, Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (transactions.isEmpty()) return

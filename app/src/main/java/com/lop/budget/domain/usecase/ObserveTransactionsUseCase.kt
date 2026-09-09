@@ -5,97 +5,93 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TagEntity
-import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.RecurrenceEngine
-import com.lop.budget.domain.model.SeriesCancelMode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Liste fusionnée des occurrences d'une période (CA-02, CA-07, CA-13 de LOP-49).
+ *
+ * La suppression optimiste au swipe n'est **pas** portée ici : elle vit dans
+ * `TransactionActionViewModel.pendingDeletes`, au plus près de l'écran qui l'affiche. Ce use case
+ * ne rend que l'état réellement persisté.
+ */
 @Singleton
 class ObserveTransactionsUseCase @Inject constructor(
     private val transactionRepo: TransactionRepository,
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
 ) {
-    private val _pendingDeletes = MutableStateFlow<Set<Long>>(emptySet())
-    private val _pendingSeriesDeletes = MutableStateFlow<Map<Long, SeriesCancelMode>>(emptyMap())
-    private val _pendingSeriesFromDates = MutableStateFlow<Map<Long, Long>>(emptyMap())
-
-    operator fun invoke(start: Long, end: Long): Flow<List<TransactionWithRelations>> {
-        return combine(
+    operator fun invoke(start: Long, end: Long): Flow<List<TransactionWithRelations>> =
+        combine(
             transactionRepo.observeForMerge(start, end),
             transactionRepo.observeActiveSeries(),
             accountRepo.observeAll(),
             categoryRepo.observeAll(),
-            _pendingDeletes,
-            _pendingSeriesDeletes,
-            _pendingSeriesFromDates,
-            transactionRepo.observeAllSeriesTags()
-        ) { args ->
-            @Suppress("UNCHECKED_CAST") val windowRows = args[0] as List<TransactionWithRelations>
-            @Suppress("UNCHECKED_CAST") val seriesList = args[1] as List<RecurringSeriesEntity>
-            @Suppress("UNCHECKED_CAST") val accounts = args[2] as List<AccountEntity>
-            @Suppress("UNCHECKED_CAST") val categories = args[3] as List<CategoryEntity>
-            @Suppress("UNCHECKED_CAST") val pending = args[4] as Set<Long>
-            @Suppress("UNCHECKED_CAST") val pendingSeries = args[5] as Map<Long, SeriesCancelMode>
-            @Suppress("UNCHECKED_CAST") val seriesTags = args[7] as List<SeriesTag>
-
+            transactionRepo.observeAllSeriesTags(),
+        ) { windowRows, seriesList, accounts, categories, seriesTags ->
             mergeRealAndVirtual(
                 windowRows = windowRows,
                 seriesList = seriesList,
                 accountsById = accounts.associateBy { it.id },
                 categoriesById = categories.associateBy { it.id },
-                pendingDeletes = pending,
-                pendingSeriesDeletes = pendingSeries,
                 tagsBySeriesId = seriesTags
                     .groupBy { it.seriesId }
                     .mapValues { (_, tags) ->
                         tags.map { TagEntity(id = it.id, name = it.name, colorArgb = it.colorArgb) }
                     },
                 start = start,
-                end = end
+                end = end,
             )
         }.flowOn(Dispatchers.Default)
-    }
 
-    private fun visibleOccurrencesOf(
-        series: RecurringSeriesEntity,
-        start: Long,
-        end: Long,
-        occupiedSlots: Set<Pair<Long, Long>>,
-        pendingDeletes: Set<Long>,
-        pendingSeriesDeletes: Map<Long, SeriesCancelMode>
-    ): List<TransactionEntity> {
-        val cancelMode = pendingSeriesDeletes[series.id]
-        if (series.isCancelled || cancelMode is SeriesCancelMode.All) return emptyList()
+    /**
+     * Les [count] prochaines occurrences visibles d'une série, strictement après [after].
+     *
+     * L'horizon est **dérivé du calendrier de la série** — la date de la `count`-ième occurrence
+     * candidate — et non d'une durée arbitraire : une série annuelle reste donc consultable aussi
+     * loin que ses échéances se projettent. La fusion est réutilisée telle quelle, donc les
+     * exceptions déplacées et les slots supprimés restent pris en compte (I-3, I-5).
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun observeUpcoming(
+        seriesId: Long,
+        after: Long,
+        count: Int,
+    ): Flow<List<TransactionWithRelations>> =
+        transactionRepo.observeActiveSeries().flatMapLatest { seriesList ->
+            val series = seriesList.find { it.id == seriesId }
+            val horizon = series
+                ?.let { RecurrenceEngine.nextOccurrences(it, after, count) }
+                ?.lastOrNull()
+                ?.date
+                ?: return@flatMapLatest flowOf(emptyList())
 
-        return RecurrenceEngine.generateOccurrences(series, start, end)
-            .asSequence()
-            .filter { cancelMode !is SeriesCancelMode.Future || it.date < cancelMode.fromDate }
-            .filter { (series.id to it.date) !in occupiedSlots }
-            .filter { it.id !in pendingDeletes }
-            .toList()
-    }
+            invoke(after + 1, horizon).map { rows ->
+                rows.filter { it.transaction.seriesId == seriesId }.take(count)
+            }
+        }
 
     private fun mergeRealAndVirtual(
         windowRows: List<TransactionWithRelations>,
         seriesList: List<RecurringSeriesEntity>,
         accountsById: Map<Long, AccountEntity>,
         categoriesById: Map<Long, CategoryEntity>,
-        pendingDeletes: Set<Long>,
-        pendingSeriesDeletes: Map<Long, SeriesCancelMode>,
         tagsBySeriesId: Map<Long, List<TagEntity>>,
         start: Long,
-        end: Long
+        end: Long,
     ): List<TransactionWithRelations> {
         // I-3 : une ligne de série occupe son slot d'origine (`seriesDate`) ET la date où elle
         // s'affiche (`date`). Les deux clés sont nécessaires : sans `seriesDate` une exception
@@ -112,30 +108,21 @@ class ObserveTransactionsUseCase @Inject constructor(
         // La source couvre volontairement plus large que la fenêtre d'affichage : on y restreint
         // les lignes réellement rendues.
         val visibleReal = windowRows.filter {
-            it.transaction.date in start..end &&
-                transactionRepo.isTransactionVisible(
-                    it.transaction,
-                    pendingDeletes,
-                    pendingSeriesDeletes
-                )
+            it.transaction.date in start..end && !it.transaction.deleted
         }
 
+        // `observeActiveSeries` filtre déjà `isCancelled`, et le moteur ne génère rien pour une
+        // série annulée : pas de troisième garde ici (CA-12).
         val visibleVirtual = seriesList.flatMap { series ->
-            visibleOccurrencesOf(
-                series,
-                start,
-                end,
-                occupiedSlots,
-                pendingDeletes,
-                pendingSeriesDeletes
-            )
+            RecurrenceEngine.generateOccurrences(series, start, end)
+                .filter { (series.id to it.date) !in occupiedSlots }
                 .map { occurrence ->
                     TransactionWithRelations(
                         occurrence,
                         categoriesById[series.categoryId],
                         accountsById[series.accountId],
                         // CA-05 : une occurrence virtuelle porte les tags de sa série.
-                        tagsBySeriesId[series.id].orEmpty()
+                        tagsBySeriesId[series.id].orEmpty(),
                     )
                 }
         }

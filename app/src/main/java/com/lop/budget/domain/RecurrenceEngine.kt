@@ -25,22 +25,52 @@ object RecurrenceEngine {
     ): List<TransactionEntity> {
         if (series.isCancelled) return emptyList()
 
-        val occurrences = mutableListOf<TransactionEntity>()
-        var count = 0
+        return validSlots(series)
+            .takeWhile { it <= endRange }
+            .filter { it >= startRange }
+            .map { createVirtualTransaction(series, it) }
+            .toList()
+    }
 
-        // Le compteur avance sur TOUS les slots de la série depuis startDate, y compris ceux
-        // situés avant la fenêtre : endDate et maxOccurrences sont des limites de série, jamais
-        // de fenêtre. La fenêtre ne fait que filtrer ce qui est retourné.
+    /**
+     * Les [count] prochaines occurrences strictement postérieures à [after].
+     *
+     * Bornée par un **nombre**, jamais par une fenêtre : c'est ce dont a besoin un appelant qui
+     * veut « les six prochaines échéances » et qui, sinon, devrait inventer un horizon calendaire
+     * arbitraire. Les limites de série (`endDate`, `maxOccurrences`) s'appliquent normalement, donc
+     * le résultat peut compter moins de [count] éléments.
+     */
+    fun nextOccurrences(
+        series: RecurringSeriesEntity,
+        after: Long,
+        count: Int
+    ): List<TransactionEntity> {
+        if (series.isCancelled || count <= 0) return emptyList()
+
+        return validSlots(series)
+            .filter { it > after }
+            .take(count)
+            .map { createVirtualTransaction(series, it) }
+            .toList()
+    }
+
+    /**
+     * Slots réellement produits par la série, dans l'ordre, une fois ses propres limites appliquées.
+     *
+     * Le compteur avance sur TOUS les slots depuis `startDate` : `endDate` et `maxOccurrences` sont
+     * des limites de **série**, jamais de fenêtre ni de sous-ensemble demandé. C'est la seule règle
+     * d'itération du moteur — [generateOccurrences] et [nextOccurrences] ne font qu'y appliquer
+     * leur propre critère d'arrêt.
+     */
+    private fun validSlots(series: RecurringSeriesEntity): Sequence<Long> = sequence {
+        var count = 0
         for (slot in slots(series)) {
-            if (slot > endRange) break
             if (series.endDate != null && slot > series.endDate) break
             if (series.maxOccurrences != null && count >= series.maxOccurrences) break
 
             count++
-            if (slot >= startRange) occurrences.add(createVirtualTransaction(series, slot))
+            yield(slot)
         }
-
-        return occurrences
     }
 
     /**
