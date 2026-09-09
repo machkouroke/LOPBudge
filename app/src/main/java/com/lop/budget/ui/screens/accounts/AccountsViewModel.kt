@@ -15,7 +15,7 @@ import javax.inject.Inject
 
 data class AccountsUiState(
     val currency: String = "EUR",
-    val totalBalance: Double = 0.0,
+    val totalBalance: Long = 0L,
     val accounts: List<AccountBalance> = emptyList(),
 )
 

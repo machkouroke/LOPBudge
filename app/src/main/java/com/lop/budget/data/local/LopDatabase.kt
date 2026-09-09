@@ -35,7 +35,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         DebtEntity::class,
         DetectedTransactionProposalEntity::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -51,6 +51,118 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        /**
+         * Bascule des montants du solde en centimes (`INTEGER`) : `accounts.initialBalance`,
+         * `transactions.amount` et `recurring_series.amount`.
+         *
+         * SQLite ne sait pas changer le type déclaré d'une colonne : les trois tables sont donc
+         * reconstruites, sur le modèle de [MIGRATION_16_17]. La reprise se contente de multiplier
+         * les valeurs déjà stockées — aucune ligne n'est créée, supprimée, ni compensée.
+         */
+        val MIGRATION_18_19 = object : androidx.room.migration.Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // --- accounts ---
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `accounts_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `initialBalance` INTEGER NOT NULL,
+                        `balanceUpdatedAt` INTEGER NOT NULL,
+                        `colorArgb` INTEGER NOT NULL,
+                        `icon` TEXT NOT NULL,
+                        `bankName` TEXT,
+                        `comment` TEXT,
+                        `includeInTotal` INTEGER NOT NULL,
+                        `archived` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO accounts_new (id, name, type, initialBalance, balanceUpdatedAt, colorArgb, icon, bankName, comment, includeInTotal, archived)
+                    SELECT id, name, type, CAST(ROUND(initialBalance * 100) AS INTEGER), balanceUpdatedAt, colorArgb, icon, bankName, comment, includeInTotal, archived FROM accounts
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE accounts")
+                db.execSQL("ALTER TABLE accounts_new RENAME TO accounts")
+
+                // --- transactions ---
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `transactions_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `amount` INTEGER NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `kind` TEXT NOT NULL,
+                        `date` INTEGER NOT NULL,
+                        `accountId` INTEGER NOT NULL,
+                        `categoryId` INTEGER NOT NULL,
+                        `note` TEXT,
+                        `paidAt` INTEGER,
+                        `seriesId` INTEGER,
+                        `seriesDate` INTEGER,
+                        `isException` INTEGER NOT NULL,
+                        `linkedGoalId` INTEGER,
+                        `linkedDebtId` INTEGER,
+                        `deleted` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO transactions_new (id, title, amount, type, status, kind, date, accountId, categoryId, note, paidAt, seriesId, seriesDate, isException, linkedGoalId, linkedDebtId, deleted)
+                    SELECT id, title, CAST(ROUND(amount * 100) AS INTEGER), type, status, kind, date, accountId, categoryId, note, paidAt, seriesId, seriesDate, isException, linkedGoalId, linkedDebtId, deleted FROM transactions
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE transactions")
+                db.execSQL("ALTER TABLE transactions_new RENAME TO transactions")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_accountId` ON `transactions` (`accountId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_categoryId` ON `transactions` (`categoryId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_seriesId` ON `transactions` (`seriesId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_date` ON `transactions` (`date`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_paidAt` ON `transactions` (`paidAt`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_status` ON `transactions` (`status`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_kind` ON `transactions` (`kind`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_deleted` ON `transactions` (`deleted`)")
+
+                // --- recurring_series ---
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `recurring_series_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `amount` INTEGER NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `categoryId` INTEGER NOT NULL,
+                        `accountId` INTEGER NOT NULL,
+                        `frequency` TEXT NOT NULL,
+                        `interval` INTEGER NOT NULL,
+                        `startDate` INTEGER NOT NULL,
+                        `endDate` INTEGER,
+                        `maxOccurrences` INTEGER,
+                        `daysOfWeek` TEXT,
+                        `isCancelled` INTEGER NOT NULL,
+                        `note` TEXT,
+                        `linkedGoalId` INTEGER,
+                        `linkedDebtId` INTEGER
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO recurring_series_new (id, title, amount, type, categoryId, accountId, frequency, `interval`, startDate, endDate, maxOccurrences, daysOfWeek, isCancelled, note, linkedGoalId, linkedDebtId)
+                    SELECT id, title, CAST(ROUND(amount * 100) AS INTEGER), type, categoryId, accountId, frequency, `interval`, startDate, endDate, maxOccurrences, daysOfWeek, isCancelled, note, linkedGoalId, linkedDebtId FROM recurring_series
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE recurring_series")
+                db.execSQL("ALTER TABLE recurring_series_new RENAME TO recurring_series")
+            }
+        }
 
         /**
          * Ajoute la table de jointure série <-> tag (CA-05 sur création récurrente).

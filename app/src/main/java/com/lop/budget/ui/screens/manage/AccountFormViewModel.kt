@@ -7,9 +7,10 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.IconResult
 import com.lop.budget.data.repository.IconSearchRepository
-import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.usecase.AdjustBalanceUseCase
+import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
+import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,8 +46,8 @@ data class AccountFormUiState(
 class AccountFormViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val adjustBalanceUseCase: AdjustBalanceUseCase,
+    private val getAccountBalances: GetAccountBalancesUseCase,
     private val accountRepo: AccountRepository,
-    private val transactionRepo: TransactionRepository,
     private val iconSearch: IconSearchRepository,
 ) : ViewModel() {
 
@@ -84,11 +85,11 @@ class AccountFormViewModel @Inject constructor(
                     name.value = account.name
                     type.value = account.type
                     
-                    // On affiche le solde ACTUEL calculé au lieu du solde initial technique
-                    val allTxs = transactionRepo.observeByAccount(accountId).first().map { it.transaction }
-                    val currentBalances = com.lop.budget.domain.BalanceEngine.calculateBalances(listOf(account), allTxs)
-                    val currentBalance = currentBalances[accountId] ?: account.initialBalance
-                    initialBalance.value = currentBalance.toString()
+                    // On affiche le solde ACTUEL au lieu du solde initial technique, et on le lit
+                    // depuis l'unique producteur de solde — pas de recalcul local (I-1).
+                    val currentBalance =
+                        getAccountBalances.observeBalances().first()[accountId] ?: account.initialBalance
+                    initialBalance.value = Format.centsToInput(currentBalance)
 
                     balanceUpdatedAt.value = if (account.balanceUpdatedAt == 0L) System.currentTimeMillis() else account.balanceUpdatedAt
                     colorArgb.value = account.colorArgb
@@ -189,7 +190,8 @@ class AccountFormViewModel @Inject constructor(
         
         viewModelScope.launch {
             isSaving.value = true
-            val newInitialBalance = initialBalance.value.toDoubleOrNull() ?: 0.0
+            // Frontière UI : le champ porte des euros, la persistance des centimes (I-4).
+            val newInitialBalance = Format.centsOrNull(initialBalance.value) ?: 0L
 
             if (isEdit) {
                 // Pour un compte existant, on ajuste via transaction compensatoire

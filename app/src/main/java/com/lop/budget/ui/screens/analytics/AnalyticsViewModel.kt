@@ -21,7 +21,9 @@ import javax.inject.Inject
 data class CategoryBreakdown(
     val name: String,
     val colorArgb: Int,
-    val total: Double,
+    /** Total de la catégorie, en centimes. */
+    val total: Long,
+    /** Part du total, entre 0 et 1 — une proportion, pas un montant. */
     val share: Double,
 )
 
@@ -29,7 +31,7 @@ data class AnalyticsUiState(
     val month: YearMonth = YearMonth.now(),
     val currency: String = "EUR",
     val type: TransactionType = TransactionType.EXPENSE,
-    val total: Double = 0.0,
+    val total: Long = 0L,
     val breakdown: List<CategoryBreakdown> = emptyList(),
 )
 
@@ -97,7 +99,7 @@ class AnalyticsViewModel @Inject constructor(
                                     name = cat?.name ?: "Sans catégorie",
                                     colorArgb = cat?.colorArgb ?: 0xFF9E9E9E.toInt(),
                                     total = sum,
-                                    share = if (totalAmount > 0) sum / totalAmount else 0.0,
+                                    share = if (totalAmount > 0) sum.toDouble() / totalAmount else 0.0,
                                 )
                             }
                             .sortedByDescending { it.total }

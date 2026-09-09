@@ -17,16 +17,17 @@ class AdjustBalanceUseCase @Inject constructor(
     private val accountRepo: AccountRepository,
     private val transactionRepo: TransactionRepository
 ) {
-    suspend fun adjust(accountId: Long, newTargetBalance: Double) {
+    /** [newTargetBalance] est exprimé en centimes, comme le solde renvoyé par le moteur. */
+    suspend fun adjust(accountId: Long, newTargetBalance: Long) {
         val account = accountRepo.getById(accountId) ?: return
         val allTransactions = transactionRepo.observeAll().first().map { it.transaction }
-        
+
         val currentBalances = BalanceEngine.calculateBalances(listOf(account), allTransactions)
         val currentBalance = currentBalances[accountId] ?: account.initialBalance
-        
+
         val delta = newTargetBalance - currentBalance
-        if (delta == 0.0) return
-        
+        if (delta == 0L) return
+
         val type = if (delta > 0) TransactionType.INCOME else TransactionType.EXPENSE
         val adjustmentTx = TransactionEntity(
             title = "Ajustement de solde",

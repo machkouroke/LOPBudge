@@ -10,15 +10,19 @@ object BalanceEngine {
     /**
      * Calcule les soldes actuels pour une liste de comptes donnés.
      * Utilise le solde de référence et les transactions payées après la date de mise à jour du solde.
+     *
+     * Entrées, cumuls et sorties sont exprimés en centimes : le moteur ne convertit jamais
+     * vers l'euro, cette conversion vit exclusivement à la frontière UI (`Format`).
+     *
      * @param accounts La liste des comptes avec leur solde de référence.
      * @param transactions La liste exhaustive des transactions physiques.
-     * @return Une map associant l'ID du compte à son solde calculé.
+     * @return Une map associant l'ID du compte à son solde calculé, en centimes.
      */
     fun calculateBalances(
         accounts: List<AccountEntity>,
         transactions: List<TransactionEntity>
-    ): Map<Long, Double> {
-        val result = mutableMapOf<Long, Double>()
+    ): Map<Long, Long> {
+        val result = mutableMapOf<Long, Long>()
 
         for (account in accounts) {
             var currentBalance = account.initialBalance
@@ -43,14 +47,15 @@ object BalanceEngine {
     }
 
     /**
-     * Calcule le solde total consolidé (uniquement pour les comptes inclus dans le total).
+     * Calcule le solde total consolidé, en centimes
+     * (uniquement pour les comptes inclus dans le total).
      */
     fun calculateTotalBalance(
         accounts: List<AccountEntity>,
-        calculatedBalances: Map<Long, Double>
-    ): Double {
+        calculatedBalances: Map<Long, Long>
+    ): Long {
         return accounts
             .filter { it.includeInTotal && !it.archived }
-            .sumOf { calculatedBalances[it.id] ?: 0.0 }
+            .sumOf { calculatedBalances[it.id] ?: 0L }
     }
 }

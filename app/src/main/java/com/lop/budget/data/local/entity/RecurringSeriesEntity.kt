@@ -9,7 +9,8 @@ import com.lop.budget.domain.model.TransactionType
 data class RecurringSeriesEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
-    val amount: Double,
+    /** Montant en centimes, toujours positif : le sens est porté par [type]. */
+    val amount: Long,
     val type: TransactionType,
     val categoryId: Long,
     val accountId: Long,

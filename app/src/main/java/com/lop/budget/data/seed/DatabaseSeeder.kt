@@ -35,7 +35,7 @@ object DatabaseSeeder {
             suspend fun getOrUpsertAccount(
                 name: String,
                 type: AccountType,
-                balance: Double,
+                balance: Long,
                 color: Int,
                 icon: String
             ): Long {
@@ -57,7 +57,7 @@ object DatabaseSeeder {
             val checking = getOrUpsertAccount(
                 "Compte courant",
                 AccountType.CHECKING,
-                1850.0,
+                185_000,
                 0xFFB69DF8.toInt(),
                 "account_balance"
             )
@@ -77,7 +77,7 @@ object DatabaseSeeder {
                 seriesDao.upsert(
                     RecurringSeriesEntity(
                         title = "Salaire",
-                        amount = 2600.0,
+                        amount = 260_000,
                         type = TransactionType.INCOME,
                         categoryId = salaryCat,
                         accountId = checking,
@@ -90,7 +90,7 @@ object DatabaseSeeder {
                 seriesDao.upsert(
                     RecurringSeriesEntity(
                         title = "Loyer",
-                        amount = 820.0,
+                        amount = 82_000,
                         type = TransactionType.EXPENSE,
                         categoryId = rentCat,
                         accountId = checking,
@@ -109,7 +109,7 @@ object DatabaseSeeder {
                 txDao.upsert(
                     TransactionEntity(
                         title = "Courses Hebdomadaires",
-                        amount = 84.20,
+                        amount = 8_420,
                         type = TransactionType.EXPENSE,
                         status = TransactionStatus.PAID,
                         date = today.minusDays(1).millis(),

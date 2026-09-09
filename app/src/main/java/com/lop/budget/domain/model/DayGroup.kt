@@ -7,7 +7,8 @@ import java.time.ZoneId
 
 data class DayGroup(
     val date: LocalDate,
-    val total: Double,
+    /** Total signé de la journée, en centimes. */
+    val total: Long,
     val transactions: List<TransactionWithRelations>,
 ) {
     companion object {

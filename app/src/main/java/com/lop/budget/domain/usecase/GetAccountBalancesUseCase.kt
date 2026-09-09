@@ -14,8 +14,9 @@ class GetAccountBalancesUseCase @Inject constructor(
     private val accountRepo: AccountRepository,
     private val transactionRepo: TransactionRepository
 ) {
+    /** Soldes par compte, en centimes. */
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun observeBalances(): Flow<Map<Long, Double>> {
+    fun observeBalances(): Flow<Map<Long, Long>> {
         return accountRepo.observeAccountBalances(
             transactionRepo.observeAll().flatMapLatest { list ->
                 flowOf(list.map { it.transaction })
@@ -23,7 +24,8 @@ class GetAccountBalancesUseCase @Inject constructor(
         )
     }
 
-    fun observeTotalBalance(): Flow<Double> {
+    /** Solde total consolidé, en centimes. */
+    fun observeTotalBalance(): Flow<Long> {
         return accountRepo.observeTotalBalance(observeBalances())
     }
 }

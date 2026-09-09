@@ -57,9 +57,10 @@ fun AnalyticsScreen(
     // Limite à 6 tranches + "Autres" pour la lisibilité.
     val top = state.breakdown.take(6)
     val othersTotal = state.breakdown.drop(6).sumOf { it.total }
+    // Le donut ne trace que des proportions : l'unité importe peu, le Double suffit.
     val slices = buildList {
-        top.forEach { add(DonutSlice(it.total, Color(it.colorArgb), it.name)) }
-        if (othersTotal > 0) add(DonutSlice(othersTotal, Color(0xFF9E9E9E), stringResource(R.string.others)))
+        top.forEach { add(DonutSlice(it.total.toDouble(), Color(it.colorArgb), it.name)) }
+        if (othersTotal > 0) add(DonutSlice(othersTotal.toDouble(), Color(0xFF9E9E9E), stringResource(R.string.others)))
     }
 
     val title = when (state.type) {

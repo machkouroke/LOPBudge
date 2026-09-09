@@ -20,11 +20,12 @@ import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 
-data class BalancePoint(val date: LocalDate, val balance: Double)
+/** [balance] est exprimé en centimes. */
+data class BalancePoint(val date: LocalDate, val balance: Long)
 
 data class AccountDetailUiState(
     val account: AccountEntity? = null,
-    val balance: Double = 0.0,
+    val balance: Long = 0L,
     val currency: String = "EUR",
     val history: List<BalancePoint> = emptyList(),
     val recentTransactions: List<TransactionWithRelations> = emptyList(),
@@ -56,11 +57,11 @@ class AccountDetailViewModel @Inject constructor(
         
         // Calcul de l'historique (simplifié pour le prototype)
         // L'historique inclut désormais les ajustements de solde pour être cohérent avec le solde affiché
-        val history = calculateHistory(account?.initialBalance ?: 0.0, paid)
+        val history = calculateHistory(account?.initialBalance ?: 0L, paid)
 
         AccountDetailUiState(
             account = account,
-            balance = balances[accountId] ?: account?.initialBalance ?: 0.0,
+            balance = balances[accountId] ?: account?.initialBalance ?: 0L,
             currency = currency,
             history = history,
             recentTransactions = paid.take(20), // On en prend un peu plus car les ajustements peuvent s'y glisser
@@ -73,11 +74,11 @@ class AccountDetailViewModel @Inject constructor(
     /**
      * Calculates the historical balance points based on an initial balance and a list of transactions.
      *
-     * @param initial The initial balance of the account.
+     * @param initial The initial balance of the account, in cents.
      * @param txs The list of transactions associated with the account.
-     * @return A list of [BalancePoint] objects representing the balance over time.
+     * @return A list of [BalancePoint] objects representing the balance over time, in cents.
      */
-    private fun calculateHistory(initial: Double, txs: List<TransactionWithRelations>): List<BalancePoint> {
+    private fun calculateHistory(initial: Long, txs: List<TransactionWithRelations>): List<BalancePoint> {
         val zone = ZoneId.systemDefault()
         val sortedTxs = txs.sortedBy { it.transaction.date }
         

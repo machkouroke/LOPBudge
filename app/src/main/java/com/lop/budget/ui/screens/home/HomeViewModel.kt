@@ -35,11 +35,11 @@ data class HomeUiState(
     val month: YearMonth = YearMonth.now(),
     val isCurrentMonth: Boolean = true,
     val currency: String = "USD",
-    val monthIncome: Double = 0.0,
-    val monthExpense: Double = 0.0,
-    val previousPeriodExpense: Double = 0.0,
-    val totalBudget: Double = 8000.0,
-    val projectedBalance: Double = 0.0,
+    val monthIncome: Long = 0L,
+    val monthExpense: Long = 0L,
+    val previousPeriodExpense: Long = 0L,
+    val totalBudget: Long = 800_000L,
+    val projectedBalance: Long = 0L,
     val daysUntilPayday: Int? = null,
     val upcoming: List<TransactionWithRelations> = emptyList(),
     val subscriptions: List<TransactionWithRelations> = emptyList(),
@@ -117,16 +117,16 @@ class HomeViewModel @Inject constructor(
             val currency = args[1] as String
             val ym = args[2] as YearMonth
             val accounts = args[3] as List<AccountEntity>
-            val balances = args[4] as Map<Long, Double>
+            val balances = args[4] as Map<Long, Long>
             val detected = args[5] as Int
             val detectionEnabled = args[6] as Boolean
 
             @Suppress("UNCHECKED_CAST")
             val allTxs = data[0] as List<TransactionWithRelations>
 
-            val income = data[1] as Double
-            val expense = data[2] as Double
-            val prevExpense = data[3] as Double
+            val income = data[1] as Long
+            val expense = data[2] as Long
+            val prevExpense = data[3] as Long
 
             val now = System.currentTimeMillis()
             val upcoming = allTxs

@@ -56,7 +56,7 @@ interface RepositoryTestInfrastructure {
     suspend fun allEditionFrom(
         seriesId: Long,
         title: String? = null,
-        amount: Double? = null,
+        amount: Long? = null,
         date: Long? = null,
         endDate: Long? = null,
     ): TransactionEdition {
@@ -85,7 +85,7 @@ interface RepositoryTestInfrastructure {
             AccountEntity(
                 name = "Compte courant",
                 type = AccountType.CHECKING,
-                initialBalance = 1_000.0,
+                initialBalance = 100_000,
                 colorArgb = 0xFF2196F3.toInt(),
                 icon = "wallet",
             ),
@@ -100,16 +100,16 @@ interface RepositoryTestInfrastructure {
         )
 
         seriesAId = transactionRepo.upsertSeries(
-            monthlySeries(title = "Loyer", amount = 800.0, startDate = januarySlot),
+            monthlySeries(title = "Loyer", amount = 80_000, startDate = januarySlot),
         )
         seriesBId = transactionRepo.upsertSeries(
-            monthlySeries(title = "Abonnement", amount = 12.0, startDate = seriesBJanuarySlot),
+            monthlySeries(title = "Abonnement", amount = 1_200, startDate = seriesBJanuarySlot),
         )
 
         punctualId = transactionRepo.upsert(
             TransactionEntity(
                 title = "Courses",
-                amount = 45.0,
+                amount = 4_500,
                 type = TransactionType.EXPENSE,
                 status = TransactionStatus.PLANNED,
                 kind = TransactionKind.STANDARD,
@@ -120,7 +120,7 @@ interface RepositoryTestInfrastructure {
         )
     }
 
-    fun monthlySeries(title: String, amount: Double, startDate: Long) =
+    fun monthlySeries(title: String, amount: Long, startDate: Long) =
         RecurringSeriesEntity(
             title = title,
             amount = amount,
@@ -136,7 +136,7 @@ interface RepositoryTestInfrastructure {
         transactionRepo.upsert(
             TransactionEntity(
                 title = "Loyer",
-                amount = 800.0,
+                amount = 80_000,
                 type = TransactionType.EXPENSE,
                 status = TransactionStatus.PLANNED,
                 kind = TransactionKind.STANDARD,
@@ -176,7 +176,7 @@ interface RepositoryTestInfrastructure {
         val seriesDate: Long?,
         val date: Long,
         val title: String,
-        val amount: Double,
+        val amount: Long,
         val note: String?,
         val isException: Boolean,
         val deleted: Boolean,
@@ -195,7 +195,7 @@ interface RepositoryTestInfrastructure {
                     seriesDate = if (cursor.isNull(2)) null else cursor.getLong(2),
                     date = cursor.getLong(3),
                     title = cursor.getString(4),
-                    amount = cursor.getDouble(5),
+                    amount = cursor.getLong(5),
                     note = cursor.getString(6),
                     isException = cursor.getInt(7) == 1,
                     deleted = cursor.getInt(8) == 1,

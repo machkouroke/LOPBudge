@@ -30,7 +30,9 @@ enum class InsightMode { CATEGORY, TAG }
 data class MonthlyCategoryBreakdown(
     val name: String,
     val colorArgb: Int,
-    val total: Double,
+    /** Total de la catégorie ou du tag, en centimes. */
+    val total: Long,
+    /** Part du total, entre 0 et 1 — une proportion, pas un montant. */
     val share: Double,
 )
 
@@ -44,7 +46,7 @@ data class MonthlyTransactionsUiState(
     val selectedAccountId: Long? = null,
     val selectedCategoryId: Long? = null,
     val currency: String = "EUR",
-    val total: Double = 0.0,
+    val total: Long = 0L,
     val breakdown: List<MonthlyCategoryBreakdown> = emptyList(),
     val dayGroups: List<DayGroup> = emptyList(),
     val transactions: List<TransactionWithRelations> = emptyList(),
@@ -174,7 +176,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
                             name = cat?.name ?: "Sans catégorie",
                             colorArgb = cat?.colorArgb ?: 0xFF9E9E9E.toInt(),
                             total = sum,
-                            share = if (absTotal > 0) sum / absTotal else 0.0,
+                            share = if (absTotal > 0) sum.toDouble() / absTotal else 0.0,
                         )
                     }
                     .sortedByDescending { it.total }
@@ -189,7 +191,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
                             name = tag.name,
                             colorArgb = tag.colorArgb,
                             total = sum,
-                            share = if (absTotal > 0) sum / absTotal else 0.0,
+                            share = if (absTotal > 0) sum.toDouble() / absTotal else 0.0,
                         )
                     }
                     .sortedByDescending { it.total }

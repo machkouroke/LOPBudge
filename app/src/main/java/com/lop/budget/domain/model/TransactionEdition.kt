@@ -13,7 +13,8 @@ package com.lop.budget.domain.model
  */
 data class TransactionEdition(
     val title: String,
-    val amount: Double,
+    /** Montant en centimes : la conversion depuis les euros saisis se fait dans le ViewModel. */
+    val amount: Long,
     val type: TransactionType,
     val date: Long,
     val accountId: Long,

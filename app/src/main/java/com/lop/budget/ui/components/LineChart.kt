@@ -21,8 +21,9 @@ fun SimpleLineChart(
 ) {
     if (points.isEmpty()) return
 
-    val minBalance = points.minOf { it.balance }
-    val maxBalance = points.maxOf { it.balance }
+    // Les soldes sont en centimes ; le tracé ne manipule que des proportions.
+    val minBalance = points.minOf { it.balance }.toDouble()
+    val maxBalance = points.maxOf { it.balance }.toDouble()
     val range = (maxBalance - minBalance).coerceAtLeast(1.0)
 
     Box(modifier = modifier) {

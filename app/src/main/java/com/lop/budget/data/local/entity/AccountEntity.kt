@@ -9,7 +9,8 @@ data class AccountEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val type: AccountType,
-    val initialBalance: Double,
+    /** Solde de référence, en centimes. */
+    val initialBalance: Long,
     /** Date/heure à laquelle le solde initial (de référence) a été mis à jour. */
     val balanceUpdatedAt: Long = 0L,
     val colorArgb: Int,

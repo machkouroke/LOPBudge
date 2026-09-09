@@ -64,7 +64,7 @@ class BalanceWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun WidgetContent(balance: Double, currency: String, upcoming: Int) {
+    private fun WidgetContent(balance: Long, currency: String, upcoming: Int) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()

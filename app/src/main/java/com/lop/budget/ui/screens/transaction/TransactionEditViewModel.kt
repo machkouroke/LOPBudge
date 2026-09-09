@@ -26,6 +26,7 @@ import com.lop.budget.domain.model.toDaysOfWeekSet
 import com.lop.budget.domain.usecase.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.ObserveTransactionUseCase
+import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -59,8 +60,9 @@ data class TransactionForm(
     val endDate: Long? = null,
     val maxOccurrences: Int? = null,
 ) {
-    val amount: Double get() = amountInput.toDoubleOrNull() ?: 0.0
-    val isValid: Boolean get() = amount > 0.0 && categoryId != null && accountId != null
+    /** Frontière UI : [amountInput] porte des euros saisis, [amount] des centimes (I-4). */
+    val amount: Long get() = Format.centsOrNull(amountInput) ?: 0L
+    val isValid: Boolean get() = amount > 0L && categoryId != null && accountId != null
 }
 
 /**
@@ -201,7 +203,7 @@ class TransactionEditViewModel @Inject constructor(
         // garde-fou I-5 du use case préserve le rattachement série.
         val occurrenceForm = TransactionForm(
             type = tx.type,
-            amountInput = tx.amount.toString(),
+            amountInput = Format.centsToInput(tx.amount),
             title = tx.title,
             // LOP-97 : n'utiliser l'argument de navigation que s'il est valide (> 0).
             date = seriesDate?.takeIf { it > 0L } ?: tx.date,
@@ -220,7 +222,7 @@ class TransactionEditViewModel @Inject constructor(
             // quelle que soit l'occurrence consultée. edition.date == startDate.
             editScope == EditScope.ALL && series != null -> occurrenceForm.copy(
                 type = series.type,
-                amountInput = series.amount.toString(),
+                amountInput = Format.centsToInput(series.amount),
                 title = series.title,
                 date = series.startDate,
                 categoryId = series.categoryId,
@@ -384,7 +386,7 @@ class TransactionEditViewModel @Inject constructor(
     private fun validate(f: TransactionForm): Map<TransactionFormField, Int> = buildMap {
         if (f.amountInput.isBlank()) {
             put(TransactionFormField.AMOUNT, R.string.tx_error_amount_required)
-        } else if (f.amount <= 0.0) {
+        } else if (f.amount <= 0L) {
             put(TransactionFormField.AMOUNT, R.string.tx_error_amount_positive)
         }
         if (f.categoryId == null) put(TransactionFormField.CATEGORY, R.string.tx_error_category_required)

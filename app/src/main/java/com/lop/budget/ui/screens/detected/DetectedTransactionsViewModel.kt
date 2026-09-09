@@ -10,6 +10,7 @@ import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CreateTransactionUseCase
+import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -48,7 +49,9 @@ class DetectedTransactionsViewModel @Inject constructor(
 
             val edition = TransactionEdition(
                 title = proposal.label.ifBlank { "Transaction" },
-                amount = proposal.amount,
+                // Les propositions détectées restent en euros `Double` (P-4) : conversion ici,
+                // au seul endroit où elles entrent dans le modèle d'écriture.
+                amount = Format.centsOrNull(proposal.amount.toString()) ?: 0L,
                 type = TransactionType.EXPENSE,
                 date = proposal.detectedAt,
                 accountId = 1L, // TODO MVP: choisir un compte par défaut (comportement inchangé)

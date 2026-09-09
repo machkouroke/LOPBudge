@@ -18,9 +18,9 @@ class AccountRepository @Inject constructor(
 ) : AccountOperations by accountDao {
 
     /**
-     * Observe les soldes de tous les comptes en temps réel.
+     * Observe les soldes de tous les comptes en temps réel, en centimes.
      */
-    fun observeAccountBalances(transactionsFlow: Flow<List<TransactionEntity>>): Flow<Map<Long, Double>> =
+    fun observeAccountBalances(transactionsFlow: Flow<List<TransactionEntity>>): Flow<Map<Long, Long>> =
         combine(
             observeAll(),
             transactionsFlow
@@ -29,9 +29,9 @@ class AccountRepository @Inject constructor(
         }.flowOn(Dispatchers.IO)
 
     /**
-     * Observe le solde total consolidé.
+     * Observe le solde total consolidé, en centimes.
      */
-    fun observeTotalBalance(balancesFlow: Flow<Map<Long, Double>>): Flow<Double> = combine(
+    fun observeTotalBalance(balancesFlow: Flow<Map<Long, Long>>): Flow<Long> = combine(
         observeAll(),
         balancesFlow
     ) { accounts, balances ->

@@ -41,8 +41,8 @@ import kotlin.math.roundToInt
 @Composable
 fun BalanceDashboardWidget(
     month: YearMonth,
-    income: Double,
-    expense: Double,
+    income: Long,
+    expense: Long,
     currency: String,
     onPrevMonth: () -> Unit,
     onNextMonth: () -> Unit,
@@ -57,9 +57,10 @@ fun BalanceDashboardWidget(
     val threshold = 200f
     
     val solde = income - expense
+    // Seuils inchangés : ±50 €, exprimés en centimes.
     val soldeColor = when {
-        solde > 50 -> IncomeGreen
-        solde < -50 -> ExpenseCoral
+        solde > 5_000 -> IncomeGreen
+        solde < -5_000 -> ExpenseCoral
         else -> com.lop.budget.ui.theme.CategoryOrange
     }
     
@@ -192,7 +193,7 @@ private fun Indicator(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
 }
 
 @Composable
-private fun StatCard(label: String, amount: Double, currency: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier = Modifier) {
+private fun StatCard(label: String, amount: Long, currency: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier = Modifier) {
     FloatingCard(modifier = modifier, color = MaterialTheme.colorScheme.surfaceVariant, contentPadding = PaddingValues(16.dp)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
             CircleIcon(icon = icon, tint = color, background = color.copy(alpha = 0.15f), size = 40.dp)

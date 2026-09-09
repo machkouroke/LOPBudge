@@ -44,6 +44,7 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.DonutChart
+import com.lop.budget.ui.components.DonutSlice
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopSearchBar
@@ -81,8 +82,9 @@ fun MonthlyTransactionsScreen(
     val othersText = stringResource(R.string.others)
     val slices = remember(top, othersTotal, othersText) {
         buildList {
-            top.forEach { add(com.lop.budget.ui.components.DonutSlice(it.total, Color(it.colorArgb), it.name)) }
-            if (othersTotal > 0) add(com.lop.budget.ui.components.DonutSlice(othersTotal, Color(0xFF9E9E9E), othersText))
+            // Le donut ne trace que des proportions : l'unité importe peu, le Double suffit.
+            top.forEach { add(DonutSlice(it.total.toDouble(), Color(it.colorArgb), it.name)) }
+            if (othersTotal > 0) add(DonutSlice(othersTotal.toDouble(), Color(0xFF9E9E9E), othersText))
         }
     }
 
@@ -346,7 +348,7 @@ fun MonthlyTransactionsScreen(
 @Composable
 fun BreakdownChip(
     name: String,
-    amount: Double,
+    amount: Long,
     percentage: Int,
     color: Color,
     currency: String,

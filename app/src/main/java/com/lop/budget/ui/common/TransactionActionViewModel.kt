@@ -126,7 +126,7 @@ class TransactionActionViewModel @Inject constructor(
         tx: TransactionWithRelations,
         scope: EditScope,
         updatedTitle: String = tx.transaction.title,
-        updatedAmount: Double = tx.transaction.amount,
+        updatedAmount: Long = tx.transaction.amount,
         updatedType: com.lop.budget.domain.model.TransactionType = tx.transaction.type,
         updatedStatus: com.lop.budget.domain.model.TransactionStatus = tx.transaction.status,
         updatedDate: Long = tx.transaction.date,
