@@ -15,7 +15,7 @@ interface TransactionOperations {
     fun observeByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
     fun observePaidByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
     fun observePlannedByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
-    fun observeBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>>
+
     fun observeById(id: Long): Flow<TransactionWithRelations?>
     fun observeSeries(seriesId: Long): Flow<List<TransactionWithRelations>>
     suspend fun getById(id: Long): TransactionWithRelations?
@@ -68,15 +68,7 @@ interface TransactionDao : TransactionOperations {
     )
     override fun observePlannedByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
 
-    @Transaction
-    @Query(
-        """
-        SELECT * FROM transactions 
-        WHERE date BETWEEN :start AND :end AND deleted = 0 
-        ORDER BY date ASC
-    """
-    )
-    override fun observeBetween(start: Long, end: Long): Flow<List<TransactionWithRelations>>
+
 
     @Transaction
     @Query(
