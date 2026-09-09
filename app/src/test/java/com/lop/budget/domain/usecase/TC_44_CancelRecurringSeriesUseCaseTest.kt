@@ -44,7 +44,7 @@ class CancelRecurringSeriesUseCaseTest {
     ) = RecurringSeriesEntity(
         id = id,
         title = "Test Series",
-        amount = 50.0,
+        amount = 5_000,
         type = TransactionType.EXPENSE,
         categoryId = 1L,
         accountId = 1L,

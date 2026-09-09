@@ -193,7 +193,7 @@ class TransactionEditViewModelCreateTest {
 
     private fun account(id: Long, balanceUpdatedAt: Long = 0L) = AccountEntity(
         id = id, name = "Account $id", type = AccountType.CHECKING,
-        initialBalance = 1000.0, balanceUpdatedAt = balanceUpdatedAt,
+        initialBalance = 100_000, balanceUpdatedAt = balanceUpdatedAt,
         colorArgb = 0, icon = "wallet"
     )
 
@@ -551,7 +551,7 @@ class TransactionEditViewModelCreateTest {
             }
             val captured = edition.captured
             assertEquals("CA-05 : titre transmis tel que saisi", "Courses", captured.title)
-            assertEquals("CA-05 : montant transmis tel que saisi", 42.50, captured.amount, 0.0)
+            assertEquals("CA-05 : montant transmis tel que saisi", 4_250, captured.amount)
             assertEquals("CA-05 : type transmis tel que saisi", TransactionType.EXPENSE, captured.type)
             assertEquals("CA-05 : date transmise telle que portée par le formulaire", expectedDate, captured.date)
             assertEquals("CA-05 : compte transmis tel que saisi", primaryAccount.id, captured.accountId)

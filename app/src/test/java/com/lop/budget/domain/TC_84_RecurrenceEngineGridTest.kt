@@ -75,7 +75,7 @@ class RecurrenceEngineGridTest {
         return RecurringSeriesEntity(
             id = id,
             title = "Loyer moteur",
-            amount = 820.0,
+            amount = 82_000,
             type = TransactionType.EXPENSE,
             accountId = 11L,
             categoryId = 21L,
@@ -454,7 +454,7 @@ class RecurrenceEngineGridTest {
             assertEquals(expectedDate, tx.seriesDate)
             assertEquals(expectedDate, tx.date)
             assertEquals("Loyer moteur", tx.title)
-            assertEquals(820.0, tx.amount, 0.0001)
+            assertEquals(82_000, tx.amount)
             assertEquals(TransactionType.EXPENSE, tx.type)
             assertEquals(11L, tx.accountId)
             assertEquals(21L, tx.categoryId)
@@ -475,7 +475,7 @@ class RecurrenceEngineGridTest {
         val incomeSeries = RecurringSeriesEntity(
             id = 202L,
             title = "Salaire moteur",
-            amount = 2600.0,
+            amount = 260_000,
             type = TransactionType.INCOME,
             accountId = 12L,
             categoryId = 22L,
@@ -512,7 +512,7 @@ class RecurrenceEngineGridTest {
             assertEquals(expectedDate, tx.seriesDate)
             assertEquals(expectedDate, tx.date)
             assertEquals("Salaire moteur", tx.title)
-            assertEquals(2600.0, tx.amount, 0.0001)
+            assertEquals(260_000, tx.amount)
             assertEquals(TransactionType.INCOME, tx.type)
             assertEquals(12L, tx.accountId)
             assertEquals(22L, tx.categoryId)

@@ -138,7 +138,7 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
             AccountEntity(
                 name = "Compte courant",
                 type = AccountType.CHECKING,
-                initialBalance = 1_000.0,
+                initialBalance = 100_000,
                 colorArgb = 0xFF2196F3.toInt(),
                 icon = "wallet",
             ),
@@ -159,7 +159,7 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
     private fun punctualEdition(status: TransactionStatus?, tagIds: List<Long> = emptyList()) =
         TransactionEdition(
             title = "TC-create-p",
-            amount = 42.5,
+            amount = 4_250,
             type = TransactionType.EXPENSE,
             date = punctualDateTime,
             accountId = accountId,
@@ -179,7 +179,7 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
     private fun recurringEdition(status: TransactionStatus? = TransactionStatus.PLANNED) =
         TransactionEdition(
             title = "TC-create-r",
-            amount = 800.0,
+            amount = 80_000,
             type = TransactionType.EXPENSE,
             date = januarySlot, // ancrage = date du formulaire = 1 jan 2024
             accountId = accountId,
@@ -229,7 +229,7 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
             // CA-06 : type, montant, libelle, date, categorie, compte et statut persistes tels que saisis.
             val created = requireNotNull(transactionRepo.getById(createdId)).transaction
             assertEquals("TC-create-p", created.title)
-            assertEquals(42.5, created.amount, 0.0)
+            assertEquals(4_250, created.amount)
             assertEquals(TransactionType.EXPENSE, created.type)
             assertEquals(punctualDateTime, created.date)
             assertEquals(categoryId, created.categoryId)

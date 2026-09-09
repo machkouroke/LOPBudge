@@ -506,9 +506,9 @@ class ObserveTransactionsRoomTest {
 
                 // 3 · Modification du seul montant de A : février suit, l'exception de janvier ne bouge pas.
                 val seriesA = requireNotNull(transactionRepo.getSeriesById(seriesAId))
-                transactionRepo.updateSeries(seriesA.copy(amount = 850.0))
+                transactionRepo.updateSeries(seriesA.copy(amount = 85_000))
                 val afterStep3 = snapshot()
-                val februaryRepriced = listOf(virtualOfA(FEB_10, amount = 850.0), virtualOfB(FEB_20))
+                val februaryRepriced = listOf(virtualOfA(FEB_10, amount = 85_000), virtualOfB(FEB_20))
                 val februaryAfterAmount = february.awaitState("L-09 §3 février", februaryRepriced)
                 assertContent("L-09 §3 février (CA-13)", februaryRepriced, februaryAfterAmount)
                 assertContent(
@@ -528,7 +528,7 @@ class ObserveTransactionsRoomTest {
                 db.recurringSeriesDao().addSeriesTagCrossRef(SeriesTagCrossRef(seriesAId, revisedTagId))
                 val afterStep4 = snapshot()
                 val februaryRetagged =
-                    listOf(virtualOfA(FEB_10, amount = 850.0, tags = listOf("Révisé")), virtualOfB(FEB_20))
+                    listOf(virtualOfA(FEB_10, amount = 85_000, tags = listOf("Révisé")), virtualOfB(FEB_20))
                 assertContent(
                     "L-09 §4 février (CA-05) : le virtuel porte exactement Révisé",
                     februaryRetagged,
@@ -697,7 +697,7 @@ class ObserveTransactionsRoomTest {
         seriesAId = transactionRepo.saveSeriesWithTags(
             RecurringSeriesEntity(
                 title = TITLE_A,
-                amount = 820.0,
+                amount = 82_000,
                 type = TransactionType.EXPENSE,
                 categoryId = categoryLogementId,
                 accountId = accountAId,
@@ -718,7 +718,7 @@ class ObserveTransactionsRoomTest {
         seriesBId = transactionRepo.saveSeriesWithTags(
             RecurringSeriesEntity(
                 title = TITLE_B,
-                amount = 2_600.0,
+                amount = 260_000,
                 type = TransactionType.INCOME,
                 categoryId = categoryRevenusId,
                 accountId = accountBId,
@@ -739,7 +739,7 @@ class ObserveTransactionsRoomTest {
         punctualId = transactionRepo.saveWithTags(
             TransactionEntity(
                 title = TITLE_P,
-                amount = 42.5,
+                amount = 4_250,
                 type = TransactionType.EXPENSE,
                 status = TransactionStatus.PAID,
                 kind = TransactionKind.STANDARD,
@@ -762,7 +762,7 @@ class ObserveTransactionsRoomTest {
     private fun account(name: String, color: Int) = AccountEntity(
         name = name,
         type = AccountType.CHECKING,
-        initialBalance = 1_000.0,
+        initialBalance = 100_000,
         balanceUpdatedAt = 0L,
         colorArgb = color,
         icon = "wallet",
@@ -783,7 +783,7 @@ class ObserveTransactionsRoomTest {
     ): Long = transactionRepo.saveWithTags(
         TransactionEntity(
             title = TITLE_EXCEPTION,
-            amount = 900.0,
+            amount = 90_000,
             type = TransactionType.EXPENSE,
             status = TransactionStatus.PAID,
             kind = TransactionKind.STANDARD,
@@ -817,7 +817,7 @@ class ObserveTransactionsRoomTest {
         val seriesDate: Long?,
         val date: Long,
         val title: String,
-        val amount: Double,
+        val amount: Long,
         val type: TransactionType,
         val status: TransactionStatus,
         val isException: Boolean,
@@ -850,7 +850,7 @@ class ObserveTransactionsRoomTest {
 
     private fun virtualOfA(
         date: Long,
-        amount: Double = 820.0,
+        amount: Long = 82_000,
         tags: List<String> = listOf("Fixe", "Logement"),
     ) = Row(
         kind = "VIRTUEL",
@@ -876,7 +876,7 @@ class ObserveTransactionsRoomTest {
         seriesDate = date,
         date = date,
         title = TITLE_B,
-        amount = 2_600.0,
+        amount = 260_000,
         type = TransactionType.INCOME,
         status = TransactionStatus.PLANNED,
         isException = false,
@@ -894,7 +894,7 @@ class ObserveTransactionsRoomTest {
         seriesDate = null,
         date = JAN_15,
         title = TITLE_P,
-        amount = 42.5,
+        amount = 4_250,
         type = TransactionType.EXPENSE,
         status = TransactionStatus.PAID,
         isException = false,
@@ -912,7 +912,7 @@ class ObserveTransactionsRoomTest {
         seriesDate = slot,
         date = displayDate,
         title = TITLE_EXCEPTION,
-        amount = 900.0,
+        amount = 90_000,
         type = TransactionType.EXPENSE,
         status = TransactionStatus.PAID,
         isException = true,

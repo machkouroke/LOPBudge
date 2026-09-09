@@ -71,7 +71,7 @@ class TransactionActionViewModelEditMappingTest {
         transaction = TransactionEntity(
             id = id,
             title = "Occurrence Title",
-            amount = 50.0,
+            amount = 5_000,
             type = TransactionType.EXPENSE,
             status = status,
             kind = TransactionKind.STANDARD,
@@ -97,7 +97,7 @@ class TransactionActionViewModelEditMappingTest {
 
     /** Règle de série discriminante (freq/interval/dow/end/max tous non triviaux). */
     private val seriesRule = RecurringSeriesEntity(
-        id = 100L, title = "Series Title", amount = 100.0, type = TransactionType.EXPENSE,
+        id = 100L, title = "Series Title", amount = 10_000, type = TransactionType.EXPENSE,
         categoryId = 20L, accountId = 200L, frequency = RecurrenceFrequency.MONTHLY,
         interval = 2, startDate = january10, daysOfWeek = "1,3",
         note = "Series note", linkedGoalId = 7L,

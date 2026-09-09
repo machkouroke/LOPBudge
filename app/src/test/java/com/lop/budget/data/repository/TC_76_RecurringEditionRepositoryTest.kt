@@ -164,7 +164,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         runTest {
             seedCanonicalDataSet()
             val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-            val edition = editionFrom(februaryOccurrence, title = "Loyer Modifie", amount = 900.0)
+            val edition = editionFrom(februaryOccurrence, title = "Loyer Modifie", amount = 90_000)
 
             editTransactionWithScopeUseCase(
                 editingId = februaryOccurrence.transaction.id,
@@ -181,21 +181,21 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
             // Vérification adjacents
             val jan =
                 visible.single { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == januarySlot }
-            assertEquals(800.0, jan.transaction.amount, 0.0)
+            assertEquals(80_000, jan.transaction.amount)
             val mar =
                 visible.single { it.transaction.seriesId == seriesAId && it.transaction.seriesDate == marchSlot }
-            assertEquals(800.0, mar.transaction.amount, 0.0)
+            assertEquals(80_000, mar.transaction.amount)
 
             val persistedRows = persistedRowsForSlot(seriesAId, februarySlot)
             assertEquals(1, persistedRows.size)
             val row = persistedRows.single()
             assertTrue(row.isException)
             assertEquals("Loyer Modifie", row.title)
-            assertEquals(900.0, row.amount, 0.0)
+            assertEquals(90_000, row.amount)
 
             val seriesA = transactionRepo.getSeriesById(seriesAId)!!
             assertEquals("Loyer", seriesA.title)
-            assertEquals(800.0, seriesA.amount, 0.0)
+            assertEquals(80_000, seriesA.amount)
         }
 
     // =======================================================================================
@@ -276,7 +276,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         runTest {
             seedCanonicalDataSet()
             val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-            val edition = editionFrom(februaryOccurrence, amount = 850.0)
+            val edition = editionFrom(februaryOccurrence, amount = 85_000)
 
             editTransactionWithScopeUseCase(
                 februaryOccurrence.transaction.id,
@@ -297,15 +297,15 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
             val allSeries = db.recurringSeriesDao().observeActiveSeries().first()
             val newSeries = allSeries.single { it.id != seriesAId && it.id != seriesBId }
             assertEquals(februarySlot, newSeries.startDate)
-            assertEquals(850.0, newSeries.amount, 0.0)
+            assertEquals(85_000, newSeries.amount)
 
             val visible = observeVisibleTransactions(observeTransactionsUseCase)
             val visibleOfA = visible.filter { it.transaction.title == "Loyer" }
             // Janvier (Série A), Février (Série Nouvelle), Mars (Série Nouvelle)
             assertEquals(3, visibleOfA.size)
-            assertTrue(visibleOfA.any { it.transaction.date == januarySlot && it.transaction.amount == 800.0 })
-            assertTrue(visibleOfA.any { it.transaction.date == februarySlot && it.transaction.amount == 850.0 })
-            assertTrue(visibleOfA.any { it.transaction.date == marchSlot && it.transaction.amount == 850.0 })
+            assertTrue(visibleOfA.any { it.transaction.date == januarySlot && it.transaction.amount == 80_000 })
+            assertTrue(visibleOfA.any { it.transaction.date == februarySlot && it.transaction.amount == 85_000 })
+            assertTrue(visibleOfA.any { it.transaction.date == marchSlot && it.transaction.amount == 85_000 })
             assertNoDuplicates(visible)
         }
 
@@ -414,7 +414,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         runTest {
             seedCanonicalDataSet()
             val januaryExId = insertException(seriesAId, januarySlot, januarySlot)
-            execSQL("UPDATE transactions SET amount = 999.0 WHERE id = $januaryExId")
+            execSQL("UPDATE transactions SET amount = 99900 WHERE id = $januaryExId")
             val controlBefore = controlState(observeTransactionsUseCase)
 
             val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
@@ -429,7 +429,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
             )
 
             val rowJan = persistedRow(januaryExId)
-            assertEquals(999.0, rowJan.amount, 0.0)
+            assertEquals(99_900, rowJan.amount)
             assertFalse(rowJan.deleted)
 
             assertEquals(
@@ -449,7 +449,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         runTest {
             seedCanonicalDataSet()
             val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
-            val edition = allEditionFrom(seriesAId, title = "Loyer National", amount = 1000.0)
+            val edition = allEditionFrom(seriesAId, title = "Loyer National", amount = 100_000)
             editTransactionWithScopeUseCase(
                 februaryOccurrence.transaction.id,
                 seriesAId,
@@ -460,7 +460,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
 
             val seriesA = transactionRepo.getSeriesById(seriesAId)!!
             assertEquals("Loyer National", seriesA.title)
-            assertEquals(1000.0, seriesA.amount, 0.0)
+            assertEquals(100_000, seriesA.amount)
             assertEquals(
                 "CA-09 ALL : sans changement du champ date, startDate est inchangé",
                 januarySlot,
@@ -468,12 +468,12 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
             )
 
             assertEquals("Loyer National", seriesA.title)
-            assertEquals(1000.0, seriesA.amount, 0.0)
+            assertEquals(100_000, seriesA.amount)
 
             val visible = observeVisibleTransactions(observeTransactionsUseCase)
             val visibleOfA = visible.filter { it.transaction.seriesId == seriesAId }
             assertEquals(3, visibleOfA.size)
-            assertTrue(visibleOfA.all { it.transaction.amount == 1000.0 })
+            assertTrue(visibleOfA.all { it.transaction.amount == 100_000 })
             assertNoDuplicates(visible)
         }
 
@@ -526,7 +526,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         runTest {
             seedCanonicalDataSet()
             val januaryExId = insertException(seriesAId, januarySlot, januarySlot)
-            execSQL("UPDATE transactions SET amount = 999.0, note = 'Ma note' WHERE id = $januaryExId")
+            execSQL("UPDATE transactions SET amount = 99900, note = 'Ma note' WHERE id = $januaryExId")
 
             val februaryOccurrence = virtualOccurrenceOfA(februarySlot)
             val edition = editionFrom(februaryOccurrence, title = "Nouveau Titre")
@@ -543,10 +543,8 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
             assertEquals("Nouveau Titre", rowJan.title)
             assertEquals(
                 "CA-05: L'exception devrait conserver son montant personnalise",
-                999.0,
-                rowJan.amount,
-                0.0
-            )
+                99_900,
+                rowJan.amount)
             assertEquals("CA-05: L'exception devrait conserver sa note", "Ma note", rowJan.note)
             assertNoDuplicates(observeVisibleTransactions(observeTransactionsUseCase))
         }
@@ -613,7 +611,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
             val marchTwr = TransactionWithRelations(
                 transaction = TransactionEntity(
                     id = RecurrenceEngine.calculateVirtualId(seriesAId, marchSlot),
-                    title = "Loyer", amount = 800.0, type = TransactionType.EXPENSE,
+                    title = "Loyer", amount = 80_000, type = TransactionType.EXPENSE,
                     status = TransactionStatus.PLANNED, kind = TransactionKind.STANDARD,
                     date = marchSlot, accountId = accountId, categoryId = categoryId,
                     seriesId = seriesAId, seriesDate = marchSlot,
@@ -799,7 +797,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
     private fun editionFrom(
         twr: TransactionWithRelations,
         title: String = twr.transaction.title,
-        amount: Double = twr.transaction.amount,
+        amount: Long = twr.transaction.amount,
         date: Long = twr.transaction.date,
         frequency: RecurrenceFrequency? = null,
         endDate: Long? = null,

@@ -178,7 +178,7 @@ class ObserveUpcomingOccurrencesRoomTest {
                 slot = at09(2029, 2, 10),
                 displayDate = at09(2029, 3, 15),
                 deleted = false,
-                amount = 999.0,
+                amount = 99_900,
                 title = MOVED_TITLE,
             )
 
@@ -199,7 +199,7 @@ class ObserveUpcomingOccurrencesRoomTest {
 
             val moved = upcoming.single { it.transaction.date == at09(2029, 3, 15) }
             assertEquals("U-03 — l'exception porte ses propres valeurs", MOVED_TITLE, moved.transaction.title)
-            assertEquals("U-03 — montant de l'exception", 999.0, moved.transaction.amount, 0.0)
+            assertEquals("U-03 — montant de l'exception", 99_900, moved.transaction.amount)
             assertEquals(
                 "U-03 — I-2 : le slot d'origine est conservé",
                 at09(2029, 2, 10),
@@ -230,7 +230,7 @@ class ObserveUpcomingOccurrencesRoomTest {
             AccountEntity(
                 name = "Compte courant test",
                 type = AccountType.CHECKING,
-                initialBalance = 1_000.0,
+                initialBalance = 100_000,
                 balanceUpdatedAt = 0L,
                 colorArgb = 0xFF2196F3.toInt(),
                 icon = "wallet",
@@ -248,7 +248,7 @@ class ObserveUpcomingOccurrencesRoomTest {
         seriesId = transactionRepo.upsertSeries(
             RecurringSeriesEntity(
                 title = SERIES_TITLE,
-                amount = 120.0,
+                amount = 12_000,
                 type = TransactionType.EXPENSE,
                 categoryId = categoryId,
                 accountId = accountId,
@@ -271,7 +271,7 @@ class ObserveUpcomingOccurrencesRoomTest {
         slot: Long,
         displayDate: Long,
         deleted: Boolean,
-        amount: Double = 120.0,
+        amount: Long = 12_000,
         title: String = SERIES_TITLE,
     ): Long = transactionRepo.upsert(
         TransactionEntity(

@@ -66,7 +66,7 @@ class CreateAndSaveTransactionUseCaseTest {
         linkedDebtId: Long? = null,
     ) = TransactionEdition(
         title = "Créée",
-        amount = 42.5,
+        amount = 4_250,
         type = TransactionType.EXPENSE,
         date = editionDate,
         accountId = 1L,
@@ -87,7 +87,7 @@ class CreateAndSaveTransactionUseCaseTest {
     private fun expectedPunctualEntity(status: TransactionStatus) = TransactionEntity(
         id = 0L,
         title = "Créée",
-        amount = 42.5,
+        amount = 4_250,
         type = TransactionType.EXPENSE,
         status = status,
         date = editionDate,
@@ -112,7 +112,7 @@ class CreateAndSaveTransactionUseCaseTest {
     ) = TransactionEntity(
         id = 30L,
         title = "À sauver",
-        amount = 15.0,
+        amount = 1_500,
         type = TransactionType.EXPENSE,
         status = status,
         date = editionDate,
@@ -195,7 +195,7 @@ class CreateAndSaveTransactionUseCaseTest {
             // Série capturée ENTIÈRE : startDate = edition.date, isCancelled = false.
             val expectedSeries = RecurringSeriesEntity(
                 title = "Créée",
-                amount = 42.5,
+                amount = 4_250,
                 type = TransactionType.EXPENSE,
                 categoryId = 10L,
                 accountId = 1L,

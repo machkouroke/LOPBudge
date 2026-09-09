@@ -75,7 +75,7 @@ class EditTransactionWithScopeUseCaseTest {
         frequency: RecurrenceFrequency = RecurrenceFrequency.MONTHLY,
         interval: Int = 1,
         title: String = "Edited",
-        amount: Double = 80.0,
+        amount: Long = 8_000,
         categoryId: Long = 20L,
         accountId: Long = 200L,
         note: String? = "Edited note",
@@ -102,7 +102,7 @@ class EditTransactionWithScopeUseCaseTest {
         paidAt: Long? = null,
         isException: Boolean = seriesId != null,
         title: String = "Row Title",
-        amount: Double = 100.0,
+        amount: Long = 10_000,
     ) = TransactionEntity(
         id = id, title = title, amount = amount, type = TransactionType.EXPENSE,
         status = status, date = date, accountId = 200L, categoryId = 20L,
@@ -113,7 +113,7 @@ class EditTransactionWithScopeUseCaseTest {
     private fun twr(tx: TransactionEntity) = TransactionWithRelations(tx, null, null, emptyList())
 
     private fun baseSeries(startDate: Long = janStart) = RecurringSeriesEntity(
-        id = 100L, title = "Edited", amount = 80.0, type = TransactionType.EXPENSE,
+        id = 100L, title = "Edited", amount = 8_000, type = TransactionType.EXPENSE,
         categoryId = 20L, accountId = 200L, frequency = RecurrenceFrequency.MONTHLY,
         interval = 1, startDate = startDate, endDate = null, maxOccurrences = null,
         daysOfWeek = null, isCancelled = false, note = "Edited note",
@@ -458,8 +458,8 @@ class EditTransactionWithScopeUseCaseTest {
     fun `S-19 - FUTURE nominal - ordre complet, migration diff, controle 999 intact`() = runTest {
         val row = rowEntity(seriesDate = slotFeb, date = slotFeb)
         coEvery { transactionRepo.getById(20L) } returns twr(row)
-        // Diff réel : la série AVANT édition porte amount = 100.0 (l'édition porte 80.0).
-        val oldSeries = baseSeries(startDate = janStart).copy(amount = 100.0)
+        // Diff réel : la série AVANT édition porte amount = 10_000 (l'édition porte 8_000).
+        val oldSeries = baseSeries(startDate = janStart).copy(amount = 10_000)
         coEvery { transactionRepo.getSeriesById(100L) } returns oldSeries
         coEvery { transactionRepo.updateSeries(any()) } just Runs
         coEvery { transactionRepo.upsertSeries(any()) } returns 60L
@@ -471,14 +471,14 @@ class EditTransactionWithScopeUseCaseTest {
         coEvery { transactionRepo.upsert(capture(migrated)) } returns 30L
         val saved = slot<TransactionEntity>()
         coEvery { saveTransactionUseCase.saveSimple(capture(saved), emptyList()) } returns 20L
-        val ed = edition(date = slotFeb, amount = 80.0) // seul diff vs oldSeries : amount 100 -> 80
+        val ed = edition(date = slotFeb, amount = 8_000) // seul diff vs oldSeries : amount 100 -> 80
 
         val result = sut(20L, 100L, slotFeb, ed, EditScope.FUTURE)
 
         assertEquals(20L, result)
         // I-7 : seul le diff est propagé — title "Custom" ET note "Row note" conservés,
         // date/seriesDate intacts (I-1). Pas de patch note : note édition == note base.
-        assertEquals(migrating.copy(amount = 80.0, seriesId = 60L), migrated.captured)
+        assertEquals(migrating.copy(amount = 8_000, seriesId = 60L), migrated.captured)
         coVerify(exactly = 1) { transactionRepo.upsert(any()) } // 999 jamais touché
         coVerifyOrder {
             transactionRepo.getById(20L)
@@ -515,9 +515,9 @@ class EditTransactionWithScopeUseCaseTest {
 
     @Test
     fun `S-21 - ALL sans changement de date - updateSeries entier et overlay consultee`() = runTest {
-        val row = rowEntity(seriesDate = slotFeb, date = slotFeb, title = "Row Title", amount = 100.0)
+        val row = rowEntity(seriesDate = slotFeb, date = slotFeb, title = "Row Title", amount = 10_000)
         coEvery { transactionRepo.getById(20L) } returns twr(row)
-        val existing = baseSeries(startDate = slotFeb).copy(title = "Base", amount = 100.0, note = null)
+        val existing = baseSeries(startDate = slotFeb).copy(title = "Base", amount = 10_000, note = null)
         coEvery { transactionRepo.getSeriesById(100L) } returns existing
         val updated = slot<RecurringSeriesEntity>()
         coEvery { transactionRepo.updateSeries(capture(updated)) } just Runs
@@ -525,21 +525,21 @@ class EditTransactionWithScopeUseCaseTest {
         val saved = slot<TransactionEntity>()
         coEvery { saveTransactionUseCase.saveSimple(capture(saved), emptyList()) } returns 20L
         // date = startDate (inchangée) ; diff : title, amount, note
-        val ed = edition(date = slotFeb, title = "Base v2", amount = 80.0, status = TransactionStatus.PAID)
+        val ed = edition(date = slotFeb, title = "Base v2", amount = 8_000, status = TransactionStatus.PAID)
 
         val result = sut(20L, 100L, slotFeb, ed, EditScope.ALL)
 
         assertEquals(20L, result)
         assertEquals(
             existing.copy(
-                title = "Base v2", amount = 80.0, startDate = slotFeb, // inchangée
+                title = "Base v2", amount = 8_000, startDate = slotFeb, // inchangée
                 note = "Edited note",
             ),
             updated.captured,
         )
         // Consultée : overlay (diff) + statut ; date/seriesDate/isException JAMAIS réécrits (I-1).
         assertEquals(
-            row.copy(title = "Base v2", amount = 80.0, note = "Edited note", status = TransactionStatus.PAID),
+            row.copy(title = "Base v2", amount = 8_000, note = "Edited note", status = TransactionStatus.PAID),
             saved.captured,
         )
         coVerify(exactly = 0) { transactionRepo.materializeOccurrence(any(), any()) } // S-07
@@ -582,13 +582,13 @@ class EditTransactionWithScopeUseCaseTest {
     fun `S-23 - ALL propagation du diff seul, personnalisations conservees`() = runTest {
         val row = rowEntity(seriesDate = slotFeb, date = slotFeb)
         coEvery { transactionRepo.getById(20L) } returns twr(row)
-        val existing = baseSeries(startDate = slotFeb).copy(amount = 100.0)
+        val existing = baseSeries(startDate = slotFeb).copy(amount = 10_000)
         coEvery { transactionRepo.getSeriesById(100L) } returns existing
         coEvery { transactionRepo.updateSeries(any()) } just Runs
         // 30L : personnalisée (title) et non alignée -> sera patchée.
-        val custom = rowEntity(id = 30L, seriesDate = marchDate, date = marchDate, title = "Custom", amount = 100.0)
+        val custom = rowEntity(id = 30L, seriesDate = marchDate, date = marchDate, title = "Custom", amount = 10_000)
         // 40L : DÉJÀ alignée sur TOUT le diff (amount 80 ET linkedDebtId 8) -> aucun upsert.
-        val alreadyPatched = rowEntity(id = 40L, seriesDate = janStart, date = janStart, amount = 80.0)
+        val alreadyPatched = rowEntity(id = 40L, seriesDate = janStart, date = janStart, amount = 8_000)
             .copy(linkedDebtId = 8L)
         coEvery { transactionRepo.getExceptionsBySeries(100L) } returns listOf(custom, alreadyPatched)
         val patched = slot<TransactionEntity>()
@@ -597,15 +597,15 @@ class EditTransactionWithScopeUseCaseTest {
         coEvery { saveTransactionUseCase.saveSimple(capture(saved), emptyList()) } returns 20L
         // Diff vs base : amount 100 -> 80, linkedDebtId null -> 8 (rattachement propagé, S-27 ALL).
         // La note ne fait PAS partie du diff (note édition == note base).
-        val ed = edition(date = slotFeb, amount = 80.0, linkedDebtId = 8L)
+        val ed = edition(date = slotFeb, amount = 8_000, linkedDebtId = 8L)
 
         sut(20L, 100L, slotFeb, ed, EditScope.ALL)
 
         // 30L : patch amount + linkedDebtId ; title "Custom" et note "Row note" conservés (I-7).
-        assertEquals(custom.copy(amount = 80.0, linkedDebtId = 8L), patched.captured)
+        assertEquals(custom.copy(amount = 8_000, linkedDebtId = 8L), patched.captured)
         coVerify(exactly = 1) { transactionRepo.upsert(any()) } // 40L jamais réécrite
         // Consultée : même règle de diff + statut réappliqué ; date/seriesDate intacts (I-1).
-        assertEquals(row.copy(amount = 80.0, linkedDebtId = 8L, status = TransactionStatus.PLANNED), saved.captured)
+        assertEquals(row.copy(amount = 8_000, linkedDebtId = 8L, status = TransactionStatus.PLANNED), saved.captured)
         coVerify(exactly = 1) { transactionRepo.getById(20L) }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(100L) }
         coVerify(exactly = 1) { transactionRepo.updateSeries(any()) }

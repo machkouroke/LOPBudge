@@ -51,7 +51,7 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
         transaction = TransactionEntity(
             id = id,
             title = "Test TX",
-            amount = 10.0,
+            amount = 1_000,
             type = TransactionType.EXPENSE,
             status = TransactionStatus.PLANNED,
             kind = TransactionKind.STANDARD,

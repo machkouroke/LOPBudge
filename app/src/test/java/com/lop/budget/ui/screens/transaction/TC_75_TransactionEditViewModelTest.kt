@@ -126,7 +126,7 @@ class TransactionEditViewModelTest {
 
     private fun createTwr(id: Long, seriesId: Long? = null, date: Long = occurrenceDate) = TransactionWithRelations(
         transaction = TransactionEntity(
-            id = id, title = "Occurrence Title", amount = 50.0,
+            id = id, title = "Occurrence Title", amount = 5_000,
             type = TransactionType.EXPENSE, status = TransactionStatus.PLANNED,
             kind = TransactionKind.STANDARD, date = date, accountId = 100L,
             categoryId = 10L, note = "Some note", seriesId = seriesId,
@@ -137,12 +137,12 @@ class TransactionEditViewModelTest {
 
     private fun createAccount(id: Long, balanceUpdatedAt: Long = 0L) = AccountEntity(
         id = id, name = "Account $id", type = AccountType.CHECKING,
-        initialBalance = 1000.0, balanceUpdatedAt = balanceUpdatedAt,
+        initialBalance = 100_000, balanceUpdatedAt = balanceUpdatedAt,
         colorArgb = 0, icon = "wallet"
     )
 
     private val seriesRule = RecurringSeriesEntity(
-        id = 500L, title = "Series Title", amount = 100.0, type = TransactionType.EXPENSE,
+        id = 500L, title = "Series Title", amount = 10_000, type = TransactionType.EXPENSE,
         categoryId = 20L, accountId = 200L, frequency = RecurrenceFrequency.MONTHLY,
         interval = 2, startDate = seriesStartDate, daysOfWeek = "1,3",
         note = "Series note", linkedGoalId = 7L
@@ -328,7 +328,7 @@ class TransactionEditViewModelTest {
 
         val captured = editionSlot.captured
         assertEquals("Transaction", captured.title)
-        assertEquals(50.0, captured.amount, 0.0)
+        assertEquals(5_000, captured.amount)
         assertEquals(TransactionType.EXPENSE, captured.type)
         assertEquals(dateSlot, captured.date)
         assertEquals(100L, captured.accountId)
@@ -379,7 +379,7 @@ class TransactionEditViewModelTest {
         assertEquals(7L, savedId)
         val captured = editionSlot.captured
         assertEquals("New", captured.title)
-        assertEquals(123.45, captured.amount, 0.0)
+        assertEquals(12_345, captured.amount)
         assertEquals(TransactionType.EXPENSE, captured.type)
         assertEquals(1L, captured.accountId)
         assertEquals(99L, captured.categoryId)

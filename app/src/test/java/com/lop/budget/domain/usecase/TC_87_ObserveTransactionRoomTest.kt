@@ -882,7 +882,7 @@ class ObserveTransactionRoomTest {
         seriesAId = transactionRepo.saveSeriesWithTags(
             RecurringSeriesEntity(
                 title = TITLE_A,
-                amount = 820.0,
+                amount = 82_000,
                 type = TransactionType.EXPENSE,
                 categoryId = categoryLogementId,
                 accountId = accountAId,
@@ -903,7 +903,7 @@ class ObserveTransactionRoomTest {
         punctualId = transactionRepo.saveWithTags(
             TransactionEntity(
                 title = TITLE_P,
-                amount = 42.5,
+                amount = 4_250,
                 type = TransactionType.EXPENSE,
                 status = TransactionStatus.PAID,
                 kind = TransactionKind.STANDARD,
@@ -937,7 +937,7 @@ class ObserveTransactionRoomTest {
         seriesCId = transactionRepo.saveSeriesWithTags(
             RecurringSeriesEntity(
                 title = TITLE_C,
-                amount = 1_250.0,
+                amount = 125_000,
                 type = TransactionType.EXPENSE,
                 categoryId = categoryControlId,
                 accountId = accountControlId,
@@ -967,7 +967,7 @@ class ObserveTransactionRoomTest {
         distantSeriesId = transactionRepo.saveSeriesWithTags(
             RecurringSeriesEntity(
                 title = TITLE_DISTANT,
-                amount = 120.0,
+                amount = 12_000,
                 type = TransactionType.EXPENSE,
                 categoryId = distantCategoryId,
                 accountId = distantAccountId,
@@ -997,7 +997,7 @@ class ObserveTransactionRoomTest {
     private suspend fun insertExceptionE(): Long = transactionRepo.saveWithTags(
         TransactionEntity(
             title = TITLE_EXCEPTION,
-            amount = 900.0,
+            amount = 90_000,
             type = TransactionType.EXPENSE,
             status = TransactionStatus.PAID,
             kind = TransactionKind.STANDARD,
@@ -1025,7 +1025,7 @@ class ObserveTransactionRoomTest {
     private fun account(name: String, color: Int) = AccountEntity(
         name = name,
         type = AccountType.CHECKING,
-        initialBalance = 1_000.0,
+        initialBalance = 100_000,
         balanceUpdatedAt = 0L,
         colorArgb = color,
         icon = "wallet",
@@ -1051,7 +1051,7 @@ class ObserveTransactionRoomTest {
         val seriesDate: Long?,
         val date: Long,
         val title: String,
-        val amount: Double,
+        val amount: Long,
         val type: TransactionType,
         val status: TransactionStatus,
         val paidAt: Long?,
@@ -1099,7 +1099,7 @@ class ObserveTransactionRoomTest {
         seriesDate = date,
         date = date,
         title = TITLE_A,
-        amount = 820.0,
+        amount = 82_000,
         type = TransactionType.EXPENSE,
         status = TransactionStatus.PLANNED,
         paidAt = null,
@@ -1120,7 +1120,7 @@ class ObserveTransactionRoomTest {
         seriesDate = date,
         date = date,
         title = TITLE_C,
-        amount = 1_250.0,
+        amount = 125_000,
         type = TransactionType.EXPENSE,
         status = TransactionStatus.PLANNED,
         paidAt = null,
@@ -1141,7 +1141,7 @@ class ObserveTransactionRoomTest {
         seriesDate = date,
         date = date,
         title = TITLE_DISTANT,
-        amount = 120.0,
+        amount = 12_000,
         type = TransactionType.EXPENSE,
         status = TransactionStatus.PLANNED,
         paidAt = null,
@@ -1162,7 +1162,7 @@ class ObserveTransactionRoomTest {
         seriesDate = FEB_10,
         date = FEB_12,
         title = TITLE_EXCEPTION,
-        amount = 900.0,
+        amount = 90_000,
         type = TransactionType.EXPENSE,
         status = TransactionStatus.PAID,
         paidAt = FEB_12,
@@ -1183,7 +1183,7 @@ class ObserveTransactionRoomTest {
         seriesDate = null,
         date = JAN_15,
         title = TITLE_P,
-        amount = 42.5,
+        amount = 4_250,
         type = TransactionType.EXPENSE,
         status = TransactionStatus.PAID,
         paidAt = JAN_15,

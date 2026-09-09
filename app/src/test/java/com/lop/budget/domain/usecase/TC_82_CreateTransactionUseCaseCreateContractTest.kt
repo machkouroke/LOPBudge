@@ -106,7 +106,7 @@ class TC_82_CreateTransactionUseCaseCreateContractTest {
         tagIds: List<Long> = listOf(tagId),
     ) = TransactionEdition(
         title = "TC-create",
-        amount = 42.5,
+        amount = 4_250,
         type = TransactionType.EXPENSE,
         date = editionDate,
         accountId = accountId,
@@ -134,7 +134,7 @@ class TC_82_CreateTransactionUseCaseCreateContractTest {
     ) = TransactionEntity(
         id = 0L,
         title = "TC-create",
-        amount = 42.5,
+        amount = 4_250,
         type = TransactionType.EXPENSE,
         status = status,
         kind = TransactionKind.STANDARD,
@@ -217,7 +217,7 @@ class TC_82_CreateTransactionUseCaseCreateContractTest {
             val expectedSeries = RecurringSeriesEntity(
                 id = 0L,
                 title = "TC-create",
-                amount = 42.5,
+                amount = 4_250,
                 type = TransactionType.EXPENSE,
                 categoryId = categoryId,
                 accountId = accountId,
