@@ -328,7 +328,7 @@ class TransactionEditViewModelTest {
 
         val captured = editionSlot.captured
         assertEquals("Transaction", captured.title)
-        assertEquals(5_000, captured.amount)
+        assertEquals(5_000L, captured.amount)
         assertEquals(TransactionType.EXPENSE, captured.type)
         assertEquals(dateSlot, captured.date)
         assertEquals(100L, captured.accountId)
@@ -379,7 +379,7 @@ class TransactionEditViewModelTest {
         assertEquals(7L, savedId)
         val captured = editionSlot.captured
         assertEquals("New", captured.title)
-        assertEquals(12_345, captured.amount)
+        assertEquals(12_345L, captured.amount)
         assertEquals(TransactionType.EXPENSE, captured.type)
         assertEquals(1L, captured.accountId)
         assertEquals(99L, captured.categoryId)

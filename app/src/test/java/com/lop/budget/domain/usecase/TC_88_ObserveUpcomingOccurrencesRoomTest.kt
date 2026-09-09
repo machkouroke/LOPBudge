@@ -199,7 +199,7 @@ class ObserveUpcomingOccurrencesRoomTest {
 
             val moved = upcoming.single { it.transaction.date == at09(2029, 3, 15) }
             assertEquals("U-03 — l'exception porte ses propres valeurs", MOVED_TITLE, moved.transaction.title)
-            assertEquals("U-03 — montant de l'exception", 99_900, moved.transaction.amount)
+            assertEquals("U-03 — montant de l'exception", 99_900L, moved.transaction.amount)
             assertEquals(
                 "U-03 — I-2 : le slot d'origine est conservé",
                 at09(2029, 2, 10),

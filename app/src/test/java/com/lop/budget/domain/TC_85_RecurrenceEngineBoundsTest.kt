@@ -273,7 +273,7 @@ class RecurrenceEngineBoundsTest {
 
         result.forEachIndexed { index, tx ->
             assertEquals("B-02 — CA-02 : titre repris de la série (occurrence #$index)", "Abonnement limites", tx.title)
-            assertEquals("B-02 — CA-02 : montant repris de la série (occurrence #$index)", 2_000, tx.amount)
+            assertEquals("B-02 — CA-02 : montant repris de la série (occurrence #$index)", 2_000L, tx.amount)
             assertEquals("B-02 — CA-02 : type repris de la série (occurrence #$index)", TransactionType.EXPENSE, tx.type)
             assertEquals("B-02 — CA-02 : compte repris de la série (occurrence #$index)", 11L, tx.accountId)
             assertEquals("B-02 — CA-02 : catégorie reprise de la série (occurrence #$index)", 21L, tx.categoryId)

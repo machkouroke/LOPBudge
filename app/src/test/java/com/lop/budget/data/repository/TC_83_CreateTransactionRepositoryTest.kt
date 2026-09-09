@@ -229,7 +229,7 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
             // CA-06 : type, montant, libelle, date, categorie, compte et statut persistes tels que saisis.
             val created = requireNotNull(transactionRepo.getById(createdId)).transaction
             assertEquals("TC-create-p", created.title)
-            assertEquals(4_250, created.amount)
+            assertEquals(4_250L, created.amount)
             assertEquals(TransactionType.EXPENSE, created.type)
             assertEquals(punctualDateTime, created.date)
             assertEquals(categoryId, created.categoryId)

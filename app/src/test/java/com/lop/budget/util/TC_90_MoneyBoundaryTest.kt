@@ -1,6 +1,7 @@
 package com.lop.budget.util
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -91,6 +92,6 @@ class MoneyBoundaryTest {
         // I-7 : le défaut à chasser, un Long centimes passé à la surcharge Double.
         val huitEurosCinquanteEtUn = Format.money(851L)
         assertEquals(Format.money(8.51), huitEurosCinquanteEtUn)
-        assertEquals(false, huitEurosCinquanteEtUn == Format.money(851.0))
+        assertNotEquals(Format.money(851.0), huitEurosCinquanteEtUn)
     }
 }
