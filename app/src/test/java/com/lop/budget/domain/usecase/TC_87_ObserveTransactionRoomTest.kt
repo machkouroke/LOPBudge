@@ -53,7 +53,8 @@ import kotlin.time.Duration.Companion.seconds
  *
  * ## Chaîne réellement exercée
  * `ObserveTransactionUseCase.invoke(id)` / `getById(id)`
- *   → `TransactionRepository.observeById` / `observeSeries` / `observeActiveSeries` / `getById`
+ *   → `TransactionRepository.observeById` / `observeSlotsAt` / `observeActiveSeries` /
+ *     `observeAllSeriesTags`
  *   → `AccountRepository.observeAll` / `getById`, `CategoryRepository.observeAll` / `getById`
  *   → `TransactionDao` / `RecurringSeriesDao` → Room (SQLite natif Robolectric)
  *   → `RecurrenceEngine.generateOccurrences` / `calculateVirtualId`
@@ -122,23 +123,44 @@ import kotlin.time.Duration.Companion.seconds
  *   ne s'abonne pas à `observeAllSeriesTags` (lignes 34-38, 60-64). La liste, elle, fournit les tags
  *   de série. CA-14 exige « les mêmes valeurs, compte, catégorie et tags que la liste ».
  *
- * ## Première exécution (9 septembre 2026)
- * 15 tests, 3 verts (D-02, D-08a, D-08b), 12 rouges. Les quatre ANO ci-dessus sont **confirmées**
- * par des échecs métier :
+ * ## Résultats (9 septembre 2026, seconde exécution)
+ * **15 tests : 5 verts, 10 rouges.** Tous les rouges portent un message métier rattaché à un CA ;
+ * aucun échec de montage ni de fixture. Les **quatre** ANO ci-dessus sont confirmées.
  * ```
- * D-01, D-07   tags=[] au lieu de [Fixe, Logement]          → ANO tags
- * D-09a, D-09b invoke(id) = null au lieu de l'occurrence     → ANO horizon calendaire
- * D-06         invoke(ancien ID virtuel) = null au lieu de E → ANO getById ignore l'exception
+ * VERTS   D-02, D-05a, D-05b, D-08a, D-08b
+ * ROUGES  D-01, D-03, D-04, D-06, D-07, D-09a, D-09b, D-10a, D-10b, D-10c
  * ```
- * D-07 était pronostiqué vert : il échoue bien, mais sur les tags, pas sur la résolution de série —
- * chaque ID résout correctement sa propre série. Le pronostic était incomplet, pas le test.
+ * Preuves relevées :
+ * ```
+ * D-01, D-07   tags=[] au lieu de [Fixe, Logement]                     → ANO tags
+ * D-09a, D-09b invoke(id) = null au lieu de l'occurrence                → ANO horizon calendaire
+ * D-03         getById(ancien ID virtuel) rend le virtuel, pas E        → ANO getById vs exception
+ * D-06         invoke(ancien ID virtuel) = null au lieu de E            → ANO getById vs exception
+ * D-04         après soft-delete, l'observation ouverte rend à nouveau
+ *              le VIRTUEL à 820,00 au lieu de null                      → ANO résurrection
+ * D-10a        après changement de `series_tags` : « 0 émission »       → ANO tags, volet
+ *              côté détail alors que la liste, elle, réémet                réactivité
+ * ```
+ * Lectures fines qui précisent le périmètre de chaque défaut :
+ * - **D-04** est la preuve directe de la résurrection : l'émission observée après la suppression est
+ *   le virtuel régénéré, tags vides, et plus rien n'est émis ensuite.
+ * - **D-10a** échoue avec **zéro émission** : le détail n'est pas seulement dépourvu de tags, il
+ *   n'est **pas abonné** à `series_tags`. Les deux volets de l'ANO sont donc démontrés séparément.
+ * - **D-10b / D-10c** montrent `account=Compte courant renommé` dans l'état observé : le renommage
+ *   se propage correctement au détail. Ces deux tests ne sont rouges **que** sur les tags ; ils
+ *   passeront au vert avec la seule correction de l'ANO tags.
+ * - **D-03** : l'observation ouverte bascule bien vers E et l'ID devient positif. Seul
+ *   `getById(ancien ID virtuel)` échoue. Le défaut est circonscrit à la lecture ponctuelle.
+ * - **D-05a / D-05b verts** : annulation de série et réduction de `endDate` retirent correctement le
+ *   virtuel des trois accès, et P reste consultable.
  *
- * Les sept autres rouges (D-03, D-04, D-05a, D-05b, D-10a, D-10b, D-10c) remontaient un
- * `TurbineAssertionError: No value produced in 3s`, sans lien avec un CA : les points de
- * synchronisation initiaux réassertaient le contenu complet du virtuel, jamais atteint à cause du
- * défaut de tags, et l'attente mourait sur un délai au lieu d'un message métier. Corrigé par
- * [awaitSlot] (synchronisation sur l'identité du slot) et par la conversion de l'absence d'émission
- * en échec métier dans [awaitEmission]. À rejouer.
+ * D-07 était pronostiqué vert : il échoue sur les tags, **pas** sur la résolution de série — chaque
+ * ID résout bien sa propre série. Le pronostic était incomplet, pas le test.
+ *
+ * La première exécution comptait sept rouges supplémentaires en `TurbineAssertionError: No value
+ * produced`, sans lien avec un CA : les synchronisations initiales réassertaient le contenu complet
+ * du virtuel, jamais atteint à cause du défaut de tags, et l'attente mourait sur un délai. Corrigé
+ * par [awaitSlot] et par la conversion de l'absence d'émission en échec métier dans [awaitEmission].
  *
  * ## Hors périmètre (ne pas revendiquer couvert par ce fichier)
  * - CA-01 et CA-06 : écritures de création et de matérialisation. Les écritures faites ici ne
