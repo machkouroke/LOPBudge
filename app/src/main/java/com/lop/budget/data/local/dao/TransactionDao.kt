@@ -17,7 +17,7 @@ interface TransactionOperations {
     fun observePlannedByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
 
     fun observeById(id: Long): Flow<TransactionWithRelations?>
-    fun observeSeries(seriesId: Long): Flow<List<TransactionWithRelations>>
+    fun observeSlotsAt(slotDates: List<Long>): Flow<List<TransactionWithRelations>>
     suspend fun getById(id: Long): TransactionWithRelations?
     suspend fun upsert(tx: TransactionEntity): Long
     suspend fun softDeleteTransaction(id: Long)
@@ -79,14 +79,23 @@ interface TransactionDao : TransactionOperations {
     )
     override fun observeById(id: Long): Flow<TransactionWithRelations?>
 
+    /**
+     * Lignes occupant l'un des slots demandés, **tombstones compris**.
+     *
+     * `deleted` n'est volontairement pas filtré, pour la même raison que [observeForMerge] : un slot
+     * supprimé continue d'occuper sa place et ne doit pas se régénérer en occurrence virtuelle
+     * (I-5). C'est l'appelant qui décide de la visibilité. L'ancien `observeSeries` filtrait
+     * `deleted = 0` et rendait le tombstone invisible au détail, qui reconstruisait alors le virtuel
+     * du slot supprimé.
+     */
     @Transaction
     @Query(
         """
-        SELECT * FROM transactions 
-        WHERE seriesId = :seriesId AND deleted = 0
+        SELECT * FROM transactions
+        WHERE seriesId IS NOT NULL AND seriesDate IN (:slotDates)
     """
     )
-    override fun observeSeries(seriesId: Long): Flow<List<TransactionWithRelations>>
+    override fun observeSlotsAt(slotDates: List<Long>): Flow<List<TransactionWithRelations>>
 
     @Transaction
     @Query(

@@ -127,4 +127,21 @@ object RecurrenceEngine {
         val virtualId = -(hash.coerceAtLeast(1)) // Toujours < 0
         return if (virtualId >= 0) -1 else virtualId
     }
+
+    /**
+     * Inverse algébrique de [calculateVirtualId] : la date de slot encodée dans [virtualId] **si**
+     * celui-ci appartient à la série [seriesId].
+     *
+     * L'inversion seule ne prouve rien : elle rend une date pour n'importe quelle série, puisque
+     * `date` est justement calculée pour satisfaire l'équation. C'est à l'appelant de départager les
+     * candidates, en vérifiant qu'un slot persisté ou une occurrence générée existe réellement à
+     * cette date pour cette série.
+     *
+     * Rend `null` lorsque l'aller-retour ne se referme pas — cas du clamp de [calculateVirtualId]
+     * sur les dates antérieures à 1970, où l'ID est écrasé à -1 et n'encode plus rien.
+     */
+    fun slotDateOf(seriesId: Long, virtualId: Long): Long? {
+        val date = -virtualId - 31 * seriesId
+        return date.takeIf { calculateVirtualId(seriesId, it) == virtualId }
+    }
 }
