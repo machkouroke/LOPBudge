@@ -48,6 +48,7 @@ import com.lop.budget.ui.components.DonutSlice
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopSearchBar
+import com.lop.budget.ui.components.PickerBottomSheet
 import com.lop.budget.ui.components.transactionDayGroups
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
@@ -69,6 +70,8 @@ fun MonthlyTransactionsScreen(
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
 
+    var showTypePicker by remember { mutableStateOf(false) }
+    var showStatusPicker by remember { mutableStateOf(false) }
     var showAccountPicker by remember { mutableStateOf(false) }
     var showCategoryPicker by remember { mutableStateOf(false) }
 
@@ -176,14 +179,7 @@ fun MonthlyTransactionsScreen(
                         item {
                             FilterChip(
                                 selected = state.type != null,
-                                onClick = { 
-                                    val next = when(state.type) {
-                                        null -> TransactionType.EXPENSE
-                                        TransactionType.EXPENSE -> TransactionType.INCOME
-                                        TransactionType.INCOME -> null
-                                    }
-                                    vm.setType(next)
-                                },
+                                onClick = { showTypePicker = true },
                                 modifier = Modifier.testTag("monthly.filter.type"),
                                 label = { 
                                     Text(when(state.type) {
@@ -208,14 +204,7 @@ fun MonthlyTransactionsScreen(
                         item {
                             FilterChip(
                                 selected = state.filter != PaidFilter.ALL,
-                                onClick = { 
-                                    val next = when(state.filter) {
-                                        PaidFilter.ALL -> PaidFilter.PAID
-                                        PaidFilter.PAID -> PaidFilter.PLANNED
-                                        PaidFilter.PLANNED -> PaidFilter.ALL
-                                    }
-                                    vm.setFilter(next)
-                                },
+                                onClick = { showStatusPicker = true },
                                 modifier = Modifier.testTag("monthly.filter.status"),
                                 label = { 
                                     Text(when(state.filter) {
@@ -316,6 +305,38 @@ fun MonthlyTransactionsScreen(
                 )
             }
         }
+    }
+
+    if (showTypePicker) {
+        PickerBottomSheet(
+            title = "Filtrer par type",
+            items = listOf(TransactionType.EXPENSE, TransactionType.INCOME),
+            isSelected = { it == state.type },
+            onSelect = {
+                vm.setType(it)
+                showTypePicker = false
+            },
+            onDismiss = { showTypePicker = false },
+            itemLabel = { if (it == TransactionType.EXPENSE) "Dépenses" else "Revenus" },
+            allowNone = true,
+            noneLabel = "Tous les types",
+        )
+    }
+
+    if (showStatusPicker) {
+        PickerBottomSheet(
+            title = "Filtrer par statut",
+            items = listOf(PaidFilter.PAID, PaidFilter.PLANNED),
+            isSelected = { it == state.filter },
+            onSelect = {
+                vm.setFilter(it ?: PaidFilter.ALL)
+                showStatusPicker = false
+            },
+            onDismiss = { showStatusPicker = false },
+            itemLabel = { if (it == PaidFilter.PAID) "Payé" else "Planifié" },
+            allowNone = true,
+            noneLabel = "Tous les statuts",
+        )
     }
 
     if (showAccountPicker) {

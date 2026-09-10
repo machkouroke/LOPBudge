@@ -132,8 +132,8 @@ fun HomeScreen(
             onOpenMonthly = { type, ym ->
                 navController.navigate(Routes.monthly(type, ym, mode = "ANALYTICS"))
             },
-            onSeeAllTransactions = { type, ym ->
-                navController.navigate(Routes.monthly(type, ym, mode = "HISTORY"))
+            onSeeAllTransactions = { ym ->
+                navController.navigate(Routes.monthly(null, ym, mode = "HISTORY"))
             },
             onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
             onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },
@@ -162,7 +162,7 @@ fun HomeContent(
     statusBarPadding: androidx.compose.ui.unit.Dp,
     onOpenTransaction: (Long) -> Unit,
     onOpenMonthly: (TransactionType, YearMonth) -> Unit,
-    onSeeAllTransactions: (TransactionType, YearMonth) -> Unit,
+    onSeeAllTransactions: (YearMonth) -> Unit,
     onOpenAccounts: () -> Unit,
     onOpenAccountDetail: (Long) -> Unit,
     onPrevMonth: () -> Unit,
@@ -345,7 +345,7 @@ fun HomeContent(
                 TransactionsDashboardWidget(
                     transactions = state.dashboardTransactions,
                     currency = state.currency,
-                    onSeeAll = { onSeeAllTransactions(TransactionType.EXPENSE, targetMonth) },
+                    onSeeAll = { onSeeAllTransactions(targetMonth) },
                     onOpenTransaction = onOpenTransaction,
                 )
             }
