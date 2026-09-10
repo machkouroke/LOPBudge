@@ -2,12 +2,11 @@ package com.lop.budget.ui.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
-import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.AccountBalance
+import com.lop.budget.domain.model.AccountBalances
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
@@ -58,7 +57,6 @@ data class HomeUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    accountRepo: AccountRepository,
     private val observeTransactionsUseCase: ObserveTransactionsUseCase,
     getAccountBalancesUseCase: GetAccountBalancesUseCase,
     detectionRepo: NotificationDetectionRepository,
@@ -108,18 +106,16 @@ class HomeViewModel @Inject constructor(
             monthData,
             settings.currency,
             month,
-            accountRepo.observeAll(),
-            getAccountBalancesUseCase.observeBalances(),
+            getAccountBalancesUseCase.observe(),
             detectedCount,
             settings.notificationDetectionEnabled
         ) { args ->
             val data = args[0] as List<*>
             val currency = args[1] as String
             val ym = args[2] as YearMonth
-            val accounts = args[3] as List<AccountEntity>
-            val balances = args[4] as Map<Long, Long>
-            val detected = args[5] as Int
-            val detectionEnabled = args[6] as Boolean
+            val balances = args[3] as AccountBalances
+            val detected = args[4] as Int
+            val detectionEnabled = args[5] as Boolean
 
             @Suppress("UNCHECKED_CAST")
             val allTxs = data[0] as List<TransactionWithRelations>
@@ -158,10 +154,6 @@ class HomeViewModel @Inject constructor(
                     )
                 }
             
-            val accountBalances = accounts.map { acc ->
-                AccountBalance(acc, balances[acc.id] ?: acc.initialBalance)
-            }
-
             val dashboardTxs = getDashboardTransactions(allTxs)
 
             HomeUiState(
@@ -177,7 +169,7 @@ class HomeViewModel @Inject constructor(
                 subscriptions = subscriptions,
                 dayGroups = dayGroups,
                 dashboardTransactions = dashboardTxs,
-                accounts = accountBalances.sortedByDescending { it.balance }.take(3),
+                accounts = balances.accounts.sortedByDescending { it.balance }.take(3),
                 txVersions = emptyMap(), // On délègue au SharedViewModel dans le Screen
                 detectedCount = detected,
                 notificationDetectionEnabled = detectionEnabled

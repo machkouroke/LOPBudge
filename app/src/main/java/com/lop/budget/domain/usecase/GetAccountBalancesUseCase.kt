@@ -2,10 +2,9 @@ package com.lop.budget.domain.usecase
 
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.TransactionRepository
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.lop.budget.domain.model.AccountBalances
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -14,18 +13,22 @@ class GetAccountBalancesUseCase @Inject constructor(
     private val accountRepo: AccountRepository,
     private val transactionRepo: TransactionRepository
 ) {
-    /** Soldes par compte, en centimes. */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    fun observeBalances(): Flow<Map<Long, Long>> {
-        return accountRepo.observeAccountBalances(
-            transactionRepo.observeAll().flatMapLatest { list ->
-                flowOf(list.map { it.transaction })
-            }
+    /**
+     * Point d'entrée unique du domaine pour les soldes (I-6).
+     *
+     * Émet les soldes par compte et le solde total portés par une même émission, donc
+     * toujours cohérents entre eux (CA-13). Les consommateurs qui affichent les deux
+     * doivent lire ce flux, et non recombiner les projections ci-dessous.
+     */
+    fun observe(): Flow<AccountBalances> =
+        accountRepo.observeBalances(
+            transactionRepo.observeAll().map { list -> list.map { it.transaction } }
         )
-    }
 
-    /** Solde total consolidé, en centimes. */
-    fun observeTotalBalance(): Flow<Long> {
-        return accountRepo.observeTotalBalance(observeBalances())
-    }
+    /** Soldes par compte, en centimes. Projection de [observe]. */
+    fun observeBalances(): Flow<Map<Long, Long>> =
+        observe().map { snapshot -> snapshot.accounts.associate { it.account.id to it.balance } }
+
+    /** Solde total consolidé, en centimes. Projection de [observe]. */
+    fun observeTotalBalance(): Flow<Long> = observe().map { it.total }
 }

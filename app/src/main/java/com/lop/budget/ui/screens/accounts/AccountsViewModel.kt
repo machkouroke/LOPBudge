@@ -2,7 +2,6 @@ package com.lop.budget.ui.screens.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
@@ -21,21 +20,20 @@ data class AccountsUiState(
 
 @HiltViewModel
 class AccountsViewModel @Inject constructor(
-    accountRepo: AccountRepository,
     getAccountBalancesUseCase: GetAccountBalancesUseCase,
     settings: SettingsRepository,
 ) : ViewModel() {
 
+    /**
+     * Comptes, soldes et total viennent d'une seule émission du point d'entrée du domaine :
+     * l'écran ne peut pas afficher un total calculé sur une autre liste de comptes que celle
+     * qu'il affiche (CA-13, I-6).
+     */
     val uiState: StateFlow<AccountsUiState> =
         combine(
-            accountRepo.observeAll(),
-            getAccountBalancesUseCase.observeBalances(),
-            getAccountBalancesUseCase.observeTotalBalance(),
+            getAccountBalancesUseCase.observe(),
             settings.currency
-        ) { accounts, balances, total, currency ->
-            val items = accounts.map { acc ->
-                AccountBalance(acc, balances[acc.id] ?: acc.initialBalance)
-            }
-            AccountsUiState(currency, total, items)
+        ) { balances, currency ->
+            AccountsUiState(currency, balances.total, balances.accounts)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountsUiState())
 }
