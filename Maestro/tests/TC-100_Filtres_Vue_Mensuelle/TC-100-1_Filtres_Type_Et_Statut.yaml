@@ -174,7 +174,7 @@ tags:
 - back
 - assertNotVisible: "Sélectionner un compte"
 - scrollUntilVisible: { element: { text: "Salaire" }, direction: DOWN }
-- scrollUntilVisible: { element: { id: "monthly.filter.category" }, direction: UP }
+- scrollUntilVisible: { element: { id: "monthly.filter.category" }, direction: RIGHT }
 
 - tapOn: { id: "monthly.filter.category" }
 - assertVisible: "Filtrer par catégorie"
