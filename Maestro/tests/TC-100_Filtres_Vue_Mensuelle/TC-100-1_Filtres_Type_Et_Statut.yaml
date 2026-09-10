@@ -1,0 +1,185 @@
+appId: com.lop.budget
+name: "TC-100-1 - Vue mensuelle : aucun filtre par défaut, sélection par feuille"
+tags:
+  - tc-100
+  - filtres
+  - monthly
+---
+# =====================================================================================
+# TC-100-1 — Filtres de la vue mensuelle : type et statut
+# -------------------------------------------------------------------------------------
+# Niveau        : E2E / UI (Maestro). Parcours visible uniquement.
+# US            : Filtres de la vue mensuelle : aucun type présélectionné et sélection
+#                 par feuille
+# Ticket        : TC-100
+# Chaîne        : Home -> « Voir tout » (recent_transactions_see_all) -> Routes.monthly
+#                 (sans argument de type) -> MonthlyTransactionsScreen mode HISTORY
+#                 -> PickerBottomSheet (type / statut) -> MonthlyTransactionsViewModel
+#
+# cas -> CA / invariant :
+#   étape 1  -> CA-01 / I-1   aucun filtre appliqué à l'ouverture
+#   étape 2  -> CA-02 / I-2   le tap sur la puce ouvre la feuille, n'applique rien
+#   étape 3  -> CA-03 / I-4   le choix ferme la feuille et filtre la liste
+#   étape 4  -> CA-04 / I-3   l'option neutre remet la liste complète
+#   étape 5  -> CA-05         idem pour le statut
+#   étape 6  -> CA-06         type et statut se combinent sans s'écraser
+#   étape 7  -> CA-08 / I-2   non-régression des puces compte et catégorie
+#
+# JDD (DatabaseSeeder, mois courant) — trois lignes qui rendent chaque oracle non vacant :
+#   « Salaire »               revenu,  planifié  (occurrence virtuelle, 1er du mois)
+#   « Loyer »                 dépense, planifiée (occurrence virtuelle, 1er du mois)
+#   « Courses Hebdomadaires » dépense, payée     (ponctuelle, hier)
+#   Les occurrences virtuelles naissent PLANNED (RecurrenceEngine.createVirtualTransaction).
+#
+# Écarts spec/code assumés :
+#   - « Planifié » ici, « Non payé » en mode Analyses : même statut, deux libellés.
+#     Convention P-3 de l'US, non harmonisé, non testé ici.
+#   - Le marqueur de sélection DANS la feuille (suffixe « ✅ » ajouté par
+#     PickerBottomSheet sous BuildConfig.DEBUG) n'est PAS asserté : c'est une
+#     décoration de build debug, pas une exigence. La valeur retenue est vérifiée
+#     sur le libellé de la puce, qui est l'affordance réelle.
+#
+# Hors périmètre (ne pas ajouter ici) :
+#   - Mode Analyses (CA-07) : cet écran n'est pas modifié par l'US.
+#   - Filtres de l'écran Recherche : ils lui sont propres.
+#   - Persistance des filtres entre deux ouvertures (convention P-4 : il n'y en a pas).
+#
+# Fragilité connue, héritée du JDD : « Courses Hebdomadaires » est daté d'hier. Le 1er
+# du mois, elle tombe dans le mois précédent et n'apparaît pas. Même limite que TC-31.
+# =====================================================================================
+
+# Given l'utilisateur arrive sur l'historique du mois via « Voir tout » (état propre)
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+- assertVisible: { id: "screen.monthly" }
+
+# ---------------------------------------------------------------------------
+# Étape 1 — CA-01 / I-1 : aucun filtre n'est présélectionné
+# ---------------------------------------------------------------------------
+- assertVisible: "Tous les types"
+- assertVisible: "Tous les statuts"
+
+# Les trois lignes du mois sont là : revenu ET dépense, payée ET planifiée.
+# C'est l'oracle qui échouait avant l'US (« Salaire » était filtré d'office).
+- scrollUntilVisible: { element: { text: "Courses Hebdomadaires" }, direction: DOWN }
+- scrollUntilVisible: { element: { text: "Loyer" }, direction: DOWN }
+- scrollUntilVisible: { element: { text: "Salaire" }, direction: DOWN }
+- scrollUntilVisible: { element: { id: "monthly.filter.type" }, direction: UP }
+
+- evalScript: |
+    console.log("TC-100-1 : CA-01 vérifié — revenus et dépenses, payées et planifiées, tous rendus")
+
+# ---------------------------------------------------------------------------
+# Étape 2 — CA-02 / I-2 : le tap ouvre la feuille et n'applique aucun filtre
+# ---------------------------------------------------------------------------
+- tapOn: { id: "monthly.filter.type" }
+- assertVisible: "Filtrer par type"
+- assertVisible: "Dépenses"
+- assertVisible: "Revenus"
+
+# On referme sans rien choisir : la valeur du filtre n'a pas bougé.
+- back
+- assertNotVisible: "Filtrer par type"
+- assertVisible: "Tous les types"
+- scrollUntilVisible: { element: { text: "Salaire" }, direction: DOWN }
+- scrollUntilVisible: { element: { id: "monthly.filter.type" }, direction: UP }
+
+- evalScript: |
+    console.log("TC-100-1 : CA-02 vérifié — ouvrir la feuille ne filtre rien")
+
+# ---------------------------------------------------------------------------
+# Étape 3 — CA-03 / I-4 : choisir « Dépenses » ferme la feuille et filtre
+# ---------------------------------------------------------------------------
+# « Dépenses » n'existe qu'à l'intérieur de la feuille à cet instant : la puce
+# affiche encore « Tous les types ». Le tap est donc non ambigu.
+- tapOn: { id: "monthly.filter.type" }
+- tapOn: "Dépenses"
+
+- assertNotVisible: "Filtrer par type"
+- assertVisible: "Dépenses"
+- assertVisible: "Courses Hebdomadaires"
+- assertVisible: "Loyer"
+- assertNotVisible: "Salaire"
+
+- evalScript: |
+    console.log("TC-100-1 : CA-03 vérifié — la liste ne contient plus de revenu")
+
+# ---------------------------------------------------------------------------
+# Étape 4 — CA-04 / I-3 : l'option neutre est atteignable et rend tout
+# ---------------------------------------------------------------------------
+- tapOn: { id: "monthly.filter.type" }
+- tapOn: "Tous les types"
+
+- assertNotVisible: "Filtrer par type"
+- assertVisible: "Tous les types"
+- scrollUntilVisible: { element: { text: "Salaire" }, direction: DOWN }
+- scrollUntilVisible: { element: { id: "monthly.filter.status" }, direction: UP }
+
+- evalScript: |
+    console.log("TC-100-1 : CA-04 vérifié — le filtre de type est retirable depuis sa feuille")
+
+# ---------------------------------------------------------------------------
+# Étape 5 — CA-05 : même geste et même contrat sur le statut
+# ---------------------------------------------------------------------------
+- tapOn: { id: "monthly.filter.status" }
+- assertVisible: "Filtrer par statut"
+- assertVisible: "Payé"
+- assertVisible: "Planifié"
+- tapOn: "Payé"
+
+- assertNotVisible: "Filtrer par statut"
+- assertVisible: "Courses Hebdomadaires"
+- assertNotVisible: "Loyer"
+- assertNotVisible: "Salaire"
+
+- tapOn: { id: "monthly.filter.status" }
+- tapOn: "Tous les statuts"
+- assertVisible: "Loyer"
+
+- evalScript: |
+    console.log("TC-100-1 : CA-05 vérifié — le statut filtre puis se retire")
+
+# ---------------------------------------------------------------------------
+# Étape 6 — CA-06 : type et statut se combinent sans s'écraser
+# ---------------------------------------------------------------------------
+- scrollUntilVisible: { element: { id: "monthly.filter.type" }, direction: UP }
+- tapOn: { id: "monthly.filter.type" }
+- tapOn: "Revenus"
+- tapOn: { id: "monthly.filter.status" }
+- tapOn: "Planifié"
+
+# Seul « Salaire » est un revenu planifié.
+- assertVisible: "Salaire"
+- assertNotVisible: "Loyer"
+- assertNotVisible: "Courses Hebdomadaires"
+
+# Retirer le statut ne retire pas le type : les dépenses ne reviennent pas.
+- tapOn: { id: "monthly.filter.status" }
+- tapOn: "Tous les statuts"
+- assertVisible: "Revenus"
+- assertVisible: "Salaire"
+- assertNotVisible: "Loyer"
+- assertNotVisible: "Courses Hebdomadaires"
+
+- evalScript: |
+    console.log("TC-100-1 : CA-06 vérifié — les deux filtres se cumulent et se retirent séparément")
+
+# ---------------------------------------------------------------------------
+# Étape 7 — CA-08 / I-2 : les quatre puces répondent au même geste
+# ---------------------------------------------------------------------------
+- tapOn: { id: "monthly.filter.type" }
+- tapOn: "Tous les types"
+
+- tapOn: { id: "monthly.filter.account" }
+- assertVisible: "Sélectionner un compte"
+- back
+- assertNotVisible: "Sélectionner un compte"
+- scrollUntilVisible: { element: { text: "Salaire" }, direction: DOWN }
+- scrollUntilVisible: { element: { id: "monthly.filter.category" }, direction: UP }
+
+- tapOn: { id: "monthly.filter.category" }
+- assertVisible: "Filtrer par catégorie"
+- back
+- assertNotVisible: "Filtrer par catégorie"
+
+- evalScript: |
+    console.log("TC-100-1 : CA-08 vérifié — compte et catégorie ouvrent toujours leur feuille")
