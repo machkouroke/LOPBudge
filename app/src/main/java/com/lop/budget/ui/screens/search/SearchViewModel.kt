@@ -8,7 +8,9 @@ import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.usecase.SearchTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import javax.inject.Inject
 
@@ -26,7 +28,7 @@ data class SearchUiState(
     val availableCategories: List<com.lop.budget.data.local.entity.CategoryEntity> = emptyList()
 )
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val accountRepo: AccountRepository,
@@ -84,7 +86,11 @@ class SearchViewModel @Inject constructor(
             availableAccounts = args[7] as List<com.lop.budget.data.local.entity.AccountEntity>,
             availableCategories = args[8] as List<com.lop.budget.data.local.entity.CategoryEntity>
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SearchUiState())
+    }
+        // `DayGroup.fromTransactions` trie et groupe toute la liste ; sans ce `flowOn` il
+        // s'exécute sur le thread UI, `stateIn` collectant sur `viewModelScope`.
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SearchUiState())
 
     fun onQueryChange(newQuery: String) {
         _query.value = newQuery

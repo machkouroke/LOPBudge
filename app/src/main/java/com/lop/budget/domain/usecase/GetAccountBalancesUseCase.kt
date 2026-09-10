@@ -21,9 +21,10 @@ class GetAccountBalancesUseCase @Inject constructor(
      * doivent lire ce flux, et non recombiner les projections ci-dessous.
      */
     fun observe(): Flow<AccountBalances> =
-        accountRepo.observeBalances(
-            transactionRepo.observeAll().map { list -> list.map { it.transaction } }
-        )
+        // `observeAllEntities` et non `observeAll().map { it.transaction }` : les relations
+        // chargées par `observeAll` (catégorie, compte, tags de chaque ligne) étaient
+        // intégralement jetées par ce `map`.
+        accountRepo.observeBalances(transactionRepo.observeAllEntities())
 
     /** Soldes par compte, en centimes. Projection de [observe]. */
     fun observeBalances(): Flow<Map<Long, Long>> =

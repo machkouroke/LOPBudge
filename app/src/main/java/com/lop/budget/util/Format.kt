@@ -11,12 +11,31 @@ import java.util.Currency
 import java.util.Locale
 
 object Format {
+    /**
+     * `NumberFormat` par couple (devise, locale).
+     *
+     * `getCurrencyInstance` fait une résolution ICU et alloue un `DecimalFormat` à chaque appel.
+     * [money] est appelée une fois par ligne de transaction, par en-tête de jour et par carte de
+     * compte, donc à chaque recomposition pendant le défilement : le coût est reconduit à chaque
+     * frame. Les clés sont bornées par le nombre de devises réellement affichées.
+     *
+     * `NumberFormat` n'est pas thread-safe et les composables lisent ce cache depuis le thread UI
+     * pendant que les ViewModels peuvent formater sur `Dispatchers.Default` : le format est donc
+     * cloné à chaque usage. Le clone reste bien moins cher que la résolution ICU complète.
+     */
+    private val currencyFormats = java.util.concurrent.ConcurrentHashMap<String, NumberFormat>()
+
+    private fun currencyFormat(currencyCode: String, locale: Locale): NumberFormat =
+        currencyFormats.getOrPut("$currencyCode|$locale") {
+            NumberFormat.getCurrencyInstance(locale).apply {
+                currency = Currency.getInstance(currencyCode)
+            }
+        }.clone() as NumberFormat
+
     /** Objectifs et dettes : montants en euros `Double` (P-4). */
     fun money(amount: Double, currencyCode: String = "EUR", locale: Locale = Locale.FRANCE): String {
         return runCatching {
-            val nf = NumberFormat.getCurrencyInstance(locale)
-            nf.currency = Currency.getInstance(currencyCode)
-            nf.format(amount)
+            currencyFormat(currencyCode, locale).format(amount)
         }.getOrElse { String.format(locale, "%.2f %s", amount, currencyCode) }
     }
 

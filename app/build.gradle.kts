@@ -54,7 +54,12 @@ android {
             excludes += "META-INF/junit-jupiter-api.kotlin_module"
         }
         jniLibs {
-            useLegacyPackaging = true
+            // `false` : les .so restent non compressés et sont chargés directement depuis l'APK
+            // au lieu d'être extraits sur le disque à l'installation. Avec onnxruntime et MLKit
+            // cela évite de stocker les bibliothèques natives en double, et c'est la condition
+            // pour que `android.useFullNativeAlignment` (alignement 16 Ko) serve à quelque chose.
+            // Supporté depuis l'API 23, or minSdk = 26.
+            useLegacyPackaging = false
         }
     }
 }

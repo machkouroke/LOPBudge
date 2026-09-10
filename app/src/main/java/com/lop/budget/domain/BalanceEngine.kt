@@ -22,25 +22,24 @@ object BalanceEngine {
         accounts: List<AccountEntity>,
         transactions: List<TransactionEntity>
     ): Map<Long, Long> {
-        val result = mutableMapOf<Long, Long>()
-
+        // Un seul passage sur chaque liste, au lieu d'un `filter` allouant une liste
+        // intermédiaire par compte : la version précédente était en O(comptes x transactions).
+        val result = LinkedHashMap<Long, Long>(accounts.size)
         for (account in accounts) {
-            var currentBalance = account.initialBalance
-            
-            // On somme TOUTES les transactions payées et non supprimées rattachées au compte.
-            // On ignore désormais balanceUpdatedAt car on utilise les transactions compensatoires (ajustements).
-            transactions
-                .filter { 
-                    it.accountId == account.id && 
-                    it.status == TransactionStatus.PAID && 
-                    !it.deleted
-                }
-                .forEach { tx ->
-                    val amount = if (tx.type == TransactionType.INCOME) tx.amount else -tx.amount
-                    currentBalance += amount
-                }
-            
-            result[account.id] = currentBalance
+            result[account.id] = account.initialBalance
+        }
+
+        // On somme TOUTES les transactions payées et non supprimées rattachées au compte.
+        // On ignore désormais balanceUpdatedAt car on utilise les transactions compensatoires (ajustements).
+        for (tx in transactions) {
+            if (tx.status != TransactionStatus.PAID || tx.deleted) continue
+
+            // `?: continue` et non `getOrPut` : une transaction rattachée à un compte absent de
+            // [accounts] ne doit pas créer d'entrée. Le résultat reste total sur [accounts] et
+            // seulement sur eux (CA-09).
+            val current = result[tx.accountId] ?: continue
+            result[tx.accountId] =
+                current + if (tx.type == TransactionType.INCOME) tx.amount else -tx.amount
         }
 
         return result

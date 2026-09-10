@@ -8,6 +8,7 @@ import com.lop.budget.domain.model.TransactionStatus
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
 
 /**
  * Moteur de récurrence centralisé.
@@ -25,7 +26,7 @@ object RecurrenceEngine {
     ): List<TransactionEntity> {
         if (series.isCancelled) return emptyList()
 
-        return validSlots(series)
+        return validSlots(series, notBefore = startRange)
             .takeWhile { it <= endRange }
             .filter { it >= startRange }
             .map { createVirtualTransaction(series, it) }
@@ -47,7 +48,7 @@ object RecurrenceEngine {
     ): List<TransactionEntity> {
         if (series.isCancelled || count <= 0) return emptyList()
 
-        return validSlots(series)
+        return validSlots(series, notBefore = after)
             .filter { it > after }
             .take(count)
             .map { createVirtualTransaction(series, it) }
@@ -62,9 +63,19 @@ object RecurrenceEngine {
      * d'itération du moteur — [generateOccurrences] et [nextOccurrences] ne font qu'y appliquer
      * leur propre critère d'arrêt.
      */
-    private fun validSlots(series: RecurringSeriesEntity): Sequence<Long> = sequence {
+    private fun validSlots(series: RecurringSeriesEntity, notBefore: Long? = null): Sequence<Long> = sequence {
+        // Le compteur doit voir TOUS les slots depuis `startDate`, donc on ne peut avancer
+        // directement au voisinage de [notBefore] que si `maxOccurrences` est absent — auquel cas
+        // `count` n'est lu par personne. Une série bornée par `maxOccurrences` est de toute façon
+        // bornée en nombre d'itérations, elle n'a pas le problème que ce raccourci corrige.
+        val fromStep = if (series.maxOccurrences == null && notBefore != null) {
+            stepBefore(series, notBefore)
+        } else {
+            0L
+        }
+
         var count = 0
-        for (slot in slots(series)) {
+        for (slot in slots(series, fromStep)) {
             if (series.endDate != null && slot > series.endDate) break
             if (series.maxOccurrences != null && count >= series.maxOccurrences) break
 
@@ -74,19 +85,51 @@ object RecurrenceEngine {
     }
 
     /**
+     * Un pas dont on est certain qu'aucun slot d'indice inférieur n'atteint [target].
+     *
+     * Sans ce raccourci, afficher un mois coûte un `ZonedDateTime` par période écoulée **depuis le
+     * début de la série** : une série quotidienne vieille de trois ans facture ~1100 décalages de
+     * date pour produire 30 occurrences. Le calcul reste calendaire, jamais arithmétique sur les
+     * millisecondes, pour ne pas réintroduire de dérive DST.
+     *
+     * Volontairement pessimiste : le quotient est tronqué, la borne est reculée d'un pas
+     * supplémentaire, et pour une série hebdomadaire par jours choisis le pas est ancré sur le
+     * lundi de la semaine de début, donc plus tôt que [series].`startDate`. Un pas de trop ne
+     * produit que quelques slots écartés par l'appelant ; un pas de moins perdrait une occurrence.
+     */
+    private fun stepBefore(series: RecurringSeriesEntity, target: Long): Long {
+        if (series.interval <= 0 || series.frequency == RecurrenceFrequency.NONE) return 0L
+        if (target <= series.startDate) return 0L
+
+        val zone = ZoneId.systemDefault()
+        val start = Instant.ofEpochMilli(series.startDate).atZone(zone)
+        val until = Instant.ofEpochMilli(target).atZone(zone)
+
+        val elapsed = when (series.frequency) {
+            RecurrenceFrequency.DAILY -> ChronoUnit.DAYS.between(start, until)
+            RecurrenceFrequency.WEEKLY -> ChronoUnit.WEEKS.between(start, until)
+            RecurrenceFrequency.MONTHLY -> ChronoUnit.MONTHS.between(start, until)
+            RecurrenceFrequency.YEARLY -> ChronoUnit.YEARS.between(start, until)
+            RecurrenceFrequency.NONE -> return 0L
+        }
+
+        return (elapsed / series.interval - 1).coerceAtLeast(0L)
+    }
+
+    /**
      * Suite paresseuse des instants de slot de la série, dans l'ordre chronologique croissant.
      *
      * Chaque slot est calculé en décalant la date de début d'origine, jamais le slot précédent.
      * C'est ce qui conserve l'ancrage calendaire quand un mois court impose un rabattement :
      * 31 janvier puis 28 février puis 31 mars, et 29 février retrouvé en année bissextile.
      */
-    private fun slots(series: RecurringSeriesEntity): Sequence<Long> = sequence {
+    private fun slots(series: RecurringSeriesEntity, fromStep: Long = 0L): Sequence<Long> = sequence {
         val start = Instant.ofEpochMilli(series.startDate).atZone(ZoneId.systemDefault())
         val selectedDays = parseDaysOfWeek(series.daysOfWeek)
         val byWeekday = series.frequency == RecurrenceFrequency.WEEKLY && selectedDays.isNotEmpty()
         val firstMonday = start.minusDays((start.dayOfWeek.value - 1).toLong())
 
-        var step = 0L
+        var step = fromStep
         while (true) {
             if (byWeekday) {
                 val monday = firstMonday.plusWeeks(step * series.interval)

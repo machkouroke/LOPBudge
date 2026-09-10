@@ -24,6 +24,11 @@ import com.lop.budget.domain.model.TransactionType
         Index("categoryId"),
         Index("seriesId"),
         Index("date"),
+        // `observeForMerge` filtre `date BETWEEN ... OR (seriesId IS NOT NULL AND seriesDate
+        // BETWEEN ...)`. Sans index sur `seriesDate`, SQLite ne peut appliquer son optimisation
+        // OR à aucune des deux branches et parcourt toute la table — sur la requête qui alimente
+        // l'accueil, la vue mensuelle, les analytics et la recherche.
+        Index("seriesDate"),
         Index("paidAt"),
         Index("status"),
         Index("kind"),

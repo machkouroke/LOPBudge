@@ -35,7 +35,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         DebtEntity::class,
         DetectedTransactionProposalEntity::class,
     ],
-    version = 19,
+    version = 20,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -51,6 +51,22 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        /**
+         * Index sur `transactions.seriesDate`, purement pour la performance de lecture.
+         *
+         * Aucune donnée n'est lue, écrite ni déplacée : la table n'est pas reconstruite,
+         * contrairement à [MIGRATION_18_19]. Le nom suit la convention Room
+         * `index_<table>_<colonne>`, sans quoi la validation de schéma au démarrage échouerait.
+         */
+        val MIGRATION_19_20 = object : androidx.room.migration.Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_transactions_seriesDate` " +
+                        "ON `transactions` (`seriesDate`)"
+                )
+            }
+        }
 
         /**
          * Bascule des montants du solde en centimes (`INTEGER`) : `accounts.initialBalance`,

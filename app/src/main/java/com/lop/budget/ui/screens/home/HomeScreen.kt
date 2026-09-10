@@ -214,9 +214,10 @@ fun HomeContent(
                     fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
                 },
                 label = "dashboard_accounts"
-            ) { targetMonth ->
-                // Using targetMonth to ensure AnimatedContent updates correctly
-                val accounts = remember(targetMonth, state.accounts) { state.accounts }
+            ) { _ ->
+                // `remember(targetMonth, state.accounts) { state.accounts }` retiré : mémoriser
+                // une valeur en la clefant sur elle-même ne fait que payer la comparaison.
+                val accounts = state.accounts
                 FloatingCard(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
@@ -279,9 +280,9 @@ fun HomeContent(
                     fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
                 },
                 label = "dashboard_subscriptions"
-            ) { targetMonth ->
-                // Using targetMonth to ensure AnimatedContent updates correctly
-                val subscriptions = remember(targetMonth, state.subscriptions) { state.subscriptions }
+            ) { _ ->
+                // Idem : `remember` clefé sur la valeur mémorisée, donc sans effet.
+                val subscriptions = state.subscriptions
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(
                         stringResource(R.string.home_unpaid_subscriptions),

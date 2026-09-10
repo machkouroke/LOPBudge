@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface TransactionOperations {
     fun observeAll(): Flow<List<TransactionWithRelations>>
+    fun observeAllEntities(): Flow<List<TransactionEntity>>
     fun observeByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
     fun observePaidByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
     fun observePlannedByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
@@ -39,6 +40,17 @@ interface TransactionDao : TransactionOperations {
     @Transaction
     @Query("SELECT * FROM transactions WHERE deleted = 0 ORDER BY date DESC")
     override fun observeAll(): Flow<List<TransactionWithRelations>>
+
+    /**
+     * Exactement les mêmes lignes que [observeAll], **sans** les relations.
+     *
+     * Destinée aux consommateurs qui n'agrègent que des montants (soldes, widget) et jetaient
+     * ensuite catégorie, compte et tags. Deux gains : Room ne construit plus les trois relations
+     * pour chaque ligne, et l'absence de `@Transaction` restreint l'observation à la seule table
+     * `transactions` — renommer un tag ne fait plus recalculer tous les soldes.
+     */
+    @Query("SELECT * FROM transactions WHERE deleted = 0 ORDER BY date DESC")
+    override fun observeAllEntities(): Flow<List<TransactionEntity>>
 
     @Transaction
     @Query(

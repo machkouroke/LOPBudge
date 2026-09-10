@@ -7,12 +7,15 @@ import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.YearMonth
 import java.time.ZoneId
@@ -86,26 +89,29 @@ class AnalyticsViewModel @Inject constructor(
         combine(month, type, settings.currency) { m, t, c -> Triple(m, t, c) }
             .flatMapLatest { (m, t, currency) ->
                 val (start, end) = m.range()
-                observeTransactionsUseCase(start, end).let { flow ->
-                    combine(flow, MutableStateFlow(Unit)) { txs, _ ->
-                        val filtered = txs.filter {
-                            it.transaction.type == t && it.transaction.status == TransactionStatus.PAID
-                        }
-                        val totalAmount = filtered.sumOf { it.transaction.amount }
-                        val grouped = filtered.groupBy { it.category }
-                            .map { (cat, list) ->
-                                val sum = list.sumOf { it.transaction.amount }
-                                CategoryBreakdown(
-                                    name = cat?.name ?: "Sans catégorie",
-                                    colorArgb = cat?.colorArgb ?: 0xFF9E9E9E.toInt(),
-                                    total = sum,
-                                    share = if (totalAmount > 0) sum.toDouble() / totalAmount else 0.0,
-                                )
-                            }
-                            .sortedByDescending { it.total }
-                        AnalyticsUiState(m, currency, t, totalAmount, grouped)
+                // `map` et non `combine(flow, MutableStateFlow(Unit))` : le second flux était
+                // constant, il n'apportait qu'un niveau de combine et sa synchronisation.
+                observeTransactionsUseCase(start, end).map { txs ->
+                    val filtered = txs.filter {
+                        it.transaction.type == t && it.transaction.status == TransactionStatus.PAID
                     }
+                    val totalAmount = filtered.sumOf { it.transaction.amount }
+                    val grouped = filtered.groupBy { it.category }
+                        .map { (cat, list) ->
+                            val sum = list.sumOf { it.transaction.amount }
+                            CategoryBreakdown(
+                                name = cat?.name ?: "Sans catégorie",
+                                colorArgb = cat?.colorArgb ?: 0xFF9E9E9E.toInt(),
+                                total = sum,
+                                share = if (totalAmount > 0) sum.toDouble() / totalAmount else 0.0,
+                            )
+                        }
+                        .sortedByDescending { it.total }
+                    AnalyticsUiState(m, currency, t, totalAmount, grouped)
                 }
             }
+            // Le filtrage, le groupement et le tri tournaient sur le thread UI : `stateIn`
+            // collecte sur `viewModelScope`, donc `Dispatchers.Main.immediate`.
+            .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AnalyticsUiState())
 }

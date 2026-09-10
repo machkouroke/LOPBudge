@@ -1,10 +1,13 @@
 package com.lop.budget.domain.model
 
+import androidx.compose.runtime.Immutable
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
+/** `@Immutable` pour la même raison que [TransactionWithRelations] : le `List` la rend instable. */
+@Immutable
 data class DayGroup(
     val date: LocalDate,
     /** Total signé de la journée, en centimes. */

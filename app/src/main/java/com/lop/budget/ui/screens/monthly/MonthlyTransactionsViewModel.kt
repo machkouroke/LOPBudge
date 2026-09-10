@@ -11,13 +11,18 @@ import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
+import com.lop.budget.domain.usecase.matchesSearchQuery
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import java.time.Instant
 import java.time.YearMonth
@@ -57,7 +62,7 @@ data class MonthlyTransactionsUiState(
     val txVersions: Map<Long, Int> = emptyMap(),
 )
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
 class MonthlyTransactionsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -102,6 +107,18 @@ class MonthlyTransactionsViewModel @Inject constructor(
         observeTransactionsUseCase(start, end)
     }
 
+    /**
+     * Entrée de **filtrage** de la recherche, distincte de [searchQuery] qui alimente le champ.
+     *
+     * Sans ce découplage, chaque frappe relance le filtrage, les trois tris, le groupement par jour
+     * et le breakdown. Le champ de saisie continue de lire la valeur brute : il reste réactif à la
+     * frappe, seul le recalcul attend la fin de la saisie.
+     *
+     * `timeoutMillis` nul sur une chaîne vide : ouvrir l'écran ou effacer le champ ne doit pas
+     * retarder le premier état de 250 ms.
+     */
+    private val filterQuery = searchQuery.debounce { q -> if (q.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
+
     val uiState: StateFlow<MonthlyTransactionsUiState> =
         combine(
             baseTxs,
@@ -116,6 +133,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
             accountRepo.observeAll(),
             categoryRepo.observeAll(),
             isAnalyticsMode,
+            filterQuery,
         ) { args ->
             val allTxs = args[0] as List<TransactionWithRelations>
             val currency = args[1] as String
@@ -130,6 +148,10 @@ class MonthlyTransactionsViewModel @Inject constructor(
             val categories = args[10] as List<com.lop.budget.data.local.entity.CategoryEntity>
             val analytics = args[11] as Boolean
 
+            // `query` (brut) n'alimente que le champ de saisie ; le filtrage lit la version
+            // stabilisée, sinon chaque frappe relance tout le pipeline ci-dessous.
+            val appliedQuery = args[12] as String
+
             val filtered = allTxs
                 .asSequence()
                 .filter { if (t == null) true else it.transaction.type == t }
@@ -140,11 +162,9 @@ class MonthlyTransactionsViewModel @Inject constructor(
                         PaidFilter.PLANNED -> it.transaction.status == TransactionStatus.PLANNED
                     }
                 }
-                .filter {
-                    if (query.isBlank()) true
-                    else it.transaction.title.contains(query, ignoreCase = true) ||
-                            it.transaction.note?.contains(query, ignoreCase = true) == true
-                }
+                // Prédicat partagé avec l'écran Recherche : la règle de correspondance ne doit
+                // pas diverger entre les deux écrans.
+                .filter { it.matchesSearchQuery(appliedQuery) }
                 .filter { if (accId == null) true else it.account?.id == accId }
                 .filter { if (catId == null) true else it.category?.id == catId }
                 .sortedByDescending { it.transaction.date }
@@ -154,24 +174,28 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 if (tx.transaction.type == TransactionType.INCOME) tx.transaction.amount else -tx.transaction.amount 
             }
 
+            // `filtered` est déjà trié par date décroissante : `groupBy` conserve l'ordre de
+            // parcours, donc les clés sortent déjà décroissantes et chaque groupe est déjà
+            // trié. Les deux re-tris et le `toSortedMap` intermédiaire étaient redondants.
             val zone = ZoneId.systemDefault()
             val dayGroups = filtered
-                .sortedByDescending { it.transaction.date }
                 .groupBy { Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate() }
-                .toSortedMap(compareByDescending { it })
                 .map { (date, list) ->
                     DayGroup(
                         date = date,
                         total = list.sumOf { tx -> if (tx.transaction.type == TransactionType.INCOME) tx.transaction.amount else -tx.transaction.amount },
-                        transactions = list.sortedByDescending { it.transaction.date },
+                        transactions = list,
                     )
                 }
+
+            // Hissé hors des `map` ci-dessous : le dénominateur est le même pour tous les
+            // groupes, le recalculer par groupe rendait le breakdown O(groupes x N).
+            val absTotal = filtered.sumOf { it.transaction.amount }
 
             val breakdown = if (mode == InsightMode.CATEGORY) {
                 filtered.groupBy { it.category }
                     .map { (cat, list) ->
                         val sum = list.sumOf { it.transaction.amount }
-                        val absTotal = filtered.sumOf { it.transaction.amount }
                         MonthlyCategoryBreakdown(
                             name = cat?.name ?: "Sans catégorie",
                             colorArgb = cat?.colorArgb ?: 0xFF9E9E9E.toInt(),
@@ -186,7 +210,6 @@ class MonthlyTransactionsViewModel @Inject constructor(
                     .groupBy({ it.first }, { it.second })
                     .map { (tag, amounts) ->
                         val sum = amounts.sum()
-                        val absTotal = filtered.sumOf { it.transaction.amount }
                         MonthlyCategoryBreakdown(
                             name = tag.name,
                             colorArgb = tag.colorArgb,
@@ -197,8 +220,10 @@ class MonthlyTransactionsViewModel @Inject constructor(
                     .sortedByDescending { it.total }
             }
 
-            // Check if results exist globally if none in current month
-            val hasResultsInOtherMonths = query.isNotBlank() && filtered.isEmpty()
+            // Check if results exist globally if none in current month.
+            // `appliedQuery` et non `query` : c'est la requête avec laquelle `filtered` a
+            // réellement été calculé, les deux ne coïncident pas pendant le debounce.
+            val hasResultsInOtherMonths = appliedQuery.isNotBlank() && filtered.isEmpty()
 
             MonthlyTransactionsUiState(
                 month = ym,
@@ -219,5 +244,14 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 isAnalyticsMode = analytics,
                 txVersions = emptyMap() // On délègue au SharedViewModel
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthlyTransactionsUiState())
+        }
+            // `stateIn(viewModelScope)` collecte sur `Dispatchers.Main.immediate` : sans ce
+            // `flowOn`, tout le filtrage/tri/groupement ci-dessus s'exécute sur le thread UI.
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonthlyTransactionsUiState())
+
+    private companion object {
+        /** Aligné sur le `debounce(300)` de `SearchViewModel`. */
+        const val SEARCH_DEBOUNCE_MS = 300L
+    }
 }

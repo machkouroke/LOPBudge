@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
 import java.time.Instant
@@ -65,8 +66,9 @@ class HomeViewModel @Inject constructor(
 
     private val month = MutableStateFlow(YearMonth.now())
 
+    // `map` et non `combine(..., flowOf(Unit))` : le second flux était constant.
     val detectedCount: StateFlow<Int> = detectionRepo.observePending()
-        .combine(kotlinx.coroutines.flow.flowOf(Unit)) { list, _ -> list.size }
+        .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     fun setMonth(value: YearMonth) { month.value = value }
@@ -141,16 +143,18 @@ class HomeViewModel @Inject constructor(
 
             val payday = nextPayday(allTxs)
 
+            // Un seul tri : `groupBy` conserve l'ordre de parcours, donc les clés sortent déjà
+            // par date décroissante et chaque groupe est déjà trié. Le `toSortedMap` et le
+            // re-tri par groupe reproduisaient un ordre déjà acquis.
             val zone = ZoneId.systemDefault()
             val dayGroups = allTxs
                 .sortedByDescending { it.transaction.date }
                 .groupBy { Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate() }
-                .toSortedMap(compareByDescending { it })
                 .map { (date, list) ->
                     DayGroup(
                         date = date,
                         total = list.sumOf { tx -> if (tx.transaction.type == TransactionType.INCOME) tx.transaction.amount else -tx.transaction.amount },
-                        transactions = list.sortedByDescending { it.transaction.date },
+                        transactions = list,
                     )
                 }
             
@@ -190,17 +194,23 @@ class HomeViewModel @Inject constructor(
             }
     }
 
+    /**
+     * Les 3 transactions du tableau de bord : celles du jour d'abord, puis les plus récentes.
+     *
+     * Les bornes de la journée sont converties **une fois** en millis. La version précédente
+     * construisait un `ZonedDateTime` par comparaison, soit O(n log n) allocations pour ne
+     * garder que 3 éléments. `date in dayStart until dayEnd` est le même prédicat que
+     * `toLocalDate() == today`, au test d'appartenance près.
+     */
     private fun getDashboardTransactions(txs: List<TransactionWithRelations>): List<TransactionWithRelations> {
-        val now = System.currentTimeMillis()
         val zone = ZoneId.systemDefault()
-        val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        val today = LocalDate.now(zone)
+        val dayStart = today.atStartOfDay(zone).toInstant().toEpochMilli()
+        val dayEnd = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
 
-        val sorted = txs.sortedWith(
-            compareByDescending<TransactionWithRelations> {
-                val txDate = Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate()
-                txDate == today
-            }.thenByDescending { it.transaction.date }
-        )
-        return sorted.take(3)
+        return txs.sortedWith(
+            compareByDescending<TransactionWithRelations> { it.transaction.date in dayStart until dayEnd }
+                .thenByDescending { it.transaction.date }
+        ).take(3)
     }
 }

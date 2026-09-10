@@ -50,13 +50,15 @@ class BalanceWidget : GlanceAppWidget() {
         val repo = ep.transactionRepository()
         val settings = ep.settingsRepository()
 
-        val txs = repo.observeAll().first()
+        // `observeAllEntities` : le widget n'agrège que des montants, les relations chargées
+        // par `observeAll` pour chaque ligne étaient toutes jetées.
+        val txs = repo.observeAllEntities().first()
         val currency = settings.currency.first()
-        val income = txs.filter { it.transaction.type == TransactionType.INCOME && it.transaction.status == TransactionStatus.PAID }
-            .sumOf { it.transaction.amount }
-        val expense = txs.filter { it.transaction.type == TransactionType.EXPENSE && it.transaction.status == TransactionStatus.PAID }
-            .sumOf { it.transaction.amount }
-        val upcoming = txs.count { it.transaction.status == TransactionStatus.PLANNED && it.transaction.date >= System.currentTimeMillis() }
+        val income = txs.filter { it.type == TransactionType.INCOME && it.status == TransactionStatus.PAID }
+            .sumOf { it.amount }
+        val expense = txs.filter { it.type == TransactionType.EXPENSE && it.status == TransactionStatus.PAID }
+            .sumOf { it.amount }
+        val upcoming = txs.count { it.status == TransactionStatus.PLANNED && it.date >= System.currentTimeMillis() }
 
         provideContent {
             WidgetContent(balance = income - expense, currency = currency, upcoming = upcoming)

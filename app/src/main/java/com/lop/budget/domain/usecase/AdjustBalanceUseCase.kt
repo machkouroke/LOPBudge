@@ -20,7 +20,8 @@ class AdjustBalanceUseCase @Inject constructor(
     /** [newTargetBalance] est exprimé en centimes, comme le solde renvoyé par le moteur. */
     suspend fun adjust(accountId: Long, newTargetBalance: Long) {
         val account = accountRepo.getById(accountId) ?: return
-        val allTransactions = transactionRepo.observeAll().first().map { it.transaction }
+        // Seuls les montants comptent ici : inutile de faire charger les relations par Room.
+        val allTransactions = transactionRepo.observeAllEntities().first()
 
         val currentBalances = BalanceEngine.calculateBalances(listOf(account), allTransactions)
         val currentBalance = currentBalances[accountId] ?: account.initialBalance
