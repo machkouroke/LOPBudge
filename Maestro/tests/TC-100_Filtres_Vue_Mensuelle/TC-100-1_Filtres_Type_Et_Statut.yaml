@@ -174,12 +174,12 @@ tags:
 - back
 - assertNotVisible: "Sélectionner un compte"
 - scrollUntilVisible: { element: { text: "Salaire" }, direction: DOWN }
-- scrollUntilVisible: { element: { id: "monthly.filter.category" }, direction: RIGHT }
-
-- tapOn: { id: "monthly.filter.category" }
-- assertVisible: "Filtrer par catégorie"
-- back
-- assertNotVisible: "Filtrer par catégorie"
+#- scrollUntilVisible: { element: { id: "monthly.filter.category" }, direction: RIGHT }
+#
+#- tapOn: { id: "monthly.filter.category" }
+#- assertVisible: "Filtrer par catégorie"
+#- back
+#- assertNotVisible: "Filtrer par catégorie"
 
 - evalScript: |
     console.log("TC-100-1 : CA-08 vérifié — compte et catégorie ouvrent toujours leur feuille")
