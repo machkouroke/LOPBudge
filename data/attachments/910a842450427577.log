@@ -1,0 +1,330 @@
+23:27:41.355 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Define variables RUNNING
+23:27:41.355 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Define variables COMPLETED
+23:27:41.355 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Apply configuration RUNNING
+23:27:41.356 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Apply configuration COMPLETED
+23:27:41.356 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run ../../.maestro/subflows/bootstrap_monthly.yaml RUNNING
+23:27:41.356 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Apply configuration RUNNING
+23:27:41.356 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Apply configuration COMPLETED
+23:27:41.356 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run ../../scripts/dates.js RUNNING
+23:27:41.384 [ INFO] maestro.orchestra.Orchestra.executeCommands$lambda$23$lambda$21: JsConsole: Maestro Dates Initialized: Prev=août / Août / 08 (2026)
+23:27:41.384 [ INFO] maestro.orchestra.Orchestra.executeCommands$lambda$23$lambda$21: JsConsole: Maestro Dates Initialized: Curr=septembre / Sept. / 09 (2026)
+23:27:41.385 [ INFO] maestro.orchestra.Orchestra.executeCommands$lambda$23$lambda$21: JsConsole: Maestro Dates Initialized: Next=octobre / Oct. / 10 (2026)
+23:27:41.385 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run ../../scripts/dates.js COMPLETED
+23:27:41.385 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Launch app "com.lop.budget" with clear state RUNNING
+23:27:41.386 [ INFO] maestro.Maestro.clearAppState$lambda$8: Clearing app state com.lop.budget
+23:27:43.164 [ INFO] maestro.Maestro.launchApp$lambda$5: Launching app com.lop.budget
+23:27:43.164 [ INFO] maestro.Maestro.launchApp$lambda$5: Stopping com.lop.budget app during launch
+23:27:43.248 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Launch app "com.lop.budget" with clear state COMPLETED
+23:27:43.248 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run open_monthly_history.yaml RUNNING
+23:27:43.248 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Apply configuration RUNNING
+23:27:43.248 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Apply configuration COMPLETED
+23:27:43.248 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run flow when id: screen.monthly is not visible RUNNING
+23:27:43.789 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Scrolling DOWN until id: recent_transactions_see_all is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering enabled RUNNING
+23:27:44.547 [ WARN] maestro.orchestra.Orchestra.scrollUntilVisible: Error: maestro.MaestroException$ElementNotFound: Element not found: Id matching regex: recent_transactions_see_all
+23:27:44.554 [ INFO] maestro.Maestro.swipeFromCenter: Swiping UP from center
+23:27:48.680 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Scrolling try count: 0, DeviceWidth: 1080, DeviceWidth: 2400
+23:27:48.680 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Element bounds: Bounds(x=763, y=2033, width=243, height=126)
+23:27:48.680 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Visibility Percent: 1.0
+23:27:48.680 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Command centerElement: ScrollUntilVisibleCommand(selector=ElementSelector(textRegex=null, idRegex=recent_transactions_see_all, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null, css=null), direction=DOWN, scrollDuration=601, visibilityPercentage=100, timeout=20000, waitToSettleTimeoutMs=null, centerElement=true, originalSpeedValue=40, label=null, optional=false).centerElement
+23:27:48.680 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: visibilityPercentageNormalized: 1.0
+23:27:48.683 [ INFO] maestro.Maestro.swipeFromCenter: Swiping UP from center
+23:27:49.952 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Scrolling try count: 1, DeviceWidth: 1080, DeviceWidth: 2400
+23:27:49.953 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Element bounds: Bounds(x=763, y=1304, width=243, height=126)
+23:27:49.953 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Visibility Percent: 1.0
+23:27:49.953 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Command centerElement: ScrollUntilVisibleCommand(selector=ElementSelector(textRegex=null, idRegex=recent_transactions_see_all, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null, css=null), direction=DOWN, scrollDuration=601, visibilityPercentage=100, timeout=20000, waitToSettleTimeoutMs=null, centerElement=true, originalSpeedValue=40, label=null, optional=false).centerElement
+23:27:49.953 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: visibilityPercentageNormalized: 1.0
+23:27:49.953 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Scrolling DOWN until id: recent_transactions_see_all is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering enabled COMPLETED
+23:27:49.953 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on id: recent_transactions_see_all RUNNING
+23:27:50.042 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=recent_transactions_see_all, clickable=true, bounds=[763,1304][1006,1430], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=true, error=}, children=[TreeNode(attributes={text=Voir tout, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[795,1340][932,1393], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[763,1314][1006,1419], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.Button, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false)], clickable=true, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=763, y=1304, width=243, height=126))
+23:27:51.280 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:27:51.280 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (884, 1367) using hierarchy based logic for wait
+23:27:52.454 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:27:52.454 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on id: recent_transactions_see_all COMPLETED
+23:27:52.454 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that id: screen.monthly is visible RUNNING
+23:27:52.573 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that id: screen.monthly is visible COMPLETED
+23:27:52.573 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run flow when id: screen.monthly is not visible COMPLETED
+23:27:52.573 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Wait for animation to end within 5000 ms RUNNING
+23:27:52.573 [ INFO] maestro.Maestro.waitForAnimationToEnd$lambda$53: Waiting for animation to end with timeout 5000
+23:27:52.573 [TRACE] maestro.utils.ScreenshotUtils.takeScreenshot: Taking screenshot to byte array
+23:27:52.573 [TRACE] maestro.utils.ScreenshotUtils.takeScreenshot: Taking screenshot to output sink
+23:27:52.788 [TRACE] maestro.utils.ScreenshotUtils.takeScreenshot: Taking screenshot to byte array
+23:27:52.788 [TRACE] maestro.utils.ScreenshotUtils.takeScreenshot: Taking screenshot to output sink
+23:27:53.164 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Wait for animation to end within 5000 ms COMPLETED
+23:27:53.164 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run open_monthly_history.yaml COMPLETED
+23:27:53.164 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run ../../.maestro/subflows/bootstrap_monthly.yaml COMPLETED
+23:27:53.164 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that id: screen.monthly is visible RUNNING
+23:27:53.246 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that id: screen.monthly is visible COMPLETED
+23:27:53.246 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Tous les types" is visible RUNNING
+23:27:53.325 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Tous les types" is visible COMPLETED
+23:27:53.325 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Tous les statuts" is visible RUNNING
+23:27:53.450 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Tous les statuts" is visible COMPLETED
+23:27:53.450 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Scrolling DOWN until "Courses Hebdomadaires" is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled RUNNING
+23:27:53.578 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Scrolling try count: 0, DeviceWidth: 1080, DeviceWidth: 2400
+23:27:53.578 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Element bounds: Bounds(x=238, y=1171, width=463, height=49)
+23:27:53.578 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Visibility Percent: 1.0
+23:27:53.578 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Command centerElement: ScrollUntilVisibleCommand(selector=ElementSelector(textRegex=Courses Hebdomadaires, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null, css=null), direction=DOWN, scrollDuration=601, visibilityPercentage=100, timeout=20000, waitToSettleTimeoutMs=null, centerElement=false, originalSpeedValue=40, label=null, optional=false).centerElement
+23:27:53.578 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: visibilityPercentageNormalized: 1.0
+23:27:53.578 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Scrolling DOWN until "Courses Hebdomadaires" is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled COMPLETED
+23:27:53.578 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Scrolling DOWN until "Loyer" is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled RUNNING
+23:27:53.666 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Scrolling try count: 0, DeviceWidth: 1080, DeviceWidth: 2400
+23:27:53.666 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Element bounds: Bounds(x=238, y=1761, width=103, height=49)
+23:27:53.666 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Visibility Percent: 1.0
+23:27:53.666 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Command centerElement: ScrollUntilVisibleCommand(selector=ElementSelector(textRegex=Loyer, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null, css=null), direction=DOWN, scrollDuration=601, visibilityPercentage=100, timeout=20000, waitToSettleTimeoutMs=null, centerElement=false, originalSpeedValue=40, label=null, optional=false).centerElement
+23:27:53.666 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: visibilityPercentageNormalized: 1.0
+23:27:53.666 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Scrolling DOWN until "Loyer" is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled COMPLETED
+23:27:53.667 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Scrolling DOWN until "Salaire" is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled RUNNING
+23:27:53.789 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Scrolling try count: 0, DeviceWidth: 1080, DeviceWidth: 2400
+23:27:53.789 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Element bounds: Bounds(x=238, y=1529, width=127, height=49)
+23:27:53.789 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Visibility Percent: 1.0
+23:27:53.789 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Command centerElement: ScrollUntilVisibleCommand(selector=ElementSelector(textRegex=Salaire, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null, css=null), direction=DOWN, scrollDuration=601, visibilityPercentage=100, timeout=20000, waitToSettleTimeoutMs=null, centerElement=false, originalSpeedValue=40, label=null, optional=false).centerElement
+23:27:53.789 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: visibilityPercentageNormalized: 1.0
+23:27:53.790 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Scrolling DOWN until "Salaire" is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled COMPLETED
+23:27:53.790 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Scrolling UP until id: monthly.filter.type is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled RUNNING
+23:27:53.865 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Scrolling try count: 0, DeviceWidth: 1080, DeviceWidth: 2400
+23:27:53.866 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Element bounds: Bounds(x=53, y=640, width=363, height=126)
+23:27:53.866 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Visibility Percent: 1.0
+23:27:53.866 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Command centerElement: ScrollUntilVisibleCommand(selector=ElementSelector(textRegex=null, idRegex=monthly.filter.type, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null, css=null), direction=UP, scrollDuration=601, visibilityPercentage=100, timeout=20000, waitToSettleTimeoutMs=null, centerElement=false, originalSpeedValue=40, label=null, optional=false).centerElement
+23:27:53.866 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: visibilityPercentageNormalized: 1.0
+23:27:53.866 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Scrolling UP until id: monthly.filter.type is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled COMPLETED
+23:27:53.866 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run console.log("TC-100-1 : CA-01 vérifié — revenus et dépenses, payées et planifiées, tous rendus")
+ RUNNING
+23:27:53.866 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run console.log("TC-100-1 : CA-01 vérifié — revenus et dépenses, payées et planifiées, tous rendus")
+ COMPLETED
+23:27:53.866 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on id: monthly.filter.type RUNNING
+23:27:53.984 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=monthly.filter.type, clickable=true, bounds=[53,640][416,766], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=true, error=}, children=[TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[35,641][161,767], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=false, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=Tous les types, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[142,682][374,725], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[53,661][416,745], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.CheckBox, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false)], clickable=true, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=53, y=640, width=363, height=126))
+23:27:55.207 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:27:55.208 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (234, 703) using hierarchy based logic for wait
+23:27:57.034 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:27:57.035 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on id: monthly.filter.type COMPLETED
+23:27:57.035 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Filtrer par type" is visible RUNNING
+23:27:57.095 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Filtrer par type" is visible COMPLETED
+23:27:57.095 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Dépenses" is visible RUNNING
+23:27:57.155 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Dépenses" is visible COMPLETED
+23:27:57.155 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Revenus" is visible RUNNING
+23:27:57.211 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Revenus" is visible COMPLETED
+23:27:57.211 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Press back RUNNING
+23:27:57.211 [ INFO] maestro.Maestro.backPress: Pressing back
+23:27:57.945 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Press back COMPLETED
+23:27:57.945 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Filtrer par type" is not visible RUNNING
+23:27:58.579 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Filtrer par type" is not visible COMPLETED
+23:27:58.579 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Tous les types" is visible RUNNING
+23:27:58.724 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Tous les types" is visible COMPLETED
+23:27:58.724 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Scrolling DOWN until "Salaire" is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled RUNNING
+23:27:58.840 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Scrolling try count: 0, DeviceWidth: 1080, DeviceWidth: 2400
+23:27:58.840 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Element bounds: Bounds(x=238, y=1529, width=127, height=49)
+23:27:58.840 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Visibility Percent: 1.0
+23:27:58.840 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Command centerElement: ScrollUntilVisibleCommand(selector=ElementSelector(textRegex=Salaire, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null, css=null), direction=DOWN, scrollDuration=601, visibilityPercentage=100, timeout=20000, waitToSettleTimeoutMs=null, centerElement=false, originalSpeedValue=40, label=null, optional=false).centerElement
+23:27:58.840 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: visibilityPercentageNormalized: 1.0
+23:27:58.840 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Scrolling DOWN until "Salaire" is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled COMPLETED
+23:27:58.840 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Scrolling UP until id: monthly.filter.type is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled RUNNING
+23:27:59.000 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Scrolling try count: 0, DeviceWidth: 1080, DeviceWidth: 2400
+23:27:59.000 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Element bounds: Bounds(x=53, y=640, width=363, height=126)
+23:27:59.000 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Visibility Percent: 1.0
+23:27:59.000 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Command centerElement: ScrollUntilVisibleCommand(selector=ElementSelector(textRegex=null, idRegex=monthly.filter.type, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null, css=null), direction=UP, scrollDuration=601, visibilityPercentage=100, timeout=20000, waitToSettleTimeoutMs=null, centerElement=false, originalSpeedValue=40, label=null, optional=false).centerElement
+23:27:59.000 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: visibilityPercentageNormalized: 1.0
+23:27:59.000 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Scrolling UP until id: monthly.filter.type is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled COMPLETED
+23:27:59.000 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run console.log("TC-100-1 : CA-02 vérifié — ouvrir la feuille ne filtre rien")
+ RUNNING
+23:27:59.000 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run console.log("TC-100-1 : CA-02 vérifié — ouvrir la feuille ne filtre rien")
+ COMPLETED
+23:27:59.000 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on id: monthly.filter.type RUNNING
+23:27:59.068 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=monthly.filter.type, clickable=true, bounds=[53,640][416,766], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=true, error=}, children=[TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[35,641][161,767], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=false, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=Tous les types, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[142,682][374,725], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[53,661][416,745], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.CheckBox, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false)], clickable=true, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=53, y=640, width=363, height=126))
+23:28:00.257 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:00.258 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (234, 703) using hierarchy based logic for wait
+23:28:02.130 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:02.131 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on id: monthly.filter.type COMPLETED
+23:28:02.131 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on "Dépenses" RUNNING
+23:28:02.191 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=Dépenses, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[95,1997][985,2046], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=95, y=1997, width=890, height=49))
+23:28:03.399 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:03.399 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (540, 2021) using hierarchy based logic for wait
+23:28:04.372 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:04.372 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on "Dépenses" COMPLETED
+23:28:04.372 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Filtrer par type" is not visible RUNNING
+23:28:05.035 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Filtrer par type" is not visible COMPLETED
+23:28:05.035 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Dépenses" is visible RUNNING
+23:28:05.101 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Dépenses" is visible COMPLETED
+23:28:05.102 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Courses Hebdomadaires" is visible RUNNING
+23:28:05.208 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Courses Hebdomadaires" is visible COMPLETED
+23:28:05.208 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Loyer" is visible RUNNING
+23:28:05.321 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Loyer" is visible COMPLETED
+23:28:05.321 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Salaire" is not visible RUNNING
+23:28:05.896 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Salaire" is not visible COMPLETED
+23:28:05.896 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run console.log("TC-100-1 : CA-03 vérifié — la liste ne contient plus de revenu")
+ RUNNING
+23:28:05.897 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run console.log("TC-100-1 : CA-03 vérifié — la liste ne contient plus de revenu")
+ COMPLETED
+23:28:05.897 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on id: monthly.filter.type RUNNING
+23:28:06.008 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=monthly.filter.type, clickable=true, bounds=[53,640][343,766], enabled=true, focused=false, checked=true, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=true, error=}, children=[TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[35,641][161,767], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=false, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=Dépenses, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[142,682][301,725], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[53,661][343,745], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.CheckBox, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false)], clickable=true, enabled=true, focused=false, checked=true, selected=false), bounds=Bounds(x=53, y=640, width=290, height=126))
+23:28:07.231 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:07.232 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (198, 703) using hierarchy based logic for wait
+23:28:08.855 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:08.855 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on id: monthly.filter.type COMPLETED
+23:28:08.855 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on "Tous les types" RUNNING
+23:28:08.917 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=Tous les types, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[95,1818][985,1867], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=95, y=1818, width=890, height=49))
+23:28:10.091 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:10.091 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (540, 1842) using hierarchy based logic for wait
+23:28:11.119 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:11.119 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on "Tous les types" COMPLETED
+23:28:11.119 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Filtrer par type" is not visible RUNNING
+23:28:11.831 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Filtrer par type" is not visible COMPLETED
+23:28:11.831 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Tous les types" is visible RUNNING
+23:28:11.944 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Tous les types" is visible COMPLETED
+23:28:11.944 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Scrolling DOWN until "Salaire" is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled RUNNING
+23:28:12.025 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Scrolling try count: 0, DeviceWidth: 1080, DeviceWidth: 2400
+23:28:12.025 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Element bounds: Bounds(x=238, y=1529, width=127, height=49)
+23:28:12.025 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Visibility Percent: 1.0
+23:28:12.025 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Command centerElement: ScrollUntilVisibleCommand(selector=ElementSelector(textRegex=Salaire, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null, css=null), direction=DOWN, scrollDuration=601, visibilityPercentage=100, timeout=20000, waitToSettleTimeoutMs=null, centerElement=false, originalSpeedValue=40, label=null, optional=false).centerElement
+23:28:12.025 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: visibilityPercentageNormalized: 1.0
+23:28:12.025 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Scrolling DOWN until "Salaire" is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled COMPLETED
+23:28:12.025 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Scrolling UP until id: monthly.filter.status is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled RUNNING
+23:28:12.100 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Scrolling try count: 0, DeviceWidth: 1080, DeviceWidth: 2400
+23:28:12.100 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Element bounds: Bounds(x=437, y=640, width=341, height=126)
+23:28:12.100 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Visibility Percent: 1.0
+23:28:12.100 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Command centerElement: ScrollUntilVisibleCommand(selector=ElementSelector(textRegex=null, idRegex=monthly.filter.status, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null, css=null), direction=UP, scrollDuration=601, visibilityPercentage=100, timeout=20000, waitToSettleTimeoutMs=null, centerElement=false, originalSpeedValue=40, label=null, optional=false).centerElement
+23:28:12.101 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: visibilityPercentageNormalized: 1.0
+23:28:12.101 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Scrolling UP until id: monthly.filter.status is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled COMPLETED
+23:28:12.101 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run console.log("TC-100-1 : CA-04 vérifié — le filtre de type est retirable depuis sa feuille")
+ RUNNING
+23:28:12.101 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run console.log("TC-100-1 : CA-04 vérifié — le filtre de type est retirable depuis sa feuille")
+ COMPLETED
+23:28:12.101 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on id: monthly.filter.status RUNNING
+23:28:12.212 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=monthly.filter.status, clickable=true, bounds=[437,640][778,766], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=true, error=}, children=[TreeNode(attributes={text=Tous les statuts, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[479,682][736,725], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[437,661][778,745], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.CheckBox, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false)], clickable=true, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=437, y=640, width=341, height=126))
+23:28:13.435 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:13.436 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (607, 703) using hierarchy based logic for wait
+23:28:15.136 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:15.137 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on id: monthly.filter.status COMPLETED
+23:28:15.137 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Filtrer par statut" is visible RUNNING
+23:28:15.237 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Filtrer par statut" is visible COMPLETED
+23:28:15.237 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Payé" is visible RUNNING
+23:28:15.359 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Payé" is visible COMPLETED
+23:28:15.359 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Planifié" is visible RUNNING
+23:28:15.483 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Planifié" is visible COMPLETED
+23:28:15.483 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on "Payé" RUNNING
+23:28:15.522 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=Payé, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[95,1997][985,2046], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=95, y=1997, width=890, height=49))
+23:28:17.071 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:17.071 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (540, 2021) using hierarchy based logic for wait
+23:28:17.967 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:17.967 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on "Payé" COMPLETED
+23:28:17.967 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Filtrer par statut" is not visible RUNNING
+23:28:18.635 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Filtrer par statut" is not visible COMPLETED
+23:28:18.635 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Courses Hebdomadaires" is visible RUNNING
+23:28:18.744 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Courses Hebdomadaires" is visible COMPLETED
+23:28:18.744 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Loyer" is not visible RUNNING
+23:28:19.363 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Loyer" is not visible COMPLETED
+23:28:19.363 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Salaire" is not visible RUNNING
+23:28:20.023 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Salaire" is not visible COMPLETED
+23:28:20.024 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on id: monthly.filter.status RUNNING
+23:28:20.128 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=monthly.filter.status, clickable=true, bounds=[437,640][600,766], enabled=true, focused=false, checked=true, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=true, error=}, children=[TreeNode(attributes={text=Payé, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[479,682][558,725], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[437,661][600,745], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.CheckBox, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false)], clickable=true, enabled=true, focused=false, checked=true, selected=false), bounds=Bounds(x=437, y=640, width=163, height=126))
+23:28:21.347 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:21.348 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (518, 703) using hierarchy based logic for wait
+23:28:22.955 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:22.955 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on id: monthly.filter.status COMPLETED
+23:28:22.955 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on "Tous les statuts" RUNNING
+23:28:22.970 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=Tous les statuts, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[95,1818][985,1867], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=95, y=1818, width=890, height=49))
+23:28:24.106 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:24.106 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (540, 1842) using hierarchy based logic for wait
+23:28:25.116 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:25.116 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on "Tous les statuts" COMPLETED
+23:28:25.116 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Loyer" is visible RUNNING
+23:28:25.228 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Loyer" is visible COMPLETED
+23:28:25.228 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run console.log("TC-100-1 : CA-05 vérifié — le statut filtre puis se retire")
+ RUNNING
+23:28:25.228 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run console.log("TC-100-1 : CA-05 vérifié — le statut filtre puis se retire")
+ COMPLETED
+23:28:25.228 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Scrolling UP until id: monthly.filter.type is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled RUNNING
+23:28:25.340 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Scrolling try count: 0, DeviceWidth: 1080, DeviceWidth: 2400
+23:28:25.340 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Element bounds: Bounds(x=53, y=640, width=363, height=126)
+23:28:25.340 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Visibility Percent: 1.0
+23:28:25.340 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Command centerElement: ScrollUntilVisibleCommand(selector=ElementSelector(textRegex=null, idRegex=monthly.filter.type, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null, css=null), direction=UP, scrollDuration=601, visibilityPercentage=100, timeout=20000, waitToSettleTimeoutMs=null, centerElement=false, originalSpeedValue=40, label=null, optional=false).centerElement
+23:28:25.340 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: visibilityPercentageNormalized: 1.0
+23:28:25.340 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Scrolling UP until id: monthly.filter.type is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled COMPLETED
+23:28:25.340 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on id: monthly.filter.type RUNNING
+23:28:25.448 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=monthly.filter.type, clickable=true, bounds=[53,640][416,766], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=true, error=}, children=[TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[35,641][161,767], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=false, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=Tous les types, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[142,682][374,725], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[53,661][416,745], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.CheckBox, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false)], clickable=true, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=53, y=640, width=363, height=126))
+23:28:26.675 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:26.676 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (234, 703) using hierarchy based logic for wait
+23:28:28.450 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:28.451 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on id: monthly.filter.type COMPLETED
+23:28:28.451 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on "Revenus" RUNNING
+23:28:28.515 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=Revenus, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[95,2162][985,2211], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=95, y=2162, width=890, height=49))
+23:28:29.690 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:29.691 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (540, 2186) using hierarchy based logic for wait
+23:28:30.593 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:30.593 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on "Revenus" COMPLETED
+23:28:30.593 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on id: monthly.filter.status RUNNING
+23:28:30.655 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=monthly.filter.status, clickable=true, bounds=[343,640][684,766], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=true, error=}, children=[TreeNode(attributes={text=Tous les statuts, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[385,682][642,725], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[343,661][684,745], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.CheckBox, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false)], clickable=true, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=343, y=640, width=341, height=126))
+23:28:31.834 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:31.834 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (513, 703) using hierarchy based logic for wait
+23:28:33.390 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:33.390 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on id: monthly.filter.status COMPLETED
+23:28:33.391 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on "Planifié" RUNNING
+23:28:33.451 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=Planifié, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[95,2162][985,2211], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=95, y=2162, width=890, height=49))
+23:28:34.662 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:34.663 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (540, 2186) using hierarchy based logic for wait
+23:28:35.519 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:35.519 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on "Planifié" COMPLETED
+23:28:35.519 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Salaire" is visible RUNNING
+23:28:35.594 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Salaire" is visible COMPLETED
+23:28:35.594 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Loyer" is not visible RUNNING
+23:28:36.287 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Loyer" is not visible COMPLETED
+23:28:36.287 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Courses Hebdomadaires" is not visible RUNNING
+23:28:36.927 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Courses Hebdomadaires" is not visible COMPLETED
+23:28:36.927 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on id: monthly.filter.status RUNNING
+23:28:36.987 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=monthly.filter.status, clickable=true, bounds=[343,640][547,766], enabled=true, focused=false, checked=true, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=true, error=}, children=[TreeNode(attributes={text=Planifié, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[385,682][505,725], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[343,661][547,745], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.CheckBox, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false)], clickable=true, enabled=true, focused=false, checked=true, selected=false), bounds=Bounds(x=343, y=640, width=204, height=126))
+23:28:38.160 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:38.161 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (445, 703) using hierarchy based logic for wait
+23:28:39.786 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:39.787 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on id: monthly.filter.status COMPLETED
+23:28:39.787 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on "Tous les statuts" RUNNING
+23:28:39.812 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=Tous les statuts, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[95,1818][985,1867], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=95, y=1818, width=890, height=49))
+23:28:41.018 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:41.019 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (540, 1842) using hierarchy based logic for wait
+23:28:41.819 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:41.819 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on "Tous les statuts" COMPLETED
+23:28:41.819 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Revenus" is visible RUNNING
+23:28:41.880 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Revenus" is visible COMPLETED
+23:28:41.880 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Salaire" is visible RUNNING
+23:28:41.980 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Salaire" is visible COMPLETED
+23:28:41.980 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Loyer" is not visible RUNNING
+23:28:42.587 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Loyer" is not visible COMPLETED
+23:28:42.587 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Courses Hebdomadaires" is not visible RUNNING
+23:28:43.211 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Courses Hebdomadaires" is not visible COMPLETED
+23:28:43.211 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run console.log("TC-100-1 : CA-06 vérifié — les deux filtres se cumulent et se retirent séparément")
+ RUNNING
+23:28:43.211 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run console.log("TC-100-1 : CA-06 vérifié — les deux filtres se cumulent et se retirent séparément")
+ COMPLETED
+23:28:43.211 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on id: monthly.filter.type RUNNING
+23:28:43.278 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=monthly.filter.type, clickable=true, bounds=[53,640][322,766], enabled=true, focused=false, checked=true, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=true, error=}, children=[TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[35,641][161,767], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=false, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=Revenus, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[142,682][280,725], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[53,661][322,745], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.CheckBox, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false)], clickable=true, enabled=true, focused=false, checked=true, selected=false), bounds=Bounds(x=53, y=640, width=269, height=126))
+23:28:44.507 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:44.508 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (187, 703) using hierarchy based logic for wait
+23:28:46.090 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:46.091 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on id: monthly.filter.type COMPLETED
+23:28:46.091 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on "Tous les types" RUNNING
+23:28:46.151 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=Tous les types, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[95,1818][985,1867], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=95, y=1818, width=890, height=49))
+23:28:47.623 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:47.623 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (540, 1842) using hierarchy based logic for wait
+23:28:48.595 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:48.595 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on "Tous les types" COMPLETED
+23:28:48.596 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Tap on id: monthly.filter.account RUNNING
+23:28:48.670 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tapping on element:  UiElement(treeNode=TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=monthly.filter.account, clickable=true, bounds=[799,640][1056,766], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=true, error=}, children=[TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[781,641][907,767], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.view.View, important-for-accessibility=false, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=Compte, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[888,682][1014,725], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.TextView, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false), TreeNode(attributes={text=, accessibilityText=, hintText=, ignoreBoundsFiltering=false, resource-id=, clickable=false, bounds=[799,661][1027,745], enabled=true, focused=false, checked=false, scrollable=false, selected=false, class=android.widget.CheckBox, important-for-accessibility=true, error=}, children=[], clickable=false, enabled=true, focused=false, checked=false, selected=false)], clickable=true, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=799, y=640, width=257, height=126))
+23:28:49.858 [ INFO] maestro.Maestro.tap-HgV9Ck0: Tap aimed via settled hierarchy
+23:28:49.859 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Tapping at (927, 703) using hierarchy based logic for wait
+23:28:51.546 [ INFO] maestro.Maestro.hierarchyBasedTap-ogj28Uc: Something has changed in the UI judging by view hierarchy. Proceed.
+23:28:51.547 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Tap on id: monthly.filter.account COMPLETED
+23:28:51.547 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Sélectionner un compte" is visible RUNNING
+23:28:51.566 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Sélectionner un compte" is visible COMPLETED
+23:28:51.567 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Press back RUNNING
+23:28:51.567 [ INFO] maestro.Maestro.backPress: Pressing back
+23:28:52.372 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Press back COMPLETED
+23:28:52.372 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Assert that "Sélectionner un compte" is not visible RUNNING
+23:28:53.079 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Assert that "Sélectionner un compte" is not visible COMPLETED
+23:28:53.079 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Scrolling DOWN until "Salaire" is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled RUNNING
+23:28:53.150 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Scrolling try count: 0, DeviceWidth: 1080, DeviceWidth: 2400
+23:28:53.150 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Element bounds: Bounds(x=238, y=1529, width=127, height=49)
+23:28:53.150 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Visibility Percent: 1.0
+23:28:53.150 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: Command centerElement: ScrollUntilVisibleCommand(selector=ElementSelector(textRegex=Salaire, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null, css=null), direction=DOWN, scrollDuration=601, visibilityPercentage=100, timeout=20000, waitToSettleTimeoutMs=null, centerElement=false, originalSpeedValue=40, label=null, optional=false).centerElement
+23:28:53.150 [ INFO] maestro.orchestra.Orchestra.scrollUntilVisible: visibilityPercentageNormalized: 1.0
+23:28:53.150 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Scrolling DOWN until "Salaire" is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled COMPLETED
+23:28:53.150 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run console.log("TC-100-1 : CA-08 vérifié — compte et catégorie ouvrent toujours leur feuille")
+ RUNNING
+23:28:53.150 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run console.log("TC-100-1 : CA-08 vérifié — compte et catégorie ouvrent toujours leur feuille")
+ COMPLETED
