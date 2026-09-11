@@ -35,8 +35,9 @@ import java.util.TimeZone
  * Source de vérité : CA-01 à CA-05 et CA-10 de LOP-70 « Préparer le moteur de recherche
  * transaction », plus les conventions P-2 (casse et accents ignorés, forme NFD marques retirées)
  * et P-4 (montant interprété seulement si **tout** le texte trimé parse en nombre d'euros).
- * **Le comportement actuel du use case ne constitue pas l'oracle** : plusieurs de ces CA ne sont
- * pas implémentés, les rouges sont attendus (voir ANO ci-dessous).
+ * **Le comportement du use case ne constitue pas l'oracle.** À l'écriture, neuf des quatorze cas
+ * étaient rouges : ils ont ouvert quatre ANO, toutes corrigées le 12 septembre 2026 (voir plus
+ * bas). Les attendus n'ont pas bougé d'un caractère entre le rouge et le vert.
  *
  * ### cas → CA / invariant → production
  * ```
@@ -64,19 +65,33 @@ import java.util.TimeZone
  * contredirait CA-03. Le périmètre de l'US (« le titre, la note, le nom d'un tag, et — si tout le
  * texte est un nombre — le montant ») confirme l'union des axes.
  *
- * ### ANO attendues — une par cause racine, pas une par cas
- * - **ANO-A — normalisation d'accents absente (P-2 / CA-04).** `matchesQuery` compare les chaînes
- *   brutes : T-06, T-07, T-08 et T-10 rouges.
- * - **ANO-B — le nom des tags n'est pas fouillé (CA-10).** `matchesQuery` ne lit que `title` et
- *   `note` : T-09 et T-10 rouges.
- * - **ANO-C — le texte numérique n'est pas interprété comme montant (CA-05 / P-4).** T-11, T-12
- *   et T-13 rouges. `Format.centsOrNull` fournit déjà la conversion half-up attendue.
- * - **ANO-D — requête vide : le use case rend toute la fenêtre au lieu d'une liste vide
- *   (CA-01).** `matchesQuery` renvoie `true` sur `query.isBlank()`. T-01 rouge. `SearchViewModel`
- *   court-circuite la saisie vide côté écran (court-circuit toléré par I-4), ce qui limite la
- *   sévérité **utilisateur** sans changer l'oracle : CA-01 est énoncé au niveau du moteur.
+ * ### ANO relevées par cette campagne — les quatre corrigées depuis
+ * Une ANO par **cause racine**, pas une par cas. Toutes fermées le 12 septembre 2026.
+ * - ~~**ANO-A — normalisation d'accents absente (P-2 / CA-04)**~~ — `matchesQuery` comparait les
+ *   chaînes brutes via `contains(ignoreCase = true)`, qui neutralise la casse mais jamais les
+ *   diacritiques : T-06 rendait `[207]`, T-07 `[205]`, T-08 et T-10 `[]`. Le use case normalise
+ *   désormais saisie **et** champs comparés en NFD, marques retirées (`normalize`).
+ * - ~~**ANO-B — le nom des tags n'était pas fouillé (CA-10)**~~ — `matchesQuery` ne lisait que
+ *   `title` et `note` ; `tags` n'était atteignable que par le filtre `tagName`, en égalité
+ *   stricte. T-09 et T-10 rendaient `[]`. Le nom des tags est maintenant un axe du texte, en
+ *   correspondance partielle et sous la même normalisation.
+ * - ~~**ANO-C — texte numérique non interprété comme montant (CA-05 / P-4)**~~ — aucun axe
+ *   montant n'existait : T-11, T-12 et T-13 rendaient `[]`. Le use case réutilise
+ *   `Format.centsOrNull`, qui implémente déjà P-4 (virgule ou point, `BigDecimal`, half-up) et
+ *   rend `null` dès que le texte n'est pas *entièrement* numérique.
+ * - ~~**ANO-D — requête vide : toute la fenêtre au lieu d'une liste vide (CA-01)**~~ —
+ *   `matchesQuery` renvoyait `true` sur `query.isBlank()` : T-01 rendait les treize lignes. Le
+ *   court-circuit est porté dans le use case, et **supprimé** de `SearchViewModel` où il faisait
+ *   doublon (I-4, un seul producteur). Le défaut n'était pas atteignable par l'utilisateur, ce
+ *   qui jouait sur la sévérité, jamais sur l'oracle — CA-01 est énoncé au niveau du moteur.
+ *   Impact hors périmètre : **TC-98 / G-12** appelait le use case avec `query = ""` et des dates
+ *   nulles pour mesurer la fenêtre par défaut ; sa requête est passée à une valeur non blank,
+ *   son oracle (les bornes captées) inchangé.
  *
- * ### Sensibilité des verts, prouvée par mutation (11 septembre 2026)
+ * Ces neuf cas n'ont pas eu besoin de mutation : leur transition rouge → vert **est** la preuve
+ * de sensibilité. Seuls les cinq verts du premier coup en demandaient une.
+ *
+ * ### Sensibilité des verts, prouvée par mutation (11 septembre 2026, code d'avant correction)
  * Cinq cas sont verts du premier coup. Chacun a été mis en échec par une mutation temporaire de
  * `matchesQuery`, appliquée puis **retirée** — un vert non falsifiable ne prouverait rien.
  * ```
@@ -98,7 +113,10 @@ import java.util.TimeZone
  *   CA-05 dit « uniquement les lignes dont le montant vaut 1234 centimes ». Le JDD de la fiche ne
  *   tranche pas : aucune ligne n'a « 12 » dans son titre. Le départager demanderait une ligne
  *   titrée p. ex. « Facture 12 » à un montant autre que 1200 — **amendement du JDD**, pas une
- *   liberté prise ici. Les cas ci-dessous passent sous les deux lectures.
+ *   liberté prise ici. Les cas ci-dessous passent sous les deux lectures. La correction du
+ *   12 septembre 2026 a retenu l'**union** (le montant est un `||` de plus), mais ce fichier ne
+ *   l'atteste pas : il resterait vert si l'implémentation basculait sur l'exclusion. La question
+ *   reste donc ouverte pour la spec, et non couverte par les tests.
  * - **Arrondi half-up de P-4 non exercé** : aucun cas à trois décimales (« 10,505 » → 1051).
  * - **Normalisation hors marques combinantes** (« œ », « ß ») : ni P-2 ni le JDD ne l'exercent.
  * - Les noms de compte et de catégorie du JDD ne sont pas spécifiés par la fiche. Ils sont choisis
@@ -311,7 +329,17 @@ class SearchTransactionsTextTest {
                 endDate = null,
             ).first()
 
-            assertEmpty("T-01", "CA-01", result)
+            // Oracle réduit à ce que CA-01 énonce : une liste vide. Volontairement **aucune**
+            // assertion sur le nombre d'appels à la source — court-circuiter avant lecture et
+            // lire puis rendre vide satisfont l'un comme l'autre le CA ; en imposer un serait
+            // sur-spécifier. Le garde-fou d'`assertEmpty` ne s'applique donc pas ici, et la
+            // vacuité n'est pas un risque : T-02 et T-04 rougiraient si le use case rendait
+            // systématiquement une liste vide.
+            assertEquals(
+                "T-01 / CA-01 — liste vide attendue (texte blank, aucun filtre, aucune date), " +
+                        "observé ${ids(result)}",
+                0, result.size,
+            )
         }
 
     // --- T-02 / T-03 — CA-02 et CA-03 correspondance partielle et casse -------------------------

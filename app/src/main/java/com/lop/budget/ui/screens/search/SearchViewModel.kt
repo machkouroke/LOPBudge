@@ -53,11 +53,9 @@ class SearchViewModel @Inject constructor(
         }.debounce(300).flatMapLatest { (triple, range) ->
             val (q, acc, cat) = triple
             val (start, end) = range
-            if (q.isBlank() && acc == null && cat == null && start == null && end == null) {
-                flowOf(emptyList())
-            } else {
-                searchTransactionsUseCase(q, acc, cat, start, end)
-            }
+            // Le court-circuit « requête vide → liste vide » (CA-01) vit dans le use case, pas
+            // ici : un second exemplaire serait un second moteur de recherche (I-4 de LOP-70).
+            searchTransactionsUseCase(q, acc, cat, start, end)
         },
         settings.currency,
         _query,

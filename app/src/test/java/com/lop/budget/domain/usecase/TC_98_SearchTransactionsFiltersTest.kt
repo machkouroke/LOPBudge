@@ -593,8 +593,12 @@ class SearchTransactionsFiltersTest {
                 )
             } returns flowOf(emptyList())
 
+            // Requête **non blank** : depuis la correction de CA-01 (ANO-D), « texte blank +
+            // aucun critère + aucune date » est court-circuité en tête du use case et
+            // n'interroge plus la source. Le texte lui-même est indifférent ici — la doublure
+            // rend une liste vide et l'oracle porte sur les bornes captées, pas sur les lignes.
             sut(
-                query = "",
+                query = "peu importe",
                 accountId = null,
                 categoryId = null,
                 startDate = null,

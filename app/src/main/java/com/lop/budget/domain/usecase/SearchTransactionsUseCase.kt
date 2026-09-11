@@ -3,10 +3,13 @@ package com.lop.budget.domain.usecase
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.util.Format
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import java.text.Normalizer
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
@@ -21,10 +24,12 @@ import javax.inject.Singleton
  * - `SearchViewModel` l'appelle sans bornes, et retombe alors sur la fenêtre par défaut ;
  * - `MonthlyTransactionsViewModel` l'appelle avec les bornes du mois affiché.
  *
- * La règle de correspondance (titre ou note, sans distinction de casse) et **tous** les filtres —
- * compte, catégorie, type, statut, tag — ne sont donc définis qu'ici, et se testent une seule
- * fois. Un écran choisit les critères qu'il expose, jamais la façon de les appliquer : filtrer
- * soi-même les lignes rendues ici serait un second moteur de recherche (I-4 de LOP-70).
+ * La règle de correspondance (titre, note, nom de tag, montant — sans distinction de casse ni
+ * d'accents) et **tous** les filtres — compte, catégorie, type, statut, tag — ne sont donc définis
+ * qu'ici, et se testent une seule fois. Un écran choisit les critères qu'il expose, jamais la
+ * façon de les appliquer : filtrer soi-même les lignes rendues ici serait un second moteur de
+ * recherche (I-4 de LOP-70). Le court-circuit de la requête vide y compris : il vit ici, pas dans
+ * `SearchViewModel`.
  */
 @Singleton
 class SearchTransactionsUseCase @Inject constructor(
@@ -48,6 +53,16 @@ class SearchTransactionsUseCase @Inject constructor(
         status: TransactionStatus? = null,
         tagName: String? = null,
     ): Flow<List<TransactionWithRelations>> {
+        // CA-01 — requête vide : texte blank **et** aucun critère, dates comprises. Court-circuit
+        // avant toute lecture de la source : rien à chercher, rien à parcourir. La règle vit ici
+        // et nulle part ailleurs (I-4), `SearchViewModel` n'a pas à la redoubler.
+        if (query.isBlank() && accountId == null && categoryId == null &&
+            startDate == null && endDate == null &&
+            type == null && status == null && tagName == null
+        ) {
+            return flowOf(emptyList())
+        }
+
         val zone = ZoneId.systemDefault()
         // Une seule lecture de l'horloge pour les deux bornes : lue deux fois, un appel à cheval
         // sur minuit produisait une fenêtre dont le début et la fin ne parlaient pas du même jour.
@@ -62,11 +77,16 @@ class SearchTransactionsUseCase @Inject constructor(
             ?: today.plusMonths(6).with(TemporalAdjusters.lastDayOfMonth())
                 .atTime(23, 59, 59, 999_000_000).atZone(zone).toInstant().toEpochMilli()
 
+        // Normalisation (P-2) et conversion en centimes (P-4) faites **une fois par appel** : dans
+        // `matchesQuery` elles seraient refaites pour chaque ligne, à chaque émission de la source.
+        val needle = normalize(query)
+        val queryCents = Format.centsOrNull(query)
+
         return observeTransactionsUseCase(searchStart, searchEnd)
             .map { transactions ->
                 transactions
                     .asSequence()
-                    .filter { it.matchesQuery(query) }
+                    .filter { it.matchesQuery(needle, queryCents) }
                     .filter { accountId == null || it.transaction.accountId == accountId }
                     .filter { categoryId == null || it.transaction.categoryId == categoryId }
                     .filter { type == null || it.transaction.type == type }
@@ -96,9 +116,38 @@ class SearchTransactionsUseCase @Inject constructor(
             .flowOn(Dispatchers.Default)
     }
 
-    /** Une saisie vide ne filtre rien : la fenêtre est alors rendue telle quelle. */
-    private fun TransactionWithRelations.matchesQuery(query: String): Boolean =
-        query.isBlank()
-                || transaction.title.contains(query, ignoreCase = true)
-                || transaction.note?.contains(query, ignoreCase = true) == true
+    /**
+     * Correspondance texte, en **union** sur quatre axes : titre (CA-02), note (CA-03), nom d'un
+     * tag (CA-10) et — si tout le texte se parse comme un nombre d'euros — montant (CA-05).
+     *
+     * [needle] est déjà normalisé et [queryCents] déjà converti : une saisie vide donne un
+     * `needle` vide, qui ne filtre rien. La requête *entièrement* vide, elle, n'arrive jamais
+     * jusqu'ici — elle est court-circuitée en tête d'[invoke] (CA-01).
+     *
+     * `queryCents` est `null` dès que le texte n'est pas *entièrement* numérique (P-4), et
+     * `amount` n'est jamais `null` : la comparaison est donc fausse pour toute saisie textuelle,
+     * sans garde supplémentaire. « 12 euros » ne vaut pas 1200 centimes.
+     */
+    private fun TransactionWithRelations.matchesQuery(needle: String, queryCents: Long?): Boolean =
+        needle.isEmpty()
+                || normalize(transaction.title).contains(needle)
+                || transaction.note?.let { normalize(it).contains(needle) } == true
+                || tags.any { normalize(it.name).contains(needle) }
+                || queryCents == transaction.amount
+
+    /** Marques de la forme NFD : accents, cédille, tréma… (P-2). */
+    private val diacritics = Regex("\\p{M}+")
+
+    /**
+     * Forme NFD, marques retirées, minuscules (P-2). « Électricité » et « electricite » se
+     * rejoignent, dans les deux sens : c'est la **même** fonction qui traite la saisie et le champ
+     * comparé, sans quoi la correspondance ne serait pas symétrique.
+     *
+     * `lowercase()` sans argument est invariant par locale — la casse turque ne peut pas s'y
+     * glisser selon la langue de l'appareil.
+     */
+    private fun normalize(text: String): String =
+        Normalizer.normalize(text.trim(), Normalizer.Form.NFD)
+            .replace(diacritics, "")
+            .lowercase()
 }
