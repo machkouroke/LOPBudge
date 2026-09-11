@@ -63,7 +63,23 @@ class SearchTransactionsUseCase @Inject constructor(
                     .filter { row ->
                         tagName == null || row.tags.any { it.name.equals(tagName, ignoreCase = true) }
                     }
-                    .sortedByDescending { it.transaction.date }
+                    // CA-16, décision du 11 septembre 2026. Croissant : la fenêtre par défaut
+                    // couvre un mois de passé pour six de futur, si bien qu'un tri décroissant
+                    // mettait l'échéance la plus lointaine avant la dépense d'hier.
+                    //
+                    // À date égale, le persisté (`id >= 0`) passe avant le virtuel, puis l'id
+                    // croissant tranche. Le comparateur est **total** : sans lui le résultat
+                    // était celui de l'ordre d'entrée, donc de la source, et pas d'une règle.
+                    // L'ordre entre deux virtuels de même date n'est pas spécifié — une série
+                    // n'en produit jamais deux — mais l'id le fixe plutôt que de le laisser au
+                    // hasard pour deux séries distinctes.
+                    .sortedWith(
+                        compareBy<TransactionWithRelations>(
+                            { it.transaction.date },
+                            { it.transaction.id < 0 },
+                            { it.transaction.id },
+                        )
+                    )
                     .toList()
             }
             .flowOn(Dispatchers.Default)

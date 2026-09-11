@@ -222,9 +222,10 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 if (tx.transaction.type == TransactionType.INCOME) tx.transaction.amount else -tx.transaction.amount 
             }
 
-            // `filtered` est déjà trié par date décroissante : `groupBy` conserve l'ordre de
-            // parcours, donc les clés sortent déjà décroissantes et chaque groupe est déjà
-            // trié. Les deux re-tris et le `toSortedMap` intermédiaire étaient redondants.
+            // `filtered` est déjà trié par date croissante (CA-16) : `groupBy` conserve l'ordre
+            // de parcours, donc les clés sortent déjà croissantes et chaque groupe est déjà
+            // trié. Le relevé mensuel se lit donc du 1er au dernier jour du mois. Les deux
+            // re-tris et le `toSortedMap` intermédiaire étaient redondants.
             val zone = ZoneId.systemDefault()
             val dayGroups = filtered
                 .groupBy { Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate() }

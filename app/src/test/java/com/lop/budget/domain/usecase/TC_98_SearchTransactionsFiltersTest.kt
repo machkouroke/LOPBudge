@@ -44,7 +44,7 @@ import java.util.TimeZone
  * G-11         CA-12 (I-5)   bornes transmises à observeTransactionsUseCase
  * G-12         CA-13 (I-5)   fenêtre par défaut (P-1) quand les dates sont absentes
  * G-13, G-14   CA-17 (I-5)   combinaison ET texte + filtres
- * G-15, G-16   CA-16 (I-6)   sortedByDescending { date } et départage à date égale
+ * G-15, G-16   CA-16 (I-6)   sortedBy { date } et départage à date égale
  * ```
  *
  * ### Doublure
@@ -58,8 +58,15 @@ import java.util.TimeZone
  *   `LocalDate.now().minusMonths(1)` donne *aujourd'hui moins un mois* au lieu du **1er jour** du
  *   mois calendaire précédent, et `plusMonths(6).atTime(23, 59, 59)` donne *le même jour du mois*
  *   à la milliseconde 000 au lieu du **dernier jour** de M+6 à `.999`.
- * - **ANO-2 (G-16)** — aucune règle de départage à date égale. `sortedByDescending` étant stable,
- *   l'ordre rendu est celui de l'entrée : le résultat dépend de la source, pas d'une règle.
+ * - ~~**ANO-2 (G-16)**~~ — **corrigée le 11 septembre 2026.** Il n'existait aucune règle de
+ *   départage à date égale : `sortedBy` étant stable, l'ordre rendu était celui de l'entrée,
+ *   donc de la source et non d'une règle. Le use case trie désormais avec un comparateur total
+ *   (date, puis persisté avant virtuel, puis id croissant). G-16 est vert, sensibilité prouvée
+ *   par mutation M8 (comparateur ramené à `sortedBy { date }` → G-16 rouge).
+ *
+ * CA-16 a été corrigé le 11 septembre 2026 : **dates croissantes**, puis id persisté **croissant**,
+ * les virtuels après les persistés de même date. La fenêtre par défaut couvrant un mois de passé
+ * pour six de futur, l'ordre décroissant d'origine plaçait l'échéance la plus lointaine en tête.
  *
  * ### Limites relevées à l'exécution
  * - **CA-17 / G-13 et G-14** — avec le JDD de la fiche, la clause `type` n'est pas falsifiable
@@ -304,7 +311,7 @@ class SearchTransactionsFiltersTest {
      * règle de départage passerait par accident et le cas ne prouverait rien.
      */
     private val jdd = listOf(
-        fEgv, fEg1, fEg2,
+        fEgv, fEg2, fEg1,
         fA1, fB1, fA2, fA3, fA4,
         fBorneD1, fBorneD2, fAvant, fApres,
     )
@@ -498,8 +505,8 @@ class SearchTransactionsFiltersTest {
                 status = TransactionStatus.PLANNED,
             ).first()
 
-            // F-A3 au 20 mars précède F-egv au 18 mars : dates distinctes, donc ordre assertable.
-            assertIdSequence("CA-09", listOf(104L, virtualEqId), result)
+            // F-egv au 18 mars précède F-A3 au 20 mars : dates distinctes, donc ordre assertable.
+            assertIdSequence("CA-09", listOf(virtualEqId, 104L), result)
         }
 
     // --- G-09 / G-10 — CA-11 filtre tag -------------------------------------------------------
@@ -616,7 +623,7 @@ class SearchTransactionsFiltersTest {
             ).first()
 
             // F-B1 exclu par le compte, F-A2 par le type. Dates distinctes : ordre assertable.
-            assertIdSequence("CA-17", listOf(104L, 101L), result)
+            assertIdSequence("CA-17", listOf(101L, 104L), result)
         }
 
     @Test
@@ -640,12 +647,12 @@ class SearchTransactionsFiltersTest {
     // --- G-15 / G-16 — CA-16 tri --------------------------------------------------------------
 
     @Test
-    fun `given plusieurs resultats de dates distinctes when recherche then dates strictement decroissantes`() =
+    fun `given plusieurs resultats de dates distinctes when recherche then dates strictement croissantes`() =
         runTest {
             givenWindow(d1, d2)
 
-            // Le texte « courses » isole trois lignes de dates distinctes (20, 11 et 10 mars) : sans
-            // cela le jeu contient trois lignes de même date et « strictement décroissant » serait
+            // Le texte « courses » isole trois lignes de dates distinctes (10, 11 et 20 mars) : sans
+            // cela le jeu contient trois lignes de même date et « strictement croissant » serait
             // inatteignable. L'égalité de dates est le sujet du cas suivant.
             val result = sut(
                 query = "courses",
@@ -655,7 +662,7 @@ class SearchTransactionsFiltersTest {
                 endDate = d2
             ).first()
 
-            val expectedDates = listOf(at(20, 12, 0), at(11, 12, 0), at(10, 12, 0))
+            val expectedDates = listOf(at(10, 12, 0), at(11, 12, 0), at(20, 12, 0))
             assertEquals(
                 "CA-16 — séquence des dates : attendue $expectedDates, observée ${result.map { it.transaction.date }}",
                 expectedDates, result.map { it.transaction.date },
@@ -663,7 +670,7 @@ class SearchTransactionsFiltersTest {
         }
 
     @Test
-    fun `given trois lignes de meme date when recherche then id persiste decroissant puis le virtuel`() =
+    fun `given trois lignes de meme date when recherche then id persiste croissant puis le virtuel`() =
         runTest {
             givenWindow(d1, d2)
 
@@ -677,6 +684,6 @@ class SearchTransactionsFiltersTest {
                 endDate = d2
             ).first()
 
-            assertIdSequence("CA-16", listOf(502L, 501L, virtualEqId), result)
+            assertIdSequence("CA-16", listOf(501L, 502L, virtualEqId), result)
         }
 }

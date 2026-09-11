@@ -18,7 +18,11 @@ data class DayGroup(
         fun fromTransactions(txs: List<TransactionWithRelations>): List<DayGroup> {
             val zone = ZoneId.systemDefault()
             return txs
-                .sortedByDescending { it.transaction.date }
+                // Même sens que `SearchTransactionsUseCase` (CA-16) : cette liste lui succède,
+                // deux sens opposés rendraient l'ordre du moteur invisible à l'écran. Le tri
+                // étant stable, le départage à date égale décidé par le moteur est conservé —
+                // le remplacer par un tri instable le ferait disparaître sans rien casser ici.
+                .sortedBy { it.transaction.date }
                 .groupBy { Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate() }
                 .map { (date, list) ->
                     DayGroup(
