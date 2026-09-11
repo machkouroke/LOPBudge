@@ -10,8 +10,7 @@ import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
-import com.lop.budget.domain.usecase.matchesSearchQuery
+import com.lop.budget.domain.usecase.SearchTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -21,8 +20,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.Instant
 import java.time.YearMonth
@@ -68,7 +69,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     accountRepo: AccountRepository,
     categoryRepo: CategoryRepository,
-    private val observeTransactionsUseCase: ObserveTransactionsUseCase,
+    private val searchTransactionsUseCase: SearchTransactionsUseCase,
     settings: SettingsRepository,
 ) : ViewModel() {
 
@@ -102,26 +103,72 @@ class MonthlyTransactionsViewModel @Inject constructor(
             atEndOfMonth().atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
     }
 
-    private val baseTxs = month.flatMapLatest { ym ->
-        val (start, end) = ym.range()
-        observeTransactionsUseCase(start, end)
-    }
-
     /**
      * Entrée de **filtrage** de la recherche, distincte de [searchQuery] qui alimente le champ.
      *
-     * Sans ce découplage, chaque frappe relance le filtrage, les trois tris, le groupement par jour
-     * et le breakdown. Le champ de saisie continue de lire la valeur brute : il reste réactif à la
-     * frappe, seul le recalcul attend la fin de la saisie.
+     * Sans ce découplage, chaque frappe relance la recherche. Le champ de saisie continue de lire
+     * la valeur brute : il reste réactif à la frappe, seule la recherche attend la fin de la saisie.
      *
      * `timeoutMillis` nul sur une chaîne vide : ouvrir l'écran ou effacer le champ ne doit pas
-     * retarder le premier état de 250 ms.
+     * retarder le premier état de 300 ms.
      */
     private val filterQuery = searchQuery.debounce { q -> if (q.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
 
+    /** Ce qui définit la recherche à lancer. Le mois en fixe la fenêtre. */
+    private data class MonthlySearch(
+        val month: YearMonth,
+        val query: String,
+        val accountId: Long?,
+        val categoryId: Long?,
+    )
+
+    /**
+     * Lignes trouvées, accompagnées du critère qui les a produites.
+     *
+     * Un type nommé plutôt qu'une `Pair` générique : le transtypage depuis l'`Array<*>` du
+     * `combine` est alors vérifié à l'exécution, donc sans `@Suppress("UNCHECKED_CAST")` — lequel
+     * ne peut de toute façon pas cibler une déclaration déstructurante.
+     */
+    private data class MonthlyResult(
+        val criteria: MonthlySearch,
+        val rows: List<TransactionWithRelations>,
+    )
+
+    /**
+     * Résultat de la recherche du mois affiché, accompagné du critère qui l'a produit.
+     *
+     * C'est **le même use case que l'écran Recherche**, appelé avec la plage mensuelle pour
+     * fenêtre : la règle de correspondance (titre/note) et les filtres compte/catégorie ne vivent
+     * qu'à un seul endroit, et sont donc testables une seule fois. La vue mensuelle n'ajoute que
+     * ce qui lui est propre — le type et le statut payé/planifié.
+     *
+     * Le critère voyage avec ses lignes : `hasResultsInOtherMonths` doit savoir quelle requête a
+     * réellement produit la liste, et non lire la saisie brute qui la devance pendant le debounce.
+     *
+     * `distinctUntilChanged` avant le `flatMapLatest` : sans lui, une émission de `searchQuery`
+     * qui ne change pas la valeur débouncée relancerait la recherche pour rien.
+     */
+    private val monthResults = combine(
+        month,
+        filterQuery,
+        selectedAccountId,
+        selectedCategoryId,
+    ) { ym, query, accId, catId -> MonthlySearch(ym, query, accId, catId) }
+        .distinctUntilChanged()
+        .flatMapLatest { criteria ->
+            val (start, end) = criteria.month.range()
+            searchTransactionsUseCase(
+                query = criteria.query,
+                accountId = criteria.accountId,
+                categoryId = criteria.categoryId,
+                startDate = start,
+                endDate = end,
+            ).map { rows -> MonthlyResult(criteria, rows) }
+        }
+
     val uiState: StateFlow<MonthlyTransactionsUiState> =
         combine(
-            baseTxs,
+            monthResults,
             settings.currency,
             month,
             type,
@@ -133,14 +180,14 @@ class MonthlyTransactionsViewModel @Inject constructor(
             accountRepo.observeAll(),
             categoryRepo.observeAll(),
             isAnalyticsMode,
-            filterQuery,
         ) { args ->
-            val allTxs = args[0] as List<TransactionWithRelations>
+            val (criteria, searched) = args[0] as MonthlyResult
             val currency = args[1] as String
             val ym = args[2] as YearMonth
             val t = args[3] as TransactionType?
             val f = args[4] as PaidFilter
             val mode = args[5] as InsightMode
+            // Saisie brute : n'alimente que le champ de texte, jamais le filtrage.
             val query = args[6] as String
             val accId = args[7] as Long?
             val catId = args[8] as Long?
@@ -148,11 +195,10 @@ class MonthlyTransactionsViewModel @Inject constructor(
             val categories = args[10] as List<com.lop.budget.data.local.entity.CategoryEntity>
             val analytics = args[11] as Boolean
 
-            // `query` (brut) n'alimente que le champ de saisie ; le filtrage lit la version
-            // stabilisée, sinon chaque frappe relance tout le pipeline ci-dessous.
-            val appliedQuery = args[12] as String
-
-            val filtered = allTxs
+            // Recherche, compte et catégorie ont déjà été appliqués par le use case, qui rend
+            // les lignes triées par date décroissante. Ne restent que les deux filtres propres
+            // à cet écran.
+            val filtered = searched
                 .asSequence()
                 .filter { if (t == null) true else it.transaction.type == t }
                 .filter {
@@ -162,12 +208,6 @@ class MonthlyTransactionsViewModel @Inject constructor(
                         PaidFilter.PLANNED -> it.transaction.status == TransactionStatus.PLANNED
                     }
                 }
-                // Prédicat partagé avec l'écran Recherche : la règle de correspondance ne doit
-                // pas diverger entre les deux écrans.
-                .filter { it.matchesSearchQuery(appliedQuery) }
-                .filter { if (accId == null) true else it.account?.id == accId }
-                .filter { if (catId == null) true else it.category?.id == catId }
-                .sortedByDescending { it.transaction.date }
                 .toList()
 
             val total = filtered.sumOf { tx -> 
@@ -221,9 +261,9 @@ class MonthlyTransactionsViewModel @Inject constructor(
             }
 
             // Check if results exist globally if none in current month.
-            // `appliedQuery` et non `query` : c'est la requête avec laquelle `filtered` a
-            // réellement été calculé, les deux ne coïncident pas pendant le debounce.
-            val hasResultsInOtherMonths = appliedQuery.isNotBlank() && filtered.isEmpty()
+            // `criteria.query` et non `query` : c'est la requête avec laquelle ces lignes ont
+            // réellement été cherchées, les deux ne coïncident pas pendant le debounce.
+            val hasResultsInOtherMonths = criteria.query.isNotBlank() && filtered.isEmpty()
 
             MonthlyTransactionsUiState(
                 month = ym,
