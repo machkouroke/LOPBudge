@@ -21,8 +21,9 @@ import org.junit.Before
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
-import java.time.temporal.TemporalAdjusters
+import java.time.YearMonth
 import java.util.Locale
 import java.util.TimeZone
 
@@ -53,11 +54,14 @@ import java.util.TimeZone
  * quelles » (CA-12), obtenu sans `any()`. **G-12 est le seul cas où les bornes sont l'inconnue
  * mesurée**, donc le seul à employer `any()` — il les capture, c'est précisément son sujet.
  *
- * ### ANO attendues — rouges légitimes, oracle volontairement non assoupli
- * - **ANO-1 (G-12)** — la fenêtre par défaut ne respecte pas P-1 / CA-13 sur deux points :
- *   `LocalDate.now().minusMonths(1)` donne *aujourd'hui moins un mois* au lieu du **1er jour** du
- *   mois calendaire précédent, et `plusMonths(6).atTime(23, 59, 59)` donne *le même jour du mois*
- *   à la milliseconde 000 au lieu du **dernier jour** de M+6 à `.999`.
+ * ### ANO relevées par cette campagne — les deux corrigées depuis
+ * - ~~**ANO-1 (G-12)**~~ — **corrigée le 11 septembre 2026.** La fenêtre par défaut violait
+ *   P-1 / CA-13 sur deux points : `LocalDate.now().minusMonths(1)` donnait *aujourd'hui moins un
+ *   mois* au lieu du **1er jour** du mois calendaire précédent, et `plusMonths(6).atTime(23, 59,
+ *   59)` donnait *le même jour du mois* à la milliseconde 000 au lieu du **dernier jour** de M+6
+ *   à `.999`. L'horloge était en outre lue **deux fois**, si bien qu'un appel à cheval sur minuit
+ *   produisait une fenêtre dont les deux bornes ne parlaient pas du même jour. G-12 est vert,
+ *   sensibilité prouvée par mutation M9 (règle ramenée à l'ancienne expression → G-12 rouge).
  * - ~~**ANO-2 (G-16)**~~ — **corrigée le 11 septembre 2026.** Il n'existait aucune règle de
  *   départage à date égale : `sortedBy` étant stable, l'ordre rendu était celui de l'entrée,
  *   donc de la source et non d'une règle. Le use case trie désormais avec un comparateur total
@@ -75,9 +79,15 @@ import java.util.TimeZone
  *   M3), alors que les clauses compte (M1) et statut (M4) sont bien discriminantes. La couvrir
  *   demanderait une ligne INCOME du compte A dont le titre contient « courses » — c'est un
  *   amendement du **JDD de la fiche**, pas une liberté à prendre ici.
- * - **G-12** — l'attendu dérive de `LocalDate.now(zone)`, lu une seule fois. Le cas resterait
- *   instable s'il s'exécutait à cheval sur minuit d'un changement de mois ; une horloge
- *   injectable (ANO-1) supprimerait ce dernier reste de dépendance à l'horloge.
+ * - **G-12** — depuis que la production applique la règle P-1, réécrire son expression dans le
+ *   test rendrait l'oracle **tautologique** : il passerait quelle que soit la règle, du moment
+ *   que le test la recopie. L'oracle porte donc sur les **propriétés** de chaque borne — mois
+ *   calendaire, rang du jour dans le mois, heure — et non sur une valeur recalculée.
+ * - **G-12** — il subsiste une dépendance à l'horloge : le mois de référence vient de
+ *   `LocalDate.now(zone)`. Le cas resterait faux s'il s'exécutait à cheval sur minuit d'un
+ *   changement de mois. Une **horloge injectable** dans le use case supprimerait ce dernier
+ *   reste et permettrait des attendus littéraux ; c'est une amélioration de testabilité, pas un
+ *   défaut fonctionnel, et elle n'est pas portée par cette campagne.
  *
  * ### Hors périmètre
  * - Correspondance texte détaillée (casse, accents, montant, tag *par le texte*) → TC-97.
@@ -563,12 +573,17 @@ class SearchTransactionsFiltersTest {
     fun `given aucune date fournie when recherche then fenetre du 1er de M moins 1 au dernier jour de M plus 6`() =
         runTest {
             // Seul cas du fichier qui dépend de l'horloge : c'est son sujet. Le use case lit
-            // `LocalDate.now()` en dur, faute d'horloge injectable (ANO-1). Figer l'horloge par
+            // `LocalDate.now(zone)`, faute d'horloge injectable. Figer l'horloge par
             // `mockkStatic(LocalDate::class)` échoue ici — `java.time` est un module JDK fermé
             // (`InaccessibleObjectException`) et le forcer demanderait un `--add-opens` dans le
-            // build, c'est-à-dire modifier la production pour le confort du test. On lit donc le
-            // jour **une seule fois** et on en dérive l'attendu par la règle P-1, dont l'expression
-            // diffère de celle de la production précisément là où porte l'ANO.
+            // build, c'est-à-dire modifier la production pour le confort du test.
+            //
+            // L'oracle porte donc sur les **propriétés** de chaque borne — mois calendaire, rang
+            // du jour dans le mois, heure — et non sur une valeur recalculée. Depuis que la
+            // production applique la règle P-1, réécrire son expression ici rendrait l'oracle
+            // tautologique : il passerait quelle que soit la règle, du moment que le test la
+            // recopie. Décomposée en propriétés, l'assertion reste fausse si la production
+            // change de règle.
             val today = LocalDate.now(zone)
 
             // Seul cas à programmer la doublure sur `any()` : les bornes sont l'inconnue mesurée.
@@ -589,20 +604,26 @@ class SearchTransactionsFiltersTest {
                 endDate = null
             ).first()
 
-            // Attendus écrits depuis la règle P-1, jamais recopiés de l'expression de production.
-            val expectedStart = today.minusMonths(1).withDayOfMonth(1)
-                .atStartOfDay(zone).toInstant().toEpochMilli()
-            val expectedEnd = today.plusMonths(6).with(TemporalAdjusters.lastDayOfMonth())
-                .atTime(23, 59, 59, 999_000_000).atZone(zone).toInstant().toEpochMilli()
+            val start = Instant.ofEpochMilli(startSeen.captured).atZone(zone).toLocalDateTime()
+            val end = Instant.ofEpochMilli(endSeen.captured).atZone(zone).toLocalDateTime()
 
-            // Les deux bornes dans une seule assertion : comparées séparément, un écart sur la
-            // première masquerait l'écart sur la seconde, et l'ANO ne serait documentée qu'à moitié.
+            val previousMonth = YearMonth.from(today).minusMonths(1)
+            val sixthMonthAhead = YearMonth.from(today).plusMonths(6)
+
+            // Une assertion par borne, chacune portant ses trois propriétés d'un bloc : comparées
+            // séparément, un écart sur la première masquerait celui sur la seconde.
             assertEquals(
-                "CA-13 — fenêtre par défaut (P-1) : attendue " +
-                        "[${readable(expectedStart)} .. ${readable(expectedEnd)}], observée " +
-                        "[${readable(startSeen.captured)} .. ${readable(endSeen.captured)}]",
-                listOf(expectedStart, expectedEnd),
-                listOf(startSeen.captured, endSeen.captured),
+                "CA-13 — début de fenêtre : attendu le 1er jour de $previousMonth à 00:00:00.000, " +
+                        "observé ${readable(startSeen.captured)}",
+                Triple(previousMonth, 1, LocalTime.MIDNIGHT),
+                Triple(YearMonth.from(start), start.dayOfMonth, start.toLocalTime()),
+            )
+            assertEquals(
+                "CA-13 — fin de fenêtre : attendu le dernier jour de $sixthMonthAhead " +
+                        "(${sixthMonthAhead.lengthOfMonth()}) à 23:59:59.999, " +
+                        "observé ${readable(endSeen.captured)}",
+                Triple(sixthMonthAhead, sixthMonthAhead.lengthOfMonth(), LocalTime.of(23, 59, 59, 999_000_000)),
+                Triple(YearMonth.from(end), end.dayOfMonth, end.toLocalTime()),
             )
         }
 

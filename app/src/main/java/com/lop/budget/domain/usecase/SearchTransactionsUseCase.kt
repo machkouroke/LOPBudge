@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -46,10 +47,15 @@ class SearchTransactionsUseCase @Inject constructor(
         tagName: String? = null,
     ): Flow<List<TransactionWithRelations>> {
         val zone = ZoneId.systemDefault()
+        // Une seule lecture de l'horloge pour les deux bornes : lue deux fois, un appel à cheval
+        // sur minuit produisait une fenêtre dont le début et la fin ne parlaient pas du même jour.
+        val today = LocalDate.now(zone)
         val searchStart = startDate
-            ?: LocalDate.now().minusMonths(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            ?: today.minusMonths(1).withDayOfMonth(1)
+                .atStartOfDay(zone).toInstant().toEpochMilli()
         val searchEnd = endDate
-            ?: LocalDate.now().plusMonths(6).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+            ?: today.plusMonths(6).with(TemporalAdjusters.lastDayOfMonth())
+                .atTime(23, 59, 59, 999_000_000).atZone(zone).toInstant().toEpochMilli()
 
         return observeTransactionsUseCase(searchStart, searchEnd)
             .map { transactions ->
