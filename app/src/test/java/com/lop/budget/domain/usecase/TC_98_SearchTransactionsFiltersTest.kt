@@ -19,11 +19,10 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
-import java.time.YearMonth
 import java.util.Locale
 import java.util.TimeZone
 
@@ -81,13 +80,9 @@ import java.util.TimeZone
  *   amendement du **JDD de la fiche**, pas une liberté à prendre ici.
  * - **G-12** — depuis que la production applique la règle P-1, réécrire son expression dans le
  *   test rendrait l'oracle **tautologique** : il passerait quelle que soit la règle, du moment
- *   que le test la recopie. L'oracle porte donc sur les **propriétés** de chaque borne — mois
- *   calendaire, rang du jour dans le mois, heure — et non sur une valeur recalculée.
- * - **G-12** — il subsiste une dépendance à l'horloge : le mois de référence vient de
- *   `LocalDate.now(zone)`. Le cas resterait faux s'il s'exécutait à cheval sur minuit d'un
- *   changement de mois. Une **horloge injectable** dans le use case supprimerait ce dernier
- *   reste et permettrait des attendus littéraux ; c'est une amélioration de testabilité, pas un
- *   défaut fonctionnel, et elle n'est pas portée par cette campagne.
+ *   que le test la recopie. Le use case reçoit donc une `Clock` figée au 15 mars 2026 et les
+ *   deux bornes attendues sont écrites en dur — la production les *calcule*, le test les
+ *   *énonce*. Plus aucun cas de ce fichier ne dépend du jour d'exécution.
  *
  * ### Hors périmètre
  * - Correspondance texte détaillée (casse, accents, montant, tag *par le texte*) → TC-97.
@@ -329,7 +324,17 @@ class SearchTransactionsFiltersTest {
     // --- Doublure et système testé ------------------------------------------------------------
 
     private val observeTransactionsUseCase = mockk<ObserveTransactionsUseCase>(relaxed = false)
-    private val sut = SearchTransactionsUseCase(observeTransactionsUseCase)
+
+    /**
+     * Jour de référence figé. Seul G-12 s'en sert — les quinze autres cas passent des bornes
+     * explicites — mais figer l'horloge pour toute la classe coûte une ligne et retire au
+     * fichier entier sa dernière dépendance au jour d'exécution.
+     */
+    private val fixedToday: LocalDate = LocalDate.of(2026, 3, 15)
+
+    private val clock: Clock = Clock.fixed(fixedToday.atTime(12, 0).atZone(zone).toInstant(), zone)
+
+    private val sut = SearchTransactionsUseCase(observeTransactionsUseCase, clock)
 
     /**
      * Programme la doublure sur des **bornes exactes**. Elle ne rend que les lignes du jeu dont la
@@ -572,19 +577,11 @@ class SearchTransactionsFiltersTest {
     @Test
     fun `given aucune date fournie when recherche then fenetre du 1er de M moins 1 au dernier jour de M plus 6`() =
         runTest {
-            // Seul cas du fichier qui dépend de l'horloge : c'est son sujet. Le use case lit
-            // `LocalDate.now(zone)`, faute d'horloge injectable. Figer l'horloge par
-            // `mockkStatic(LocalDate::class)` échoue ici — `java.time` est un module JDK fermé
-            // (`InaccessibleObjectException`) et le forcer demanderait un `--add-opens` dans le
-            // build, c'est-à-dire modifier la production pour le confort du test.
-            //
-            // L'oracle porte donc sur les **propriétés** de chaque borne — mois calendaire, rang
-            // du jour dans le mois, heure — et non sur une valeur recalculée. Depuis que la
-            // production applique la règle P-1, réécrire son expression ici rendrait l'oracle
-            // tautologique : il passerait quelle que soit la règle, du moment que le test la
-            // recopie. Décomposée en propriétés, l'assertion reste fausse si la production
-            // change de règle.
-            val today = LocalDate.now(zone)
+            // L'horloge du use case est figée au 15 mars 2026 (`fixedToday`), si bien que les
+            // deux bornes attendues s'écrivent en dur. C'est ce qui rend l'oracle non
+            // tautologique : la production **calcule** 2026-02-01 et 2026-09-30 depuis le 15
+            // mars par la règle P-1 ; le test les **énonce**. Réécrire ici l'expression de la
+            // production donnerait un test qui passerait quelle que soit la règle appliquée.
 
             // Seul cas à programmer la doublure sur `any()` : les bornes sont l'inconnue mesurée.
             val startSeen = slot<Long>()
@@ -604,26 +601,20 @@ class SearchTransactionsFiltersTest {
                 endDate = null
             ).first()
 
-            val start = Instant.ofEpochMilli(startSeen.captured).atZone(zone).toLocalDateTime()
-            val end = Instant.ofEpochMilli(endSeen.captured).atZone(zone).toLocalDateTime()
+            // Depuis le 15 mars 2026 : mois calendaire précédent = février, M+6 = septembre.
+            val expectedStart = LocalDate.of(2026, 2, 1)
+                .atStartOfDay(zone).toInstant().toEpochMilli()
+            val expectedEnd = LocalDate.of(2026, 9, 30)
+                .atTime(23, 59, 59, 999_000_000).atZone(zone).toInstant().toEpochMilli()
 
-            val previousMonth = YearMonth.from(today).minusMonths(1)
-            val sixthMonthAhead = YearMonth.from(today).plusMonths(6)
-
-            // Une assertion par borne, chacune portant ses trois propriétés d'un bloc : comparées
-            // séparément, un écart sur la première masquerait celui sur la seconde.
+            // Les deux bornes dans une seule assertion : comparées séparément, un écart sur la
+            // première masquerait celui sur la seconde.
             assertEquals(
-                "CA-13 — début de fenêtre : attendu le 1er jour de $previousMonth à 00:00:00.000, " +
-                        "observé ${readable(startSeen.captured)}",
-                Triple(previousMonth, 1, LocalTime.MIDNIGHT),
-                Triple(YearMonth.from(start), start.dayOfMonth, start.toLocalTime()),
-            )
-            assertEquals(
-                "CA-13 — fin de fenêtre : attendu le dernier jour de $sixthMonthAhead " +
-                        "(${sixthMonthAhead.lengthOfMonth()}) à 23:59:59.999, " +
-                        "observé ${readable(endSeen.captured)}",
-                Triple(sixthMonthAhead, sixthMonthAhead.lengthOfMonth(), LocalTime.of(23, 59, 59, 999_000_000)),
-                Triple(YearMonth.from(end), end.dayOfMonth, end.toLocalTime()),
+                "CA-13 — fenêtre par défaut (P-1) au 15 mars 2026 : attendue " +
+                        "[${readable(expectedStart)} .. ${readable(expectedEnd)}], observée " +
+                        "[${readable(startSeen.captured)} .. ${readable(endSeen.captured)}]",
+                listOf(expectedStart, expectedEnd),
+                listOf(startSeen.captured, endSeen.captured),
             )
         }
 

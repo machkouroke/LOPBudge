@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.time.Clock
 import javax.inject.Singleton
 
 @Module
@@ -70,6 +71,19 @@ object AppModule {
         
         return db
     }
+
+    /**
+     * Horloge applicative, injectée plutôt que lue en dur par `now()`. Une règle de calendrier
+     * — la fenêtre par défaut de la recherche (P-1) — devient ainsi vérifiable sur une date
+     * fixe au lieu de dépendre du jour d'exécution.
+     *
+     * `systemUTC` et non `systemDefaultZone` : le fuseau reste relu à chaque appel par
+     * `ZoneId.systemDefault()`. Un singleton construit avec le fuseau du démarrage se
+     * tromperait de jour après un changement de fuseau ou un vol.
+     */
+    @Provides
+    @Singleton
+    fun provideClock(): Clock = Clock.systemUTC()
 
     @Provides fun provideTransactionDao(db: LopDatabase): TransactionDao = db.transactionDao()
     @Provides fun provideAccountDao(db: LopDatabase): AccountDao = db.accountDao()

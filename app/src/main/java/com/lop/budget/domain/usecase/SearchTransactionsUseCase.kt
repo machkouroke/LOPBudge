@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
@@ -27,7 +28,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class SearchTransactionsUseCase @Inject constructor(
-    private val observeTransactionsUseCase: ObserveTransactionsUseCase
+    private val observeTransactionsUseCase: ObserveTransactionsUseCase,
+    private val clock: Clock,
 ) {
     /**
      * Les critères sont combinés en **ET** : une ligne qui en rate un seul est absente.
@@ -49,7 +51,10 @@ class SearchTransactionsUseCase @Inject constructor(
         val zone = ZoneId.systemDefault()
         // Une seule lecture de l'horloge pour les deux bornes : lue deux fois, un appel à cheval
         // sur minuit produisait une fenêtre dont le début et la fin ne parlaient pas du même jour.
-        val today = LocalDate.now(zone)
+        //
+        // L'horloge est injectée, le fuseau non : la règle P-1 est datée « fuseau de l'appareil »
+        // et celui-ci peut changer en cours de vie de l'app, alors qu'un singleton le figerait.
+        val today = LocalDate.now(clock.withZone(zone))
         val searchStart = startDate
             ?: today.minusMonths(1).withDayOfMonth(1)
                 .atStartOfDay(zone).toInstant().toEpochMilli()
