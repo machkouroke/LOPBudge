@@ -1,6 +1,8 @@
 package com.lop.budget.domain.usecase
 
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.domain.model.TransactionStatus
+import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -17,20 +19,31 @@ import javax.inject.Singleton
  * - `SearchViewModel` l'appelle sans bornes, et retombe alors sur la fenêtre par défaut ;
  * - `MonthlyTransactionsViewModel` l'appelle avec les bornes du mois affiché.
  *
- * La règle de correspondance (titre ou note, sans distinction de casse) et les filtres compte et
- * catégorie ne sont donc définis qu'ici, et se testent une seule fois. Un écran n'ajoute que ce
- * qui lui est propre — la vue mensuelle applique ensuite son type et son statut payé/planifié.
+ * La règle de correspondance (titre ou note, sans distinction de casse) et **tous** les filtres —
+ * compte, catégorie, type, statut, tag — ne sont donc définis qu'ici, et se testent une seule
+ * fois. Un écran choisit les critères qu'il expose, jamais la façon de les appliquer : filtrer
+ * soi-même les lignes rendues ici serait un second moteur de recherche (I-4 de LOP-70).
  */
 @Singleton
 class SearchTransactionsUseCase @Inject constructor(
     private val observeTransactionsUseCase: ObserveTransactionsUseCase
 ) {
+    /**
+     * Les critères sont combinés en **ET** : une ligne qui en rate un seul est absente.
+     * Un critère à `null` ne filtre pas — il n'exclut donc jamais une ligne.
+     *
+     * [tagName] se compare au nom exact du tag, casse ignorée. La correspondance **partielle**
+     * sur un nom de tag reste du ressort de [query] (CA-10), pas de ce filtre.
+     */
     operator fun invoke(
         query: String,
         accountId: Long?,
         categoryId: Long?,
         startDate: Long?,
-        endDate: Long?
+        endDate: Long?,
+        type: TransactionType? = null,
+        status: TransactionStatus? = null,
+        tagName: String? = null,
     ): Flow<List<TransactionWithRelations>> {
         val zone = ZoneId.systemDefault()
         val searchStart = startDate
@@ -45,6 +58,11 @@ class SearchTransactionsUseCase @Inject constructor(
                     .filter { it.matchesQuery(query) }
                     .filter { accountId == null || it.transaction.accountId == accountId }
                     .filter { categoryId == null || it.transaction.categoryId == categoryId }
+                    .filter { type == null || it.transaction.type == type }
+                    .filter { status == null || it.transaction.status == status }
+                    .filter { row ->
+                        tagName == null || row.tags.any { it.name.equals(tagName, ignoreCase = true) }
+                    }
                     .sortedByDescending { it.transaction.date }
                     .toList()
             }

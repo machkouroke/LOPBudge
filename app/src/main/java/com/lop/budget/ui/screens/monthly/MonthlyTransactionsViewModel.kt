@@ -120,7 +120,22 @@ class MonthlyTransactionsViewModel @Inject constructor(
         val query: String,
         val accountId: Long?,
         val categoryId: Long?,
+        val type: TransactionType?,
+        val status: TransactionStatus?,
     )
+
+    /**
+     * Type et statut réunis en amont pour tenir dans un `combine` typé : au-delà de cinq flux,
+     * seule la forme à `Array<*>` existe, et elle troque la vérification du compilateur contre
+     * des transtypages.
+     */
+    private val screenFilters = combine(type, filter) { t, f ->
+        t to when (f) {
+            PaidFilter.ALL -> null
+            PaidFilter.PAID -> TransactionStatus.PAID
+            PaidFilter.PLANNED -> TransactionStatus.PLANNED
+        }
+    }
 
     /**
      * Lignes trouvées, accompagnées du critère qui les a produites.
@@ -138,9 +153,9 @@ class MonthlyTransactionsViewModel @Inject constructor(
      * Résultat de la recherche du mois affiché, accompagné du critère qui l'a produit.
      *
      * C'est **le même use case que l'écran Recherche**, appelé avec la plage mensuelle pour
-     * fenêtre : la règle de correspondance (titre/note) et les filtres compte/catégorie ne vivent
-     * qu'à un seul endroit, et sont donc testables une seule fois. La vue mensuelle n'ajoute que
-     * ce qui lui est propre — le type et le statut payé/planifié.
+     * fenêtre : la règle de correspondance (titre/note) et **tous** les filtres, type et statut
+     * payé/planifié compris, ne vivent qu'à un seul endroit et se testent une seule fois. Cet
+     * écran choisit les critères qu'il expose ; il ne refiltre pas les lignes rendues (I-4).
      *
      * Le critère voyage avec ses lignes : `hasResultsInOtherMonths` doit savoir quelle requête a
      * réellement produit la liste, et non lire la saisie brute qui la devance pendant le debounce.
@@ -153,7 +168,10 @@ class MonthlyTransactionsViewModel @Inject constructor(
         filterQuery,
         selectedAccountId,
         selectedCategoryId,
-    ) { ym, query, accId, catId -> MonthlySearch(ym, query, accId, catId) }
+        screenFilters,
+    ) { ym, query, accId, catId, (t, status) ->
+        MonthlySearch(ym, query, accId, catId, t, status)
+    }
         .distinctUntilChanged()
         .flatMapLatest { criteria ->
             val (start, end) = criteria.month.range()
@@ -163,6 +181,8 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 categoryId = criteria.categoryId,
                 startDate = start,
                 endDate = end,
+                type = criteria.type,
+                status = criteria.status,
             ).map { rows -> MonthlyResult(criteria, rows) }
         }
 
@@ -181,7 +201,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
             categoryRepo.observeAll(),
             isAnalyticsMode,
         ) { args ->
-            val (criteria, searched) = args[0] as MonthlyResult
+            val (criteria, filtered) = args[0] as MonthlyResult
             val currency = args[1] as String
             val ym = args[2] as YearMonth
             val t = args[3] as TransactionType?
@@ -195,22 +215,10 @@ class MonthlyTransactionsViewModel @Inject constructor(
             val categories = args[10] as List<com.lop.budget.data.local.entity.CategoryEntity>
             val analytics = args[11] as Boolean
 
-            // Recherche, compte et catégorie ont déjà été appliqués par le use case, qui rend
-            // les lignes triées par date décroissante. Ne restent que les deux filtres propres
-            // à cet écran.
-            val filtered = searched
-                .asSequence()
-                .filter { if (t == null) true else it.transaction.type == t }
-                .filter {
-                    when (f) {
-                        PaidFilter.ALL -> true
-                        PaidFilter.PAID -> it.transaction.status == TransactionStatus.PAID
-                        PaidFilter.PLANNED -> it.transaction.status == TransactionStatus.PLANNED
-                    }
-                }
-                .toList()
-
-            val total = filtered.sumOf { tx -> 
+            // Tous les critères ont été appliqués par le use case, qui rend les lignes déjà
+            // triées par date décroissante. `t` et `f` ne servent plus qu'à réafficher l'état
+            // des puces : les relire ici pour refiltrer recréerait un second moteur (I-4).
+            val total = filtered.sumOf { tx ->
                 if (tx.transaction.type == TransactionType.INCOME) tx.transaction.amount else -tx.transaction.amount 
             }
 
