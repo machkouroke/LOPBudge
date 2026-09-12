@@ -4,6 +4,7 @@ import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.RecurrenceFrequency
@@ -17,10 +18,12 @@ import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.confirmVerified
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -50,6 +53,13 @@ class TransactionActionViewModelEditMappingTest {
     private val cancelSeriesUseCase = mockk<CancelRecurringSeriesUseCase>(relaxed = false)
     private val editTransactionWithScopeUseCase =
         mockk<EditTransactionWithScopeUseCase>(relaxed = false)
+
+    /**
+     * Hors sujet ici : le VM lit la devise d'affichage à la construction. Volontairement absent
+     * d'[allMocks] — `confirmVerified` porte sur les collaborateurs de l'édition, pas sur le fait
+     * qu'un getter de préférence ait été touché.
+     */
+    private val settings = mockk<SettingsRepository>(relaxed = false)
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -161,11 +171,13 @@ class TransactionActionViewModelEditMappingTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        every { settings.currency } returns flowOf("EUR")
         sut = TransactionActionViewModel(
             transactionRepo,
             softDeleteUseCase,
             cancelSeriesUseCase,
             editTransactionWithScopeUseCase,
+            settings,
         )
     }
 

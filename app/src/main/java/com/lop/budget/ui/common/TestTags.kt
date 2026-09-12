@@ -141,6 +141,7 @@ object TestTags {
     const val SETTINGS_SWITCH_NOTIF_DETECTION = "settings.switch.notif_detection"
     const val SETTINGS_SWITCH_LOCAL_AI = "settings.switch.local_ai"
     const val SETTINGS_BTN_ALLOW_NOTIF = "settings.btn.allow_notif"
+    const val SETTINGS_ROW_CURRENCY = "settings.row.currency"
 
     // AI
     const val AI_BTN_SEND = "ai.btn.send"

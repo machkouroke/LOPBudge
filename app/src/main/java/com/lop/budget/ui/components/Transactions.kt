@@ -134,7 +134,7 @@ fun TransactionRow(
                             onOpenTransaction(tx.transaction.id)
                         }
                     },
-                    onLongClick = { if (!isAdjustment) actionVm.showPreview(tx, currency) }
+                    onLongClick = { if (!isAdjustment) actionVm.showPreview(tx) }
                 )
                 .graphicsLayer {
                     alpha = if (isPaid && !isAdjustment) 0.5f else 1f

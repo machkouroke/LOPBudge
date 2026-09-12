@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,7 +39,11 @@ fun SettingsScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val downloadStatus by vm.downloadStatus.collectAsStateWithLifecycle()
+    val currencyResults by vm.currencyResults.collectAsStateWithLifecycle()
+    val currencyQuery by vm.currencyQuery.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    var showCurrencySheet by remember { mutableStateOf(false) }
 
     val isDownloading = downloadStatus is QwenDownloadManager.DownloadStatus.Downloading
     val progress = if (downloadStatus is QwenDownloadManager.DownloadStatus.Downloading) {
@@ -265,12 +270,35 @@ fun SettingsScreen(
         item {
             FloatingCard(Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    OutlinedTextField(
-                        value = state.currency,
-                        onValueChange = vm::setCurrency,
-                        label = { Text(stringResource(R.string.settings_currency_label)) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    // La devise se choisit dans une liste fermée : le champ texte libre écrivait
+                    // à chaque frappe et acceptait n'importe quel code (I-1, I-5).
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickableNoRipple { showCurrencySheet = true }
+                            .testTag(TestTags.SETTINGS_ROW_CURRENCY),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Décoratif (I-7) : le libellé en dessous identifie la devise à lui seul.
+                        Text(
+                            state.currency.flag,
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier.clearAndSetSemantics { }
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                stringResource(R.string.settings_currency),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                state.currency.label,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
 
                     Column {
                         Text(
@@ -303,5 +331,29 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+
+    if (showCurrencySheet) {
+        PickerBottomSheet(
+            title = stringResource(R.string.settings_currency),
+            items = currencyResults,
+            isSelected = { it.code == state.currency.code },
+            // Seul un choix dans la liste écrit la préférence (I-5) ; « Aucun » n'existe pas,
+            // l'application affiche toujours des montants dans une devise.
+            onSelect = { currency ->
+                currency?.let { vm.setCurrency(it) }
+                showCurrencySheet = false
+            },
+            onDismiss = {
+                showCurrencySheet = false
+                vm.onCurrencySheetDismissed()
+            },
+            itemLabel = { it.label },
+            itemEmoji = { it.flag },
+            emptyText = stringResource(R.string.currency_search_empty),
+            searchQuery = currencyQuery,
+            onSearchQueryChange = vm::onCurrencyQueryChange,
+            searchPlaceholder = stringResource(R.string.currency_search_hint),
+        )
     }
 }

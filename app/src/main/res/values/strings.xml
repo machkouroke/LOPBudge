@@ -146,7 +146,8 @@
     <string name="settings_detect_via_notif">Détecter via notifications</string>
     <string name="settings_allow_notif_access">Autoriser l\'accès aux notifications</string>
     <string name="settings_currency">Devise</string>
-    <string name="settings_currency_label">Code ISO (EUR, USD, GBP…)</string>
+    <string name="currency_search_hint">Rechercher une devise</string>
+    <string name="currency_search_empty">Aucune devise ne correspond à cette recherche.</string>
     <string name="settings_ai_title">Assistant IA (Gemini)</string>
     <string name="settings_ai_desc">Colle ta clé API Gemini (gratuite via Google AI Studio). Elle reste stockée localement sur l\'appareil.</string>
     <string name="settings_ai_key_label">Clé API Gemini</string>

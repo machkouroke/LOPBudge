@@ -2,6 +2,7 @@ package com.lop.budget.ui.common
 
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.SeriesCancelMode
 import com.lop.budget.domain.model.TransactionKind
@@ -14,9 +15,11 @@ import com.lop.budget.ui.components.RecurringDeleteChoice
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.confirmVerified
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -38,6 +41,9 @@ class TC_33_ContextualDeletionMappingTest {
     private val softDeleteUseCase = mockk<SoftDeleteTransactionOccurrenceUseCase>(relaxed = false)
     private val cancelSeriesUseCase = mockk<CancelRecurringSeriesUseCase>(relaxed = false)
     private val editTransactionWithScopeUseCase = mockk<EditTransactionWithScopeUseCase>(relaxed = false)
+
+    /** Hors sujet ici : le VM lit la devise d'affichage à la construction, rien de plus. */
+    private val settings = mockk<SettingsRepository>(relaxed = false)
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -79,11 +85,13 @@ class TC_33_ContextualDeletionMappingTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        every { settings.currency } returns flowOf("EUR")
         sut = TransactionActionViewModel(
             transactionRepo,
             softDeleteUseCase,
             cancelSeriesUseCase,
-            editTransactionWithScopeUseCase
+            editTransactionWithScopeUseCase,
+            settings
         )
     }
 

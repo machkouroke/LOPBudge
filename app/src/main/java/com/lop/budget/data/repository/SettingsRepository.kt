@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.lop.budget.domain.model.CurrencyCatalog
 import com.lop.budget.domain.usecase.DetectionSettings
 import com.lop.budget.domain.usecase.InboxSettings
 import com.lop.budget.ui.theme.ThemeMode
@@ -38,7 +39,19 @@ class SettingsRepository @Inject constructor(
         val LAST_ACCOUNT_ID = stringPreferencesKey("last_account_id")
     }
 
-    val currency: Flow<String> = context.dataStore.data.map { it[Keys.CURRENCY] ?: "EUR" }
+    /**
+     * Devise d'affichage de l'application : **source de vérité unique**, lue par tous les écrans
+     * qui affichent un montant (I-3).
+     *
+     * La valeur stockée est confrontée au catalogue à la lecture, et pas seulement à l'écriture :
+     * une préférence écrite par une version antérieure — chaîne libre, casse différente, code
+     * retiré depuis — ne doit pas remonter jusqu'au formatage des montants. Elle est ignorée au
+     * profit de l'euro plutôt que propagée (CA-11), et l'absence de préférence donne la même
+     * valeur (CA-01).
+     */
+    val currency: Flow<String> = context.dataStore.data.map {
+        CurrencyCatalog.byCodeOrDefault(it[Keys.CURRENCY]).code
+    }
     val geminiKey: Flow<String> = context.dataStore.data.map { it[Keys.GEMINI_KEY] ?: "" }
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map {
         runCatching { ThemeMode.valueOf(it[Keys.THEME_MODE] ?: "SYSTEM") }.getOrDefault(ThemeMode.SYSTEM)
@@ -59,7 +72,18 @@ class SettingsRepository @Inject constructor(
         it[Keys.LAST_ACCOUNT_ID]?.toLongOrNull()
     }
 
-    suspend fun setCurrency(value: String) = context.dataStore.edit { it[Keys.CURRENCY] = value }
+    /**
+     * N'écrit que si [value] est **exactement** un code du catalogue (I-1).
+     *
+     * Le refus est silencieux : la seule entrée de l'application est une liste fermée, si bien
+     * qu'un code absent ne vient pas de l'utilisateur mais du code appelant. La garde tient ici
+     * plutôt que dans le ViewModel — elle vaut alors pour tout futur appelant, et rien ne peut
+     * persister une devise qu'aucun écran ne saurait afficher.
+     */
+    suspend fun setCurrency(value: String) {
+        val currency = CurrencyCatalog.byCodeOrNull(value) ?: return
+        context.dataStore.edit { it[Keys.CURRENCY] = currency.code }
+    }
     suspend fun setGeminiKey(value: String) = context.dataStore.edit { it[Keys.GEMINI_KEY] = value }
     suspend fun setThemeMode(mode: ThemeMode) = context.dataStore.edit { it[Keys.THEME_MODE] = mode.name }
     suspend fun setDynamicColor(enabled: Boolean) = context.dataStore.edit { it[Keys.DYNAMIC_COLOR] = enabled.toString() }

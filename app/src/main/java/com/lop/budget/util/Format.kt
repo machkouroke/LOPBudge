@@ -28,7 +28,14 @@ object Format {
     private fun currencyFormat(currencyCode: String, locale: Locale): NumberFormat =
         currencyFormats.getOrPut("$currencyCode|$locale") {
             NumberFormat.getCurrencyInstance(locale).apply {
-                currency = Currency.getInstance(currencyCode)
+                val selected = Currency.getInstance(currencyCode)
+                currency = selected
+                // `currency = …` remplace le symbole mais laisse le nombre de décimales de la
+                // devise **de la locale** : en français, tout s'affichait avec deux décimales,
+                // y compris le yen, qui n'a pas de subdivision. Le format suit la devise
+                // choisie, pas la langue de l'appareil (CA-14).
+                minimumFractionDigits = selected.defaultFractionDigits
+                maximumFractionDigits = selected.defaultFractionDigits
             }
         }.clone() as NumberFormat
 

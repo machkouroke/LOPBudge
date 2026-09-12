@@ -4,12 +4,12 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.util.Format
+import com.lop.budget.util.TextSearch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import java.text.Normalizer
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
@@ -135,19 +135,6 @@ class SearchTransactionsUseCase @Inject constructor(
                 || tags.any { normalize(it.name).contains(needle) }
                 || queryCents == transaction.amount
 
-    /** Marques de la forme NFD : accents, cédille, tréma… (P-2). */
-    private val diacritics = Regex("\\p{M}+")
-
-    /**
-     * Forme NFD, marques retirées, minuscules (P-2). « Électricité » et « electricite » se
-     * rejoignent, dans les deux sens : c'est la **même** fonction qui traite la saisie et le champ
-     * comparé, sans quoi la correspondance ne serait pas symétrique.
-     *
-     * `lowercase()` sans argument est invariant par locale — la casse turque ne peut pas s'y
-     * glisser selon la langue de l'appareil.
-     */
-    private fun normalize(text: String): String =
-        Normalizer.normalize(text.trim(), Normalizer.Form.NFD)
-            .replace(diacritics, "")
-            .lowercase()
+    /** Repli des accents et de la casse (P-2), partagé avec les autres recherches de l'app. */
+    private fun normalize(text: String): String = TextSearch.normalize(text)
 }

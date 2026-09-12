@@ -3,7 +3,9 @@ package com.lop.budget.ui.common
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
+import com.lop.budget.domain.model.CurrencyCatalog
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.SeriesCancelMode
 import com.lop.budget.domain.model.TransactionEdition
@@ -14,7 +16,10 @@ import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -24,6 +29,7 @@ class TransactionActionViewModel @Inject constructor(
     private val softDeleteTransactionOccurrenceUseCase: SoftDeleteTransactionOccurrenceUseCase,
     private val cancelRecurringSeriesUseCase: CancelRecurringSeriesUseCase,
     private val editTransactionWithScopeUseCase: EditTransactionWithScopeUseCase,
+    settings: SettingsRepository,
 ) : ViewModel() {
 
     // On suit les versions des transactions pour forcer le rafraîchissement UI
@@ -206,18 +212,23 @@ class TransactionActionViewModel @Inject constructor(
     private val _previewTx = MutableStateFlow<TransactionWithRelations?>(null)
     val previewTx = _previewTx.asStateFlow()
 
-    private val _previewCurrency = MutableStateFlow("EUR")
-    val previewCurrency = _previewCurrency.asStateFlow()
+    /**
+     * Devise de l'aperçu, lue de la préférence et non de l'écran qui ouvre l'aperçu (I-3, CA-13).
+     *
+     * L'appelant la fournissait auparavant : l'aperçu gardait donc sa propre copie, figée à
+     * « EUR » tant qu'aucun écran ne l'avait ouvert, et un changement de devise ne l'atteignait
+     * pas tant que l'écran d'origine n'avait pas lui-même été recomposé.
+     */
+    val previewCurrency: StateFlow<String> = settings.currency
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CurrencyCatalog.default.code)
 
     /**
      * Shows a preview for a specific transaction.
      *
      * @param tx The transaction with relations to preview.
-     * @param currency The currency code to display.
      */
-    fun showPreview(tx: TransactionWithRelations, currency: String) {
+    fun showPreview(tx: TransactionWithRelations) {
         _previewTx.value = tx
-        _previewCurrency.value = currency
     }
 
     /**
