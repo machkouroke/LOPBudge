@@ -39,7 +39,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.lop.budget.R
-import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
+import com.lop.budget.domain.model.ProposalStatus
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.testTag
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.FloatingCard
@@ -55,6 +56,16 @@ fun DetectedTransactionsScreen(
     vm: DetectedTransactionsViewModel = hiltViewModel(),
 ) {
     val pending = vm.pending.collectAsStateWithLifecycle().value
+
+    // L'écran ne décide rien : il exécute les effets émis par le ViewModel (I-10).
+    LaunchedEffect(Unit) {
+        vm.effects.collect { effect ->
+            when (effect) {
+                is InboxEffect.OpenEdition -> effect.createdTransactionId?.let(onOpenEdit)
+                is InboxEffect.Error -> Unit
+            }
+        }
+    }
 
     LopScreenScaffold(
         title = stringResource(R.string.detected_title),
@@ -97,7 +108,7 @@ fun DetectedTransactionsScreen(
                                 if (p.cardName != null) {
                                     Text(p.cardName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                                 }
-                                if (p.status == DetectedTransactionProposalEntity.STATUS_UNCERTAIN) {
+                                if (p.status == ProposalStatus.UNCERTAIN) {
                                     Spacer(Modifier.height(4.dp))
                                     Box(
                                         modifier = Modifier
@@ -126,7 +137,7 @@ fun DetectedTransactionsScreen(
                         }
                         Spacer(Modifier.width(16.dp))
                         Text(
-                            Format.money(p.amount, p.currency ?: "EUR"),
+                            Format.money(p.amountCents, p.currency ?: "EUR"),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.error,
@@ -144,7 +155,7 @@ fun DetectedTransactionsScreen(
                                 .weight(1f)
                                 .height(46.dp)
                                 .pressScaleClickable(intent = HapticIntent.Confirm) {
-                                    vm.accept(p, onOpenEdit)
+                                    vm.onAccept(p.id)
                                 },
                             shape = MaterialTheme.shapes.large,
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
@@ -164,7 +175,7 @@ fun DetectedTransactionsScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(46.dp)
-                                .pressScaleClickable(intent = HapticIntent.Tap) { vm.ignore(p.id) },
+                                .pressScaleClickable(intent = HapticIntent.Tap) { vm.onRefuse(p.id) },
                             shape = MaterialTheme.shapes.large,
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                         ) {

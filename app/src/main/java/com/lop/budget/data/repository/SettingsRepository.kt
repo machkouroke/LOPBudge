@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.lop.budget.domain.usecase.DetectionSettings
+import com.lop.budget.domain.usecase.InboxSettings
 import com.lop.budget.ui.theme.ThemeMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +22,7 @@ private val Context.dataStore by preferencesDataStore(name = "lop_settings")
 @Singleton
 class SettingsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-) {
+) : DetectionSettings, InboxSettings {
     private object Keys {
         val CURRENCY = stringPreferencesKey("currency")
         val GEMINI_KEY = stringPreferencesKey("gemini_api_key")
@@ -76,11 +78,21 @@ class SettingsRepository @Inject constructor(
         if (id == null) it.remove(Keys.LAST_ACCOUNT_ID) else it[Keys.LAST_ACCOUNT_ID] = id.toString()
     }
 
-    suspend fun isNotificationDetectionEnabledOnce(): Boolean = notificationDetectionEnabled.first()
+    override suspend fun isNotificationDetectionEnabledOnce(): Boolean = notificationDetectionEnabled.first()
 
     suspend fun lastAccountIdOnce(): Long? = lastAccountId.first()
 
-    fun isAllowedNotificationSource(packageName: String): Boolean {
+    /**
+     * Compte de destination des propositions acceptées (P-5).
+     *
+     * Le réglage dédié n'existe pas encore : on retombe sur le dernier compte utilisé, qui est la
+     * donnée la plus proche déjà persistée. Tant qu'aucun compte n'a servi, la valeur est nulle et
+     * CA-20 s'applique — l'enregistrement doit être refusé avec un message, jamais complété par un
+     * identifiant choisi par le code (I-8).
+     */
+    override suspend fun defaultAccountIdOnce(): Long? = lastAccountIdOnce()
+
+    override fun isAllowedNotificationSource(packageName: String): Boolean {
         // MVP : sources fixes
         return packageName in setOf(
             "com.google.android.apps.walletnfcrel", // Google Wallet/Pay

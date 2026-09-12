@@ -35,7 +35,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         DebtEntity::class,
         DetectedTransactionProposalEntity::class,
     ],
-    version = 20,
+    version = 21,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -51,6 +51,67 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        /**
+         * Propositions détectées : montant en centimes (`INTEGER`) et compteur de regroupement.
+         *
+         * `amount: Double` devient `amountCents: Long` (P-1 de l'US LOP-54) — SQLite ne sait pas
+         * changer le type déclaré d'une colonne, la table est donc reconstruite sur le modèle de
+         * [MIGRATION_18_19], index compris, sinon la validation de schéma échoue au démarrage.
+         *
+         * `occurrences` et `lastDetectedAt` sont ajoutées pour que le regroupement anti-doublon
+         * puisse comptabiliser une notification écartée au lieu de la perdre (I-7).
+         *
+         * Les clés `dedupeKey` déjà stockées ont été construites sur un montant flottant : elles ne
+         * correspondent plus au nouveau format. Une proposition antérieure à la migration peut donc
+         * être reproposée si la même notification revient — sans perte de donnée, et la fenêtre de
+         * regroupement n'étant que de deux minutes, le cas est marginal.
+         */
+        val MIGRATION_20_21 = object : androidx.room.migration.Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `detected_transaction_proposals_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `amountCents` INTEGER NOT NULL,
+                        `currency` TEXT,
+                        `label` TEXT NOT NULL,
+                        `fullText` TEXT NOT NULL,
+                        `cardName` TEXT,
+                        `detectedAt` INTEGER NOT NULL,
+                        `sourcePackage` TEXT NOT NULL,
+                        `dedupeKey` TEXT NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `confidenceScore` REAL NOT NULL,
+                        `suggestedCategoryId` INTEGER,
+                        `createdTransactionId` INTEGER,
+                        `occurrences` INTEGER NOT NULL,
+                        `lastDetectedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO detected_transaction_proposals_new (id, amountCents, currency, label, fullText, cardName, detectedAt, sourcePackage, dedupeKey, status, confidenceScore, suggestedCategoryId, createdTransactionId, occurrences, lastDetectedAt)
+                    SELECT id, CAST(ROUND(amount * 100) AS INTEGER), currency, label, fullText, cardName, detectedAt, sourcePackage, dedupeKey, status, confidenceScore, suggestedCategoryId, createdTransactionId, 1, detectedAt FROM detected_transaction_proposals
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE detected_transaction_proposals")
+                db.execSQL("ALTER TABLE detected_transaction_proposals_new RENAME TO detected_transaction_proposals")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_detected_transaction_proposals_dedupeKey` " +
+                        "ON `detected_transaction_proposals` (`dedupeKey`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_detected_transaction_proposals_status` " +
+                        "ON `detected_transaction_proposals` (`status`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_detected_transaction_proposals_detectedAt` " +
+                        "ON `detected_transaction_proposals` (`detectedAt`)"
+                )
+            }
+        }
 
         /**
          * Index sur `transactions.seriesDate`, purement pour la performance de lecture.

@@ -1,20 +1,8 @@
 package com.lop.budget.notifications
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.Intent
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import com.lop.budget.MainActivity
-import com.lop.budget.R
-import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
-import com.lop.budget.data.repository.CategoryRepository
-import com.lop.budget.data.repository.NotificationDetectionRepository
-import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.ui.navigation.Routes
+import com.lop.budget.domain.usecase.HandlePaymentNotificationUseCase
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -22,11 +10,15 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * Écoute les notifications système (après autorisation utilisateur) et crée des propositions.
+ * Écoute les notifications système (après autorisation utilisateur).
+ *
+ * **Adaptateur, pas règle métier** (I-10, CA-26) : ce service traduit un `StatusBarNotification` en
+ * [NotificationSnapshot] et délègue. Il ne lit aucun réglage, ne filtre aucune source, ne calcule
+ * aucune clé de regroupement et n'écrit rien en base — tout cela vit dans
+ * [HandlePaymentNotificationUseCase], donc testable sans appareil.
  */
 class LopNotificationListenerService : NotificationListenerService() {
 
@@ -35,125 +27,34 @@ class LopNotificationListenerService : NotificationListenerService() {
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     interface ServiceEntryPoint {
-        fun settingsRepository(): SettingsRepository
-        fun notificationDetectionRepository(): NotificationDetectionRepository
-        fun paymentNotificationParser(): PaymentNotificationParser
-        fun smartCategorizer(): SmartCategorizer
-        fun categoryRepository(): CategoryRepository
+        fun handlePaymentNotification(): HandlePaymentNotificationUseCase
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        val ep = EntryPointAccessors.fromApplication(applicationContext, ServiceEntryPoint::class.java)
-        val settings = ep.settingsRepository()
-        val repo = ep.notificationDetectionRepository()
-        val parser = ep.paymentNotificationParser()
-        val categorizer = ep.smartCategorizer()
-        val categoryRepo = ep.categoryRepository()
+        val handle = EntryPointAccessors
+            .fromApplication(applicationContext, ServiceEntryPoint::class.java)
+            .handlePaymentNotification()
 
-        scope.launch {
-            if (!settings.isNotificationDetectionEnabledOnce()) return@launch
-
-            val pkg = sbn.packageName
-            if (!settings.isAllowedNotificationSource(pkg)) return@launch
-
-            val parsed = parser.parse(sbn, applicationContext) ?: return@launch
-
-            val status = when (parsed.classification.status) {
-                ClassificationResult.Status.TRANSACTION -> DetectedTransactionProposalEntity.STATUS_PENDING
-                ClassificationResult.Status.UNCERTAIN -> DetectedTransactionProposalEntity.STATUS_UNCERTAIN
-                else -> return@launch // Déjà filtré par le parser normalement
-            }
-
-            // Catégorisation intelligente (IA)
-            var suggestedCatId: Long? = null
-            if (settings.useLocalLlm.first()) {
-                val allCats = categoryRepo.observeAll().first()
-                val availableCats = allCats.map { it.name }
-                val suggestedName = categorizer.suggestCategory(parsed.label, availableCats)
-                if (suggestedName != null) {
-                    suggestedCatId = allCats.find { it.name == suggestedName }?.id
-                }
-            }
-
-            val proposal = DetectedTransactionProposalEntity(
-                amount = parsed.amount,
-                currency = parsed.currency,
-                label = parsed.label,
-                fullText = parsed.fullText,
-                cardName = parsed.cardName,
-                detectedAt = System.currentTimeMillis(),
-                sourcePackage = pkg,
-                dedupeKey = "${pkg}|${parsed.amount}|${parsed.currency ?: ""}|${parsed.normalizedText}",
-                status = status,
-                confidenceScore = parsed.classification.confidence,
-                suggestedCategoryId = suggestedCatId
-            )
-
-            // Anti-doublon : fenêtre courte (2 minutes)
-            val inserted = repo.upsertIfNotDuplicate(proposal, dedupeWindowMs = 2 * 60 * 1000L)
-            if (inserted > 0 && status == DetectedTransactionProposalEntity.STATUS_PENDING) {
-                postDetectedNotification(proposal)
-            }
-        }
+        val snapshot = sbn.toSnapshot()
+        scope.launch { handle(snapshot) }
     }
 
     /**
-     * Sends a local notification to the user when a potential transaction is detected.
-     *
-     * @param p The detected transaction proposal entity.
+     * `android.bigText` est replié dans le texte : l'instantané n'a que deux champs textuels, et
+     * l'analyse recevait déjà les deux collés dans le même ordre.
      */
-    private fun postDetectedNotification(p: DetectedTransactionProposalEntity) {
-        ensureChannel()
+    private fun StatusBarNotification.toSnapshot(): NotificationSnapshot {
+        val extras = notification.extras
+        val body = listOfNotNull(
+            extras.getCharSequence("android.text")?.toString(),
+            extras.getCharSequence("android.bigText")?.toString(),
+        ).filter { it.isNotBlank() }.joinToString(" • ")
 
-        val intent = Intent(applicationContext, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("route", Routes.DETECTED)
-        }
-
-        val pi = PendingIntent.getActivity(
-            applicationContext,
-            1001,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        return NotificationSnapshot(
+            sourcePackage = packageName,
+            title = extras.getCharSequence("android.title")?.toString(),
+            text = body.ifBlank { null },
+            postedAtMillis = postTime,
         )
-
-        val text = "${p.label} • ${p.amount} ${p.currency ?: ""}".trim()
-
-        val notif = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(applicationContext.getString(R.string.notif_detected_title))
-            .setContentText(text)
-            .setContentIntent(pi)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .build()
-
-        try {
-            NotificationManagerCompat.from(applicationContext).notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notif)
-        } catch (e: SecurityException) {
-            android.util.Log.e("LopNotifService", "Permission POST_NOTIFICATIONS missing", e)
-        }
-    }
-
-    /**
-     * Ensures that the notification channel for detected transactions exists.
-     */
-    private fun ensureChannel() {
-        val mgr = getSystemService(NotificationManager::class.java)
-        val existing = mgr.getNotificationChannel(CHANNEL_ID)
-        if (existing != null) return
-
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            applicationContext.getString(R.string.notif_channel_name),
-            NotificationManager.IMPORTANCE_HIGH,
-        ).apply {
-            description = applicationContext.getString(R.string.notif_channel_desc)
-        }
-        mgr.createNotificationChannel(channel)
-    }
-
-    companion object {
-        private const val CHANNEL_ID = "detected_transactions"
     }
 }
