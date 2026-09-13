@@ -21,7 +21,7 @@ import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.domain.usecase.CreateTransactionUseCase
+import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.EditOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.ObserveTransactionDetailUseCase

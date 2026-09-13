@@ -8,6 +8,7 @@ import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.coVerifyOrder
