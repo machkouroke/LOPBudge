@@ -42,8 +42,14 @@ data class MonthlyAnalytics(
 class ObserveMonthlyAnalyticsUseCase @Inject constructor(
     private val observeTransactionsUseCase: ObserveTransactionsUseCase,
 ) {
-    operator fun invoke(start: Long, end: Long, type: TransactionType): Flow<MonthlyAnalytics> =
-        observeTransactionsUseCase(start, end).map { txs ->
+    /** [accountId] à `null` agrège tous les comptes ; sinon, le seul compte demandé. */
+    operator fun invoke(
+        start: Long,
+        end: Long,
+        type: TransactionType,
+        accountId: Long? = null,
+    ): Flow<MonthlyAnalytics> =
+        observeTransactionsUseCase(start, end, accountId).map { txs ->
             val paid = txs.filter { it.transaction.status == TransactionStatus.PAID }
             val income = paid.sumAmountOf(TransactionType.INCOME)
             val expense = paid.sumAmountOf(TransactionType.EXPENSE)

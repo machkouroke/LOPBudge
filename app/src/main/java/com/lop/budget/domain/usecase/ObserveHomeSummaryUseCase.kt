@@ -51,14 +51,16 @@ class ObserveHomeSummaryUseCase @Inject constructor(
     private val observeTransactionsUseCase: ObserveTransactionsUseCase,
     private val clock: Clock,
 ) {
+    /** [accountId] à `null` agrège tous les comptes ; sinon, le seul compte demandé, sur les **deux** fenêtres. */
     operator fun invoke(
         start: Long,
         end: Long,
         previousStart: Long,
         previousEnd: Long,
+        accountId: Long? = null,
     ): Flow<HomeSummary> = combine(
-        observeTransactionsUseCase(start, end),
-        observeTransactionsUseCase(previousStart, previousEnd),
+        observeTransactionsUseCase(start, end, accountId),
+        observeTransactionsUseCase(previousStart, previousEnd, accountId),
     ) { txs, previousTxs ->
         val income = txs.sumAmountOf(TransactionType.INCOME)
         val expense = txs.sumAmountOf(TransactionType.EXPENSE)

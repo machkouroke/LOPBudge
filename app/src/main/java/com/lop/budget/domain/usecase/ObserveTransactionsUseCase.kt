@@ -34,7 +34,16 @@ class ObserveTransactionsUseCase @Inject constructor(
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
 ) {
-    operator fun invoke(start: Long, end: Long): Flow<List<TransactionWithRelations>> =
+    /**
+     * [accountId] à `null` ne filtre pas — il n'exclut donc jamais une ligne. Le filtre porte aussi
+     * bien sur les lignes persistées que sur les occurrences virtuelles, qui héritent du compte de
+     * leur série.
+     */
+    operator fun invoke(
+        start: Long,
+        end: Long,
+        accountId: Long? = null,
+    ): Flow<List<TransactionWithRelations>> =
         combine(
             transactionRepo.observeForMerge(start, end),
             transactionRepo.observeActiveSeries(),
@@ -54,6 +63,7 @@ class ObserveTransactionsUseCase @Inject constructor(
                     },
                 start = start,
                 end = end,
+                accountId = accountId,
             )
         }.flowOn(Dispatchers.Default)
 
@@ -92,6 +102,7 @@ class ObserveTransactionsUseCase @Inject constructor(
         tagsBySeriesId: Map<Long, List<TagEntity>>,
         start: Long,
         end: Long,
+        accountId: Long?,
     ): List<TransactionWithRelations> {
         // I-3 : une ligne de série occupe son slot d'origine (`seriesDate`) ET la date où elle
         // s'affiche (`date`). Les deux clés sont nécessaires : sans `seriesDate` une exception
@@ -127,6 +138,11 @@ class ObserveTransactionsUseCase @Inject constructor(
                 }
         }
 
-        return (visibleReal + visibleVirtual).sortedBy { it.transaction.date }
+        // Filtre appliqué **après** la fusion, jamais avant `occupiedSlots` : restreindre la source
+        // en amont laisserait le slot d'une exception d'un autre compte se régénérer en virtuelle
+        // (I-5). À `accountId == null`, le résultat est identique à celui d'avant le paramètre.
+        return (visibleReal + visibleVirtual)
+            .filter { accountId == null || it.transaction.accountId == accountId }
+            .sortedBy { it.transaction.date }
     }
 }
