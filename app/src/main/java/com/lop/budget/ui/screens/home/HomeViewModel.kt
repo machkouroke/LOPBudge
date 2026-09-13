@@ -9,8 +9,8 @@ import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.AccountBalances
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
-import com.lop.budget.domain.usecase.HomeSummary
-import com.lop.budget.domain.usecase.ObserveHomeSummaryUseCase
+import com.lop.budget.domain.usecase.insight.HomeSummary
+import com.lop.budget.domain.usecase.insight.ObserveHomeSummaryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

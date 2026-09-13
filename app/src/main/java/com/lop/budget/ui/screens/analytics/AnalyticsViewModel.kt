@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.CategoryBreakdown
-import com.lop.budget.domain.usecase.ObserveMonthlyAnalyticsUseCase
+import com.lop.budget.domain.usecase.insight.ObserveMonthlyAnalyticsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

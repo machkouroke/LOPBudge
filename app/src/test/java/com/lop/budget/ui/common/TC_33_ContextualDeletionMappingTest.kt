@@ -8,7 +8,7 @@ import com.lop.budget.domain.model.SeriesCancelMode
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
+import com.lop.budget.domain.usecase.transaction.CancelRecurringSeriesUseCase
 import com.lop.budget.domain.usecase.transaction.DeleteOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.transaction.SoftDeleteTransactionOccurrenceUseCase

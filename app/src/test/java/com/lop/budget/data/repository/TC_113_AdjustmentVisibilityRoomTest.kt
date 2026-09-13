@@ -22,11 +22,11 @@ import com.lop.budget.domain.usecase.account.AdjustBalanceUseCase
 import com.lop.budget.domain.usecase.account.AdjustOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
-import com.lop.budget.domain.usecase.HomeSummary
-import com.lop.budget.domain.usecase.MonthlyAnalytics
+import com.lop.budget.domain.usecase.insight.HomeSummary
+import com.lop.budget.domain.usecase.insight.MonthlyAnalytics
 import com.lop.budget.domain.usecase.ObserveAccountDetailUseCase
-import com.lop.budget.domain.usecase.ObserveHomeSummaryUseCase
-import com.lop.budget.domain.usecase.ObserveMonthlyAnalyticsUseCase
+import com.lop.budget.domain.usecase.insight.ObserveHomeSummaryUseCase
+import com.lop.budget.domain.usecase.insight.ObserveMonthlyAnalyticsUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
 import com.lop.budget.domain.usecase.transaction.SaveTransactionUseCase
 import com.lop.budget.domain.usecase.transaction.SearchTransactionsUseCase

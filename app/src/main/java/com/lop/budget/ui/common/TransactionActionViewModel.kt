@@ -10,7 +10,7 @@ import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.SeriesCancelMode
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.toDaysOfWeekSet
-import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
+import com.lop.budget.domain.usecase.transaction.CancelRecurringSeriesUseCase
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.transaction.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.ui.components.RecurringDeleteChoice

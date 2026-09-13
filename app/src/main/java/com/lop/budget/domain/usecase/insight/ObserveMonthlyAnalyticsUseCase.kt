@@ -1,4 +1,4 @@
-package com.lop.budget.domain.usecase
+package com.lop.budget.domain.usecase.insight
 
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.BreakdownEngine
@@ -37,7 +37,7 @@ data class MonthlyAnalytics(
  *
  * Les ajustements de solde n'entrent dans aucun de ces agrégats (I-2, I-11) : l'exclusion est
  * portée **une seule fois**, par `TransactionDao.observeForMerge`, dont ce use case hérite via
- * [com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase]. Rien n'est filtré ici, et aucune option ne permet de les inclure
+ * [ObserveTransactionsUseCase]. Rien n'est filtré ici, et aucune option ne permet de les inclure
  * (P-4, CA-13). L'écart E-1 est corrigé depuis le 13 septembre 2026.
  */
 @Singleton

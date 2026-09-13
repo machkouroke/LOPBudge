@@ -5,6 +5,7 @@ import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.SeriesCancelMode
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.transaction.CancelRecurringSeriesUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.coVerifyOrder

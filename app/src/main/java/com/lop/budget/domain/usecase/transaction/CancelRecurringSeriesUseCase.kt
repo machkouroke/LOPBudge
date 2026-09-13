@@ -1,7 +1,8 @@
-package com.lop.budget.domain.usecase
+package com.lop.budget.domain.usecase.transaction
 
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.SeriesCancelMode
+import com.lop.budget.domain.usecase.SyncProgressUseCase
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -14,7 +15,7 @@ class CancelRecurringSeriesUseCase @Inject constructor(
      * Cancels a recurring series based on the specified cancellation mode.
      *
      * @param seriesId The ID of the recurring series.
-     * @param mode The [SeriesCancelMode] indicating whether to cancel all occurrences or only future ones.
+     * @param mode The [com.lop.budget.domain.model.SeriesCancelMode] indicating whether to cancel all occurrences or only future ones.
      */
     suspend operator fun invoke(
         seriesId: Long,
