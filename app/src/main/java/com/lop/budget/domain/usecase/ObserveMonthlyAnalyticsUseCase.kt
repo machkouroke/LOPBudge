@@ -34,9 +34,10 @@ data class MonthlyAnalytics(
  * de règles (I-12, P-12), et un agrégat calculé dans un ViewModel n'est atteignable par aucun
  * test d'intégration (CA-26).
  *
- * ÉCART E-1 (LOP-87, I-2, I-11) : la source n'exclut **pas** les ajustements. Un ajustement
- * payé entre donc dans les revenus, les dépenses, le solde du mois et la répartition — où il
- * forme un groupe « sans catégorie » parce que sa clé de catégorie n'existe pas (E-2).
+ * Les ajustements de solde n'entrent dans aucun de ces agrégats (I-2, I-11) : l'exclusion est
+ * portée **une seule fois**, par `TransactionDao.observeForMerge`, dont ce use case hérite via
+ * [ObserveTransactionsUseCase]. Rien n'est filtré ici, et aucune option ne permet de les inclure
+ * (P-4, CA-13). L'écart E-1 est corrigé depuis le 13 septembre 2026.
  */
 @Singleton
 class ObserveMonthlyAnalyticsUseCase @Inject constructor(

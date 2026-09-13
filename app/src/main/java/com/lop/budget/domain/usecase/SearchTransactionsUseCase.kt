@@ -30,6 +30,10 @@ import javax.inject.Singleton
  * façon de les appliquer : filtrer soi-même les lignes rendues ici serait un second moteur de
  * recherche (I-4 de LOP-70). Le court-circuit de la requête vide y compris : il vit ici, pas dans
  * `SearchViewModel`.
+ *
+ * Les ajustements de solde, eux, ne sont **pas** filtrés ici : ils n'atteignent jamais ce moteur,
+ * `TransactionDao.observeForMerge` les ayant déjà exclus (LOP-87, I-2, P-4). Aucun paramètre de
+ * la signature ci-dessous ne peut donc les révéler, ce qu'exige CA-13.
  */
 @Singleton
 class SearchTransactionsUseCase @Inject constructor(

@@ -27,6 +27,11 @@ import javax.inject.Singleton
  * La suppression optimiste au swipe n'est **pas** portée ici : elle vit dans
  * `TransactionActionViewModel.pendingDeletes`, au plus près de l'écran qui l'affiche. Ce use case
  * ne rend que l'état réellement persisté.
+ *
+ * Les ajustements de solde n'en font jamais partie (LOP-87, I-2) : l'exclusion est portée par
+ * `TransactionDao.observeForMerge`, au plus près de la lecture et **une seule fois** (P-4). Elle
+ * n'est volontairement pas reproduite ici, ni offerte en paramètre — c'est ce qui garantit que la
+ * prochaine lecture métier branchée sur ce use case ne rouvrira pas la fuite (CA-13).
  */
 @Singleton
 class ObserveTransactionsUseCase @Inject constructor(

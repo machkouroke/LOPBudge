@@ -8,6 +8,7 @@ import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
+import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.toDaysOfWeekCsv
 import com.lop.budget.domain.model.toSeriesEntity
@@ -18,9 +19,10 @@ import javax.inject.Inject
  * Issue d'une édition de transaction.
  *
  * Le type existe pour que le **domaine** puisse refuser une édition (I-4 de LOP-87 : un
- * ajustement de solde n'est ni modifiable ni ouvrable). Aucune garde n'est encore posée :
- * [RefusedNotEditable] n'est donc jamais retourné à ce jour — c'est l'écart E-5, dont la
- * couverture appartient à TC-112 T-07.
+ * ajustement de solde n'est ni modifiable ni ouvrable). La garde est posée depuis le
+ * 13 septembre 2026 : [RefusedNotEditable] est retourné, sans aucune écriture, dès que la ligne
+ * visée porte `BALANCE_ADJUSTMENT`. Couverture : TC-112 T-07 pour le refus explicite, TC-113
+ * T-08b pour l'état persisté.
  */
 sealed interface EditOutcome {
     data class Applied(val transactionId: Long) : EditOutcome
@@ -49,6 +51,14 @@ class EditTransactionWithScopeUseCase @Inject constructor(
         scope: EditScope,
     ): EditOutcome {
         val current = transactionRepo.getById(editingId)
+
+        // I-4 / CA-22 de LOP-87 : un ajustement de solde n'est ni modifiable ni ouvrable. Le refus
+        // est porté ici, pas par l'interface : un bouton désactivé ne survit pas à l'ajout d'un
+        // écran, d'une feuille de portée ou d'un lien profond (P-9). Sortie avant toute écriture.
+        if (current?.transaction?.kind == TransactionKind.BALANCE_ADJUSTMENT) {
+            return EditOutcome.RefusedNotEditable
+        }
+
         val originalSeriesDate = seriesDate?.takeIf { it > 0L }
             ?: current?.transaction?.seriesDate
             ?: current?.transaction?.date
@@ -106,16 +116,20 @@ class EditTransactionWithScopeUseCase @Inject constructor(
                     originalSeriesDate
                 )
                 else editingId
-            val existingPaidAt = (current ?: transactionRepo.getById(targetId))?.transaction?.paidAt
+            // Une seule résolution de la ligne existante : `paidAt` et `kind` doivent venir de la
+            // même lecture, sinon une occurrence tout juste matérialisée pourrait reconduire
+            // l'un et pas l'autre.
+            val existing = (current ?: transactionRepo.getById(targetId))?.transaction
             saveTransactionUseCase.saveSimple(
                 // CA-09 SINGLE : `date` = date du formulaire, `seriesDate` conservé (I-1).
                 edition.toTransactionEntity(
                     id = targetId,
                     status = status,
-                    paidAt = existingPaidAt,
+                    paidAt = existing?.paidAt,
                     seriesId = seriesId,
                     seriesDate = originalSeriesDate,
                     isException = true,
+                    kind = existing?.kind ?: TransactionKind.STANDARD,
                 ),
                 edition.tagIds,
             )
@@ -130,6 +144,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
                 seriesId = null,
                 seriesDate = null,
                 isException = false,
+                kind = current?.transaction?.kind ?: TransactionKind.STANDARD,
             ),
             edition.tagIds,
         )
@@ -187,6 +202,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
                     seriesId = null,
                     seriesDate = null,
                     isException = false,
+                    kind = current?.transaction?.kind ?: TransactionKind.STANDARD,
                 ),
                 edition.tagIds,
             )
@@ -211,6 +227,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
                     seriesId = newSeriesId,
                     seriesDate = current.transaction.seriesDate, // I-1 : slot d'origine conservé
                     isException = true,
+                    kind = current.transaction.kind,
                 ),
                 edition.tagIds,
             )

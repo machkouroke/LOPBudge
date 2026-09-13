@@ -26,8 +26,10 @@ data class CategoryBreakdown(
  * rendait la répartition O(groupes × N).
  *
  * Une ligne sans catégorie (`NO_CATEGORY_ID`) tombe dans le groupe de repli ci-dessous : sa
- * jointure ne résout rien, par construction. C'est le cas d'un ajustement de solde (LOP-87, P-5),
- * qu'aucun agrégat métier ne doit de toute façon atteindre (I-11, écart E-1 encore ouvert).
+ * jointure ne résout rien, par construction. C'était le cas d'un ajustement de solde (LOP-87,
+ * P-5), qui n'atteint plus aucun agrégat métier depuis la correction de l'écart E-1 le
+ * 13 septembre 2026 — l'exclusion est portée par `TransactionDao.observeForMerge`, pas ici : ce
+ * moteur ne décide jamais quelles lignes entrent (I-11).
  */
 object BreakdownEngine {
 

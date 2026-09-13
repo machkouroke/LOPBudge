@@ -35,9 +35,14 @@ fun TransactionEdition.toSeriesEntity(): RecurringSeriesEntity = RecurringSeries
 
 /**
  * Unique lieu de construction d'une TransactionEntity depuis une édition.
- * Les 6 paramètres sont volontairement obligatoires (pas de défauts) : chaque site d'appel
- * doit expliciter l'identité, le statut, le paiement et le rattachement série.
- * `kind` n'est pas passé : le défaut de l'entité (STANDARD) est conservé, comme avant.
+ * Les 7 paramètres sont volontairement obligatoires (pas de défauts) : chaque site d'appel
+ * doit expliciter l'identité, le statut, le paiement, le rattachement série et le type technique.
+ *
+ * [kind] a longtemps été omis, et le défaut de l'entité (`STANDARD`) s'appliquait : toute
+ * réécriture d'un ajustement de solde le reconvertissait silencieusement en transaction métier,
+ * ce que I-5 et CA-23 de LOP-87 interdisent. Le paramètre est obligatoire précisément pour qu'un
+ * futur site d'appel ne puisse pas réintroduire l'oubli : une création passe `STANDARD`, une
+ * édition reconduit le type de la ligne existante.
  */
 fun TransactionEdition.toTransactionEntity(
     id: Long,
@@ -46,12 +51,14 @@ fun TransactionEdition.toTransactionEntity(
     seriesId: Long?,
     seriesDate: Long?,
     isException: Boolean,
+    kind: TransactionKind,
 ): TransactionEntity = TransactionEntity(
     id = id,
     title = title,
     amount = amount,
     type = type,
     status = status,
+    kind = kind,
     date = date,
     accountId = accountId,
     categoryId = categoryId,

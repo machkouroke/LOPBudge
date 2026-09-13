@@ -244,13 +244,25 @@ interface TransactionDao : TransactionOperations {
      *
      * `deleted` n'est volontairement pas filtré ici : un tombstone continue d'occuper son slot
      * (I-5). C'est `ObserveTransactionsUseCase` qui décide de l'affichage.
+     *
+     * `kind = 'STANDARD'` en revanche **est** filtré, et c'est le seul endroit où le masquage des
+     * ajustements est porté (LOP-87, I-2, I-11, P-4). Cette requête alimente les quatre lectures
+     * métier — liste, recherche, analyses, accueil — qui en héritent sans changer de signature :
+     * aucune d'elles n'offre donc d'option « inclure les ajustements », ce que CA-13 exige. La vue
+     * du compte, seule lecture autorisée à les exposer, passe par [observePaidByAccount] et
+     * [observePlannedByAccount], volontairement non filtrées.
+     *
+     * Le filtre englobe le `OR` au lieu de s'ajouter à sa seconde branche : sans les parenthèses,
+     * la précédence SQL le rattacherait au seul test sur `seriesDate` et laisserait passer tout
+     * ajustement dont la `date` tombe dans la fenêtre.
      */
     @Transaction
     @Query(
         """
         SELECT * FROM transactions
-        WHERE date BETWEEN :start AND :end
-           OR (seriesId IS NOT NULL AND seriesDate BETWEEN :start AND :end)
+        WHERE kind = 'STANDARD'
+          AND (date BETWEEN :start AND :end
+               OR (seriesId IS NOT NULL AND seriesDate BETWEEN :start AND :end))
         ORDER BY date ASC
     """
     )

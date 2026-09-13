@@ -4,6 +4,7 @@ import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
+import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.toSeriesEntity
 import com.lop.budget.domain.model.toTransactionEntity
@@ -24,6 +25,8 @@ class CreateTransactionUseCase @Inject constructor(
                     seriesId = null,
                     seriesDate = null,
                     isException = false,
+                    // I-1 de LOP-87 : ce chemin n'est pas l'écrivain des ajustements de solde.
+                    kind = TransactionKind.STANDARD,
                 ),
                 edition.tagIds,
             )

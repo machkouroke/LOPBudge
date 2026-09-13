@@ -42,9 +42,11 @@ data class HomeSummary(
  * `LocalDate.now()` : le fuseau, lui, reste relu à chaque appel (même règle que
  * [SearchTransactionsUseCase]).
  *
- * ÉCART E-1 (LOP-87, I-2, I-11) : la source n'exclut **pas** les ajustements. Ils entrent donc
- * dans les revenus, les dépenses, le solde projeté, les groupes par jour et la liste du
- * tableau de bord, où ils peuvent évincer une transaction réelle.
+ * Les ajustements de solde n'entrent dans aucun de ces indicateurs (I-2, I-11, CA-16) :
+ * l'exclusion est portée **une seule fois**, par `TransactionDao.observeForMerge`, dont ce use
+ * case hérite via [ObserveTransactionsUseCase]. Ils ne peuvent donc plus ni gonfler les revenus
+ * et le solde projeté, ni évincer une transaction réelle de la liste du tableau de bord.
+ * L'écart E-1 est corrigé depuis le 13 septembre 2026.
  */
 @Singleton
 class ObserveHomeSummaryUseCase @Inject constructor(
