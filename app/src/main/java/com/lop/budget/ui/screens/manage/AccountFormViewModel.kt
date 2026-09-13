@@ -9,6 +9,7 @@ import com.lop.budget.data.repository.IconResult
 import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.usecase.AdjustBalanceUseCase
+import com.lop.budget.domain.usecase.DeleteAccountUseCase
 import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
 import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,6 +48,7 @@ class AccountFormViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val adjustBalanceUseCase: AdjustBalanceUseCase,
     private val getAccountBalances: GetAccountBalancesUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase,
     private val accountRepo: AccountRepository,
     private val iconSearch: IconSearchRepository,
 ) : ViewModel() {
@@ -180,7 +182,7 @@ class AccountFormViewModel @Inject constructor(
     fun deleteAccount(onDone: () -> Unit) {
         if (!isEdit) return
         viewModelScope.launch {
-            accountRepo.delete(accountId)
+            deleteAccountUseCase(accountId)
             onDone()
         }
     }

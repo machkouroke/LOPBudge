@@ -92,7 +92,7 @@ import kotlin.time.Duration.Companion.seconds
  * T-08b  CA-23 (I-5)          EditTransactionWithScopeUseCase sur A-AJ1 — `kind` conservé
  * T-09a  CA-21c, CA-21d (I-4b) SoftDeleteTransactionOccurrenceUseCase — écart retiré, A-AJ2 intacte
  * T-09b  CA-21d (I-4b)        idem, sur une observation déjà ouverte
- * T-10   CA-25 (I-2, I-3)     AccountRepository.delete — ajustements ni exposés ni comptés
+ * T-10   CA-25                DÉPLACÉ vers LOP-20 — voir ci-dessous
  * T-11   CA-19 (I-10)         NON EXÉCUTABLE — voir ci-dessous
  * ```
  *
@@ -130,11 +130,23 @@ import kotlin.time.Duration.Companion.seconds
  *        → T-07b, T-04a, T-04b
  * ANO-3  `TransactionEdition.toTransactionEntity` ne propage pas `kind` et retombe sur STANDARD.
  *        → T-08b
- * ANO-4  `AccountDao.delete` est un DELETE sans clé étrangère ni cascade, et
- *        `observePaidByAccount` continue de rendre les lignes d'un compte disparu.
- *        → T-10
  * ```
  * Aucun oracle n'est assoupli pour les faire passer : le rouge **est** le résultat attendu.
+ *
+ * **État au 13 septembre 2026** : ANO-1 et ANO-3 sont corrigées, leurs huit cas sont verts.
+ * ANO-2 reste ouverte — T-07b est le seul rouge subsistant, en attente de l'arbitrage sur la
+ * convention `NO_CATEGORY_ID`.
+ *
+ * ## T-10 — déplacé vers LOP-20 (décision du 13 septembre 2026)
+ * Le cas visait CA-25, « la suppression d'un compte emporte ses ajustements ». Il tombait sur
+ * une cause racine qui **n'est pas celle de cette US** : `AccountDao.delete` est un `DELETE` nu,
+ * `TransactionEntity` ne déclare aucune clé étrangère vers `accounts`, et **toutes** les
+ * transactions d'un compte supprimé survivent — les métier comme les ajustements. C'est un défaut
+ * d'intégrité référentielle du CRUD des comptes, pas une règle de masquage.
+ *
+ * La suppression est désormais portée par `DeleteAccountUseCase`, unique point d'entrée, extrait
+ * à comportement constant. La règle et sa couverture appartiennent à LOP-20 ; CA-25 y a été
+ * déplacé. Ne pas ré-ouvrir le cas ici.
  *
  * ## T-11 — non exécutable
  * Vérifié le 13 septembre 2026 : `app/src/main` ne contient ni export métier ni sauvegarde
@@ -932,63 +944,6 @@ class AdjustmentVisibilityRoomTest {
                 )
                 cancelAndIgnoreRemainingEvents()
             }
-        }
-
-    // ==========================================================================================
-    // T-10 — suppression d'un compte (CA-25, I-2, I-3)
-    // ==========================================================================================
-
-    /**
-     * T-10 — Given le jeu complet, When le compte A est supprimé, Then ses ajustements ne sont plus
-     * exposés par aucune lecture ni comptés dans aucun solde, et ceux de B sont intacts (CA-25).
-     *
-     * ROUGE ATTENDU sur l'exposition — ANO-4 : `AccountDao.delete` est un `DELETE` sans clé
-     * étrangère ni cascade, et `observePaidByAccount` continue de rendre les lignes d'un compte
-     * disparu. Le solde total, lui, est correct : `BalanceEngine` ignore une transaction rattachée à
-     * un compte absent de la liste.
-     */
-    @Test
-    fun `T-10 - given le jeu complet when le compte A est supprime then ses ajustements disparaissent`() =
-        runTest {
-            seedEverything()
-            val bBefore = rawRows("SELECT * FROM transactions WHERE id = $adjustmentB")
-
-            accountRepo.delete(accountA)
-
-            val total = balances.observeTotalBalance().await("T-10 total")
-            assertEquals(
-                "T-10 — CA-25/I-3 : le solde total doit se réduire à celui de B, ajustement " +
-                    "compris. Obtenu : $total",
-                B_WITH_ADJUSTMENT,
-                total,
-            )
-
-            val detailA = accountDetail(accountA).await("T-10 vue de A")
-            assertEquals(
-                "T-10 — CA-25/I-2 : aucun ajustement du compte supprimé ne doit rester exposé par " +
-                    "la vue de ce compte. Obtenu : ${describeRows(detailA)}",
-                emptyList<Long>(),
-                detailA.recentRows.filter { it.isAdjustment }.map { it.transactionId },
-            )
-
-            val rows = observeTransactions(MARCH_START, MARCH_END).await("T-10 liste")
-            assertEquals(
-                "T-10 — CA-25/I-2 : les ajustements du compte supprimé ne doivent remonter dans " +
-                    "aucune lecture métier. Obtenu : ${describe(rows)}",
-                emptyList<Long>(),
-                rows.map { it.transaction.id }.filter { it in setOf(adjustment1, adjustment2) },
-            )
-
-            assertEquals(
-                "T-10 — CA-25 : l'ajustement de B doit rester intact en base",
-                bBefore,
-                rawRows("SELECT * FROM transactions WHERE id = $adjustmentB"),
-            )
-            assertEquals(
-                "T-10 — CA-25 : la vue du compte B doit continuer d'exposer son ajustement",
-                listOf(adjustmentB),
-                accountDetail(accountB).await("T-10 vue de B").recentRows.map { it.transactionId },
-            )
         }
 
     // ==========================================================================================

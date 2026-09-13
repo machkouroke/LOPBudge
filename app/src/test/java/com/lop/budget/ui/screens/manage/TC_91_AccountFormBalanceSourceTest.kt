@@ -7,6 +7,7 @@ import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.usecase.AdjustBalanceUseCase
+import com.lop.budget.domain.usecase.DeleteAccountUseCase
 import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -54,6 +55,12 @@ class AccountFormBalanceSourceTest {
     private val accountRepo = mockk<AccountRepository>(relaxed = false)
     private val iconSearch = mockk<IconSearchRepository>(relaxed = false)
 
+    /**
+     * Strict et sans stub : aucun scénario de cette fiche ne supprime de compte, donc tout appel
+     * doit faire échouer le test plutôt que passer inaperçu.
+     */
+    private val deleteAccountUseCase = mockk<DeleteAccountUseCase>(relaxed = false)
+
     private val accountId = 7L
 
     /** Solde initial volontairement très éloigné du solde calculé : c'est le discriminant. */
@@ -84,6 +91,7 @@ class AccountFormBalanceSourceTest {
         savedStateHandle = SavedStateHandle(mapOf("id" to accountId)),
         adjustBalanceUseCase = adjustBalanceUseCase,
         getAccountBalances = getAccountBalances,
+        deleteAccountUseCase = deleteAccountUseCase,
         accountRepo = accountRepo,
         iconSearch = iconSearch,
     )

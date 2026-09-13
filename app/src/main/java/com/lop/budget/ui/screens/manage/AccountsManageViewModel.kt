@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.domain.usecase.DeleteAccountUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +23,7 @@ data class AccountsManageUiState(
 @HiltViewModel
 class AccountsManageViewModel @Inject constructor(
     private val accountRepo: AccountRepository,
+    private val deleteAccountUseCase: DeleteAccountUseCase,
     settings: SettingsRepository,
 ) : ViewModel() {
 
@@ -44,7 +46,7 @@ class AccountsManageViewModel @Inject constructor(
 
     fun deleteAccount(accountId: Long) {
         viewModelScope.launch {
-            accountRepo.delete(accountId)
+            deleteAccountUseCase(accountId)
         }
     }
 }
