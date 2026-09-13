@@ -1,6 +1,8 @@
 package com.lop.budget.domain.usecase
 
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.domain.BreakdownEngine
+import com.lop.budget.domain.CategoryBreakdown
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.Dispatchers
@@ -9,15 +11,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
-
-data class CategoryBreakdown(
-    val name: String,
-    val colorArgb: Int,
-    /** Total de la catégorie, en centimes. */
-    val total: Long,
-    /** Part du total, entre 0 et 1 — une proportion, pas un montant. */
-    val share: Double,
-)
 
 /**
  * Agrégats métier d'une période, en centimes.
@@ -63,19 +56,7 @@ class ObserveMonthlyAnalyticsUseCase @Inject constructor(
                 expense = expense,
                 balance = income - expense,
                 total = totalAmount,
-                breakdown = filtered
-                    .groupBy { it.category }
-                    .map { (cat, list) ->
-                        val sum = list.sumOf { it.transaction.amount }
-                        CategoryBreakdown(
-                            // ÉCART (P-8) : libellé de repli en français, codé dans le domaine.
-                            name = cat?.name ?: "Sans catégorie",
-                            colorArgb = cat?.colorArgb ?: 0xFF9E9E9E.toInt(),
-                            total = sum,
-                            share = if (totalAmount > 0) sum.toDouble() / totalAmount else 0.0,
-                        )
-                    }
-                    .sortedByDescending { it.total },
+                breakdown = BreakdownEngine.byCategory(filtered),
             )
         }.flowOn(Dispatchers.Default)
 }

@@ -7,6 +7,8 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.domain.BreakdownEngine
+import com.lop.budget.domain.CategoryBreakdown
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
@@ -33,15 +35,6 @@ import javax.inject.Inject
 enum class PaidFilter { ALL, PAID, PLANNED }
 enum class InsightMode { CATEGORY, TAG }
 
-data class MonthlyCategoryBreakdown(
-    val name: String,
-    val colorArgb: Int,
-    /** Total de la catégorie ou du tag, en centimes. */
-    val total: Long,
-    /** Part du total, entre 0 et 1 — une proportion, pas un montant. */
-    val share: Double,
-)
-
 data class MonthlyTransactionsUiState(
     val month: YearMonth = YearMonth.now(),
     val type: TransactionType? = null, // null means BOTH income and expense
@@ -53,7 +46,7 @@ data class MonthlyTransactionsUiState(
     val selectedCategoryId: Long? = null,
     val currency: String = "EUR",
     val total: Long = 0L,
-    val breakdown: List<MonthlyCategoryBreakdown> = emptyList(),
+    val breakdown: List<CategoryBreakdown> = emptyList(),
     val dayGroups: List<DayGroup> = emptyList(),
     val transactions: List<TransactionWithRelations> = emptyList(),
     val availableAccounts: List<com.lop.budget.data.local.entity.AccountEntity> = emptyList(),
@@ -237,36 +230,11 @@ class MonthlyTransactionsViewModel @Inject constructor(
                     )
                 }
 
-            // Hissé hors des `map` ci-dessous : le dénominateur est le même pour tous les
-            // groupes, le recalculer par groupe rendait le breakdown O(groupes x N).
-            val absTotal = filtered.sumOf { it.transaction.amount }
-
-            val breakdown = if (mode == InsightMode.CATEGORY) {
-                filtered.groupBy { it.category }
-                    .map { (cat, list) ->
-                        val sum = list.sumOf { it.transaction.amount }
-                        MonthlyCategoryBreakdown(
-                            name = cat?.name ?: "Sans catégorie",
-                            colorArgb = cat?.colorArgb ?: 0xFF9E9E9E.toInt(),
-                            total = sum,
-                            share = if (absTotal > 0) sum.toDouble() / absTotal else 0.0,
-                        )
-                    }
-                    .sortedByDescending { it.total }
-            } else {
-                // Breakdown par TAG
-                filtered.flatMap { twr -> twr.tags.map { tag -> tag to twr.transaction.amount } }
-                    .groupBy({ it.first }, { it.second })
-                    .map { (tag, amounts) ->
-                        val sum = amounts.sum()
-                        MonthlyCategoryBreakdown(
-                            name = tag.name,
-                            colorArgb = tag.colorArgb,
-                            total = sum,
-                            share = if (absTotal > 0) sum.toDouble() / absTotal else 0.0,
-                        )
-                    }
-                    .sortedByDescending { it.total }
+            // La règle de regroupement vit dans le domaine : l'écran des analyses en portait
+            // une copie (I-12, P-12 de LOP-87).
+            val breakdown = when (mode) {
+                InsightMode.CATEGORY -> BreakdownEngine.byCategory(filtered)
+                InsightMode.TAG -> BreakdownEngine.byTag(filtered)
             }
 
             // Check if results exist globally if none in current month.
