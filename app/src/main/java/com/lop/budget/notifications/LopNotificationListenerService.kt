@@ -2,7 +2,7 @@ package com.lop.budget.notifications
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import com.lop.budget.domain.usecase.HandlePaymentNotificationUseCase
+import com.lop.budget.domain.usecase.detection.HandlePaymentNotificationUseCase
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn

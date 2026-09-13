@@ -1,4 +1,4 @@
-package com.lop.budget.domain.usecase
+package com.lop.budget.domain.usecase.detection
 
 import javax.inject.Inject
 

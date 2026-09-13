@@ -4,8 +4,8 @@ import com.lop.budget.data.local.dao.DetectedTransactionProposalDao
 import com.lop.budget.data.local.entity.toEntity
 import com.lop.budget.data.local.entity.toProposal
 import com.lop.budget.domain.model.Proposal
-import com.lop.budget.domain.usecase.MergeResult
-import com.lop.budget.domain.usecase.ProposalRepository
+import com.lop.budget.domain.usecase.detection.MergeResult
+import com.lop.budget.domain.usecase.detection.ProposalRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject

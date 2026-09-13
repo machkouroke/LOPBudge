@@ -5,8 +5,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.lop.budget.domain.model.CurrencyCatalog
-import com.lop.budget.domain.usecase.DetectionSettings
-import com.lop.budget.domain.usecase.InboxSettings
+import com.lop.budget.domain.usecase.detection.DetectionSettings
+import com.lop.budget.domain.usecase.detection.InboxSettings
 import com.lop.budget.ui.theme.ThemeMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow

@@ -10,7 +10,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.lop.budget.MainActivity
 import com.lop.budget.R
 import com.lop.budget.domain.model.Proposal
-import com.lop.budget.domain.usecase.DetectionNotifier
+import com.lop.budget.domain.usecase.detection.DetectionNotifier
 import com.lop.budget.ui.navigation.Routes
 import com.lop.budget.util.Format
 import dagger.hilt.android.qualifiers.ApplicationContext

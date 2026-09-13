@@ -5,9 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.domain.model.Proposal
 import com.lop.budget.domain.model.buildEdition
-import com.lop.budget.domain.usecase.InboxSettings
-import com.lop.budget.domain.usecase.ProposalRepository
-import com.lop.budget.domain.usecase.RefuseProposalUseCase
+import com.lop.budget.domain.usecase.detection.InboxSettings
+import com.lop.budget.domain.usecase.detection.ProposalRepository
+import com.lop.budget.domain.usecase.detection.RefuseProposalUseCase
 import com.lop.budget.domain.usecase.transaction.SaveResult
 import com.lop.budget.domain.usecase.transaction.SaveTransactionFromProposalUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel

@@ -17,14 +17,14 @@ import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.domain.usecase.AccountDetail
+import com.lop.budget.domain.usecase.account.AccountDetail
 import com.lop.budget.domain.usecase.account.AdjustBalanceUseCase
 import com.lop.budget.domain.usecase.account.AdjustOutcome
 import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
 import com.lop.budget.domain.usecase.insight.HomeSummary
 import com.lop.budget.domain.usecase.insight.MonthlyAnalytics
-import com.lop.budget.domain.usecase.ObserveAccountDetailUseCase
+import com.lop.budget.domain.usecase.account.ObserveAccountDetailUseCase
 import com.lop.budget.domain.usecase.insight.ObserveHomeSummaryUseCase
 import com.lop.budget.domain.usecase.insight.ObserveMonthlyAnalyticsUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase

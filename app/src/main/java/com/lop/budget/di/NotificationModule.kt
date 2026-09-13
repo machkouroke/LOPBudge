@@ -11,10 +11,10 @@ import com.lop.budget.notifications.SmartCategorizer
 import com.lop.budget.notifications.QwenLocalCategorizer
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.domain.usecase.DetectionNotifier
-import com.lop.budget.domain.usecase.DetectionSettings
-import com.lop.budget.domain.usecase.InboxSettings
-import com.lop.budget.domain.usecase.ProposalRepository
+import com.lop.budget.domain.usecase.detection.DetectionNotifier
+import com.lop.budget.domain.usecase.detection.DetectionSettings
+import com.lop.budget.domain.usecase.detection.InboxSettings
+import com.lop.budget.domain.usecase.detection.ProposalRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
