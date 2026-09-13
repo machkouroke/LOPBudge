@@ -1,17 +1,19 @@
-package com.lop.budget.domain.usecase
+package com.lop.budget.domain.usecase.transaction
 
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.SeriesCancelMode
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.domain.usecase.transaction.CancelRecurringSeriesUseCase
+import com.lop.budget.domain.usecase.SyncProgressUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.coVerifyOrder
 import io.mockk.confirmVerified
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import java.time.Instant
@@ -157,7 +159,7 @@ class CancelRecurringSeriesUseCaseTest {
         // Discriminant: repo returns goalId=7L
         val series = createSeries(linkedGoalId = goalId)
         val expected = series.copy(endDate = februarySlot - 1)
-        val capturedSeries = io.mockk.slot<RecurringSeriesEntity>()
+        val capturedSeries = slot<RecurringSeriesEntity>()
         
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
         coEvery { transactionRepo.upsertSeries(capture(capturedSeries)) } returns seriesId
@@ -168,7 +170,7 @@ class CancelRecurringSeriesUseCaseTest {
         sut.invoke(seriesId, SeriesCancelMode.Future(februarySlot))
 
         // Then
-        org.junit.Assert.assertEquals(expected, capturedSeries.captured)
+        Assert.assertEquals(expected, capturedSeries.captured)
 
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)

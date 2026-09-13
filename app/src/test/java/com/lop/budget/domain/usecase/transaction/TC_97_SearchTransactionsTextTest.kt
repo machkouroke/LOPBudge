@@ -1,4 +1,4 @@
-package com.lop.budget.domain.usecase
+package com.lop.budget.domain.usecase.transaction
 
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
@@ -8,8 +8,6 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
-import com.lop.budget.domain.usecase.transaction.SearchTransactionsUseCase
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
