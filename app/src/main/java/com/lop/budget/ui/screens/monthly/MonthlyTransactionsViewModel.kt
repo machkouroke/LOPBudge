@@ -12,7 +12,7 @@ import com.lop.budget.domain.CategoryBreakdown
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.domain.usecase.SearchTransactionsUseCase
+import com.lop.budget.domain.usecase.transaction.SearchTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

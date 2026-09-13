@@ -8,6 +8,7 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.transaction.SearchTransactionsUseCase
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot

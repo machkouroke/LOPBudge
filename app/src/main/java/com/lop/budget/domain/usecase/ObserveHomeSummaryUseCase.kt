@@ -40,7 +40,7 @@ data class HomeSummary(
  *
  * L'horloge est injectée là où le ViewModel lisait `System.currentTimeMillis()` et
  * `LocalDate.now()` : le fuseau, lui, reste relu à chaque appel (même règle que
- * [SearchTransactionsUseCase]).
+ * [com.lop.budget.domain.usecase.transaction.SearchTransactionsUseCase]).
  *
  * Les ajustements de solde n'entrent dans aucun de ces indicateurs (I-2, I-11, CA-16) :
  * l'exclusion est portée **une seule fois**, par `TransactionDao.observeForMerge`, dont ce use

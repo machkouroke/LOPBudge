@@ -6,7 +6,7 @@ import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.DayGroup
-import com.lop.budget.domain.usecase.SearchTransactionsUseCase
+import com.lop.budget.domain.usecase.transaction.SearchTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
