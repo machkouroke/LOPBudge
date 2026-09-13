@@ -86,7 +86,8 @@ import kotlin.time.Duration.Companion.seconds
  * T-05   CA-13 (I-2)          SearchTransactionsUseCase — sept requêtes, aucun ajustement
  * T-06a  CA-17, CA-18 (I-2)   ObserveAccountDetailUseCase(A) — expose A, jamais B
  * T-06b  CA-17 (I-2)          ObserveAccountDetailUseCase(B) — expose B seul
- * T-07   CA-24 (I-8, I-9)     AdjustBalanceUseCase — rattachements, jointure `categories` (P-5)
+ * T-07a  CA-24 (I-8)          AdjustBalanceUseCase — aucun rattachement, aucune virtuelle
+ * T-07b  CA-24 (I-9, P-5)     AdjustBalanceUseCase — jointure `categories` sans clé orpheline
  * T-08a  CA-23 (I-5)          EditTransactionWithScopeUseCase sur une ligne métier — A-AJ1 témoin
  * T-08b  CA-23 (I-5)          EditTransactionWithScopeUseCase sur A-AJ1 — `kind` conservé
  * T-09a  CA-21c, CA-21d (I-4b) SoftDeleteTransactionOccurrenceUseCase — écart retiré, A-AJ2 intacte
@@ -126,7 +127,7 @@ import kotlin.time.Duration.Companion.seconds
  *        → T-03a, T-03b, T-04a, T-04b, T-04c, T-04d, T-05
  * ANO-2  `categoryId = NO_CATEGORY_ID (0L)` ne résout aucune catégorie : la jointure sur
  *        `categories` est orpheline (P-5) et `BreakdownEngine` crée une clé « Sans catégorie ».
- *        → T-07, T-04a, T-04b
+ *        → T-07b, T-04a, T-04b
  * ANO-3  `TransactionEdition.toTransactionEntity` ne propage pas `kind` et retombe sur STANDARD.
  *        → T-08b
  * ANO-4  `AccountDao.delete` est un DELETE sans clé étrangère ni cascade, et
@@ -418,12 +419,9 @@ class AdjustmentVisibilityRoomTest {
             val after = analytics(MARCH_START, MARCH_END, TransactionType.INCOME, accountA)
                 .await("T-04b")
 
+            // Le maintien du signe n'est pas asserté séparément : il serait tautologique une fois
+            // l'égalité des soldes acquise. Un basculement est nommé dans le message d'écart.
             assertAnalyticsUnchanged("T-04b (CA-14b)", before, after)
-            assertTrue(
-                "T-04b — CA-14b : le solde du mois doit rester négatif après l'insertion des " +
-                    "ajustements. Obtenu : ${after.balance}",
-                after.balance < 0,
-            )
         }
 
     /**
@@ -432,14 +430,22 @@ class AdjustmentVisibilityRoomTest {
      *
      * Cas distinct de T-04a : la fiche demande de traiter séparément l'observation déjà ouverte et
      * la nouvelle observation, « deux API du même objet peuvent diverger ». L'attente est bornée et
-     * aucune émission n'est filtrée : une émission délivrée **après** le commit re-exécute sa
-     * requête Room et porte donc nécessairement l'état post-écriture — il n'existe pas d'émission
-     * périmée à écarter.
+     * aucune émission n'est filtrée.
+     *
+     * **Un seul ajustement est créé ici**, et c'est délibéré. Une émission Room délivrée après un
+     * commit re-exécute sa requête, donc porte bien l'état post-écriture — mais avec trois
+     * écritures successives, la première émission porte l'état après la **première** seulement.
+     * Le run du 13 septembre 2026 l'a montré : ce cas mesurait 17 000 (après A-AJ1) là où T-04a
+     * mesurait 12 000 (après les trois). Attendre l'état final demanderait soit de filtrer les
+     * émissions, soit d'en compter un nombre que l'`InvalidationTracker` de Room est libre de
+     * regrouper — les deux sont interdits par la fiche. Une écriture unique rend l'émission non
+     * ambiguë sans rien concéder sur l'oracle : CA-14 exige que **rien** ne bouge, donc un seul
+     * ajustement suffit à le violer. L'état complet reste couvert par T-04a.
      *
      * ROUGE ATTENDU — ANO-1 et ANO-2.
      */
     @Test
-    fun `T-04c - given une observation deja ouverte when les ajustements sont inseres then l emission suivante est identique`() =
+    fun `T-04c - given une observation deja ouverte when un ajustement est insere then l emission suivante est identique`() =
         runTest {
             seedAccounts()
             seedCategory()
@@ -450,7 +456,13 @@ class AdjustmentVisibilityRoomTest {
                     val before = awaitItem()
                     assertMeaningfulReference("T-04c", before, expectedBreakdownKey = CATEGORY_NAME)
 
-                    seedAdjustments()
+                    adjustment1 = adjust(
+                        "A-AJ1",
+                        accountA,
+                        A_WITHOUT_ADJUSTMENTS + ADJ1_DELTA,
+                        ADJ1_DELTA,
+                        ADJ1_AT,
+                    )
 
                     val after = awaitItem()
                     assertAnalyticsUnchanged("T-04c (CA-14)", before, after)
@@ -519,41 +531,64 @@ class AdjustmentVisibilityRoomTest {
             seedEverything()
             val business = businessIds()
 
-            assertSearch(
-                "T-05.1 — texte « ajustement »",
-                emptySet(),
-                search("ajustement", null, null, MARCH_START, MARCH_END).await("T-05.1"),
-            )
-            assertSearch(
-                "T-05.2 — texte « solde »",
-                emptySet(),
-                search("solde", null, null, MARCH_START, MARCH_END).await("T-05.2"),
-            )
-            assertSearch(
-                "T-05.3 — montant exact 20 000 centimes, saisi « 200 » (200,00 €)",
-                emptySet(),
-                search(AMOUNT_QUERY, null, null, MARCH_START, MARCH_END).await("T-05.3"),
-            )
-            assertSearch(
-                "T-05.7 — combinaison compte A + période + montant",
-                emptySet(),
-                search(AMOUNT_QUERY, accountA, null, MARCH_START, MARCH_END).await("T-05.7"),
-            )
-            assertSearch(
-                "T-05.4 — filtre compte A",
-                business,
-                search("", accountA, null, MARCH_START, MARCH_END).await("T-05.4"),
-            )
-            assertSearch(
-                "T-05.5 — filtre type revenu",
-                setOf(incomeTransaction),
-                search("", null, null, MARCH_START, MARCH_END, type = TransactionType.INCOME)
-                    .await("T-05.5"),
-            )
-            assertSearch(
-                "T-05.6 — filtre période de mars seul",
-                business,
-                search("", null, null, MARCH_START, MARCH_END).await("T-05.6"),
+            val problems = buildList {
+                addAll(
+                    checkSearch(
+                        "T-05.1 — texte « ajustement »",
+                        emptySet(),
+                        search("ajustement", null, null, MARCH_START, MARCH_END).await("T-05.1"),
+                    ),
+                )
+                addAll(
+                    checkSearch(
+                        "T-05.2 — texte « solde »",
+                        emptySet(),
+                        search("solde", null, null, MARCH_START, MARCH_END).await("T-05.2"),
+                    ),
+                )
+                addAll(
+                    checkSearch(
+                        "T-05.3 — montant exact 20 000 centimes, saisi « 200 » (200,00 €)",
+                        emptySet(),
+                        search(AMOUNT_QUERY, null, null, MARCH_START, MARCH_END).await("T-05.3"),
+                    ),
+                )
+                addAll(
+                    checkSearch(
+                        "T-05.4 — filtre compte A",
+                        business,
+                        search("", accountA, null, MARCH_START, MARCH_END).await("T-05.4"),
+                    ),
+                )
+                addAll(
+                    checkSearch(
+                        "T-05.5 — filtre type revenu",
+                        setOf(incomeTransaction),
+                        search("", null, null, MARCH_START, MARCH_END, type = TransactionType.INCOME)
+                            .await("T-05.5"),
+                    ),
+                )
+                addAll(
+                    checkSearch(
+                        "T-05.6 — filtre période de mars seul",
+                        business,
+                        search("", null, null, MARCH_START, MARCH_END).await("T-05.6"),
+                    ),
+                )
+                addAll(
+                    checkSearch(
+                        "T-05.7 — combinaison compte A + période + montant",
+                        emptySet(),
+                        search(AMOUNT_QUERY, accountA, null, MARCH_START, MARCH_END).await("T-05.7"),
+                    ),
+                )
+            }
+
+            assertEquals(
+                "T-05 — CA-13/I-2 : les sept requêtes de la fiche ont été jouées ; écarts " +
+                    "constatés :\n" + problems.joinToString("\n"),
+                emptyList<String>(),
+                problems,
             )
         }
 
@@ -640,19 +675,17 @@ class AdjustmentVisibilityRoomTest {
      * réservée `NO_CATEGORY_ID`, et seule la jointure peut prouver qu'aucune catégorie réelle n'est
      * désignée — ou, ici, qu'un identifiant ne résolvant rien est écrit.
      *
-     * ROUGE ATTENDU sur la jointure — ANO-2. Le reste des assertions est vert.
+     * Scindé en deux cas parce que les deux propriétés ont des issues opposées : regroupées, la
+     * jointure rouge masquait les assertions vertes, qui n'étaient alors jamais jouées.
      */
     @Test
-    fun `T-07 - given le jeu complet when on inspecte la table then aucun ajustement ne porte de rattachement`() =
+    fun `T-07a - given le jeu complet when on inspecte la table then aucun ajustement ne porte de rattachement`() =
         runTest {
             seedEverything()
 
-            val adjustmentRows = rawRows(
-                "SELECT id, seriesId, seriesDate, isException, linkedGoalId, linkedDebtId " +
-                    "FROM transactions WHERE kind = 'BALANCE_ADJUSTMENT' ORDER BY id",
-            )
+            val adjustmentRows = rawRows(ADJUSTMENT_LINKS_SQL)
             assertEquals(
-                "T-07 — CA-24 : la table doit contenir exactement les trois ajustements du jeu de " +
+                "T-07a — CA-24 : la table doit contenir exactement les trois ajustements du jeu de " +
                     "données. Obtenu : $adjustmentRows",
                 3,
                 adjustmentRows.size,
@@ -661,27 +694,45 @@ class AdjustmentVisibilityRoomTest {
             // n'a aucun rattachement et n'est pas une exception de série.
             val attached = adjustmentRows.filterNot { it.endsWith("|null|null|0|null|null") }
             assertEquals(
-                "T-07 — CA-24/I-8/I-9 : aucun ajustement ne doit porter de série, de slot, " +
+                "T-07a — CA-24/I-8/I-9 : aucun ajustement ne doit porter de série, de slot, " +
                     "d'exception, d'objectif ni de dette. Lignes fautives : $attached",
                 emptyList<String>(),
                 attached,
             )
-            val orphans = rawRows(ORPHAN_CATEGORY_SQL)
-            assertEquals(
-                "T-07 — I-9/P-5 : aucun ajustement ne doit porter d'identifiant de catégorie ne " +
-                    "résolvant aucune catégorie existante. Lignes orphelines (id|categoryId) : " +
-                    orphans,
-                emptyList<String>(),
-                orphans,
-            )
 
-            val rows = observeTransactions(MARCH_START, MARCH_END).await("T-07")
+            val rows = observeTransactions(MARCH_START, MARCH_END).await("T-07a")
             assertEquals(
-                "T-07 — CA-24/I-8 : aucune occurrence virtuelle ne doit être produite à partir " +
+                "T-07a — CA-24/I-8 : aucune occurrence virtuelle ne doit être produite à partir " +
                     "d'un ajustement. Lignes virtuelles obtenues : " +
                     describe(rows.filter { it.transaction.id < 0 }),
                 0,
                 rows.count { it.transaction.id < 0 },
+            )
+        }
+
+    /**
+     * T-07b — Given le jeu complet, When on joint les ajustements à `categories`, Then aucun ne
+     * désigne un identifiant qui ne résout aucune catégorie (I-9, P-5).
+     *
+     * La colonne `categoryId` n'étant pas nullable (décision du 12 septembre 2026), l'absence de
+     * catégorie est portée par la valeur réservée `NO_CATEGORY_ID`. Seule la **jointure** peut donc
+     * prouver l'écart à P-5 : c'est le seul niveau où il est prouvable.
+     *
+     * ROUGE ATTENDU — ANO-2.
+     */
+    @Test
+    fun `T-07b - given le jeu complet when on joint les ajustements aux categories then aucune cle n est orpheline`() =
+        runTest {
+            seedEverything()
+
+            val orphans = rawRows(ORPHAN_CATEGORY_SQL)
+
+            assertEquals(
+                "T-07b — I-9/P-5 : aucun ajustement ne doit porter d'identifiant de catégorie ne " +
+                    "résolvant aucune catégorie existante. Lignes orphelines (id|categoryId) : " +
+                    orphans,
+                emptyList<String>(),
+                orphans,
             )
         }
 
@@ -1135,63 +1186,77 @@ class AdjustmentVisibilityRoomTest {
         )
     }
 
-    /** CA-13 : ensemble exact attendu, et surtout aucun des trois ajustements. */
-    private fun assertSearch(
+    /**
+     * CA-13 : **renvoie** les écarts d'une requête au lieu d'échouer sur place.
+     *
+     * Une assertion par requête arrêtait le cas au premier écart et laissait six des sept
+     * requêtes de la fiche non jouées — donc non restituées. Les écarts sont collectés puis
+     * assertés une seule fois, si bien qu'un seul run montre l'état des sept.
+     */
+    private fun checkSearch(
         label: String,
         expected: Set<Long>,
         rows: List<TransactionWithRelations>,
-    ) {
+    ): List<String> {
         val adjustments = setOf(adjustment1, adjustment2, adjustmentB)
-        assertEquals(
-            "$label — CA-13/I-2 : aucune requête ne doit ramener un ajustement. Ajustements " +
-                "obtenus : ${describe(rows.filter { it.transaction.id in adjustments })}",
-            emptySet<Long>(),
-            rows.map { it.transaction.id }.filter { it in adjustments }.toSet(),
-        )
-        assertEquals(
-            "$label — CA-13 : cardinalité exacte. Obtenu : ${describe(rows)}",
-            expected.size,
-            rows.size,
-        )
-        assertEquals(
-            "$label — CA-13 : ensemble exact attendu. Obtenu : ${describe(rows)}",
-            expected,
-            rows.map { it.transaction.id }.toSet(),
-        )
+        val leaked = rows.map { it.transaction.id }.filter { it in adjustments }
+        val found = rows.map { it.transaction.id }.toSet()
+        return buildList {
+            if (leaked.isNotEmpty()) {
+                add(
+                    "$label — I-2 : ajustements ramenés $leaked dans " +
+                        describe(rows.filter { it.transaction.id in adjustments }),
+                )
+            }
+            if (rows.size != expected.size) {
+                add("$label — cardinalité attendue ${expected.size}, obtenue ${rows.size} : ${describe(rows)}")
+            }
+            if (found != expected) {
+                add("$label — ensemble attendu $expected, obtenu $found : ${describe(rows)}")
+            }
+        }
     }
 
-    /** CA-14 : les quatre mesures, à l'octet près, répartition comprise. */
+    /**
+     * CA-14 : les quatre mesures, à l'octet près, répartition comprise.
+     *
+     * Les écarts sont **collectés puis assertés une fois**. Une assertion par mesure s'arrêtait sur
+     * les revenus et ne montrait jamais la clé orpheline apparue dans la répartition (ANO-2), alors
+     * que les deux écarts sont le sujet du cas.
+     */
     private fun assertAnalyticsUnchanged(
         label: String,
         before: MonthlyAnalytics,
         after: MonthlyAnalytics,
     ) {
+        val divergences = buildList {
+            if (before.income != after.income) {
+                add("revenus du mois : ${before.income} → ${after.income}")
+            }
+            if (before.expense != after.expense) {
+                add("dépenses du mois : ${before.expense} → ${after.expense}")
+            }
+            if (before.balance != after.balance) {
+                val sign = if ((before.balance < 0) != (after.balance < 0)) " — CHANGEMENT DE SIGNE" else ""
+                add("solde du mois : ${before.balance} → ${after.balance}$sign")
+            }
+            if (before.total != after.total) {
+                add("total du type demandé : ${before.total} → ${after.total}")
+            }
+            if (before.breakdown != after.breakdown) {
+                val orphans = after.breakdown.map { it.name } - before.breakdown.map { it.name }.toSet()
+                add(
+                    "répartition par catégorie : ${before.breakdown} → ${after.breakdown}" +
+                        if (orphans.isEmpty()) "" else " — clés apparues : $orphans",
+                )
+            }
+        }
+
         assertEquals(
-            "$label — I-11 : les revenus du mois doivent être inchangés",
-            before.income,
-            after.income,
-        )
-        assertEquals(
-            "$label — I-11 : les dépenses du mois doivent être inchangées",
-            before.expense,
-            after.expense,
-        )
-        assertEquals(
-            "$label — I-11 : le solde du mois doit être inchangé, signe compris",
-            before.balance,
-            after.balance,
-        )
-        assertEquals(
-            "$label — I-11/P-5 : la répartition par catégorie doit être inchangée et ne comporter " +
-                "aucune clé orpheline.\navant = ${before.breakdown}\naprès = ${after.breakdown}",
-            before.breakdown,
-            after.breakdown,
-        )
-        assertEquals(
-            "$label — I-11 : l'agrégat complet doit être identique avant et après.\n" +
-                "avant = $before\naprès = $after",
-            before,
-            after,
+            "$label — I-11/P-5 : aucun agrégat métier ne doit bouger à la création d'un " +
+                "ajustement. Écarts constatés :\n" + divergences.joinToString("\n"),
+            emptyList<String>(),
+            divergences,
         )
     }
 
@@ -1346,6 +1411,10 @@ class AdjustmentVisibilityRoomTest {
 
         /** 200,00 € = 20 000 centimes, montant exact de A-AJ1 : `centsOrNull` parse des euros. */
         const val AMOUNT_QUERY = "200"
+
+        const val ADJUSTMENT_LINKS_SQL =
+            "SELECT id, seriesId, seriesDate, isException, linkedGoalId, linkedDebtId " +
+                "FROM transactions WHERE kind = 'BALANCE_ADJUSTMENT' ORDER BY id"
 
         const val ORPHAN_CATEGORY_SQL =
             "SELECT t.id, t.categoryId FROM transactions t " +
