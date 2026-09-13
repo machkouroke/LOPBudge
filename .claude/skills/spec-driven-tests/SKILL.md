@@ -174,3 +174,4 @@ Une revue reçue (humaine ou agent) est une hypothèse à vérifier, pas une con
 - [ ] Oracles non assouplis ; rouges légitimes documentés + ANO
 - [ ] Hors-périmètre explicité dans le kdoc
 - [ ] Suite lancée, chaque échec vérifié individuellement
+- [ ] Le fichier de test est ajouté au stage git (git add)
