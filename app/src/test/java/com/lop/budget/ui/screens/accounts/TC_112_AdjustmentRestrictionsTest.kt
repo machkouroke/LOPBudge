@@ -94,8 +94,7 @@ import java.util.TimeZone
  * T-01   CA-20, I-2        ObserveAccountDetailUseCase.toRow (isAdjustment, labelRes,
  *                          signedAmountCents, date, source)
  * T-02   CA-21, I-4        ObserveAccountDetailUseCase.toRow (allowedActions)
- * T-03a  CA-21, I-4        TransactionActionViewModel.togglePaid
- * T-03b  CA-21, I-4        TransactionActionViewModel.showPreview
+ * T-03   —                 retiré de ce niveau (LOP-145), voir « ANO » ci-dessous
  * T-04   CA-21b            TransactionActionViewModel.requestConfirmation / dismissConfirmation
  * T-05   CA-21b, I-4b      TransactionActionViewModel.confirmDelete (chemin nominal)
  * T-05b  CA-21b            TransactionActionViewModel.confirmDelete (chemin d'erreur)
@@ -123,10 +122,10 @@ import java.util.TimeZone
  * 3. Le cas T-09 de la fiche (« chaque ligne porte déjà `isAdjustment` et ses actions ») était
  *    la somme de T-01 et T-02 : il ne pouvait pas échouer seul. Ses deux assertions propres
  *    (payload de rendu conservé, décisions présentes) sont fondues dans T-01 et T-02.
- * 4. T-03 parle d'« appel direct du rappel exposé » sur [AccountDetailViewModel]. Ce ViewModel
- *    n'expose aucun rappel, seulement `uiState`. Les rappels joignables depuis un ViewModel
- *    sont `TransactionActionViewModel.togglePaid` et `.showPreview` ; la neutralisation
- *    actuelle vit dans le composable (`Transactions.kt:119-137`), hors de ce niveau.
+ * 4. T-03 parlait d'« appel direct du rappel exposé » sur [AccountDetailViewModel], qui n'expose
+ *    aucun rappel — seulement `uiState`. Les seuls rappels joignables depuis un ViewModel sont
+ *    `TransactionActionViewModel.togglePaid` et `.showPreview`, et la restriction ne peut pas y
+ *    vivre sans violer trois règles de l'US. Cas retiré, arbitrage LOP-145.
  * 5. T-04 suit le chemin réel relevé dans `LopNavHost.kt:511-524` : `requestDelete`, puis
  *    `dismissDeleteRequest` **avant** `requestConfirmation`. Sans cette étape, `deleteRequest`
  *    resterait renseigné et « l'état revient à son état initial » serait inatteignable pour une
@@ -134,26 +133,27 @@ import java.util.TimeZone
  *
  * ## ANO ouvertes par cette campagne
  * ```
- * LOP-144  T-02          allowedActions accordait les sept actions à toutes les lignes
- * LOP-145  T-03a, T-03b  les rappels du ViewModel restent joignables sur un ajustement
- * LOP-146  T-05, T-05b   le marqueur de suppression n'était jamais levé
- * LOP-147  T-10a         BALANCE_ADJUSTMENT lu par ui/components/Transactions.kt
+ * LOP-144  T-02         allowedActions accordait les sept actions à toutes les lignes
+ * LOP-145  T-03         oracle au mauvais niveau — incohérence de spécification
+ * LOP-146  T-05, T-05b  le marqueur de suppression n'était jamais levé
+ * LOP-147  T-10a        BALANCE_ADJUSTMENT lu par ui/components/Transactions.kt
  * ```
- * LOP-144, LOP-146 et LOP-147 sont corrigées le 14 septembre 2026.
+ * LOP-144, LOP-146 et LOP-147 sont corrigées le 14 septembre 2026, et leurs cas passent.
  *
- * **T-03a et T-03b restent rouges (LOP-145), et c'est assumé.** Ils demandent qu'un appel **direct** à
- * `TransactionActionViewModel.togglePaid` / `.showPreview` ne fasse rien sur un ajustement. Poser
- * cette garde dans le ViewModel violerait I-12 et P-12 — « un ViewModel n'est pas un lieu de
- * règles » — et l'obligerait à lire le type technique, ce que CA-27 interdit. Ce que l'US exige
- * est déjà vrai : le domaine refuse l'édition sans rien écrire (T-07), et l'interface ne câble
- * plus ces rappels pour un ajustement puisqu'elle consomme `allowedActions`. L'oracle de T-03 est
- * donc au mauvais niveau : il relève d'un test instrumenté sur le geste. Arbitrage en attente,
- * l'oracle n'est pas assoupli entre-temps.
+ * **LOP-145 est un arbitrage de spécification, rendu le 14 septembre 2026 : T-03 est retiré de
+ * ce niveau.** Le cas exigeait qu'un appel direct à `TransactionActionViewModel.togglePaid` /
+ * `.showPreview` ne fasse rien sur un ajustement. Poser cette garde dans le ViewModel violerait
+ * I-12 et P-12 — « un ViewModel n'est pas un lieu de règles » — et l'obligerait à lire le type
+ * technique, ce que CA-27 interdit. Les trois interdits viennent de l'US elle-même : le code
+ * n'était pas en défaut, l'oracle était au mauvais niveau. Détail au point de retrait, plus bas.
  *
  * ## Hors périmètre de ce niveau
+ * - **Le geste sur une ligne d'ajustement** : qu'un appui, un appui long ou un glissement ne
+ *   déclenche rien est un fait d'interface. **Aucune fiche ne le porte à ce jour** (LOP-145) :
+ *   c'est un trou de couverture assumé, qui demande un test instrumenté Compose sur
+ *   `TransactionRow`, une fois que celui-ci consomme `allowedActions`.
  * - **La navigation vers l'écran de détail** : `onOpenTransaction` est une lambda d'écran,
- *   aucun ViewModel ne l'émet. À porter par un test instrumenté Compose.
- * - **Le glissement et l'appui long** : gestes de `SwipeableTransactionRow`. Même niveau.
+ *   aucun ViewModel ne l'émet. À porter par le même test instrumenté.
  * - **Ce qui est réellement écrit en base** : porté par TC-113 (`TC_113_AdjustmentVisibilityRoomTest`).
  * - **Le rendu graphique** : couleurs, icône, position dans la liste. Exclu par la fiche.
  * - **Le calcul de l'écart et la création de la ligne** : porté par TC-111.
@@ -566,60 +566,21 @@ class AdjustmentRestrictionsTest {
         )
     }
 
-    /**
-     * T-03a — Given un ajustement, When on déclenche la bascule payé par appel direct du rappel
-     * exposé, Then aucun use case n'est appelé et l'état reste inchangé champ par champ
-     * (CA-21, I-4).
-     *
-     * La doublure enregistre les identifiants reçus pour que le message d'échec porte la liste
-     * des appels, comme l'exigent les assertions obligatoires de la fiche. `any()` est admis
-     * ici : l'intention est de prouver **zéro** appel, quel que soit l'argument (AGENTS §4).
-     */
-    @Test
-    fun `T-03a - given un ajustement - when on declenche la bascule paye depuis le ViewModel - then aucun use case n est appele et l etat est inchange`() =
-        runTest(testDispatcher) {
-            val editedIds = mutableListOf<Long>()
-            coEvery { editWithScopeUseCase(any(), any(), any(), any(), any()) } answers {
-                editedIds += firstArg<Long>()
-                EditOutcome.Applied(firstArg())
-            }
-            val sut = actionViewModel()
-
-            sut.togglePaid(adjustment1)
-            advanceUntilIdle()
-
-            assertEquals(
-                "CA-21 / I-4 : la bascule payé ne doit atteindre aucun use case sur un ajustement. " +
-                    "Un rappel neutralisé qui appelle quand même le use case est un échec. " +
-                    "Identifiants transmis à EditTransactionWithScopeUseCase : $editedIds",
-                emptyList<Long>(),
-                editedIds,
-            )
-            coVerify(exactly = 0) { editWithScopeUseCase(any(), any(), any(), any(), any()) }
-            coVerify(exactly = 0) { actionTransactionRepo.getSeriesById(any()) }
-            confirmVerified(*actionCollaborators())
-            assertActionStateIsPristine(sut, "CA-21 / I-4 (bascule payé)")
-        }
-
-    /**
-     * T-03b — Given un ajustement, When on déclenche l'ouverture de son aperçu par appel direct
-     * du rappel exposé, Then aucun use case n'est appelé et l'état reste inchangé champ par
-     * champ (CA-21, I-4).
-     *
-     * Seconde alternative de T-03 : « ouverture » et « bascule payé » sont deux branches
-     * distinctes, chacune a sa variante (AGENTS `app/src/test` §1).
-     */
-    @Test
-    fun `T-03b - given un ajustement - when on declenche l ouverture de son apercu depuis le ViewModel - then aucun use case n est appele et l etat est inchange`() =
-        runTest(testDispatcher) {
-            val sut = actionViewModel()
-
-            sut.showPreview(adjustment1)
-            advanceUntilIdle()
-
-            confirmVerified(*actionCollaborators())
-            assertActionStateIsPristine(sut, "CA-21 / I-4 (ouverture de l'aperçu)")
-        }
+    // T-03 — retiré de ce niveau le 14 septembre 2026, arbitrage LOP-145.
+    //
+    // Le cas demandait qu'un appel DIRECT à `togglePaid` / `showPreview` ne fasse rien sur un
+    // ajustement. Le satisfaire obligeait `TransactionActionViewModel` à connaître la notion
+    // d'ajustement : à porter une règle métier (interdit par P-12 et I-12) et à lire le type
+    // technique (interdit par CA-27). L'oracle était au mauvais niveau, pas le code en défaut.
+    //
+    // Ce que CA-21 exige reste couvert, à son niveau :
+    //   - le domaine ne propose que la suppression sur un ajustement .... T-02
+    //   - le domaine refuse la modification sans rien écrire ............. T-07
+    //   - l'interface consomme ces décisions sans rien déduire ........... T-10a
+    //
+    // TROU DE COUVERTURE ASSUMÉ : que le geste lui-même (appui, appui long, glissement) ne
+    // déclenche rien sur une ligne d'ajustement est un fait d'interface. Aucune fiche ne le
+    // porte à ce jour ; il demande un test instrumenté Compose sur `TransactionRow`.
 
     /**
      * T-04 — Given une suppression demandée sur A-AJ1, When la confirmation est refusée,
