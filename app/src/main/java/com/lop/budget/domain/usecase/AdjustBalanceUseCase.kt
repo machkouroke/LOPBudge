@@ -4,6 +4,7 @@ import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.BalanceEngine
+import com.lop.budget.domain.model.NO_CATEGORY_ID
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
@@ -60,9 +61,9 @@ class AdjustBalanceUseCase @Inject constructor(
             date = clock.millis(),
             paidAt = clock.millis(),
             accountId = accountId,
-            // ÉCART E-2 (LOP-87, P-5) : 0 ne référence aucune catégorie. Tout regroupement par
-            // catégorie reçoit une clé orpheline.
-            categoryId = 0L,
+            // I-9 / P-5 : un ajustement ne porte aucune catégorie. La colonne n'étant pas
+            // nullable, l'absence est portée par la valeur réservée [NO_CATEGORY_ID].
+            categoryId = NO_CATEGORY_ID,
             note = "Ajustement automatique du solde",
         )
 

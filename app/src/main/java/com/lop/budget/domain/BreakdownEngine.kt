@@ -25,8 +25,9 @@ data class CategoryBreakdown(
  * regroupent. Le dénominateur est calculé **une fois** par appel : le recalculer par groupe
  * rendait la répartition O(groupes × N).
  *
- * ÉCART E-2 (LOP-87, P-5) : une ligne dont la catégorie n'existe pas tombe dans le groupe de
- * repli ci-dessous. C'est là qu'apparaît la clé orpheline d'un ajustement (`categoryId = 0`).
+ * Une ligne sans catégorie (`NO_CATEGORY_ID`) tombe dans le groupe de repli ci-dessous : sa
+ * jointure ne résout rien, par construction. C'est le cas d'un ajustement de solde (LOP-87, P-5),
+ * qu'aucun agrégat métier ne doit de toute façon atteindre (I-11, écart E-1 encore ouvert).
  */
 object BreakdownEngine {
 
