@@ -175,11 +175,11 @@ import kotlin.time.Duration.Companion.seconds
  * - Parcours UI, Maestro, portées d'édition SINGLE / FUTURE / ALL.
  *
  * ## Exécution
- * `./gradlew :app:testDebugUnitTest --tests "*ObserveTransactionRoomTest"`
+ * `./gradlew :app:testDebugUnitTest --tests "*ObserveTransactionDetailRoomTest"`
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], application = Application::class)
-class ObserveTransactionRoomTest {
+class ObserveTransactionDetailRoomTest {
 
     // --- Harnais ------------------------------------------------------------------------------
 
