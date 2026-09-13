@@ -13,9 +13,8 @@ import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.toDaysOfWeekSet
-import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
+import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
 import kotlinx.coroutines.flow.first
-import org.junit.Assert.assertTrue
 import java.time.LocalDate
 import java.time.ZoneId
 

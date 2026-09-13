@@ -8,7 +8,6 @@ import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.toSeriesEntity
 import com.lop.budget.domain.model.toTransactionEntity
-import com.lop.budget.domain.usecase.SaveTransactionUseCase
 import javax.inject.Inject
 
 class CreateTransactionUseCase @Inject constructor(

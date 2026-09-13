@@ -1,4 +1,4 @@
-package com.lop.budget.domain.usecase
+package com.lop.budget.domain.usecase.transaction
 
 import com.lop.budget.data.local.dao.SeriesTag
 import com.lop.budget.data.local.entity.AccountEntity

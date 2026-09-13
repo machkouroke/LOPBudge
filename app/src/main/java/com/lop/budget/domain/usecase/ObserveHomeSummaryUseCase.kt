@@ -4,6 +4,7 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -44,7 +45,7 @@ data class HomeSummary(
  *
  * Les ajustements de solde n'entrent dans aucun de ces indicateurs (I-2, I-11, CA-16) :
  * l'exclusion est portée **une seule fois**, par `TransactionDao.observeForMerge`, dont ce use
- * case hérite via [ObserveTransactionsUseCase]. Ils ne peuvent donc plus ni gonfler les revenus
+ * case hérite via [com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase]. Ils ne peuvent donc plus ni gonfler les revenus
  * et le solde projeté, ni évincer une transaction réelle de la liste du tableau de bord.
  * L'écart E-1 est corrigé depuis le 13 septembre 2026.
  */

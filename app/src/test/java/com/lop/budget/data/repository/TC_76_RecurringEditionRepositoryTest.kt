@@ -18,8 +18,8 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
 import com.lop.budget.domain.usecase.EditOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
-import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
-import com.lop.budget.domain.usecase.SaveTransactionUseCase
+import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
+import com.lop.budget.domain.usecase.transaction.SaveTransactionUseCase
 import com.lop.budget.domain.usecase.transaction.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.domain.usecase.SyncProgressUseCase
 import kotlinx.coroutines.flow.first

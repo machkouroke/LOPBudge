@@ -5,6 +5,7 @@ import com.lop.budget.domain.BreakdownEngine
 import com.lop.budget.domain.CategoryBreakdown
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -36,7 +37,7 @@ data class MonthlyAnalytics(
  *
  * Les ajustements de solde n'entrent dans aucun de ces agrégats (I-2, I-11) : l'exclusion est
  * portée **une seule fois**, par `TransactionDao.observeForMerge`, dont ce use case hérite via
- * [ObserveTransactionsUseCase]. Rien n'est filtré ici, et aucune option ne permet de les inclure
+ * [com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase]. Rien n'est filtré ici, et aucune option ne permet de les inclure
  * (P-4, CA-13). L'écart E-1 est corrigé depuis le 13 septembre 2026.
  */
 @Singleton

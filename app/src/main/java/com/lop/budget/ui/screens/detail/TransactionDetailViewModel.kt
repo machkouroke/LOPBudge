@@ -7,8 +7,8 @@ import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
-import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
-import com.lop.budget.domain.usecase.ObserveTransactionDetailUseCase
+import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
+import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow

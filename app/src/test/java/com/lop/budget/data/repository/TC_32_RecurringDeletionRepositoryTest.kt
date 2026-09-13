@@ -7,7 +7,7 @@ import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.SeriesCancelMode
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
-import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
+import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
 import com.lop.budget.domain.usecase.transaction.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.domain.usecase.SyncProgressUseCase
 import kotlinx.coroutines.test.runTest

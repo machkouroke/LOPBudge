@@ -13,8 +13,8 @@ import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
-import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
-import com.lop.budget.domain.usecase.SaveTransactionUseCase
+import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
+import com.lop.budget.domain.usecase.transaction.SaveTransactionUseCase
 import com.lop.budget.domain.usecase.SyncProgressUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest

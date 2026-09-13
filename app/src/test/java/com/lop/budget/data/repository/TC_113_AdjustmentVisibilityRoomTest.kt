@@ -27,8 +27,8 @@ import com.lop.budget.domain.usecase.MonthlyAnalytics
 import com.lop.budget.domain.usecase.ObserveAccountDetailUseCase
 import com.lop.budget.domain.usecase.ObserveHomeSummaryUseCase
 import com.lop.budget.domain.usecase.ObserveMonthlyAnalyticsUseCase
-import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
-import com.lop.budget.domain.usecase.SaveTransactionUseCase
+import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
+import com.lop.budget.domain.usecase.transaction.SaveTransactionUseCase
 import com.lop.budget.domain.usecase.transaction.SearchTransactionsUseCase
 import com.lop.budget.domain.usecase.transaction.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.domain.usecase.SyncProgressUseCase

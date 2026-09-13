@@ -1,8 +1,9 @@
-package com.lop.budget.domain.usecase
+package com.lop.budget.domain.usecase.transaction
 
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.TransactionStatus
+import com.lop.budget.domain.usecase.SyncProgressUseCase
 import javax.inject.Inject
 import javax.inject.Singleton
 

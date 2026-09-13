@@ -3,7 +3,6 @@ package com.lop.budget.domain.usecase.transaction
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
 import com.lop.budget.util.Format
 import com.lop.budget.util.TextSearch
 import kotlinx.coroutines.Dispatchers

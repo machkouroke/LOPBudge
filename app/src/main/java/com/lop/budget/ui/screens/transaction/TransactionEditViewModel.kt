@@ -26,7 +26,7 @@ import com.lop.budget.domain.model.toDaysOfWeekSet
 import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.EditOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
-import com.lop.budget.domain.usecase.ObserveTransactionDetailUseCase
+import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
 import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
