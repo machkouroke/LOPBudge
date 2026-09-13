@@ -28,7 +28,7 @@ import javax.inject.Singleton
  * [invoke] — les deux API ne peuvent donc plus diverger pour un même identifiant.
  */
 @Singleton
-class ObserveTransactionUseCase @Inject constructor(
+class ObserveTransactionDetailUseCase @Inject constructor(
     private val transactionRepo: TransactionRepository,
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,

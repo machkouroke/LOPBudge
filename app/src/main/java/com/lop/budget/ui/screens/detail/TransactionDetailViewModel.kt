@@ -8,7 +8,7 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
-import com.lop.budget.domain.usecase.ObserveTransactionUseCase
+import com.lop.budget.domain.usecase.ObserveTransactionDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +35,7 @@ data class DetailUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TransactionDetailViewModel @Inject constructor(
-    private val observeTransactionUseCase: ObserveTransactionUseCase,
+    private val observeTransactionDetailUseCase: ObserveTransactionDetailUseCase,
     private val observeTransactionsUseCase: ObserveTransactionsUseCase,
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
@@ -56,7 +56,7 @@ class TransactionDetailViewModel @Inject constructor(
      * résolvaient le slot deux fois à chaque émission.
      */
     private val txFlow = txId.filterNotNull()
-        .flatMapLatest { observeTransactionUseCase(it) }
+        .flatMapLatest { observeTransactionDetailUseCase(it) }
         .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5000), replay = 1)
 
     /**

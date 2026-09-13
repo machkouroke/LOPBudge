@@ -19,7 +19,7 @@ import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
-import com.lop.budget.domain.usecase.ObserveTransactionUseCase
+import com.lop.budget.domain.usecase.ObserveTransactionDetailUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.confirmVerified
@@ -123,14 +123,14 @@ class TransactionEditViewModelCreateTest {
     private val createTransactionUseCase = mockk<CreateTransactionUseCase>(relaxed = false)
     private val editTransactionWithScopeUseCase =
         mockk<EditTransactionWithScopeUseCase>(relaxed = false)
-    private val observeTransactionUseCase = mockk<ObserveTransactionUseCase>(relaxed = false)
+    private val observeTransactionDetailUseCase = mockk<ObserveTransactionDetailUseCase>(relaxed = false)
     private val settings = mockk<SettingsRepository>(relaxed = false)
     private val context = mockk<Context>(relaxed = false)
 
     private val allMocks = arrayOf(
         accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, debtRepo,
         createTransactionUseCase, editTransactionWithScopeUseCase,
-        observeTransactionUseCase, settings, context
+        observeTransactionDetailUseCase, settings, context
     )
 
     /**
@@ -207,7 +207,7 @@ class TransactionEditViewModelCreateTest {
         TransactionEditViewModel(
             accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, debtRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
-            observeTransactionUseCase, settings,
+            observeTransactionDetailUseCase, settings,
             SavedStateHandle(mapOf("type" to type.name)), context
         )
 

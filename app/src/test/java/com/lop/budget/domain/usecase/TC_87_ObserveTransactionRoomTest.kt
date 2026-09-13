@@ -5,7 +5,6 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
-import app.cash.turbine.testIn
 import app.cash.turbine.turbineScope
 import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.entity.AccountEntity
@@ -186,7 +185,7 @@ class ObserveTransactionRoomTest {
     private lateinit var transactionRepo: TransactionRepository
     private lateinit var accountRepo: AccountRepository
     private lateinit var categoryRepo: CategoryRepository
-    private lateinit var useCase: ObserveTransactionUseCase
+    private lateinit var useCase: ObserveTransactionDetailUseCase
     private lateinit var listUseCase: ObserveTransactionsUseCase
 
     private lateinit var defaultTimeZone: TimeZone
@@ -207,7 +206,7 @@ class ObserveTransactionRoomTest {
         transactionRepo = TransactionRepository(db.transactionDao(), db.recurringSeriesDao())
         accountRepo = AccountRepository(db.accountDao())
         categoryRepo = CategoryRepository(db.categoryDao())
-        useCase = ObserveTransactionUseCase(transactionRepo, accountRepo, categoryRepo)
+        useCase = ObserveTransactionDetailUseCase(transactionRepo, accountRepo, categoryRepo)
         listUseCase = ObserveTransactionsUseCase(transactionRepo, accountRepo, categoryRepo)
     }
 

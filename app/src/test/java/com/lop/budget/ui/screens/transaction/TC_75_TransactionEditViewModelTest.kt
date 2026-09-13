@@ -24,7 +24,7 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.EditOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
-import com.lop.budget.domain.usecase.ObserveTransactionUseCase
+import com.lop.budget.domain.usecase.ObserveTransactionDetailUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.confirmVerified
@@ -62,14 +62,14 @@ class TransactionEditViewModelTest {
     private val debtRepo = mockk<DebtRepository>(relaxed = false)
     private val createTransactionUseCase = mockk<CreateTransactionUseCase>(relaxed = false)
     private val editTransactionWithScopeUseCase = mockk<EditTransactionWithScopeUseCase>(relaxed = false)
-    private val observeTransactionUseCase = mockk<ObserveTransactionUseCase>(relaxed = false)
+    private val observeTransactionDetailUseCase = mockk<ObserveTransactionDetailUseCase>(relaxed = false)
     private val settings = mockk<SettingsRepository>(relaxed = false)
     private val context = mockk<Context>(relaxed = false)
 
     private val allMocks = arrayOf(
         accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, debtRepo,
         createTransactionUseCase, editTransactionWithScopeUseCase,
-        observeTransactionUseCase, settings, context
+        observeTransactionDetailUseCase, settings, context
     )
 
     // Dates fixes pour le déterminisme
@@ -119,7 +119,7 @@ class TransactionEditViewModelTest {
         return TransactionEditViewModel(
             accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, debtRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
-            observeTransactionUseCase, settings, SavedStateHandle(map), context
+            observeTransactionDetailUseCase, settings, SavedStateHandle(map), context
         )
     }
 
@@ -158,7 +158,7 @@ class TransactionEditViewModelTest {
     @Test
     fun `V-01 - Chargement occurrence de serie en portee SINGLE - Oracle GREEN`() = runTest(testDispatcher) {
         val twr = createTwr(id = 1L, seriesId = 500L)
-        coEvery { observeTransactionUseCase.getById(1L) } returns twr
+        coEvery { observeTransactionDetailUseCase.getById(1L) } returns twr
         coEvery { transactionRepo.getSeriesById(500L) } returns seriesRule
         
         val sut = createSut(id = 1L, scope = EditScope.SINGLE, date = dateSlot)
@@ -176,7 +176,7 @@ class TransactionEditViewModelTest {
         assertTrue(sut.isLoaded)
         assertFalse("La section récurrence devrait être masquée en SINGLE", sut.isRecurrenceSectionVisible)
         
-        coVerify { observeTransactionUseCase.getById(1L) }
+        coVerify { observeTransactionDetailUseCase.getById(1L) }
         coVerify { transactionRepo.getSeriesById(500L) }
         confirmVerified(*allMocks)
     }
@@ -184,7 +184,7 @@ class TransactionEditViewModelTest {
     @Test
     fun `V-02 - Idem en portee FUTURE`() = runTest(testDispatcher) {
         val twr = createTwr(id = 1L, seriesId = 500L)
-        coEvery { observeTransactionUseCase.getById(1L) } returns twr
+        coEvery { observeTransactionDetailUseCase.getById(1L) } returns twr
         coEvery { transactionRepo.getSeriesById(500L) } returns seriesRule
         
         val sut = createSut(id = 1L, scope = EditScope.FUTURE, date = dateSlot)
@@ -199,7 +199,7 @@ class TransactionEditViewModelTest {
         assertFormEquals(expected, sut.form.value)
         assertTrue("La section récurrence devrait être visible en FUTURE", sut.isRecurrenceSectionVisible)
         
-        coVerify { observeTransactionUseCase.getById(1L) }
+        coVerify { observeTransactionDetailUseCase.getById(1L) }
         coVerify { transactionRepo.getSeriesById(500L) }
         confirmVerified(*allMocks)
     }
@@ -207,7 +207,7 @@ class TransactionEditViewModelTest {
     @Test
     fun `V-03 - Portee ALL charge les valeurs de base de la serie`() = runTest(testDispatcher) {
         val twr = createTwr(id = 1L, seriesId = 500L)
-        coEvery { observeTransactionUseCase.getById(1L) } returns twr
+        coEvery { observeTransactionDetailUseCase.getById(1L) } returns twr
         coEvery { transactionRepo.getSeriesById(500L) } returns seriesRule
         
         val sut = createSut(id = 1L, scope = EditScope.ALL, date = dateSlot)
@@ -222,7 +222,7 @@ class TransactionEditViewModelTest {
         )
         assertFormEquals(expected, sut.form.value)
         
-        coVerify { observeTransactionUseCase.getById(1L) }
+        coVerify { observeTransactionDetailUseCase.getById(1L) }
         coVerify { transactionRepo.getSeriesById(500L) }
         confirmVerified(*allMocks)
     }
@@ -230,7 +230,7 @@ class TransactionEditViewModelTest {
     @Test
     fun `V-04 - SavedStateHandle date = -1 est ignore`() = runTest(testDispatcher) {
         val twr = createTwr(id = 1L, date = occurrenceDate)
-        coEvery { observeTransactionUseCase.getById(1L) } returns twr
+        coEvery { observeTransactionDetailUseCase.getById(1L) } returns twr
         
         val sut = createSut(id = 1L, scope = EditScope.SINGLE, date = -1L)
         advanceUntilIdle()
@@ -242,14 +242,14 @@ class TransactionEditViewModelTest {
             frequency = RecurrenceFrequency.NONE, interval = 1, daysOfWeek = emptySet()
         )
         assertFormEquals(expected, sut.form.value)
-        coVerify { observeTransactionUseCase.getById(1L) }
+        coVerify { observeTransactionDetailUseCase.getById(1L) }
         confirmVerified(*allMocks)
     }
 
     @Test
     fun `V-05 - Transaction ponctuelle sans serie`() = runTest(testDispatcher) {
         val twr = createTwr(id = 1L, seriesId = null)
-        coEvery { observeTransactionUseCase.getById(1L) } returns twr
+        coEvery { observeTransactionDetailUseCase.getById(1L) } returns twr
         
         val sut = createSut(id = 1L, scope = EditScope.SINGLE)
         advanceUntilIdle()
@@ -262,7 +262,7 @@ class TransactionEditViewModelTest {
         )
         assertFormEquals(expected, sut.form.value)
         
-        coVerify { observeTransactionUseCase.getById(1L) }
+        coVerify { observeTransactionDetailUseCase.getById(1L) }
         confirmVerified(*allMocks)
     }
 
@@ -272,8 +272,8 @@ class TransactionEditViewModelTest {
         val realTwr = createTwr(id = 1L, seriesId = 500L)
         val virtualTwr = createTwr(id = -1L, seriesId = 500L)
         
-        coEvery { observeTransactionUseCase.getById(1L) } returns realTwr
-        coEvery { observeTransactionUseCase.getById(-1L) } returns virtualTwr
+        coEvery { observeTransactionDetailUseCase.getById(1L) } returns realTwr
+        coEvery { observeTransactionDetailUseCase.getById(-1L) } returns virtualTwr
         coEvery { transactionRepo.getSeriesById(500L) } returns seriesRule
         
         EditScope.entries.forEach { scope ->
@@ -290,7 +290,7 @@ class TransactionEditViewModelTest {
         coVerify(exactly = 0) { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) }
         coVerify(exactly = 0) { accountRepo.upsert(any()) }
         
-        coVerify(atLeast = 1) { observeTransactionUseCase.getById(any()) }
+        coVerify(atLeast = 1) { observeTransactionDetailUseCase.getById(any()) }
         coVerify(atLeast = 1) { transactionRepo.getSeriesById(500L) }
         confirmVerified(*allMocks)
     }
@@ -303,7 +303,7 @@ class TransactionEditViewModelTest {
                 linkedGoalId = 7L, linkedDebtId = null
             )
         )
-        coEvery { observeTransactionUseCase.getById(1L) } returns twr
+        coEvery { observeTransactionDetailUseCase.getById(1L) } returns twr
         coEvery { transactionRepo.getSeriesById(500L) } returns seriesRule
         coEvery { accountRepo.getById(100L) } returns createAccount(100L)
         
@@ -351,7 +351,7 @@ class TransactionEditViewModelTest {
         
         coVerify { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) }
         coVerify { accountRepo.getById(100L) }
-        coVerify { observeTransactionUseCase.getById(1L) }
+        coVerify { observeTransactionDetailUseCase.getById(1L) }
         coVerify { transactionRepo.getSeriesById(500L) }
         confirmVerified(*allMocks)
     }
@@ -438,7 +438,7 @@ class TransactionEditViewModelTest {
     fun `V-10 - Alerte solde - Verification des 3 branches`() = runTest(testDispatcher) {
         val account = createAccount(id = 100L, balanceUpdatedAt = dateSlot)
         coEvery { accountRepo.getById(100L) } returns account
-        coEvery { observeTransactionUseCase.getById(1L) } returns createTwr(id = 1L)
+        coEvery { observeTransactionDetailUseCase.getById(1L) } returns createTwr(id = 1L)
         
         val sut = createSut(id = 1L, scope = EditScope.SINGLE)
         advanceUntilIdle()
@@ -479,7 +479,7 @@ class TransactionEditViewModelTest {
             editTransactionWithScopeUseCase(any(), any(), any(), any(), any())
         }
         
-        coVerify(atLeast = 1) { observeTransactionUseCase.getById(1L) }
+        coVerify(atLeast = 1) { observeTransactionDetailUseCase.getById(1L) }
         coVerify(atLeast = 1) { accountRepo.getById(100L) }
         confirmVerified(*allMocks)
     }
@@ -526,7 +526,7 @@ class TransactionEditViewModelTest {
 
         // 2. Mode édition en portée SINGLE : toujours visible
         val twr = createTwr(id = 1L, seriesId = 500L)
-        coEvery { observeTransactionUseCase.getById(1L) } returns twr
+        coEvery { observeTransactionDetailUseCase.getById(1L) } returns twr
         coEvery { transactionRepo.getSeriesById(500L) } returns seriesRule
 
         val sutSingle = createSut(id = 1L, scope = EditScope.SINGLE)
@@ -543,7 +543,7 @@ class TransactionEditViewModelTest {
         advanceUntilIdle()
         assertFalse("Toggle payé devrait être masqué en édition ALL", sutAll.isPaidToggleVisible)
 
-        coVerify(atLeast = 1) { observeTransactionUseCase.getById(1L) }
+        coVerify(atLeast = 1) { observeTransactionDetailUseCase.getById(1L) }
         coVerify(atLeast = 1) { transactionRepo.getSeriesById(500L) }
         confirmVerified(*allMocks)
     }

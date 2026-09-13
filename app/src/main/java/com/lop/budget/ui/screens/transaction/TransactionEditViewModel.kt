@@ -26,7 +26,7 @@ import com.lop.budget.domain.model.toDaysOfWeekSet
 import com.lop.budget.domain.usecase.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.EditOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
-import com.lop.budget.domain.usecase.ObserveTransactionUseCase
+import com.lop.budget.domain.usecase.ObserveTransactionDetailUseCase
 import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -106,7 +106,7 @@ class TransactionEditViewModel @Inject constructor(
     debtRepo: DebtRepository,
     private val createTransactionUseCase: CreateTransactionUseCase,
     private val editTransactionWithScopeUseCase: EditTransactionWithScopeUseCase,
-    private val observeTransactionUseCase: ObserveTransactionUseCase,
+    private val observeTransactionDetailUseCase: ObserveTransactionDetailUseCase,
     private val settings: SettingsRepository,
     savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context,
@@ -195,7 +195,7 @@ class TransactionEditViewModel @Inject constructor(
     }
 
     private suspend fun loadTransaction(id: Long) {
-        val twr = observeTransactionUseCase.getById(id) ?: return
+        val twr = observeTransactionDetailUseCase.getById(id) ?: return
         val tx = twr.transaction
         val series = tx.seriesId?.let { transactionRepo.getSeriesById(it) }
 
