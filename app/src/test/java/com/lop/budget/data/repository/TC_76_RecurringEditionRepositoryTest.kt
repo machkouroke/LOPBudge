@@ -16,6 +16,7 @@ import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
+import com.lop.budget.domain.usecase.EditOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
 import com.lop.budget.domain.usecase.SaveTransactionUseCase
@@ -210,22 +211,24 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
             val edition1 = editionFrom(februaryOccurrence, title = "Ed 1")
             val edition2 = editionFrom(februaryOccurrence, title = "Ed 2")
 
-            val id1 = editTransactionWithScopeUseCase(
+            val outcome1 = editTransactionWithScopeUseCase(
                 februaryOccurrence.transaction.id,
                 seriesAId,
                 februarySlot,
                 edition1,
                 EditScope.SINGLE
             )
+            val id1 = (outcome1 as EditOutcome.Applied).transactionId
             assertTrue("L'ID retourne doit etre positif (RED: propagation du -1 d'upsert)", id1 > 0)
 
-            val id2 = editTransactionWithScopeUseCase(
+            val outcome2 = editTransactionWithScopeUseCase(
                 id1,
                 seriesAId,
                 februarySlot,
                 edition2,
                 EditScope.SINGLE
             )
+            val id2 = (outcome2 as EditOutcome.Applied).transactionId
 
             assertEquals(id1, id2)
             val persistedRows = persistedRowsForSlot(seriesAId, februarySlot)

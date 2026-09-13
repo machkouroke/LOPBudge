@@ -22,6 +22,7 @@ import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CreateTransactionUseCase
+import com.lop.budget.domain.usecase.EditOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.ObserveTransactionUseCase
 import io.mockk.coEvery
@@ -321,7 +322,7 @@ class TransactionEditViewModelTest {
                 editingId = 1L, seriesId = 500L, seriesDate = dateSlot,
                 edition = capture(editionSlot), scope = EditScope.SINGLE
             ) 
-        } returns 1L
+        } returns EditOutcome.Applied(1L)
 
         sut.save { }
         advanceUntilIdle()
@@ -457,7 +458,7 @@ class TransactionEditViewModelTest {
         // 2. confirmSave(accountNow = false) : sauvegarde sans toucher au compte
         sut.save {} // Re-trigger
         advanceUntilIdle()
-        coEvery { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) } returns 1L
+        coEvery { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) } returns EditOutcome.Applied(1L)
         sut.confirmSave(accountNow = false) {}
         advanceUntilIdle()
         coVerify(exactly = 0) { accountRepo.upsert(any()) }

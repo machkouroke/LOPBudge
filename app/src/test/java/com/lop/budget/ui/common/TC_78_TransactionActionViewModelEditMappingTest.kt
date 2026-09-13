@@ -13,6 +13,7 @@ import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
+import com.lop.budget.domain.usecase.EditOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
 import io.mockk.coEvery
@@ -196,7 +197,7 @@ class TransactionActionViewModelEditMappingTest {
                     editingId = 20L, seriesId = 100L, seriesDate = februarySlot,
                     edition = capture(editionSlot), scope = EditScope.SINGLE,
                 )
-            } returns 20L
+            } returns EditOutcome.Applied(20L)
 
             sut.togglePaid(movedException)
             advanceUntilIdle()
@@ -227,7 +228,7 @@ class TransactionActionViewModelEditMappingTest {
                     editingId = 20L, seriesId = 100L, seriesDate = februarySlot,
                     edition = capture(editionSlot), scope = EditScope.SINGLE,
                 )
-            } returns 20L
+            } returns EditOutcome.Applied(20L)
 
             sut.togglePaid(paidTx)
             advanceUntilIdle()
@@ -254,7 +255,7 @@ class TransactionActionViewModelEditMappingTest {
                     editingId = -1L, seriesId = 100L, seriesDate = februarySlot,
                     edition = capture(editionSlot), scope = EditScope.FUTURE,
                 )
-            } returns 5L
+            } returns EditOutcome.Applied(5L)
             var done = false
 
             sut.confirmEdit(
@@ -287,7 +288,7 @@ class TransactionActionViewModelEditMappingTest {
                     editingId = 20L, seriesId = 100L, seriesDate = februarySlot,
                     edition = capture(editionSlot), scope = EditScope.SINGLE,
                 )
-            } returns 20L
+            } returns EditOutcome.Applied(20L)
             var done = false
 
             sut.confirmEdit(tx = movedException, scope = EditScope.SINGLE, onDone = { done = true })
@@ -313,7 +314,7 @@ class TransactionActionViewModelEditMappingTest {
                     editingId = 10L, seriesId = null, seriesDate = null,
                     edition = capture(editionSlot), scope = EditScope.SINGLE,
                 )
-            } returns 10L
+            } returns EditOutcome.Applied(10L)
 
             sut.confirmEdit(tx = punctualTx, scope = EditScope.SINGLE)
             advanceUntilIdle()
@@ -338,7 +339,7 @@ class TransactionActionViewModelEditMappingTest {
                     editingId = 20L, seriesId = 100L, seriesDate = februarySlot,
                     edition = capture(editionSlot), scope = EditScope.SINGLE,
                 )
-            } returns 20L
+            } returns EditOutcome.Applied(20L)
 
             sut.confirmEdit(tx = movedException, scope = EditScope.SINGLE)
             advanceUntilIdle()
@@ -358,7 +359,7 @@ class TransactionActionViewModelEditMappingTest {
             coEvery { transactionRepo.getSeriesById(100L) } returns seriesRule
             coEvery {
                 editTransactionWithScopeUseCase(any(), any(), any(), any(), any())
-            } returns 20L
+            } returns EditOutcome.Applied(20L)
             var doneCount = 0
 
             // Comportement constaté à figer : pas de garde d'état côté édition

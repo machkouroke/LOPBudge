@@ -9,6 +9,7 @@ import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
+import com.lop.budget.domain.usecase.DeleteOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.ui.components.RecurringDeleteChoice
@@ -144,7 +145,7 @@ class TC_33_ContextualDeletionMappingTest {
 
     @Test
     fun `M-06 - Confirm punctual with choice null calls SINGLE exactly once`() = runTest(testDispatcher) {
-        coEvery { softDeleteUseCase(punctualTx) } returns Unit
+        coEvery { softDeleteUseCase(punctualTx) } returns DeleteOutcome.Deleted(punctualTx.transaction.id)
         sut.requestConfirmation(punctualTx, null)
 
         sut.confirmDelete()
@@ -158,7 +159,7 @@ class TC_33_ContextualDeletionMappingTest {
 
     @Test
     fun `M-07 - Confirm recurring with THIS_OCCURRENCE calls SINGLE exactly once`() = runTest(testDispatcher) {
-        coEvery { softDeleteUseCase(virtualOccurrence) } returns Unit
+        coEvery { softDeleteUseCase(virtualOccurrence) } returns DeleteOutcome.Deleted(virtualOccurrence.transaction.id)
         sut.requestConfirmation(virtualOccurrence, RecurringDeleteChoice.THIS_OCCURRENCE)
 
         sut.confirmDelete()
@@ -220,7 +221,7 @@ class TC_33_ContextualDeletionMappingTest {
 
     @Test
     fun `M-12 - Double confirmDelete only calls use case once`() = runTest(testDispatcher) {
-        coEvery { softDeleteUseCase(punctualTx) } returns Unit
+        coEvery { softDeleteUseCase(punctualTx) } returns DeleteOutcome.Deleted(punctualTx.transaction.id)
         sut.requestConfirmation(punctualTx, null)
 
         sut.confirmDelete()
@@ -232,7 +233,7 @@ class TC_33_ContextualDeletionMappingTest {
 
     @Test
     fun `M-13 - State reset timing check`() = runTest(testDispatcher) {
-        coEvery { softDeleteUseCase(punctualTx) } returns Unit
+        coEvery { softDeleteUseCase(punctualTx) } returns DeleteOutcome.Deleted(punctualTx.transaction.id)
         sut.requestConfirmation(punctualTx, null)
 
         sut.confirmDelete()

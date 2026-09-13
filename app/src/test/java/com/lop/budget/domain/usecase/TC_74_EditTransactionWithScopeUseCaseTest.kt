@@ -238,7 +238,7 @@ class EditTransactionWithScopeUseCaseTest {
 
         val result = sut(-1L, 100L, slotFeb, ed, EditScope.SINGLE)
 
-        assertEquals(50L, result)
+        assertEquals(EditOutcome.Applied(50L), result)
         coVerifyOrder {
             transactionRepo.getById(-1L)
             transactionRepo.materializeOccurrence(100L, slotFeb)
@@ -364,7 +364,7 @@ class EditTransactionWithScopeUseCaseTest {
 
         val result = sut(10L, null, null, ed, EditScope.SINGLE)
 
-        assertEquals(77L, result)
+        assertEquals(EditOutcome.Applied(77L), result)
         assertEquals(expectedSeriesFrom(ed), seriesSlot.captured) // startDate = edition.date
         // L'occurrence matérialisée reçoit statut + tags ; l'ancienne ligne n'est jamais sauvée.
         assertEquals(matRow.copy(status = TransactionStatus.PAID, paidAt = matRow.paidAt), saved.captured)
@@ -422,7 +422,7 @@ class EditTransactionWithScopeUseCaseTest {
 
         val result = sut(20L, 100L, slotFeb, ed, EditScope.FUTURE)
 
-        assertEquals(20L, result)
+        assertEquals(EditOutcome.Applied(20L), result)
         // Réf. 97 : troncature de l'ancienne série au pivot - 1 (entité entière).
         assertEquals(oldSeries.copy(endDate = expectedPivot - 1), truncated.captured)
         assertEquals(expectedSeriesFrom(ed), newSeries.captured) // startDate = edition.date
@@ -475,7 +475,7 @@ class EditTransactionWithScopeUseCaseTest {
 
         val result = sut(20L, 100L, slotFeb, ed, EditScope.FUTURE)
 
-        assertEquals(20L, result)
+        assertEquals(EditOutcome.Applied(20L), result)
         // I-7 : seul le diff est propagé — title "Custom" ET note "Row note" conservés,
         // date/seriesDate intacts (I-1). Pas de patch note : note édition == note base.
         assertEquals(migrating.copy(amount = 8_000, seriesId = 60L), migrated.captured)
@@ -505,7 +505,7 @@ class EditTransactionWithScopeUseCaseTest {
 
         val result = sut(10L, null, null, edition(), EditScope.FUTURE)
 
-        assertEquals(10L, result)
+        assertEquals(EditOutcome.Applied(10L), result)
         coVerify(exactly = 1) { transactionRepo.getById(10L) } // seul appel (écart S-20 documenté)
         verify { saveTransactionUseCase wasNot Called }
         confirmAll()
@@ -529,7 +529,7 @@ class EditTransactionWithScopeUseCaseTest {
 
         val result = sut(20L, 100L, slotFeb, ed, EditScope.ALL)
 
-        assertEquals(20L, result)
+        assertEquals(EditOutcome.Applied(20L), result)
         assertEquals(
             existing.copy(
                 title = "Base v2", amount = 8_000, startDate = slotFeb, // inchangée
@@ -651,7 +651,7 @@ class EditTransactionWithScopeUseCaseTest {
 
         val result = sut(-1L, 100L, slotFeb, ed, EditScope.ALL)
 
-        assertEquals(777L, result) // id d'affichage : exception réelle au slot le plus proche
+        assertEquals(EditOutcome.Applied(777L), result) // id d'affichage : exception réelle au slot le plus proche
         coVerify(exactly = 0) { transactionRepo.materializeOccurrence(any(), any()) } // I-6
         verify { saveTransactionUseCase wasNot Called } // statut/tags par occurrence = SINGLE (CA-07)
         coVerify(exactly = 1) { transactionRepo.getById(-1L) }
@@ -669,7 +669,7 @@ class EditTransactionWithScopeUseCaseTest {
 
         val result = sut(20L, 100L, slotFeb, edition(), EditScope.ALL)
 
-        assertEquals(20L, result)
+        assertEquals(EditOutcome.Applied(20L), result)
         coVerify(exactly = 1) { transactionRepo.getById(20L) }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(100L) }
         verify { saveTransactionUseCase wasNot Called }
