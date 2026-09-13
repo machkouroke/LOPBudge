@@ -1,6 +1,7 @@
 package com.lop.budget.ui.screens.accounts
 
 import androidx.lifecycle.SavedStateHandle
+import app.cash.turbine.test
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
@@ -44,7 +45,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -451,28 +451,39 @@ class AdjustmentRestrictionsTest {
                 settings,
             )
 
-            val states = mutableListOf<AccountDetailUiState>()
-            backgroundScope.launch(testDispatcher) { sut.uiState.collect { states += it } }
-            advanceUntilIdle()
+            // `stateIn(WhileSubscribed)` publie d'abord sa valeur de repli, puis l'état combiné :
+            // les deux émissions sont consommées explicitement, aucune n'est avalée.
+            sut.uiState.test {
+                assertEquals(
+                    "point de synchronisation, pas un oracle : la première émission est la " +
+                        "valeur de repli de stateIn, avant toute lecture du use case",
+                    AccountDetailUiState(),
+                    awaitItem(),
+                )
 
-            val state = states.last()
-            assertTrue("le ViewModel doit avoir chargé son état avant toute assertion", state.isLoaded)
-            assertSame(
-                "I-12 / P-12 : la ligne récente exposée doit être celle décidée par le use case, " +
-                    "pas une ligne recalculée par le ViewModel",
-                decidedRecent,
-                state.recentTransactions.single(),
-            )
-            assertSame(
-                "I-12 / P-12 : la ligne à venir exposée doit être celle décidée par le use case",
-                decidedUpcoming,
-                state.upcomingTransactions.single(),
-            )
-            assertEquals(
-                "le solde exposé vient du use case, jamais du solde de référence du compte",
-                117_000L,
-                state.balance,
-            )
+                val state = awaitItem()
+                assertTrue(
+                    "le ViewModel doit avoir chargé son état avant toute assertion. État reçu : $state",
+                    state.isLoaded,
+                )
+                assertSame(
+                    "I-12 / P-12 : la ligne récente exposée doit être celle décidée par le use case, " +
+                        "pas une ligne recalculée par le ViewModel",
+                    decidedRecent,
+                    state.recentTransactions.single(),
+                )
+                assertSame(
+                    "I-12 / P-12 : la ligne à venir exposée doit être celle décidée par le use case",
+                    decidedUpcoming,
+                    state.upcomingTransactions.single(),
+                )
+                assertEquals(
+                    "le solde exposé vient du use case, jamais du solde de référence du compte",
+                    117_000L,
+                    state.balance,
+                )
+                cancelAndIgnoreRemainingEvents()
+            }
 
             // L'identifiant observé vient de SavedStateHandle["id"] : un autre identifiant
             // n'aurait trouvé aucune réponse sur ce mock strict.

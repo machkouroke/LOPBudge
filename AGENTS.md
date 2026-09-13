@@ -119,3 +119,38 @@ laisser les changements dans l’espace de travail pour revue humaine.
 - Pour JUnit/Robolectric : lire `app/src/test/AGENTS.md`.
 - Pour les tests instrumentés : lire `app/src/androidTest/AGENTS.md`.
 - Pour Maestro : lire `Maestro/AGENTS.md` et `Maestro/GUIDE_BONNES_PRATIQUES.md`.
+
+## 9. Poste de développement Windows — Gradle et le répertoire temporaire
+
+Sur ce poste, `./gradlew` échoue avec :
+
+```
+java.io.IOException: Unable to establish loopback connection
+```
+
+Ce n’est ni le projet, ni le JDK, ni le démon Gradle. Préfixer la commande suffit :
+
+```bash
+export TMP='C:\gtmp' TEMP='C:\gtmp'   # mkdir -p /c/gtmp une seule fois
+./gradlew --stop                      # si un démon tourne déjà avec le mauvais environnement
+./gradlew :app:testDebugUnitTest
+```
+
+**Cause**, établie le 13 septembre 2026 : sur Windows, `Selector.open()` passe par `PipeImpl`, qui
+crée une paire de sockets **AF_UNIX** dans le répertoire temporaire. Ce répertoire vient de
+`GetTempPath()`, donc des variables d’environnement `TMP` / `TEMP` — **pas** de
+`-Djava.io.tmpdir`, ni de `jdk.nio.channels.unixdomain.tmpdir`, tous deux ignorés ici. Le `TMP`
+du poste vaut `C:\Users\MACHKG~1.000\AppData\Local\Temp`, en forme courte 8.3 : le `bind`
+l’accepte, le `connect` le refuse avec `SocketException: Invalid argument`. Le composant `~` du
+nom court est le déclencheur ; AF_UNIX lui-même fonctionne sur un chemin normal.
+
+Vaut pour tous les JDK installés sur le poste (Temurin 21, JBR 25) : c’est l’environnement.
+
+**Correctif durable**, à la main de l’utilisateur : changer `TMP` et `TEMP` dans les variables
+d’environnement Windows pour un chemin sans composant 8.3. Tant que ce n’est pas fait, le
+préfixe ci-dessus est obligatoire pour **toute** commande Gradle, y compris `--stop` et les
+suites instrumentées.
+
+**Diagnostic**, si le symptôme change : comparer un `Selector.open()` nu et un
+`ServerSocketChannel.open(UNIX).bind(null)` suivi d’un `connect`. C’est la comparaison des deux
+qui isole le chemin fautif ; un `Selector.open()` seul dit seulement « ça casse ».
