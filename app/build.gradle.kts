@@ -23,6 +23,8 @@ android {
 
     testOptions {
         unitTests.all { test ->
+            test.systemProperty("java.net.preferIPv4Stack", "true")
+            test.systemProperty("java.net.preferIPv4Addresses", "true")
             test.jvmArgs(
                 "-Djava.net.preferIPv4Stack=true",
                 "-Djava.net.preferIPv4Addresses=true"
@@ -167,4 +169,10 @@ dependencies {
     androidTestImplementation("io.mockk:mockk-android:1.13.12")
     androidTestImplementation("com.google.dagger:hilt-android-testing:2.54")
     kspAndroidTest("com.google.dagger:hilt-android-compiler:2.54")
+}
+
+tasks.withType<Test>().configureEach {
+    systemProperty("java.net.preferIPv4Stack", "true")
+    systemProperty("java.net.preferIPv4Addresses", "true")
+    jvmArgs("-Djava.net.preferIPv4Stack=true", "-Djava.net.preferIPv4Addresses=true")
 }
