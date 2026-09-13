@@ -6,6 +6,7 @@ import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.transaction.SoftDeleteTransactionOccurrenceUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.coVerifyOrder

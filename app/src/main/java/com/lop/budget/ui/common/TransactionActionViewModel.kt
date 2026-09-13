@@ -12,7 +12,7 @@ import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.toDaysOfWeekSet
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
-import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
+import com.lop.budget.domain.usecase.transaction.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

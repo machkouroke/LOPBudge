@@ -1,7 +1,7 @@
-package com.lop.budget.domain.usecase
+package com.lop.budget.domain.usecase.transaction
 
 import com.lop.budget.domain.model.TransactionEdition
-import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
+import com.lop.budget.domain.usecase.ProposalRepository
 import javax.inject.Inject
 
 /**

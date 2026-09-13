@@ -4,22 +4,12 @@ import android.app.Application
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.lop.budget.data.local.LopDatabase
-import com.lop.budget.data.local.entity.AccountEntity
-import com.lop.budget.data.local.entity.CategoryEntity
-import com.lop.budget.data.local.entity.RecurringSeriesEntity
-import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
-import com.lop.budget.domain.model.AccountType
-import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.SeriesCancelMode
-import com.lop.budget.domain.model.TransactionKind
-import com.lop.budget.domain.model.TransactionStatus
-import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
 import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
-import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
+import com.lop.budget.domain.usecase.transaction.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.domain.usecase.SyncProgressUseCase
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -30,7 +20,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.time.LocalDate
 import java.time.ZoneId
 import java.util.TimeZone
 

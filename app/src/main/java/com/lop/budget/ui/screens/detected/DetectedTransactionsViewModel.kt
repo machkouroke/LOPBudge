@@ -8,8 +8,8 @@ import com.lop.budget.domain.model.buildEdition
 import com.lop.budget.domain.usecase.InboxSettings
 import com.lop.budget.domain.usecase.ProposalRepository
 import com.lop.budget.domain.usecase.RefuseProposalUseCase
-import com.lop.budget.domain.usecase.SaveResult
-import com.lop.budget.domain.usecase.SaveTransactionFromProposalUseCase
+import com.lop.budget.domain.usecase.transaction.SaveResult
+import com.lop.budget.domain.usecase.transaction.SaveTransactionFromProposalUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow

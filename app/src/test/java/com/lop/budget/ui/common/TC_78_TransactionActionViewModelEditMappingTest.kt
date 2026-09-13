@@ -15,7 +15,7 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.CancelRecurringSeriesUseCase
 import com.lop.budget.domain.usecase.EditOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
-import com.lop.budget.domain.usecase.SoftDeleteTransactionOccurrenceUseCase
+import com.lop.budget.domain.usecase.transaction.SoftDeleteTransactionOccurrenceUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.confirmVerified
