@@ -84,8 +84,13 @@ class ObserveAccountDetailUseCase @Inject constructor(
     }.flowOn(Dispatchers.Default)
 
     /**
-     * ÉCART E-5 (LOP-87, I-4, CA-21) : aucune action n'est retirée à un ajustement. Le domaine
-     * autorise tout, la seule restriction existante est visuelle (`ui/components/Transactions.kt`).
+     * I-4 / CA-21 : la **seule** action offerte sur un ajustement est sa suppression (I-4b).
+     *
+     * La décision est prise ici, et nulle part ailleurs : le composant d'affichage consomme
+     * [AccountDetailRow.allowedActions] sans jamais inspecter le type technique (CA-27, I-12).
+     * Correctif ANO LOP-144, 14 septembre 2026 — auparavant toutes les actions étaient accordées à
+     * toutes les lignes et seule l'interface restreignait, ce qu'un bouton désactivé ne garantit
+     * pas au-delà de l'écran qui le porte.
      */
     private fun TransactionWithRelations.toRow(): AccountDetailRow {
         val isAdjustment = transaction.kind == TransactionKind.BALANCE_ADJUSTMENT
@@ -99,7 +104,11 @@ class ObserveAccountDetailUseCase @Inject constructor(
                 TransactionType.EXPENSE -> -transaction.amount
             },
             date = transaction.date,
-            allowedActions = AccountRowAction.entries.toSet(),
+            allowedActions = if (isAdjustment) {
+                setOf(AccountRowAction.DELETE)
+            } else {
+                AccountRowAction.entries.toSet()
+            },
         )
     }
 

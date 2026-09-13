@@ -28,6 +28,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -149,12 +150,24 @@ class TC_33_ContextualDeletionMappingTest {
         sut.requestConfirmation(punctualTx, null)
 
         sut.confirmDelete()
+        // Le marqueur « suppression en cours » est posé de façon synchrone, avant l'appel.
+        assertTrue(
+            "le marqueur doit être posé dès la confirmation, pour que l'écran de détail se ferme",
+            sut.pendingDeletes.value.contains(punctualTx.transaction.id),
+        )
+
         advanceUntilIdle()
 
         coVerify(exactly = 1) { softDeleteUseCase(punctualTx) }
         coVerify(exactly = 0) { cancelSeriesUseCase(any(), any()) }
         assertNull(sut.pendingConfirmation.value)
-        assertTrue(sut.pendingDeletes.value.contains(punctualTx.transaction.id))
+        // Assertion durcie le 14 septembre 2026 (LOP-87 CA-21b, correctif ANO LOP-146). Elle attendait
+        // auparavant que le marqueur reste posé indéfiniment, ce qui figeait un défaut : il n'était
+        // jamais retiré, et une suppression refusée fermait l'écran comme si elle avait abouti.
+        assertFalse(
+            "le marqueur doit être levé une fois la suppression terminée, dans tous les chemins",
+            sut.pendingDeletes.value.contains(punctualTx.transaction.id),
+        )
     }
 
     @Test

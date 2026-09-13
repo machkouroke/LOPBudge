@@ -132,6 +132,24 @@ import java.util.TimeZone
  *    resterait renseigné et « l'état revient à son état initial » serait inatteignable pour une
  *    raison qui n'est pas celle du cas.
  *
+ * ## ANO ouvertes par cette campagne
+ * ```
+ * LOP-144  T-02          allowedActions accordait les sept actions à toutes les lignes
+ * LOP-145  T-03a, T-03b  les rappels du ViewModel restent joignables sur un ajustement
+ * LOP-146  T-05, T-05b   le marqueur de suppression n'était jamais levé
+ * LOP-147  T-10a         BALANCE_ADJUSTMENT lu par ui/components/Transactions.kt
+ * ```
+ * LOP-144, LOP-146 et LOP-147 sont corrigées le 14 septembre 2026.
+ *
+ * **T-03a et T-03b restent rouges (LOP-145), et c'est assumé.** Ils demandent qu'un appel **direct** à
+ * `TransactionActionViewModel.togglePaid` / `.showPreview` ne fasse rien sur un ajustement. Poser
+ * cette garde dans le ViewModel violerait I-12 et P-12 — « un ViewModel n'est pas un lieu de
+ * règles » — et l'obligerait à lire le type technique, ce que CA-27 interdit. Ce que l'US exige
+ * est déjà vrai : le domaine refuse l'édition sans rien écrire (T-07), et l'interface ne câble
+ * plus ces rappels pour un ajustement puisqu'elle consomme `allowedActions`. L'oracle de T-03 est
+ * donc au mauvais niveau : il relève d'un test instrumenté sur le geste. Arbitrage en attente,
+ * l'oracle n'est pas assoupli entre-temps.
+ *
  * ## Hors périmètre de ce niveau
  * - **La navigation vers l'écran de détail** : `onOpenTransaction` est une lambda d'écran,
  *   aucun ViewModel ne l'émet. À porter par un test instrumenté Compose.

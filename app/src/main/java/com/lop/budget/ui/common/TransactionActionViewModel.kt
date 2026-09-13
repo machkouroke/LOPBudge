@@ -96,30 +96,42 @@ class TransactionActionViewModel @Inject constructor(
         _pendingDeletes.value = _pendingDeletes.value + tx.transaction.id
 
         viewModelScope.launch {
-            if (tx.transaction.seriesId != null && choice != null) {
-                when (choice) {
-                    RecurringDeleteChoice.THIS_OCCURRENCE -> {
-                        softDeleteTransactionOccurrenceUseCase(tx)
-                    }
+            try {
+                if (tx.transaction.seriesId != null && choice != null) {
+                    when (choice) {
+                        RecurringDeleteChoice.THIS_OCCURRENCE -> {
+                            softDeleteTransactionOccurrenceUseCase(tx)
+                        }
 
-                    RecurringDeleteChoice.FUTURE_ONLY -> {
-                        tx.transaction.seriesId.let { seriesId ->
-                            val pivotDate = tx.transaction.date
-                            cancelRecurringSeriesUseCase(
-                                seriesId,
-                                SeriesCancelMode.Future(pivotDate)
-                            )
+                        RecurringDeleteChoice.FUTURE_ONLY -> {
+                            tx.transaction.seriesId.let { seriesId ->
+                                val pivotDate = tx.transaction.date
+                                cancelRecurringSeriesUseCase(
+                                    seriesId,
+                                    SeriesCancelMode.Future(pivotDate)
+                                )
+                            }
+                        }
+
+                        RecurringDeleteChoice.ALL_SERIES -> {
+                            tx.transaction.seriesId.let { seriesId ->
+                                cancelRecurringSeriesUseCase(seriesId, SeriesCancelMode.All)
+                            }
                         }
                     }
-
-                    RecurringDeleteChoice.ALL_SERIES -> {
-                        tx.transaction.seriesId.let { seriesId ->
-                            cancelRecurringSeriesUseCase(seriesId, SeriesCancelMode.All)
-                        }
-                    }
+                } else if (tx.transaction.seriesId == null) {
+                    softDeleteTransactionOccurrenceUseCase(tx)
                 }
-            } else if (tx.transaction.seriesId == null) {
-                softDeleteTransactionOccurrenceUseCase(tx)
+            } finally {
+                // Correctif ANO LOP-146, 14 septembre 2026 : le marqueur se lève dans TOUS les chemins.
+                // Il n'était jamais retiré, si bien qu'une suppression refusée (ligne introuvable)
+                // laissait `TransactionDetailScreen` se fermer comme si elle avait abouti.
+                //
+                // Retirer le marqueur ne casse pas la fermeture d'écran du cas nominal : celle-ci
+                // est garantie par l'autre condition de cet écran, `state.transaction == null`,
+                // que la réémission de l'observation déclenche après la suppression douce. Le
+                // marqueur n'en est que l'accélérateur optimiste.
+                _pendingDeletes.value = _pendingDeletes.value - tx.transaction.id
             }
         }
     }

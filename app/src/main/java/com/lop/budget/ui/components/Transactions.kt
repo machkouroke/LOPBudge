@@ -33,9 +33,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.DayGroup
-import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.account.AccountRowAction
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.common.TransactionActionViewModel
 import com.lop.budget.ui.theme.LopTheme
@@ -98,6 +98,19 @@ fun LazyListScope.transactionDayGroups(
     }
 }
 
+/**
+ * Rend une ligne de transaction.
+ *
+ * Le composant **ne décide de rien** : il reçoit les actions autorisées et le marqueur visuel,
+ * et se contente de les appliquer (LOP-87, I-12, CA-27). Les valeurs par défaut reconduisent le
+ * comportement des surfaces où un ajustement n'apparaît jamais (I-2) : liste du mois, recherche,
+ * accueil, groupes de série.
+ *
+ * @param isAdjustment marqueur **d'affichage** seul — icône, teinte, graisse. Décidé par le
+ *   domaine, jamais déduit ici du type technique.
+ * @param allowedActions actions que le domaine autorise sur cette ligne. Chaque geste et chaque
+ *   rappel est conditionné à cet ensemble, et à rien d'autre.
+ */
 @Composable
 fun TransactionRow(
     tx: TransactionWithRelations,
@@ -105,6 +118,8 @@ fun TransactionRow(
     onOpenTransaction: (Long) -> Unit,
     modifier: Modifier = Modifier,
     showDate: Boolean = false,
+    isAdjustment: Boolean = false,
+    allowedActions: Set<AccountRowAction> = AccountRowAction.entries.toSet(),
     actionVm: TransactionActionViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
 ) {
     val ext = LopTheme.extended
@@ -112,14 +127,19 @@ fun TransactionRow(
     val amountColor = if (isIncome) ext.income else ext.expense
     val catColor = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
     val isPaid = tx.transaction.status == TransactionStatus.PAID
-    val isAdjustment = tx.transaction.kind == TransactionKind.BALANCE_ADJUSTMENT
-    
+
+    val canOpen = AccountRowAction.OPEN in allowedActions
+    val canTogglePaid = AccountRowAction.TOGGLE_PAID in allowedActions
+    val canDelete = AccountRowAction.DELETE in allowedActions
+
     SwipeableTransactionRow(
         isPaid = isPaid,
-        enabled = !isAdjustment,
-        onTogglePaid = { if (!isAdjustment) actionVm.togglePaid(tx) },
+        // Le geste reste actif tant qu'au moins une de ses deux actions est autorisée : sur un
+        // ajustement, le glissement de suppression doit rester joignable (CA-21b, I-4b).
+        enabled = canTogglePaid || canDelete,
+        onTogglePaid = { if (canTogglePaid) actionVm.togglePaid(tx) },
         onDelete = {
-            if (!isAdjustment) {
+            if (canDelete) {
                 actionVm.requestDelete(tx)
             }
         },
@@ -130,11 +150,11 @@ fun TransactionRow(
                 .fillMaxWidth()
                 .combinedClickableHaptic(
                     onClick = {
-                        if (!isAdjustment) {
+                        if (canOpen) {
                             onOpenTransaction(tx.transaction.id)
                         }
                     },
-                    onLongClick = { if (!isAdjustment) actionVm.showPreview(tx) }
+                    onLongClick = { if (canOpen) actionVm.showPreview(tx) }
                 )
                 .graphicsLayer {
                     alpha = if (isPaid && !isAdjustment) 0.5f else 1f

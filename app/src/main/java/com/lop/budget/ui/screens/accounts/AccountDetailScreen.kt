@@ -98,7 +98,10 @@ fun AccountDetailScreen(
                     TransactionRow(
                         tx = row.source,
                         currency = state.currency,
-                        onOpenTransaction = onOpenTransaction
+                        onOpenTransaction = onOpenTransaction,
+                        // CA-27 : l'écran relaie les décisions du domaine, il n'en prend aucune.
+                        isAdjustment = row.isAdjustment,
+                        allowedActions = row.allowedActions,
                     )
                 }
             }
@@ -109,7 +112,10 @@ fun AccountDetailScreen(
                     TransactionRow(
                         tx = row.source,
                         currency = state.currency,
-                        onOpenTransaction = onOpenTransaction
+                        onOpenTransaction = onOpenTransaction,
+                        // CA-27 : l'écran relaie les décisions du domaine, il n'en prend aucune.
+                        isAdjustment = row.isAdjustment,
+                        allowedActions = row.allowedActions,
                     )
                 }
             }
