@@ -21,6 +21,15 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    testOptions {
+        unitTests.all { test ->
+            test.jvmArgs(
+                "-Djava.net.preferIPv4Stack=true",
+                "-Djava.net.preferIPv4Addresses=true"
+            )
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
