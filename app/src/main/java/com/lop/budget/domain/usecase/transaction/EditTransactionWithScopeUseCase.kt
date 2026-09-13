@@ -39,7 +39,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
      *
      * Contrat d'appel :
      * - Pour une occurrence VIRTUELLE (editingId < 0), l'appelant DOIT fournir seriesId et seriesDate
-     *   (la résolution des occurrences virtuelles vit dans ObserveTransactionUseCase, pas ici).
+     *   (la résolution des occurrences virtuelles vit dans ObserveTransactionDetailUseCase, pas ici).
      * - En portée ALL, le formulaire est prérempli avec les valeurs de base de la série (CA-08) :
      *   edition.date représente donc la date de début de série, pas la date de l'occurrence.
      * - I-6 : aucune matérialisation n'a lieu avant ce point d'entrée (validation de la sauvegarde).

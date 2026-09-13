@@ -119,7 +119,7 @@ import kotlin.time.Duration.Companion.seconds
  * - CA-01 et CA-06 : écritures de création et de matérialisation. Les écritures faites ici ne
  *   servent qu'à préparer ou faire évoluer l'état observé.
  * - CA-11 : grille calendaire du moteur — couvert par TC-84 et TC-85.
- * - CA-14 : `ObserveTransactionUseCase` / `getById` (lecture individuelle).
+ * - CA-14 : `ObserveTransactionDetailUseCase` / `getById` (lecture individuelle).
  * - CA-13, volet « aucun calcul de récurrence dans les consommateurs » : un test de résultat ne
  *   prouve pas l'absence de logique dupliquée. Porté par `RecurrenceCentralizationTest`.
  * - Parcours UI, Maestro, portées d'édition SINGLE / FUTURE / ALL.

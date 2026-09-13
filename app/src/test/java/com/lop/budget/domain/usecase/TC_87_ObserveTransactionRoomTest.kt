@@ -47,13 +47,13 @@ import kotlin.time.Duration.Companion.seconds
  * TC-87 — Cohérence entre la liste et l'occurrence individuelle (US LOP-49).
  *
  * ## Niveau
- * Intégration applicative de bout en bout, hors UI : vrai `ObserveTransactionUseCase`, vrai
+ * Intégration applicative de bout en bout, hors UI : vrai `ObserveTransactionDetailUseCase`, vrai
  * `ObserveTransactionsUseCase` comme collaborateur, vrais repositories, vrais DAO, vrai
  * `RecurrenceEngine`, vraie base Room en mémoire (Robolectric SDK 33, application Android neutre —
  * ni seeder ni services). Aucun mock, aucun fake, aucun spy, aucun `flowOf` préparé.
  *
  * ## Chaîne réellement exercée
- * `ObserveTransactionUseCase.invoke(id)` / `getById(id)`
+ * `ObserveTransactionDetailUseCase.invoke(id)` / `getById(id)`
  *   → `TransactionRepository.observeById` / `observeSlotsAt` / `observeActiveSeries` /
  *     `observeAllSeriesTags`
  *   → `AccountRepository.observeAll` / `getById`, `CategoryRepository.observeAll` / `getById`
@@ -104,13 +104,13 @@ import kotlin.time.Duration.Companion.seconds
  * contourner.
  * - **ANO — horizon calendaire de `getById`** — cible D-09.
  *   https://app.notion.com/p/3d650f34a8c58128a028c00057c7d1d0
- *   `ObserveTransactionUseCase.kt:85-86` borne la recherche d'un ID négatif à
+ *   `ObserveTransactionDetailUseCase.kt:85-86` borne la recherche d'un ID négatif à
  *   `Calendar.getInstance()` moins un an / plus deux ans. CA-14 exige une consultation « sans
  *   horizon calendaire supplémentaire », et le résultat ne doit pas dépendre du jour d'exécution.
  *   `invoke` étant amorcé par `getById` (ligne 29), l'observation hérite du même défaut.
  * - **ANO — `getById` négatif ignore l'exception persistée** — cible D-03, D-06.
  *   https://app.notion.com/p/3d650f34a8c5812ebd1eed4509dec8dd
- *   `ObserveTransactionUseCase.kt:83-91` parcourt les séries actives et régénère un virtuel sans
+ *   `ObserveTransactionDetailUseCase.kt:83-91` parcourt les séries actives et régénère un virtuel sans
  *   jamais interroger `transactions`. I-3 et CA-14 imposent que l'exception prévale.
  * - **ANO — résurrection d'un slot supprimé côté détail** — cible D-04.
  *   https://app.notion.com/p/3d650f34a8c58117b183eee2fb6635b5

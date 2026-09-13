@@ -87,7 +87,8 @@ import kotlin.time.Duration.Companion.seconds
  * T-06a  CA-17, CA-18 (I-2)   ObserveAccountDetailUseCase(A) — expose A, jamais B
  * T-06b  CA-17 (I-2)          ObserveAccountDetailUseCase(B) — expose B seul
  * T-07a  CA-24 (I-8)          AdjustBalanceUseCase — aucun rattachement, aucune virtuelle
- * T-07b  CA-24 (I-9, P-5)     AdjustBalanceUseCase — jointure `categories` sans clé orpheline
+ * T-07b  CA-24 (I-9, P-5)     AdjustBalanceUseCase — sentinelle seule écrite, aucune catégorie
+ *                             existante désignée
  * T-08a  CA-23 (I-5)          EditTransactionWithScopeUseCase sur une ligne métier — A-AJ1 témoin
  * T-08b  CA-23 (I-5)          EditTransactionWithScopeUseCase sur A-AJ1 — `kind` conservé
  * T-09a  CA-21c, CA-21d (I-4b) SoftDeleteTransactionOccurrenceUseCase — écart retiré, A-AJ2 intacte
@@ -125,17 +126,19 @@ import kotlin.time.Duration.Companion.seconds
  *        ObserveTransactionsUseCase.mergeRealAndVirtual (aucune garde) et, par héritage,
  *        SearchTransactionsUseCase, ObserveMonthlyAnalyticsUseCase, ObserveHomeSummaryUseCase.
  *        → T-03a, T-03b, T-04a, T-04b, T-04c, T-04d, T-05
- * ANO-2  `categoryId = NO_CATEGORY_ID (0L)` ne résout aucune catégorie : la jointure sur
- *        `categories` est orpheline (P-5) et `BreakdownEngine` crée une clé « Sans catégorie ».
- *        → T-07b, T-04a, T-04b
+ * ANO-2  `categoryId = NO_CATEGORY_ID (0L)` ne résout aucune catégorie : `BreakdownEngine`
+ *        créait une clé « Sans catégorie » dans la répartition.
+ *        → T-04a, T-04b (résolu par la correction d'ANO-1 : les ajustements n'atteignent plus
+ *        aucun agrégat). Le volet « identifiant inexistant » de T-07b n'était pas un défaut mais
+ *        une contradiction de spec, arbitrée le 13 septembre 2026 — voir le kdoc de T-07b.
  * ANO-3  `TransactionEdition.toTransactionEntity` ne propage pas `kind` et retombe sur STANDARD.
  *        → T-08b
  * ```
  * Aucun oracle n'est assoupli pour les faire passer : le rouge **est** le résultat attendu.
  *
- * **État au 13 septembre 2026** : ANO-1 et ANO-3 sont corrigées, leurs huit cas sont verts.
- * ANO-2 reste ouverte — T-07b est le seul rouge subsistant, en attente de l'arbitrage sur la
- * convention `NO_CATEGORY_ID`.
+ * **État au 13 septembre 2026** : ANO-1 et ANO-3 corrigées, leurs huit cas verts. ANO-2 résolue
+ * par ricochet côté agrégats, et son volet « catégorie » arbitré au niveau de la spécification.
+ * ANO-4 a changé d'US avec le cas T-10. La campagne doit donc être **entièrement verte**.
  *
  * ## T-10 — déplacé vers LOP-20 (décision du 13 septembre 2026)
  * Le cas visait CA-25, « la suppression d'un compte emporte ses ajustements ». Il tombait sur
@@ -340,7 +343,8 @@ class AdjustmentVisibilityRoomTest {
      * T-03a — Given le jeu complet, When on liste mars pour le compte A, Then seules les trois
      * lignes de A-TX remontent, planifiée comprise, et aucune ligne d'ajustement (CA-12, I-2).
      *
-     * ROUGE ATTENDU — ANO-1 : aucune lecture métier ne filtre `TransactionKind`.
+     * Rouge jusqu'au 13 septembre 2026 (ANO-1 : aucune lecture métier ne filtrait
+     * `TransactionKind`). Vert depuis que `TransactionDao.observeForMerge` porte l'exclusion.
      */
     @Test
     fun `T-03a - given le jeu complet when on liste mars pour A then aucun ajustement ne remonte`() =
@@ -357,7 +361,7 @@ class AdjustmentVisibilityRoomTest {
      * compte B n'apparaît pas davantage : I-2 vaut « y compris dans la vue d'un autre compte », ce
      * que la variante par compte ne peut pas prouver (CA-12, I-2).
      *
-     * ROUGE ATTENDU — ANO-1.
+     * Rouge jusqu'au 13 septembre 2026 (ANO-1). Vert depuis la correction.
      */
     @Test
     fun `T-03b - given le jeu complet when on liste mars sans filtre de compte then aucun ajustement ne remonte`() =
@@ -384,7 +388,9 @@ class AdjustmentVisibilityRoomTest {
      * ajustements sont insérés, Then les quatre mesures sont identiques et CAT reste la seule clé
      * de la répartition (CA-14, I-11, I-2).
      *
-     * ROUGE ATTENDU — ANO-1 (les montants bougent) et ANO-2 (clé « Sans catégorie » orpheline).
+     * Rouge jusqu'au 13 septembre 2026 : les montants bougeaient (ANO-1) et la répartition
+     * gagnait une clé « Sans catégorie » (ANO-2). Les deux tombent avec la correction d'ANO-1,
+     * qui sort les ajustements de tous les agrégats métier.
      */
     @Test
     fun `T-04a - given les agregats de mars en depenses when les ajustements sont inseres then ils sont identiques`() =
@@ -410,7 +416,7 @@ class AdjustmentVisibilityRoomTest {
      * Le solde du mois de référence est négatif (2 000 − 5 000) : un ajustement de +20 000 le
      * ferait basculer positif, ce que l'assertion de signe rend explicite.
      *
-     * ROUGE ATTENDU — ANO-1 et ANO-2.
+     * Rouge jusqu'au 13 septembre 2026 (ANO-1, ANO-2). Vert depuis la correction d'ANO-1.
      */
     @Test
     fun `T-04b - given les agregats de mars en revenus when les ajustements sont inseres then le solde du mois ne bouge pas`() =
@@ -454,7 +460,7 @@ class AdjustmentVisibilityRoomTest {
      * ambiguë sans rien concéder sur l'oracle : CA-14 exige que **rien** ne bouge, donc un seul
      * ajustement suffit à le violer. L'état complet reste couvert par T-04a.
      *
-     * ROUGE ATTENDU — ANO-1 et ANO-2.
+     * Rouge jusqu'au 13 septembre 2026 (ANO-1, ANO-2). Vert depuis la correction d'ANO-1.
      */
     @Test
     fun `T-04c - given une observation deja ouverte when un ajustement est insere then l emission suivante est identique`() =
@@ -491,7 +497,7 @@ class AdjustmentVisibilityRoomTest {
      * et liste du tableau de bord. CA-16 dit « aucun bloc, aucune liste récente, aucun résumé » :
      * en asserter un sous-ensemble laisserait passer la fuite par les autres.
      *
-     * ROUGE ATTENDU — ANO-1.
+     * Rouge jusqu'au 13 septembre 2026 (ANO-1). Vert depuis la correction.
      */
     @Test
     fun `T-04d - given les indicateurs d accueil when les ajustements sont inseres then le resume est identique`() =
@@ -535,7 +541,8 @@ class AdjustmentVisibilityRoomTest {
      * Constat statique complémentaire : la signature de `SearchTransactionsUseCase.invoke` n'offre
      * **aucun** paramètre qui révélerait les ajustements — sur ce point précis, CA-13 est tenu.
      *
-     * ROUGE ATTENDU — ANO-1.
+     * Rouge jusqu'au 13 septembre 2026 : les **sept** requêtes ramenaient des ajustements
+     * (ANO-1). Vertes depuis la correction.
      */
     @Test
     fun `T-05 - given le jeu complet when on interroge la recherche then aucun ajustement ne remonte`() =
@@ -679,16 +686,11 @@ class AdjustmentVisibilityRoomTest {
 
     /**
      * T-07 — Given le jeu complet, When on inspecte la table par requête brute, Then aucun
-     * ajustement ne porte de catégorie inexistante, de récurrence, d'identifiant de série,
-     * d'objectif ni de dette, et aucune occurrence virtuelle n'en est produite (CA-24, I-8, I-9).
+     * ajustement ne porte de récurrence, d'identifiant de série, d'objectif ni de dette, aucune
+     * occurrence virtuelle n'en est produite, et sa catégorie respecte I-9 (CA-24, I-8, I-9).
      *
-     * La catégorie est vérifiée **par jointure** sur `categories` : la colonne `categoryId` n'étant
-     * pas nullable (décision du 12 septembre 2026), l'absence de catégorie est portée par la valeur
-     * réservée `NO_CATEGORY_ID`, et seule la jointure peut prouver qu'aucune catégorie réelle n'est
-     * désignée — ou, ici, qu'un identifiant ne résolvant rien est écrit.
-     *
-     * Scindé en deux cas parce que les deux propriétés ont des issues opposées : regroupées, la
-     * jointure rouge masquait les assertions vertes, qui n'étaient alors jamais jouées.
+     * Scindé en deux cas parce que les deux propriétés sont indépendantes : regroupées, la première
+     * qui échoue masque les assertions suivantes, qui ne sont alors jamais jouées.
      */
     @Test
     fun `T-07a - given le jeu complet when on inspecte la table then aucun ajustement ne porte de rattachement`() =
@@ -723,28 +725,52 @@ class AdjustmentVisibilityRoomTest {
         }
 
     /**
-     * T-07b — Given le jeu complet, When on joint les ajustements à `categories`, Then aucun ne
-     * désigne un identifiant qui ne résout aucune catégorie (I-9, P-5).
+     * T-07b — Given le jeu complet, When on inspecte la catégorie des ajustements, Then la valeur
+     * réservée est la seule écrite et aucun ne désigne une catégorie existante (I-9, P-5).
      *
-     * La colonne `categoryId` n'étant pas nullable (décision du 12 septembre 2026), l'absence de
-     * catégorie est portée par la valeur réservée `NO_CATEGORY_ID`. Seule la **jointure** peut donc
-     * prouver l'écart à P-5 : c'est le seul niveau où il est prouvable.
+     * ## Pourquoi cet oracle et pas celui de la fiche
+     * La fiche demandait « aucune catégorie inexistante ». Joué le 13 septembre 2026, ce cas a
+     * révélé non pas un défaut de production mais une **contradiction dans la spécification** :
+     * I-9 et P-5 interdisaient d'écrire un identifiant inexistant, tandis que la décision du
+     * 12 septembre 2026 rend `categoryId` **non nullable**. Il faut donc y écrire quelque chose, et
+     * ce quelque chose ne peut pas exister — aucune implémentation ne satisfaisait les deux règles.
      *
-     * ROUGE ATTENDU — ANO-2.
+     * Arbitrage du 13 septembre 2026 : `NO_CATEGORY_ID` est assumée comme **sentinelle**, I-9 et
+     * P-5 sont reformulés dans LOP-87. L'oracle suit la spec reformulée ; il n'est pas assoupli
+     * pour faire passer le test, et reste falsifiable sur les deux propriétés qui portent la règle :
+     *
+     * 1. la sentinelle est la **seule** valeur admise — écrire un identifiant arbitraire échoue ;
+     * 2. aucun ajustement ne désigne une catégorie **existante** — c'est le garde-fou réel de P-5,
+     *    celui qui empêche un ajustement de polluer une répartition par catégorie.
+     *
+     * Sensibilité : une mutation faisant écrire à `AdjustBalanceUseCase` l'identifiant d'une
+     * catégorie existante (`CAT`) fait échouer les deux assertions.
+     *
+     * Hors périmètre : l'interdit « aucune ligne *Sans catégorie* n'est créée dans `categories` »,
+     * second volet de P-5, ne se teste pas ici — aucun code du dépôt n'en crée, et l'asserter
+     * reviendrait à vérifier l'absence de quelque chose que personne n'écrit.
      */
     @Test
-    fun `T-07b - given le jeu complet when on joint les ajustements aux categories then aucune cle n est orpheline`() =
+    fun `T-07b - given le jeu complet when on inspecte la categorie des ajustements then seule la sentinelle est ecrite`() =
         runTest {
             seedEverything()
 
-            val orphans = rawRows(ORPHAN_CATEGORY_SQL)
-
+            val unexpectedValues = rawRows(NON_SENTINEL_CATEGORY_SQL)
             assertEquals(
-                "T-07b — I-9/P-5 : aucun ajustement ne doit porter d'identifiant de catégorie ne " +
-                    "résolvant aucune catégorie existante. Lignes orphelines (id|categoryId) : " +
-                    orphans,
+                "T-07b — I-9 : la valeur réservée NO_CATEGORY_ID ($NO_CATEGORY_ID) est la seule " +
+                    "admise sur un ajustement. Lignes portant une autre valeur (id|categoryId) : " +
+                    unexpectedValues,
                 emptyList<String>(),
-                orphans,
+                unexpectedValues,
+            )
+
+            val designatingReal = rawRows(EXISTING_CATEGORY_SQL)
+            assertEquals(
+                "T-07b — P-5 : aucun ajustement ne doit désigner une catégorie existante, sous " +
+                    "peine de polluer la répartition par catégorie. Lignes fautives " +
+                    "(id|categoryId|nom) : $designatingReal",
+                emptyList<String>(),
+                designatingReal,
             )
         }
 
@@ -801,8 +827,10 @@ class AdjustmentVisibilityRoomTest {
      * **persisté**, pas l'issue retournée. Le refus explicite de l'édition relève de CA-22 et de
      * TC-112, hors périmètre ici.
      *
-     * ROUGE ATTENDU — ANO-3 : `toTransactionEntity` ne passe pas `kind`, l'entité reconstruite
-     * retombe sur le défaut `STANDARD`. Une ligne d'ajustement devenue `STANDARD` est un échec.
+     * Rouge jusqu'au 13 septembre 2026 (ANO-3) : `toTransactionEntity` ne passait pas `kind` et
+     * l'entité reconstruite retombait sur le défaut `STANDARD`, perdant au passage sa note. Vert
+     * depuis que `kind` est un paramètre obligatoire du mapper et que le use case d'édition
+     * refuse un ajustement (I-4).
      */
     @Test
     fun `T-08b - given le chemin d edition applique a A-AJ1 when on relit la ligne then elle reste un ajustement`() =
@@ -1371,10 +1399,20 @@ class AdjustmentVisibilityRoomTest {
             "SELECT id, seriesId, seriesDate, isException, linkedGoalId, linkedDebtId " +
                 "FROM transactions WHERE kind = 'BALANCE_ADJUSTMENT' ORDER BY id"
 
-        const val ORPHAN_CATEGORY_SQL =
-            "SELECT t.id, t.categoryId FROM transactions t " +
-                "LEFT JOIN categories c ON c.id = t.categoryId " +
-                "WHERE t.kind = 'BALANCE_ADJUSTMENT' AND c.id IS NULL ORDER BY t.id"
+        /** I-9 : toute valeur autre que la sentinelle est un rattachement écrit à tort. */
+        const val NON_SENTINEL_CATEGORY_SQL =
+            "SELECT id, categoryId FROM transactions " +
+                "WHERE kind = 'BALANCE_ADJUSTMENT' AND categoryId != $NO_CATEGORY_ID " +
+                "ORDER BY id"
+
+        /**
+         * P-5 : jointure **interne**, donc seules remontent les lignes qui désignent une catégorie
+         * réellement présente — exactement ce que la règle interdit.
+         */
+        const val EXISTING_CATEGORY_SQL =
+            "SELECT t.id, t.categoryId, c.name FROM transactions t " +
+                "JOIN categories c ON c.id = t.categoryId " +
+                "WHERE t.kind = 'BALANCE_ADJUSTMENT' ORDER BY t.id"
 
         /**
          * Dates et fenêtres déclarées **localement** : les cardinalités « exactement 3 » et les

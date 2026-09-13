@@ -119,19 +119,30 @@ class RecurrenceCentralizationTest {
          * Points d'appel légitimes, relevés et justifiés le 8 septembre 2026.
          *
          * - `domain/RecurrenceEngine.kt` — la définition elle-même.
-         * - `domain/usecase/ObserveTransactionsUseCase.kt` — la liste d'une période (CA-13).
-         * - `domain/usecase/ObserveTransactionUseCase.kt` — l'occurrence individuelle (CA-13/CA-14).
-         * - `domain/usecase/CreateTransactionUseCase.kt` — `calculateVirtualId` seul, pour rendre
+         * - `…/transaction/ObserveTransactionsUseCase.kt` — la liste d'une période (CA-13).
+         * - `…/transaction/ObserveTransactionDetailUseCase.kt` — l'occurrence individuelle
+         *   (CA-13/CA-14).
+         * - `…/transaction/CreateTransactionUseCase.kt` — `calculateVirtualId` seul, pour rendre
          *   l'ID de l'occurrence créée ; aucune génération de grille.
-         * - `domain/usecase/EditTransactionWithScopeUseCase.kt` — `calculateVirtualId` seul, pour
+         * - `…/transaction/EditTransactionWithScopeUseCase.kt` — `calculateVirtualId` seul, pour
          *   retrouver l'ID d'affichage après une édition ALL ; aucune génération de grille.
+         *
+         * **Chemins mis à jour le 13 septembre 2026 — aucun point d'appel ajouté ni retiré.** Les
+         * use cases ont été regroupés en sous-packages (`domain/usecase/transaction/`) et
+         * `ObserveTransactionUseCase` renommé `ObserveTransactionDetailUseCase`, à un caractère de
+         * `ObserveTransactionsUseCase`. Les cinq responsabilités ci-dessus sont inchangées : la
+         * revue exigée par S-02 porte ici sur un déplacement, pas sur un nouvel accès au moteur.
+         *
+         * Ces chaînes ne sont pas refactorées par l'IDE : un renommage ou un déplacement de package
+         * fera toujours échouer S-02 tant qu'elles n'auront pas été reprises à la main. C'est le
+         * comportement voulu — le test est un déclencheur de revue, pas un miroir du dépôt.
          */
         val ALLOWED_CALL_SITES = listOf(
             "domain/RecurrenceEngine.kt",
-            "domain/usecase/ObserveTransactionsUseCase.kt",
-            "domain/usecase/ObserveTransactionUseCase.kt",
-            "domain/usecase/CreateTransactionUseCase.kt",
-            "domain/usecase/EditTransactionWithScopeUseCase.kt",
+            "domain/usecase/transaction/ObserveTransactionsUseCase.kt",
+            "domain/usecase/transaction/ObserveTransactionDetailUseCase.kt",
+            "domain/usecase/transaction/CreateTransactionUseCase.kt",
+            "domain/usecase/transaction/EditTransactionWithScopeUseCase.kt",
         )
     }
 }
