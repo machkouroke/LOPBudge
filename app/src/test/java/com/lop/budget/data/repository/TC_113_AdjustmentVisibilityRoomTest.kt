@@ -20,8 +20,8 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.AccountDetail
 import com.lop.budget.domain.usecase.account.AdjustBalanceUseCase
 import com.lop.budget.domain.usecase.account.AdjustOutcome
-import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
-import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
+import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
+import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
 import com.lop.budget.domain.usecase.insight.HomeSummary
 import com.lop.budget.domain.usecase.insight.MonthlyAnalytics
 import com.lop.budget.domain.usecase.ObserveAccountDetailUseCase

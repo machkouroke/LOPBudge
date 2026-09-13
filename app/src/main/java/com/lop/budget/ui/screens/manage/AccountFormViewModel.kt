@@ -9,8 +9,8 @@ import com.lop.budget.data.repository.IconResult
 import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.usecase.account.AdjustBalanceUseCase
-import com.lop.budget.domain.usecase.DeleteAccountUseCase
-import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
+import com.lop.budget.domain.usecase.account.DeleteAccountUseCase
+import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
 import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

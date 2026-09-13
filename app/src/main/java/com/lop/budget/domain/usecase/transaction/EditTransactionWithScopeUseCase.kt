@@ -1,4 +1,4 @@
-package com.lop.budget.domain.usecase
+package com.lop.budget.domain.usecase.transaction
 
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionEntity
@@ -13,8 +13,8 @@ import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.toDaysOfWeekCsv
 import com.lop.budget.domain.model.toSeriesEntity
 import com.lop.budget.domain.model.toTransactionEntity
-import com.lop.budget.domain.usecase.transaction.SaveTransactionUseCase
 import javax.inject.Inject
+import kotlin.math.abs
 
 /**
  * Issue d'une édition de transaction.
@@ -336,7 +336,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
         val slot = RecurrenceEngine
             .generateOccurrences(series, originalSlot - window, originalSlot + window)
             .mapNotNull { it.seriesDate }
-            .minByOrNull { kotlin.math.abs(it - originalSlot) }
+            .minByOrNull { abs(it - originalSlot) }
             ?: series.startDate
         val real = transactionRepo.getExceptionsBySeries(seriesId) // filtre déjà deleted = 0
             .firstOrNull { it.seriesDate == slot }

@@ -18,7 +18,7 @@ import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
-import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
+import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify

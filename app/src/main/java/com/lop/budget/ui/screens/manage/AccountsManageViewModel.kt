@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.domain.usecase.DeleteAccountUseCase
+import com.lop.budget.domain.usecase.account.DeleteAccountUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

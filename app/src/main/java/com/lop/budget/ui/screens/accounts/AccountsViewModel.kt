@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.AccountBalance
-import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
+import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

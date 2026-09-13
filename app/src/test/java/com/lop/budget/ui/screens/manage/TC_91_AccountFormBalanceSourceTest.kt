@@ -7,8 +7,8 @@ import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.usecase.account.AdjustBalanceUseCase
-import com.lop.budget.domain.usecase.DeleteAccountUseCase
-import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
+import com.lop.budget.domain.usecase.account.DeleteAccountUseCase
+import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every

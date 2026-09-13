@@ -8,7 +8,7 @@ import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.AccountBalances
 import com.lop.budget.domain.model.DayGroup
-import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
+import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
 import com.lop.budget.domain.usecase.insight.HomeSummary
 import com.lop.budget.domain.usecase.insight.ObserveHomeSummaryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
