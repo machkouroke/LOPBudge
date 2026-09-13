@@ -8,23 +8,21 @@ import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.AccountBalances
 import com.lop.budget.domain.model.DayGroup
-import com.lop.budget.domain.model.TransactionStatus
-import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
-import com.lop.budget.domain.usecase.ObserveTransactionsUseCase
+import com.lop.budget.domain.usecase.HomeSummary
+import com.lop.budget.domain.usecase.ObserveHomeSummaryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
-import java.time.Instant
-import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
@@ -55,10 +53,15 @@ data class HomeUiState(
 ) {
 }
 
+/**
+ * Expose l'accueil. Les indicateurs métier sont calculés par [ObserveHomeSummaryUseCase] :
+ * ce ViewModel n'assemble que la navigation de mois, la devise et l'état des notifications
+ * (I-12, P-12 de LOP-87).
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val observeTransactionsUseCase: ObserveTransactionsUseCase,
+    private val observeHomeSummary: ObserveHomeSummaryUseCase,
     getAccountBalancesUseCase: GetAccountBalancesUseCase,
     detectionRepo: NotificationDetectionRepository,
     settings: SettingsRepository,
@@ -85,94 +88,41 @@ class HomeViewModel @Inject constructor(
         return start to end
     }
 
-    private val monthData = month.flatMapLatest { ym ->
+    private val summary: Flow<HomeSummary> = month.flatMapLatest { ym ->
         val (start, end) = ym.range()
-        val (prevStart, prevEnd) = ym.minusMonths(1).range()
-
-        combine(
-            observeTransactionsUseCase(start, end),
-            observeTransactionsUseCase(prevStart, prevEnd),
-        ) { txs, prevTxs ->
-            val income = txs.filter { it.transaction.type == TransactionType.INCOME }
-                .sumOf { it.transaction.amount }
-            val expense = txs.filter { it.transaction.type == TransactionType.EXPENSE }
-                .sumOf { it.transaction.amount }
-            val prevExpense = prevTxs.filter { it.transaction.type == TransactionType.EXPENSE }
-                .sumOf { it.transaction.amount }
-            listOf(txs, income, expense, prevExpense)
-        }
+        val (previousStart, previousEnd) = ym.minusMonths(1).range()
+        observeHomeSummary(start, end, previousStart, previousEnd)
     }
 
     val uiState: StateFlow<HomeUiState> =
         combine(
-            monthData,
+            summary,
             settings.currency,
             month,
             getAccountBalancesUseCase.observe(),
             detectedCount,
             settings.notificationDetectionEnabled
         ) { args ->
-            val data = args[0] as List<*>
+            val data = args[0] as HomeSummary
             val currency = args[1] as String
             val ym = args[2] as YearMonth
             val balances = args[3] as AccountBalances
             val detected = args[4] as Int
             val detectionEnabled = args[5] as Boolean
 
-            @Suppress("UNCHECKED_CAST")
-            val allTxs = data[0] as List<TransactionWithRelations>
-
-            val income = data[1] as Long
-            val expense = data[2] as Long
-            val prevExpense = data[3] as Long
-
-            val now = System.currentTimeMillis()
-            val upcoming = allTxs
-                .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.date >= now }
-                .sortedBy { it.transaction.date }
-                .take(8)
-
-            val subscriptions = allTxs
-                .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.seriesId != null }
-                .sortedBy { it.transaction.date }
-
-            val plannedExpense = allTxs
-                .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.type == TransactionType.EXPENSE }
-                .sumOf { it.transaction.amount }
-            val projected = income - expense - plannedExpense
-
-            val payday = nextPayday(allTxs)
-
-            // Un seul tri : `groupBy` conserve l'ordre de parcours, donc les clés sortent déjà
-            // par date décroissante et chaque groupe est déjà trié. Le `toSortedMap` et le
-            // re-tri par groupe reproduisaient un ordre déjà acquis.
-            val zone = ZoneId.systemDefault()
-            val dayGroups = allTxs
-                .sortedByDescending { it.transaction.date }
-                .groupBy { Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate() }
-                .map { (date, list) ->
-                    DayGroup(
-                        date = date,
-                        total = list.sumOf { tx -> if (tx.transaction.type == TransactionType.INCOME) tx.transaction.amount else -tx.transaction.amount },
-                        transactions = list,
-                    )
-                }
-            
-            val dashboardTxs = getDashboardTransactions(allTxs)
-
             HomeUiState(
                 month = ym,
                 isCurrentMonth = ym == YearMonth.now(),
                 currency = currency,
-                monthIncome = income,
-                monthExpense = expense,
-                previousPeriodExpense = prevExpense,
-                projectedBalance = projected,
-                daysUntilPayday = payday,
-                upcoming = upcoming,
-                subscriptions = subscriptions,
-                dayGroups = dayGroups,
-                dashboardTransactions = dashboardTxs,
+                monthIncome = data.income,
+                monthExpense = data.expense,
+                previousPeriodExpense = data.previousPeriodExpense,
+                projectedBalance = data.projectedBalance,
+                daysUntilPayday = data.daysUntilPayday,
+                upcoming = data.upcoming,
+                subscriptions = data.subscriptions,
+                dayGroups = data.dayGroups,
+                dashboardTransactions = data.dashboardTransactions,
                 accounts = balances.accounts.sortedByDescending { it.balance }.take(3),
                 txVersions = emptyMap(), // On délègue au SharedViewModel dans le Screen
                 detectedCount = detected,
@@ -181,36 +131,4 @@ class HomeViewModel @Inject constructor(
         }
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
-
-    private fun nextPayday(txs: List<TransactionWithRelations>): Int? {
-        val now = LocalDate.now()
-        val zone = ZoneId.systemDefault()
-        return txs
-            .filter { it.transaction.type == TransactionType.INCOME && it.transaction.date >= System.currentTimeMillis() }
-            .minByOrNull { it.transaction.date }
-            ?.let {
-                val d = Instant.ofEpochMilli(it.transaction.date).atZone(zone).toLocalDate()
-                java.time.temporal.ChronoUnit.DAYS.between(now, d).toInt().coerceAtLeast(0)
-            }
-    }
-
-    /**
-     * Les 3 transactions du tableau de bord : celles du jour d'abord, puis les plus récentes.
-     *
-     * Les bornes de la journée sont converties **une fois** en millis. La version précédente
-     * construisait un `ZonedDateTime` par comparaison, soit O(n log n) allocations pour ne
-     * garder que 3 éléments. `date in dayStart until dayEnd` est le même prédicat que
-     * `toLocalDate() == today`, au test d'appartenance près.
-     */
-    private fun getDashboardTransactions(txs: List<TransactionWithRelations>): List<TransactionWithRelations> {
-        val zone = ZoneId.systemDefault()
-        val today = LocalDate.now(zone)
-        val dayStart = today.atStartOfDay(zone).toInstant().toEpochMilli()
-        val dayEnd = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-
-        return txs.sortedWith(
-            compareByDescending<TransactionWithRelations> { it.transaction.date in dayStart until dayEnd }
-                .thenByDescending { it.transaction.date }
-        ).take(3)
-    }
 }

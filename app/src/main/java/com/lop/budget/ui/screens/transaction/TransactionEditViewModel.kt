@@ -24,6 +24,7 @@ import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.toDaysOfWeekSet
 import com.lop.budget.domain.usecase.CreateTransactionUseCase
+import com.lop.budget.domain.usecase.EditOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.ObserveTransactionUseCase
 import com.lop.budget.util.Format
@@ -455,13 +456,18 @@ class TransactionEditViewModel @Inject constructor(
         val edition = f.toEdition(context.getString(R.string.tx_default_title))
 
         val newId = if (isEditing) {
-            editTransactionWithScopeUseCase(
+            val outcome = editTransactionWithScopeUseCase(
                 editingId = editingTransactionId!!,
                 seriesId = f.seriesId,
                 seriesDate = seriesDate?.takeIf { it > 0L },
                 edition = edition,
                 scope = editScope,
             )
+            when (outcome) {
+                is EditOutcome.Applied -> outcome.transactionId
+                // Refus porté par le domaine : rien n'a été écrit, donc rien à notifier.
+                EditOutcome.RefusedNotEditable -> return
+            }
         } else {
             createTransactionUseCase(edition)
         }

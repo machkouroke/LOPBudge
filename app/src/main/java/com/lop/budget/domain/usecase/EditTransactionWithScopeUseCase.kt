@@ -14,6 +14,19 @@ import com.lop.budget.domain.model.toSeriesEntity
 import com.lop.budget.domain.model.toTransactionEntity
 import javax.inject.Inject
 
+/**
+ * Issue d'une édition de transaction.
+ *
+ * Le type existe pour que le **domaine** puisse refuser une édition (I-4 de LOP-87 : un
+ * ajustement de solde n'est ni modifiable ni ouvrable). Aucune garde n'est encore posée :
+ * [RefusedNotEditable] n'est donc jamais retourné à ce jour — c'est l'écart E-5, dont la
+ * couverture appartient à TC-112 T-07.
+ */
+sealed interface EditOutcome {
+    data class Applied(val transactionId: Long) : EditOutcome
+    data object RefusedNotEditable : EditOutcome
+}
+
 class EditTransactionWithScopeUseCase @Inject constructor(
     private val transactionRepo: TransactionRepository,
     private val saveTransactionUseCase: SaveTransactionUseCase,
@@ -34,7 +47,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
         seriesDate: Long?,
         edition: TransactionEdition,
         scope: EditScope,
-    ): Long {
+    ): EditOutcome {
         val current = transactionRepo.getById(editingId)
         val originalSeriesDate = seriesDate?.takeIf { it > 0L }
             ?: current?.transaction?.seriesDate
@@ -42,7 +55,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
             ?: edition.date
         val status = edition.status ?: current?.transaction?.status ?: TransactionStatus.PLANNED
 
-        return when (scope) {
+        val appliedId = when (scope) {
             EditScope.SINGLE -> editSingle(
                 editingId,
                 seriesId,
@@ -70,6 +83,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
                 current
             )
         }
+        return EditOutcome.Applied(appliedId)
     }
 
     // ---------------------------------------------------------------- SINGLE

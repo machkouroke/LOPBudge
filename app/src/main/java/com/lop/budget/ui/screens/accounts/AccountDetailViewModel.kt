@@ -4,42 +4,37 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.AccountEntity
-import com.lop.budget.data.local.entity.TransactionWithRelations
-import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.data.repository.TransactionRepository
-import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
+import com.lop.budget.domain.usecase.AccountDetailRow
+import com.lop.budget.domain.usecase.BalancePoint
+import com.lop.budget.domain.usecase.ObserveAccountDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
 import javax.inject.Inject
-
-/** [balance] est exprimé en centimes. */
-data class BalancePoint(val date: LocalDate, val balance: Long)
 
 data class AccountDetailUiState(
     val account: AccountEntity? = null,
     val balance: Long = 0L,
     val currency: String = "EUR",
     val history: List<BalancePoint> = emptyList(),
-    val recentTransactions: List<TransactionWithRelations> = emptyList(),
-    val upcomingTransactions: List<TransactionWithRelations> = emptyList(),
+    val recentTransactions: List<AccountDetailRow> = emptyList(),
+    val upcomingTransactions: List<AccountDetailRow> = emptyList(),
     val txVersions: Map<Long, Int> = emptyMap(),
     val isLoaded: Boolean = false
 )
 
+/**
+ * Expose la vue d'un compte. Aucune règle ici : la lecture, la distinction d'un ajustement et
+ * les actions autorisées sont décidées par [ObserveAccountDetailUseCase] (LOP-87, I-12, P-12).
+ */
 @HiltViewModel
 class AccountDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val accountRepo: AccountRepository,
-    private val transactionRepo: TransactionRepository,
-    getAccountBalancesUseCase: GetAccountBalancesUseCase,
+    observeAccountDetail: ObserveAccountDetailUseCase,
     settings: SettingsRepository
 ) : ViewModel() {
 
@@ -47,54 +42,19 @@ class AccountDetailViewModel @Inject constructor(
     private val _txVersions = MutableStateFlow<Map<Long, Int>>(emptyMap())
 
     val uiState: StateFlow<AccountDetailUiState> = combine(
-        getAccountBalancesUseCase.observeBalances(),
-        transactionRepo.observePaidByAccount(accountId),
-        transactionRepo.observePlannedByAccount(accountId),
+        observeAccountDetail(accountId),
         settings.currency,
         _txVersions
-    ) { balances, paid, planned, currency, versions ->
-        val account = accountRepo.getById(accountId)
-        
-        // Calcul de l'historique (simplifié pour le prototype)
-        // L'historique inclut désormais les ajustements de solde pour être cohérent avec le solde affiché
-        val history = calculateHistory(account?.initialBalance ?: 0L, paid)
-
+    ) { detail, currency, versions ->
         AccountDetailUiState(
-            account = account,
-            balance = balances[accountId] ?: account?.initialBalance ?: 0L,
+            account = detail.account,
+            balance = detail.balance,
             currency = currency,
-            history = history,
-            recentTransactions = paid.take(20), // On en prend un peu plus car les ajustements peuvent s'y glisser
-            upcomingTransactions = planned.take(5),
+            history = detail.history,
+            recentTransactions = detail.recentRows,
+            upcomingTransactions = detail.upcomingRows,
             txVersions = versions,
             isLoaded = true
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountDetailUiState())
-
-    /**
-     * Calculates the historical balance points based on an initial balance and a list of transactions.
-     *
-     * @param initial The initial balance of the account, in cents.
-     * @param txs The list of transactions associated with the account.
-     * @return A list of [BalancePoint] objects representing the balance over time, in cents.
-     */
-    private fun calculateHistory(initial: Long, txs: List<TransactionWithRelations>): List<BalancePoint> {
-        val zone = ZoneId.systemDefault()
-        val sortedTxs = txs.sortedBy { it.transaction.date }
-        
-        val points = mutableListOf<BalancePoint>()
-        var currentBalance = initial
-        
-        // On pourrait ajouter un point par transaction ou par jour
-        sortedTxs.forEach { twr ->
-            val delta = if (twr.transaction.type == com.lop.budget.domain.model.TransactionType.INCOME) twr.transaction.amount else -twr.transaction.amount
-            currentBalance += delta
-            points.add(BalancePoint(
-                Instant.ofEpochMilli(twr.transaction.date).atZone(zone).toLocalDate(),
-                currentBalance
-            ))
-        }
-        
-        return points.takeLast(20) // Les 20 derniers changements
-    }
 }

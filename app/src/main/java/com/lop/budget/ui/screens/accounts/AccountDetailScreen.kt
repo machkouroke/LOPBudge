@@ -94,9 +94,9 @@ fun AccountDetailScreen(
 
             if (state.upcomingTransactions.isNotEmpty()) {
                 item { SectionHeader("Transactions à venir") }
-                items(state.upcomingTransactions, key = { tx -> "${tx.transaction.id}_${txVersions[tx.transaction.id] ?: 0}" }) { twr ->
+                items(state.upcomingTransactions, key = { row -> "${row.transactionId}_${txVersions[row.transactionId] ?: 0}" }) { row ->
                     TransactionRow(
-                        tx = twr,
+                        tx = row.source,
                         currency = state.currency,
                         onOpenTransaction = onOpenTransaction
                     )
@@ -105,9 +105,9 @@ fun AccountDetailScreen(
 
             if (state.recentTransactions.isNotEmpty()) {
                 item { SectionHeader("Transactions récentes") }
-                items(state.recentTransactions, key = { tx -> "${tx.transaction.id}_${txVersions[tx.transaction.id] ?: 0}" }) { twr ->
+                items(state.recentTransactions, key = { row -> "${row.transactionId}_${txVersions[row.transactionId] ?: 0}" }) { row ->
                     TransactionRow(
-                        tx = twr,
+                        tx = row.source,
                         currency = state.currency,
                         onOpenTransaction = onOpenTransaction
                     )

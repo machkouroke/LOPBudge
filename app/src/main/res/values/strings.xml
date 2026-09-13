@@ -194,6 +194,8 @@
     <!-- Accounts -->
     <string name="accounts_title">Comptes</string>
     <string name="accounts_total_balance">Solde total</string>
+    <!-- LOP-87 P-8 : libellé d'un ajustement de solde, résolu à l'affichage et jamais dans le domaine. -->
+    <string name="account_balance_adjustment">Ajustement de solde</string>
 
     <!-- Month Picker -->
     <string name="month_picker_title">Choisir un mois</string>
