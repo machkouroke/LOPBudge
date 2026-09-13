@@ -6,7 +6,7 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
-import com.lop.budget.domain.usecase.AdjustBalanceUseCase
+import com.lop.budget.domain.usecase.account.AdjustBalanceUseCase
 import com.lop.budget.domain.usecase.DeleteAccountUseCase
 import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
 import io.mockk.coEvery

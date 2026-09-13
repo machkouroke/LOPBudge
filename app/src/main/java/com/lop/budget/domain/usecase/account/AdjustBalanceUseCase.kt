@@ -1,4 +1,4 @@
-package com.lop.budget.domain.usecase
+package com.lop.budget.domain.usecase.account
 
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.repository.AccountRepository

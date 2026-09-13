@@ -18,8 +18,8 @@ import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.AccountDetail
-import com.lop.budget.domain.usecase.AdjustBalanceUseCase
-import com.lop.budget.domain.usecase.AdjustOutcome
+import com.lop.budget.domain.usecase.account.AdjustBalanceUseCase
+import com.lop.budget.domain.usecase.account.AdjustOutcome
 import com.lop.budget.domain.usecase.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.GetAccountBalancesUseCase
 import com.lop.budget.domain.usecase.HomeSummary

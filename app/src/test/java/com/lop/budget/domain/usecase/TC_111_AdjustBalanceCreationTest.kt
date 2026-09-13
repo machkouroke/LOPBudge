@@ -10,6 +10,8 @@ import com.lop.budget.domain.model.NO_CATEGORY_ID
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.account.AdjustBalanceUseCase
+import com.lop.budget.domain.usecase.account.AdjustOutcome
 import io.mockk.Called
 import io.mockk.coEvery
 import io.mockk.coVerify
