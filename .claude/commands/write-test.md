@@ -13,4 +13,6 @@ En appliquant rigoureusement les directives de la skill `spec-driven-tests` (`.c
    - Le déroulé RED -> GREEN (avec plan de mutation de sensibilité si le code est déjà vert).
    - Les ambiguïtés, dépendances manquantes ou éléments hors-périmètre.
 
+**Forme du plan — écris en langage simple.** Commence par expliquer en prose ce que tu vas faire et pourquoi, avant tout tableau. Définis chaque terme technique à sa première apparition (oracle, SUT, fixture discriminante, mutation de sensibilité). Chaque écart spec/code tient en une phrase : ce que le ticket dit, ce que le code fait, ce que ça change pour le test.
+
 Attends ma validation sur le plan d'implémentation avant d'écrire ou de modifier les fichiers de test.

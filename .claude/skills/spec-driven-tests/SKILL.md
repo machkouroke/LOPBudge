@@ -143,6 +143,28 @@ Lancer la suite ciblée et **vérifier que chaque échec est celui qu'on attend*
 XML/HTML de résultats (`build/test-results/...`), pas seulement le compte agrégé. Un
 échec au bon endroit pour la mauvaise raison est un test faux.
 
+## Écrire pour être lu
+
+Le plan et le compte rendu sont lus par quelqu'un qui **décide**, pas par un moteur de test. Ils
+doivent se comprendre sans glossaire.
+
+- **Une phrase, une idée.** Pas de subordonnée qui porte la moitié du sens.
+- **Un terme technique se définit à sa première apparition**, entre parenthèses et en trois mots :
+  « l'oracle (ce que le test vérifie) », « le SUT (le code réellement testé) ». Ensuite on peut
+  l'employer nu.
+- **L'action d'abord, la technique ensuite.** « On supprime A-AJ1 et on vérifie qu'aucune autre
+  ligne n'est touchée », puis seulement « `coVerify(exactly = 0)` sur A-AJ2 ».
+- **Une matrice ne remplace pas une explication.** Elle résume ce qui a déjà été dit en prose ;
+  un plan qui commence par un tableau est un plan qu'on n'a pas expliqué.
+- **Chaque écart se formule en une phrase** : ce que le ticket dit, ce que le code fait, ce que ça
+  change pour le test. Pas de code de référence interne (« É-3 ») sans cette phrase à côté.
+
+Si une section ne peut pas se résumer en une phrase compréhensible par quelqu'un qui n'a pas lu le
+code, c'est la section qui est mal écrite, pas le lecteur qui est mal informé.
+
+Quand le lecteur dit « je n'ai pas compris », la réponse n'est pas de répéter plus lentement :
+c'est de reformuler **sans** le vocabulaire qui a bloqué.
+
 ## Traçabilité
 
 Chaque fichier de test porte en en-tête : le niveau, la chaîne réellement exercée, la
@@ -164,6 +186,7 @@ Une revue reçue (humaine ou agent) est une hypothèse à vérifier, pas une con
 ## Checklist avant de rendre
 
 - [ ] Invariants et CA lus dans l'US parente, pas seulement dans le ticket
+- [ ] Plan et compte rendu relisibles sans glossaire ; jargon défini à sa première apparition
 - [ ] Noms de symboles vérifiés dans le code
 - [ ] Tous les cas de la matrice du ticket implémentés, aucun ajouté hors périmètre
 - [ ] Cardinalités exactes, aucun `any { }`, aucun oracle vacant
