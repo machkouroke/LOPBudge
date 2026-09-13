@@ -55,10 +55,13 @@ import java.time.ZoneOffset
  * | T-08 | CA-08          | `adjust` (compte introuvable)                 | `AccountNotFound`, dépôt jamais appelé             |
  * | T-09 | CA-26, I-12    | signature de `AdjustBalanceUseCase`           | aucun type `android.*` / `androidx.*`              |
  *
- * **Rouge attendu — ANO à ouvrir (écart E-3 des notes techniques)** : T-04. La lecture du solde et
- * l'écriture ne sont pas atomiques ; deux corrections concurrentes lisent le même solde de départ et
- * écrivent chacune leur ligne. L'oracle **n'est pas assoupli** : la fiche exige une seule ligne et un
- * solde final égal à la cible.
+ * **T-04 — non-régression de l'ANO LOP-139** (écart E-3 des notes techniques). Écrit d'abord rouge :
+ * la lecture du solde et l'écriture n'étaient pas atomiques, deux corrections concurrentes lisaient le
+ * même solde de départ et écrivaient chacune leur ligne de 20 000 (solde final 140 000). Corrigé le
+ * 13 septembre 2026 par un verrou d'instance dans le use case. L'oracle n'a **pas** été assoupli : la
+ * fiche exigeait une seule ligne et un solde final égal à la cible, c'est ce qui est asserté.
+ * Reste hors d'atteinte de ce verrou, et donc de ce test : une transaction *métier* écrite par un
+ * autre chemin exactement entre la lecture et l'écriture (plafond documenté dans l'ANO).
  *
  * **Hors périmètre, volontairement non couvert ici** :
  * - ce qui est *réellement* écrit en base : un doublon ne voit aucun `INSERT` → TC-113 ;

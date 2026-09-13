@@ -9,6 +9,8 @@ import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -34,15 +36,29 @@ class AdjustBalanceUseCase @Inject constructor(
     private val transactionRepo: TransactionRepository,
     private val clock: Clock,
 ) {
+    /**
+     * Sérialise lecture → écart → écriture (I-7, ANO LOP-139).
+     *
+     * L'écart n'est pas une donnée lue mais une conclusion tirée d'une lecture : elle devient
+     * fausse dès qu'une écriture s'intercale. Deux corrections concurrentes lisaient le même solde
+     * et écrivaient chacune leur ligne. Le use case étant `@Singleton` et, par I-1, l'unique
+     * écrivain d'une ligne `BALANCE_ADJUSTMENT`, un verrou d'instance suffit à les sérialiser : la
+     * seconde relit le solde après la première écriture et sort en `NoChange`.
+     *
+     * ponytail: ce verrou ne couvre que les corrections entre elles. Une transaction *métier*
+     * écrite par un autre chemin exactement entre la lecture et l'écriture rendrait toujours
+     * l'écart faux ; le fermer demanderait une vraie transaction base couvrant la lecture
+     * (lecture suspendue dédiée + `withTransaction`), donc exposer la base au domaine.
+     */
+    private val adjustMutex = Mutex()
+
     /** [newTargetBalance] est exprimé en centimes, comme le solde renvoyé par le moteur. */
-    suspend fun adjust(accountId: Long, newTargetBalance: Long): AdjustOutcome {
+    suspend fun adjust(accountId: Long, newTargetBalance: Long): AdjustOutcome = adjustMutex.withLock {
         val account = accountRepo.getById(accountId) ?: return AdjustOutcome.AccountNotFound
         // Seuls les montants comptent ici : inutile de faire charger les relations par Room.
         // ÉCART E-8 (LOP-87) : tout l'historique de tous les comptes est chargé pour un seul écart.
         val allTransactions = transactionRepo.observeAllEntities().first()
 
-        // ÉCART E-3 (LOP-87, I-7) : la lecture du solde et l'écriture ci-dessous ne sont pas
-        // atomiques. Une écriture concurrente entre les deux rend l'ajustement faux sans signal.
         val currentBalances = BalanceEngine.calculateBalances(listOf(account), allTransactions)
         val currentBalance = currentBalances[accountId] ?: account.initialBalance
 
@@ -67,7 +83,7 @@ class AdjustBalanceUseCase @Inject constructor(
             note = "Ajustement automatique du solde",
         )
 
-        return AdjustOutcome.Created(
+        AdjustOutcome.Created(
             transactionId = transactionRepo.upsert(adjustmentTx),
             delta = delta,
         )
