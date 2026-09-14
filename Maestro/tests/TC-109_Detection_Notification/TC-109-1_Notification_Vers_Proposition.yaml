@@ -39,7 +39,8 @@ tags:
 # Préconditions, hors flow :
 #   1. build debug installée — `ShellNotificationParser` n'est inscrit que si BuildConfig.DEBUG
 #   2. passerelle démarrée :
-#        python scripts/adb_notification_bridge.py
+#        python3 scripts/adb_notification_bridge.py   (Linux/CI)
+#        python  scripts/adb_notification_bridge.py   (Windows)
 #
 # L'autorisation d'écoute n'est PAS une précondition manuelle : la passerelle l'accorde elle-même
 # avant de poster, de façon idempotente. Ce n'est pas un confort, c'est **obligatoire** — mesuré le

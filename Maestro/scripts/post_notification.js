@@ -7,7 +7,8 @@
 // get, put, delete, post, request : c'est le seul pont disponible.
 //
 // Prerequis : la passerelle doit tourner.
-//     python scripts/adb_notification_bridge.py
+//     python3 scripts/adb_notification_bridge.py   (Linux/CI)
+//     python  scripts/adb_notification_bridge.py   (Windows)
 //
 // Parametres recus par `env` :
 //     NOTIF_TITLE, NOTIF_TEXT, NOTIF_TAG, BRIDGE_URL   (tous facultatifs)
@@ -34,8 +35,9 @@ try {
     });
 } catch (error) {
     throw new Error(
-        'Passerelle injoignable sur ' + bridge + '. Demarrer `python scripts/adb_notification_bridge.py` ' +
-        'dans un terminal a part, puis relancer. (' + error + ')'
+        'Passerelle injoignable sur ' + bridge + '. Demarrer, dans un terminal a part : ' +
+        '`python3 scripts/adb_notification_bridge.py` sous Linux, `python ...` sous Windows. ' +
+        'Puis relancer. (' + error + ')'
     );
 }
 

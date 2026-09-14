@@ -15,8 +15,12 @@ Elle tourne sur la machine hote, la ou adb est deja installe, et n'ecoute que su
 
 Usage
 -----
-    python scripts/adb_notification_bridge.py            # port 8787
-    python scripts/adb_notification_bridge.py --port 9000
+    python3 scripts/adb_notification_bridge.py           # Linux / CI
+    python  scripts/adb_notification_bridge.py           # Windows
+    python3 scripts/adb_notification_bridge.py --port 9000
+
+Aucun des deux noms n'est universel : Debian et Ubuntu ne fournissent que `python3`, une
+installation python.org sous Windows ne fournit que `python`. D'ou les deux formes partout.
 
 Points d'entree
 ---------------
