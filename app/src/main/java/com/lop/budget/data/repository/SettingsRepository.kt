@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.lop.budget.BuildConfig
 import com.lop.budget.domain.model.CurrencyCatalog
 import com.lop.budget.domain.usecase.detection.DetectionSettings
 import com.lop.budget.domain.usecase.detection.InboxSettings
@@ -116,11 +117,24 @@ class SettingsRepository @Inject constructor(
      */
     override suspend fun defaultAccountIdOnce(): Long? = lastAccountIdOnce()
 
+    /**
+     * Sources dont les notifications peuvent être analysées (P-8, liste fixe en MVP).
+     *
+     * Le shell s'y ajoute **en debug seulement**. Android attribue le paquet émetteur à partir de
+     * l'uid appelant : une notification postée par `adb shell cmd notification post` arrive sous
+     * `com.android.shell` et rien ne permet de la faire passer pour un portefeuille. Sans cette
+     * entrée, un test sur appareil est écarté ici, avant même que le parseur soit consulté.
+     *
+     * L'autoriser en release ouvrirait la détection à toute notification postée par adb, ce que
+     * I-5 et P-8 excluent. Voir `ShellNotificationParser`, qui porte le format correspondant.
+     */
     override fun isAllowedNotificationSource(packageName: String): Boolean {
-        // MVP : sources fixes
-        return packageName in setOf(
+        val allowed = setOf(
             "com.google.android.apps.walletnfcrel", // Google Wallet/Pay
             "com.samsung.android.spay", // Samsung Wallet
         )
+        if (packageName in allowed) return true
+
+        return BuildConfig.DEBUG && packageName == "com.android.shell"
     }
 }

@@ -1,5 +1,6 @@
 package com.lop.budget.notifications
 
+import com.lop.budget.BuildConfig
 import java.text.Normalizer
 import java.util.Locale
 import javax.inject.Inject
@@ -34,10 +35,15 @@ class PaymentNotificationParser @Inject constructor(
      * registre n'a aucune dépendance à injecter. À basculer en multibinding le jour où une source
      * aura besoin de collaborateurs.
      */
-    private val sourceParsers: List<NotificationSourceParser> = listOf(
-        GoogleWalletParser(),
-        SamsungWalletParser(),
-    )
+    private val sourceParsers: List<NotificationSourceParser> = buildList {
+        add(GoogleWalletParser())
+        add(SamsungWalletParser())
+
+        // Outillage de test sur appareil : une notification postée par `adb shell cmd notification
+        // post` arrive sous `com.android.shell`, Android n'autorisant pas à falsifier le paquet
+        // émetteur. Jamais en release — la liste des sources y reste celle de P-8 (I-5).
+        if (BuildConfig.DEBUG) add(ShellNotificationParser())
+    }
 
     override suspend fun parse(snapshot: NotificationSnapshot): ParseResult {
         val title = snapshot.title.orEmpty().trim()
