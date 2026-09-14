@@ -1,0 +1,99 @@
+appId: com.lop.budget
+name: "TC-109-1 - Notification de paiement -> proposition detectee"
+tags:
+  - tc-109
+  - detection
+---
+# =====================================================================================
+# TC-109-1 — Une notification de paiement produit une proposition
+# -------------------------------------------------------------------------------------
+# Niveau        : E2E / UI (Maestro). Parcours visible uniquement.
+# US            : LOP-54 — Détection de transaction via les notifications
+# Chaîne        : adb `cmd notification post` -> LopNotificationListenerService
+#                 -> HandlePaymentNotificationUseCase -> ShellNotificationParser
+#                 -> proposition en base -> compteur d'en-tête -> boîte de réception
+#
+# étape -> CA / invariant :
+#   1  -> I-5    la détection est inactive par défaut, on l'active explicitement
+#   2  -> CA-25  l'instantané est injecté sans émulateur ni paiement réel
+#   3  -> CA-15  le compteur d'en-tête reflète les propositions non traitées
+#   4  -> CA-06  exactement une proposition, portant le libellé du commerçant
+#   5  -> CA-07  le libellé est le commerçant seul, sans montant ni nom de carte
+#
+# Pourquoi une passerelle HTTP (montage « D ») :
+#   Maestro 2.8.0 n'a aucune commande shell, et son moteur JS est en bac à sable —
+#   sonde du 14/09/2026 : `java:undefined  http:object  proc:undefined`. Sans `Java`,
+#   pas de `Runtime.exec`, donc pas d'adb depuis un `runScript`. Seul `http` est exposé.
+#   La passerelle tourne sur la machine hôte, là où adb est déjà installé.
+#
+# Préconditions, hors flow :
+#   1. build debug installée — `ShellNotificationParser` n'est inscrit que si BuildConfig.DEBUG
+#   2. passerelle démarrée :
+#        python scripts/adb_notification_bridge.py
+#
+# L'autorisation d'écoute des notifications n'est PAS une précondition : la passerelle l'accorde
+# elle-même avant de poster, de façon idempotente. C'est délibéré et c'est ce qui rend ce flow
+# portable. L'accorder par l'UI obligerait à taper « Autoriser l'accès aux notifications » puis à
+# piloter l'écran système « Accès aux notifications » — une liste d'applications dont la mise en
+# page, l'ordre et les libellés changent entre One UI, un Pixel et un émulateur. Par adb, la
+# commande est la même partout.
+#
+# Deux mesures faites le 14/09/2026 sur SM-S938B / Android 16 et encodées dans la passerelle :
+#   - l'écriture du réglage est asynchrone (1 à 2 s), une relecture immédiate ment ;
+#   - l'écran de réglages de LOPBudge ne reflète jamais l'état réel de l'autorisation — le bouton
+#     est affiché inconditionnellement — donc l'UI ne peut pas servir d'oracle sur ce point.
+#
+# Hors périmètre (ne pas ajouter ici) :
+#   - L'analyse du texte (montant, libellé, carte, clé) : portée par TC-108, en unitaire.
+#   - Le regroupement anti-doublon et la fenêtre de 2 minutes (CA-12, CA-13).
+#   - L'acceptation, le refus et le formulaire pré-rempli (CA-16 à CA-19).
+#   - Le rejet d'une source non autorisée (CA-05) : ici la source est autorisée en debug.
+#
+# ⚠️ `clearState: true` efface les données de LOPBudge sur l'appareil branché.
+#    À ne lancer que sur un appareil de test.
+# =====================================================================================
+
+# Given l'application démarre d'un état propre
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "screen.home"
+
+# Given la détection est activée (I-5 : elle est inactive par défaut)
+- tapOn:
+    id: "nav.settings.button"
+- tapOn:
+    id: "settings.switch.notif_detection"
+- back
+- assertVisible:
+    id: "screen.home"
+
+# When une notification de paiement arrive réellement sur l'appareil (CA-25)
+- runScript:
+    file: ../../scripts/post_notification.js
+    env:
+      NOTIF_TITLE: "MG ORGANISATION"
+      NOTIF_TEXT: "6,50 € avec la carte Curve Card ••6088"
+      NOTIF_TAG: "TC109"
+
+# La passerelle a-t-elle réellement posté ? Sans ce garde-fou, une passerelle éteinte
+# rendrait l'assertion finale rouge pour une raison qui n'a rien de métier.
+- assertTrue: ${output.notificationPosted}
+
+# Then le compteur d'en-tête signale la proposition non traitée (CA-15)
+- extendedWaitUntil:
+    visible:
+      text: "1"
+      id: "nav.detected.button"
+    timeout: 15000
+
+# Then la boîte de réception contient la proposition, au nom du commerçant (CA-06, CA-07)
+- tapOn:
+    id: "nav.detected.button"
+- assertVisible:
+    id: "screen.detected"
+- assertVisible: "MG ORGANISATION"
+
+# Et le libellé ne véhicule ni le montant ni la carte (CA-07)
+- assertNotVisible: "6,50 €"
+- assertNotVisible: "Curve Card ••6088"
