@@ -108,13 +108,9 @@ ticket comme terminé.
 Ne pas corriger silencieusement une incohérence hors périmètre : la documenter et demander une
 décision.
 
-## 7. Opérations Git
 
-Sauf demande explicite de l’utilisateur pour la tâche en cours, ne créer aucun commit, branche, push
-ou pull request et ne lancer aucun `git add`. Les agents chargés d’implémenter un ticket doivent
-laisser les changements dans l’espace de travail pour revue humaine.
 
-## 8. Routage local
+## 7. Routage local
 
 - Pour JUnit/Robolectric : lire `app/src/test/AGENTS.md`.
 - Pour les tests instrumentés : lire `app/src/androidTest/AGENTS.md`.
