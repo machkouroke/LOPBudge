@@ -16,14 +16,11 @@ import javax.inject.Singleton
  * de Samsung Wallet sont déclarés chacun dans leur fichier, et ajouter une source consiste à
  * ajouter un parseur au registre ci-dessous.
  *
- * Écarts connus **volontairement reconduits**, pour qu'ils restent visibles et décidables plutôt
- * que refermés au passage par un refactoring :
- * - la valeur absolue est appliquée au montant, donc un crédit deviendrait une dépense s'il
- *   franchissait le classifieur (TC-108 / T-05) ;
- * - le seuil et les mots négatifs du classifieur décident seuls du rejet, si bien qu'un paiement
- *   sans mot-clé positif est écarté (TC-108 / T-01, cas Samsung) ;
- * - la clé de regroupement embarque le texte brut normalisé, donc l'écriture du montant
- *   (TC-108 / T-07).
+ * Risque résiduel assumé : la valeur absolue est appliquée au montant, donc un crédit qui
+ * franchirait le classifieur deviendrait une dépense. Le garde-fou est en amont — le vocabulaire de
+ * crédit est rejeté par [HeuristicNotificationClassifier] (CA-11) — et il est lexical, donc
+ * faillible. Le jour où les remboursements auront un traitement métier (EVOL), c'est le signe du
+ * montant qui devra porter la distinction, pas une liste de mots.
  */
 @Singleton
 class PaymentNotificationParser @Inject constructor(
@@ -71,10 +68,18 @@ class PaymentNotificationParser @Inject constructor(
             normalizedText = normalizeForDedupe(raw),
         )
 
-        return when (classification.status) {
-            ClassificationResult.Status.UNCERTAIN -> ParseResult.Uncertain(payment, classification.confidence)
-            else -> ParseResult.Payment(payment, classification.confidence)
-        }
+        // P-12 : c'est le format qui atteste le paiement, pas le vocabulaire. Une extraction
+        // complète — un montant **et** sa devise — vaut certitude ; un nombre nu reste une
+        // hypothèse et part en proposition incertaine (CA-10). Un classifieur capable de dire son
+        // propre doute (ML Kit) garde le dernier mot pour dégrader, jamais pour rehausser.
+        val certain = extracted.currency != null &&
+            classification.status != ClassificationResult.Status.UNCERTAIN
+
+        val confidence =
+            if (certain) maxOf(classification.confidence, CERTAIN_CONFIDENCE) else classification.confidence
+
+        return if (certain) ParseResult.Payment(payment, confidence)
+        else ParseResult.Uncertain(payment, confidence)
     }
 
     override fun dedupeKey(sourcePackage: String, payment: ParsedPayment): String =
@@ -85,8 +90,20 @@ class PaymentNotificationParser @Inject constructor(
         val normalized = Normalizer.normalize(lower, Normalizer.Form.NFD)
             .replace("\\p{Mn}+".toRegex(), "")
         return normalized
-            .replace("[^a-z0-9€$ ]".toRegex(), " ")
+            // CA-14 : les chiffres sont retirés. Le montant est déjà dans la clé, en centimes ;
+            // laisser son écriture dans le texte faisait diverger « 12,5 » et « 12,50 », et faisait
+            // entrer le masque de carte ou un numéro de commande dans une clé censée identifier le
+            // paiement, pas la notification qui le décrit.
+            .replace("[^a-z€$ ]".toRegex(), " ")
             .replace("\\s+".toRegex(), " ")
             .trim()
+    }
+
+    private companion object {
+        /**
+         * Seuil de certitude, repris de l'échelle du classifieur pour ne pas en inventer une
+         * seconde. Plancher de confiance d'un paiement dont le format a été lu en entier.
+         */
+        const val CERTAIN_CONFIDENCE = 0.7f
     }
 }

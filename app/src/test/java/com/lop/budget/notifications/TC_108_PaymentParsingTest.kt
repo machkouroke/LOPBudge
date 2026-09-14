@@ -26,9 +26,10 @@ import java.util.TimeZone
  * Source de vérité : CA-06, CA-07, CA-08, CA-09, CA-11, CA-14, CA-21 et les invariants I-1, I-3,
  * I-10 de l'US LOP-54, plus les conventions P-1 (centimes entiers) et P-2 (clé = paquet, centimes,
  * devise, texte normalisé).
- * **Le comportement actuel du parseur et du classifieur ne constitue pas l'oracle.** Le seuil de
- * confiance, la liste de mots négatifs et la valeur absolue appliquée au montant sont des choix
- * d'implémentation. Les attendus ci-dessous viennent de la fiche, jamais du code.
+ * **Le comportement du parseur et du classifieur ne constitue pas l'oracle.** Le seuil de certitude,
+ * la liste de mots négatifs, le plafond de montant et la valeur absolue sont des choix
+ * d'implémentation, y compris ceux introduits par les correctifs du 14 septembre 2026. Les attendus
+ * ci-dessous viennent de la fiche, jamais du code.
  *
  * ### cas → CA / invariant → production
  * ```
@@ -63,7 +64,8 @@ import java.util.TimeZone
  *   pas ce que Google Wallet émet : la fiche Notion a été corrigée en conséquence, et N-SW-2 y a
  *   été ajouté comme unique capture Samsung disponible.
  * - Le refactoring P-12 (un parseur par source) a été demandé et livré le 14 septembre 2026, après
- *   cette campagne. Il ferme ANO-A, ANO-F et ANO-G ; les quatre autres restent ouvertes et rouges.
+ *   cette campagne, puis les quatre défauts restants ont été corrigés. Les attendus n'ont pas bougé
+ *   d'un caractère entre les six rouges du début et les quatorze verts de la fin.
  *
  * ### Captures réelles disponibles au 14 septembre 2026
  * ```
@@ -74,43 +76,44 @@ import java.util.TimeZone
  * La capture Samsung **confirme la forme de N-SW-1** : carte au titre, commerçant puis montant au
  * texte. Le JDD de la fiche est donc réaliste sur cette source.
  *
- * ### ANO de cette campagne — une par cause racine
- * Trois d'entre elles ont été **fermées le 14 septembre 2026** par le refactoring P-12 (un parseur
- * par source). Elles sont conservées ici : ce sont elles qui ont motivé le refactoring, et leur
- * fermeture est la raison pour laquelle les cas correspondants sont verts.
+ * ### ANO de cette campagne — une par cause racine, **toutes corrigées le 14 septembre 2026**
+ * Cette classe a été écrite rouge, puis a servi de filet au refactoring P-12 et aux quatre
+ * correctifs qui ont suivi. Les sept causes racines sont conservées ici : elles expliquent pourquoi
+ * chaque cas est vert aujourd'hui, et un retour en arrière les fera rougir individuellement.
  *
- * - **ANO-A — aucune règle de format par source (CA-07) — FERMÉE par P-12.** Une seule heuristique
- *   devinait le format : elle retenait le titre comme libellé sauf s'il ressemblait à un nom de
- *   portefeuille. Chaque source déclare désormais son format ; Google pose « le titre est le
- *   commerçant » au lieu de le supposer. N-GW-1 et N-GW-2 sont verts.
- * - **ANO-B — rejet d'un paiement sans mot-clé positif (CA-06, CA-09, cas N-SW-1) — OUVERTE.** Le
- *   classifieur exige un mot-clé positif au-dessus du seuil ; « Visa ••1234 / Monoprix 34,90 € »
- *   n'en contient aucun et se fait rejeter. **Atteignable** : N-SW-2 n'est sauvé que parce que la
- *   carte s'appelle « Curve **Card** ». Le sort d'un paiement dépend donc du nom de la carte.
- *   Hors du périmètre de P-12 : c'est le classifieur, pas le format.
- * - **ANO-C — un paiement citant le solde est déclassé en `Uncertain` (T-03, P-7) — OUVERTE.**
- *   **CA-09 n'est pas violé** : il exige « une proposition », et `Uncertain` en est une au sens de
- *   CA-10. Ce qui est violé est l'oracle de la fiche, et la conséquence utilisateur relève de P-7 :
- *   une incertaine n'émet aucune notification LOPBudge, donc le paiement passe inaperçu.
- * - **ANO-D — montant tronqué au lieu d'être rejeté (T-06, P-1) — OUVERTE, délibérément.**
- *   `\d{1,6}` lit « 123456789012,99 € » comme « 123456 » et produit 12 345 600 c. **I-3 ne
- *   l'interdit pas littéralement** — sa liste vise l'arrondi flottant, la conversion par
- *   représentation textuelle et le repli sur zéro, et aucun des trois n'est une troncature. Le
- *   fondement est P-1, « au lieu de produire un montant approché ». La borne a été **reconduite
- *   telle quelle** dans `AmountText` : la corriger demande de trancher un plafond métier et un
- *   motif de rejet, ce qui n'était pas dans le périmètre du refactoring.
- * - **ANO-E — la clé de regroupement embarque l'écriture du montant (CA-14, I-7) — OUVERTE.**
- *   `normalizeForDedupe` conserve les chiffres du texte brut : « 12 5 » et « 12 50 » donnent deux
- *   clés pour un même paiement.
- * - **ANO-F — montant lu sur la concaténation titre + texte (CA-11) — FERMÉE par P-12.**
- *   L'extraction avait lieu avant toute connaissance de la source, donc sur « titre • texte » : le
- *   masque de carte que Samsung place au titre était capté comme montant. Chaque parseur lit
- *   désormais le montant **dans le champ que son format désigne** — le texte, jamais le titre.
- * - **ANO-G — le masque de carte était perdu (CA-06) — FERMÉE par P-12.** L'ancienne expression
- *   capturait `[^•
-,]+` et s'arrêtait au premier « • ». Le format Google lit désormais tout ce
- *   qui suit « avec la carte », masque compris : le masque est une donnée conservée sur la
- *   proposition, pas du bruit.
+ * - **ANO-A — aucune règle de format par source (CA-07).** Une heuristique unique devinait le
+ *   format et retenait le titre comme libellé sauf s'il ressemblait à un nom de portefeuille.
+ *   *Corrigé par P-12* : chaque source déclare son format dans son propre parseur.
+ * - **ANO-B — rejet d'un paiement sans mot-clé positif (CA-06, CA-09).** « Visa ••1234 / Monoprix
+ *   34,90 € », un vrai paiement, était jeté faute de vocabulaire bancaire ; le sort d'un paiement
+ *   dépendait du nom de la carte. *Corrigé* : le classifieur ne cherche plus à prouver un paiement,
+ *   il écarte seulement ce qui n'en est pas. C'est le format qui atteste (P-12).
+ * - **ANO-C — un paiement citant le solde était déclassé en `Uncertain` (T-03, P-7).** À noter :
+ *   **CA-09 n'était pas violé**, une incertaine reste une proposition (CA-10). Le préjudice était
+ *   P-7 — pas de notification, donc un vrai paiement inaperçu. *Corrigé* : un vocabulaire négatif
+ *   ne disqualifie que si **rien ne le contrebalance**, et la certitude vient d'une extraction
+ *   complète (montant **et** devise), plus d'un score de mots.
+ * - **ANO-D — montant tronqué au lieu d'être rejeté (T-06, P-1).** « 123456789012,99 € » était lu
+ *   « 123456 » et accepté à 12 345 600 c. **I-3 ne l'interdisait pas littéralement** — sa liste vise
+ *   l'arrondi flottant, la conversion par chaîne et le repli sur zéro, dont aucun n'est une
+ *   troncature ; le fondement est P-1, « au lieu de produire un montant approché ». *Corrigé* : le
+ *   nombre est lu en entier puis confronté à `AmountText.MAX_CENTS`, avec un motif de rejet dédié.
+ *   Le plafond (1 000 000,00 €) est un **choix du correctif**, l'US n'en fixait aucun.
+ * - **ANO-E — la clé de regroupement embarquait l'écriture du montant (CA-14, I-7).** « 12,5 » et
+ *   « 12,50 » donnaient deux clés. *Corrigé* : `normalizeForDedupe` retire les chiffres — le
+ *   montant est déjà dans la clé, en centimes.
+ * - **ANO-F — montant lu sur la concaténation titre + texte (CA-11).** L'extraction précédait
+ *   toute connaissance de la source, donc le masque de carte du titre Samsung était pris pour un
+ *   montant. *Corrigé par P-12* : chaque parseur lit le champ que son format désigne.
+ * - **ANO-G — le masque de carte était perdu (CA-06).** L'expression s'arrêtait au premier « • ».
+ *   *Corrigé* : le format Google lit tout ce qui suit « avec la carte ». Le masque est une donnée
+ *   conservée sur la proposition, pas du bruit.
+ *
+ * ### Risque résiduel, non couvert ici
+ * La valeur absolue reste appliquée au montant. Un crédit ne devient pas une dépense parce qu'il
+ * est rejeté en amont sur son **vocabulaire** (CA-11), garde-fou lexical donc faillible. Le
+ * traitement métier des remboursements est une EVOL de l'US ; le jour où elle sortira, c'est le
+ * signe du montant qui devra porter la distinction.
  *
  * ### Hors périmètre, porté ailleurs
  * Ce que le service Android transmet réellement et le rappel système · ce qui est écrit en base

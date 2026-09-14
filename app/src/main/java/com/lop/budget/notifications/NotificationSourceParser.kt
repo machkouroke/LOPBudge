@@ -2,6 +2,7 @@ package com.lop.budget.notifications
 
 import com.lop.budget.util.Format
 import java.util.Locale
+import kotlin.math.abs
 
 /**
  * Règle de format d'**une** source de notification (P-12).
@@ -39,28 +40,44 @@ sealed interface SourceExtraction {
 }
 
 /**
- * Mécanique de lecture d'un montant : « 12,50 € », « €12.50 », « 12.50 EUR », « -12,50 € ».
+ * Lecture d'un montant : « 12,50 € », « €12.50 », « 12.50 EUR », « -12,50 € ».
  *
- * Partagée parce que c'est de la syntaxe de nombre, pas une règle de format. Ce qui reste au
- * parseur de source, c'est **dans quel champ** chercher : lire un montant sur la concaténation
- * « titre • texte » faisait capter le masque de carte que Samsung place au titre (CA-11).
+ * Mécanique partagée parce que c'est de la syntaxe de nombre, pas une règle de format. Ce qui
+ * reste au parseur de source, c'est **dans quel champ** chercher : lire un montant sur la
+ * concaténation « titre • texte » faisait capter le masque de carte que Samsung place au titre
+ * (CA-11).
  */
 internal object AmountText {
 
-    // Borne à six chiffres **reconduite telle quelle** depuis la version précédente : au-delà, le
-    // montant est tronqué au lieu d'être rejeté, et « 123456789012,99 € » devient 12 345 600 c.
-    // P-1 l'interdit (« au lieu de produire un montant approché ») et TC-108/T-06 est rouge dessus.
-    // Défaut laissé visible : le corriger demande de trancher le plafond métier et le motif de
-    // rejet, ce qui n'est pas du ressort de ce refactoring.
-    private val regex = Regex("(-?\\d{1,6}(?:[.,]\\d{1,2})?)\\s*([€$]|EUR|USD|GBP)?", RegexOption.IGNORE_CASE)
+    /**
+     * Plafond de vraisemblance d'un paiement unitaire : **1 000 000,00 €**.
+     *
+     * Au-delà, la notification n'est pas analysable et doit être rejetée avec un motif, plutôt que
+     * de produire un montant approché (P-1). La valeur est un choix explicite de ce correctif —
+     * l'US ne fixe aucun plafond — et se change ici, à un seul endroit.
+     */
+    const val MAX_CENTS = 100_000_000L
 
-    /** Première occurrence de montant **dans ce champ**, ou `null`. */
-    fun find(field: String): MatchResult? = regex.find(field)
+    // Aucune borne sur le nombre de chiffres : c'est la troncature silencieuse qui produisait un
+    // montant faux (« 123456789012,99 € » lu comme « 123456 »). Le nombre est lu en entier, puis
+    // confronté au plafond ci-dessus.
+    private val regex = Regex("(-?\\d+(?:[.,]\\d{1,2})?)\\s*([€$]|EUR|USD|GBP)?", RegexOption.IGNORE_CASE)
 
-    /** Conversion en centimes entiers, une seule fois, à l'analyse (P-1 / I-3). */
-    fun centsOf(match: MatchResult): Long? = Format.centsOrNull(match.groupValues[1])
+    /** Lit le premier montant **de ce champ**, ou dit pourquoi il n'y arrive pas. */
+    fun read(field: String): AmountRead {
+        val match = regex.find(field) ?: return AmountRead.Failed("aucun_montant")
+        val written = match.groupValues[1]
 
-    fun currencyOf(match: MatchResult): String? {
+        // P-1 : conversion en centimes entiers, une seule fois, à l'analyse, via BigDecimal.
+        val cents = Format.centsOrNull(written)
+            ?: return AmountRead.Failed("montant_non_convertible_$written")
+
+        if (abs(cents) > MAX_CENTS) return AmountRead.Failed("montant_hors_capacite_$written")
+
+        return AmountRead.Ok(cents, currencyOf(match), match.range)
+    }
+
+    private fun currencyOf(match: MatchResult): String? {
         val raw = match.groupValues.getOrNull(2)?.takeIf { it.isNotBlank() } ?: return null
         return when (val upper = raw.uppercase(Locale.ROOT)) {
             "€" -> "EUR"
@@ -69,4 +86,11 @@ internal object AmountText {
             else -> null
         }
     }
+}
+
+internal sealed interface AmountRead {
+    /** [range] couvre le montant **et** sa devise : c'est ce qu'un libellé doit retirer du texte. */
+    data class Ok(val cents: Long, val currency: String?, val range: IntRange) : AmountRead
+
+    data class Failed(val reason: String) : AmountRead
 }

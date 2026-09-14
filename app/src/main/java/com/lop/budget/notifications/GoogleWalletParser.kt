@@ -23,12 +23,14 @@ class GoogleWalletParser : NotificationSourceParser {
         val label = title.trim()
         if (label.isBlank()) return SourceExtraction.Failed("libelle_absent")
 
-        val match = AmountText.find(text) ?: return SourceExtraction.Failed("aucun_montant")
-        val cents = AmountText.centsOf(match) ?: return SourceExtraction.Failed("montant_non_convertible")
+        val amount = when (val read = AmountText.read(text)) {
+            is AmountRead.Failed -> return SourceExtraction.Failed(read.reason)
+            is AmountRead.Ok -> read
+        }
 
         return SourceExtraction.Extracted(
-            amountCents = cents,
-            currency = AmountText.currencyOf(match),
+            amountCents = amount.cents,
+            currency = amount.currency,
             label = label,
             cardName = cardRegex.find(text)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() },
         )

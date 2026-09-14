@@ -18,17 +18,19 @@ class SamsungWalletParser : NotificationSourceParser {
         sourcePackage.contains("spay") || (sourcePackage.contains("samsung") && sourcePackage.contains("pay"))
 
     override fun extract(title: String, text: String): SourceExtraction {
-        val match = AmountText.find(text) ?: return SourceExtraction.Failed("aucun_montant")
-        val cents = AmountText.centsOf(match) ?: return SourceExtraction.Failed("montant_non_convertible")
+        val amount = when (val read = AmountText.read(text)) {
+            is AmountRead.Failed -> return SourceExtraction.Failed(read.reason)
+            is AmountRead.Ok -> read
+        }
 
         // Le commerçant est ce qui reste du texte une fois le montant retiré — sa seule occurrence,
         // pas toutes : un numéro présent ailleurs dans le texte n'a pas à disparaître du libellé.
-        val label = text.removeRange(match.range).trim()
+        val label = text.removeRange(amount.range).trim()
         if (label.isBlank()) return SourceExtraction.Failed("libelle_absent")
 
         return SourceExtraction.Extracted(
-            amountCents = cents,
-            currency = AmountText.currencyOf(match),
+            amountCents = amount.cents,
+            currency = amount.currency,
             label = label,
             cardName = title.trim().takeIf { it.isNotBlank() },
         )
