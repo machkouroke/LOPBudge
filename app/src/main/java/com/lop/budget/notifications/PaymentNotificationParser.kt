@@ -1,6 +1,5 @@
 package com.lop.budget.notifications
 
-import com.lop.budget.util.Format
 import java.text.Normalizer
 import java.util.Locale
 import javax.inject.Inject
@@ -11,87 +10,64 @@ import javax.inject.Singleton
  *
  * Calcul pur : ni `Context`, ni `StatusBarNotification`, ni base, ni réseau (I-4, I-10, CA-25).
  *
- * Les heuristiques ci-dessous sont **reconduites telles quelles** depuis la version qui prenait une
- * notification Android : seule la forme change. Les écarts relevés à la lecture restent donc en
- * place, et c'est à TC-108 de les rendre visibles plutôt qu'à cette refonte de les masquer :
- * - E-8 : la première occurrence numérique est retenue comme montant (bruit de carte, de commande) ;
- * - E-9 : la valeur absolue est appliquée, un remboursement devient une dépense ;
- * - E-6 / E-7 : le seuil et les mots négatifs du classifieur décident seuls du rejet.
+ * **Ne porte plus aucune règle de format (P-12).** Son travail tient en quatre gestes : écarter un
+ * instantané vide, choisir le parseur de la source à partir du paquet, demander au classifieur si
+ * c'est un paiement, puis déléguer l'extraction à ce parseur. Le format de Google Wallet et celui
+ * de Samsung Wallet sont déclarés chacun dans leur fichier, et ajouter une source consiste à
+ * ajouter un parseur au registre ci-dessous.
+ *
+ * Écarts connus **volontairement reconduits**, pour qu'ils restent visibles et décidables plutôt
+ * que refermés au passage par un refactoring :
+ * - la valeur absolue est appliquée au montant, donc un crédit deviendrait une dépense s'il
+ *   franchissait le classifieur (TC-108 / T-05) ;
+ * - le seuil et les mots négatifs du classifieur décident seuls du rejet, si bien qu'un paiement
+ *   sans mot-clé positif est écarté (TC-108 / T-01, cas Samsung) ;
+ * - la clé de regroupement embarque le texte brut normalisé, donc l'écriture du montant
+ *   (TC-108 / T-07).
  */
 @Singleton
 class PaymentNotificationParser @Inject constructor(
     private val classifier: NotificationClassifier
 ) : PaymentParser {
 
-    // Très tolérant : 12,50 € / €12.50 / 12.50 EUR / -12,50 €
-    private val amountRegex = Regex("(-?\\d{1,6}(?:[.,]\\d{1,2})?)\\s*([€$]|EUR|USD|GBP)?", RegexOption.IGNORE_CASE)
-
-    // Pattern marchand simple (ex: "chez Starbucks", "à McDonald's")
-    private val merchantRegex = Regex("(?:chez|à|at|from)\\s+([^•\\n,]+)", RegexOption.IGNORE_CASE)
-
-    private val cardRegex = Regex("(?:avec la carte|with card)\\s+([^•\\n,]+)", RegexOption.IGNORE_CASE)
+    /**
+     * Registre des formats connus (P-12, P-8). Une source de plus = une ligne de plus.
+     *
+     * Liste en dur plutôt qu'un multibinding Hilt : la liste des sources est fixe en MVP et le
+     * registre n'a aucune dépendance à injecter. À basculer en multibinding le jour où une source
+     * aura besoin de collaborateurs.
+     */
+    private val sourceParsers: List<NotificationSourceParser> = listOf(
+        GoogleWalletParser(),
+        SamsungWalletParser(),
+    )
 
     override suspend fun parse(snapshot: NotificationSnapshot): ParseResult {
-        val title = snapshot.title.orEmpty()
-        val text = snapshot.text.orEmpty()
+        val title = snapshot.title.orEmpty().trim()
+        val text = snapshot.text.orEmpty().trim()
 
-        val raw = listOf(title, text)
-            .filter { it.isNotBlank() }
-            .joinToString(" • ")
-            .trim()
-
+        val raw = listOf(title, text).filter { it.isNotBlank() }.joinToString(" • ")
         if (raw.isBlank()) return ParseResult.Rejected("notification_vide")
 
-        val pkg = snapshot.sourcePackage
-        val isSamsung = pkg.contains("samsung") && pkg.contains("pay") || pkg.contains("spay")
+        // P-12 : le format vient du paquet source, il n'est jamais déduit du texte.
+        val source = sourceParsers.firstOrNull { it.handles(snapshot.sourcePackage) }
+            ?: return ParseResult.Rejected("source_sans_parseur")
 
-        // 1. Classification
         val classification = classifier.classify(raw)
         if (classification.status == ClassificationResult.Status.IGNORE) {
             return ParseResult.Rejected(classification.reason ?: "classe_ignore")
         }
 
-        // 2. Extraction montant
-        val m = amountRegex.find(raw) ?: return ParseResult.Rejected("aucun_montant")
-        val amountStr = m.groupValues[1]
-        val currencyRaw = m.groupValues.getOrNull(2)?.takeIf { it.isNotBlank() }
-
-        // P-1 : conversion en centimes une seule fois, à l'analyse, sans passer par un flottant.
-        val cents = Format.centsOrNull(amountStr) ?: return ParseResult.Rejected("montant_non_convertible")
-        val currency = when (currencyRaw?.uppercase(Locale.ROOT)) {
-            "€" -> "EUR"
-            "$" -> "USD"
-            "EUR", "USD", "GBP" -> currencyRaw.uppercase(Locale.ROOT)
-            else -> null
-        }
-
-        // 3. Extraction Marchand & Carte
-        var extractedLabel = ""
-        var cardName: String? = null
-
-        if (isSamsung) {
-            // Samsung Wallet : Title = Card, Text = "Merchant Amount"
-            cardName = title.trim()
-            // On enlève le montant de la description pour trouver le marchand
-            extractedLabel = text.replace(amountRegex, "").trim()
-        } else {
-            // Google Wallet / Autre : Title = Merchant (souvent)
-            extractedLabel = if (title.isNotBlank() && !isKnownSourceTitle(title)) {
-                title.trim()
-            } else {
-                val merchantMatch = merchantRegex.find(raw)
-                merchantMatch?.groupValues?.get(1)?.trim() ?: buildLabel(title, text)
-            }
-
-            // Tentative d'extraction de la carte chez Google ("avec la carte X")
-            cardName = cardRegex.find(raw)?.groupValues?.get(1)?.trim()
+        val extracted = when (val extraction = source.extract(title, text)) {
+            is SourceExtraction.Failed -> return ParseResult.Rejected(extraction.reason)
+            is SourceExtraction.Extracted -> extraction
         }
 
         val payment = ParsedPayment(
-            amountCents = kotlin.math.abs(cents),
-            currency = currency,
-            label = extractedLabel,
-            cardName = cardName,
+            amountCents = kotlin.math.abs(extracted.amountCents),
+            currency = extracted.currency,
+            label = extracted.label,
+            cardName = extracted.cardName,
             normalizedText = normalizeForDedupe(raw),
         )
 
@@ -103,19 +79,6 @@ class PaymentNotificationParser @Inject constructor(
 
     override fun dedupeKey(sourcePackage: String, payment: ParsedPayment): String =
         "$sourcePackage|${payment.amountCents}|${payment.currency ?: ""}|${payment.normalizedText}"
-
-    private fun buildLabel(title: String, text: String): String {
-        // Priorité au texte le plus "informatif"
-        return listOf(text, title)
-            .firstOrNull { it.isNotBlank() }
-            ?.take(80)
-            .orEmpty()
-    }
-
-    private fun isKnownSourceTitle(title: String): Boolean {
-        val t = title.lowercase(Locale.ROOT)
-        return t.contains("google wallet") || t.contains("samsung wallet") || t.contains("pay")
-    }
 
     fun normalizeForDedupe(input: String): String {
         val lower = input.lowercase(Locale.ROOT)
