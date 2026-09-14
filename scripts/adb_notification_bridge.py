@@ -74,6 +74,16 @@ def listener_enabled():
     return LISTENER in (result.stdout or "")
 
 
+def listener_bound():
+    """Le reglage accorde ne suffit pas : Android doit encore lier le service.
+
+    Mesure du 14 septembre 2026 (SM-S938B / Android 16) : la liaison suit le reglage en moins
+    d'une seconde. Mais poster avant qu'elle soit faite perdrait la notification en silence.
+    """
+    result = adb(["shell", "dumpsys", "activity", "services", "com.lop.budget"])
+    return "LopNotificationListenerService" in (result.stdout or "")
+
+
 def ensure_listener(timeout_s=6.0):
     """Garantit que LOPBudge a le droit d'ecouter les notifications, et rend (ok, detail).
 
@@ -85,20 +95,20 @@ def ensure_listener(timeout_s=6.0):
     valeur. Mesure du 14 septembre 2026 sur SM-S938B / Android 16 : une a deux secondes de
     latence, d'ou l'attente active ci-dessous plutot qu'un simple appel suivi d'un `get`.
     """
-    if listener_enabled():
-        return True, "ecoute deja autorisee"
-
-    adb(["shell", "cmd", "notification", "allow_listener", LISTENER])
+    already = listener_enabled()
+    if not already:
+        adb(["shell", "cmd", "notification", "allow_listener", LISTENER])
 
     deadline = time.time() + timeout_s
     while time.time() < deadline:
-        if listener_enabled():
-            return True, "ecoute autorisee par adb"
+        if listener_enabled() and listener_bound():
+            return True, "ecoute deja autorisee" if already else "ecoute autorisee par adb"
         time.sleep(0.25)
 
     return False, (
-        "l'autorisation d'ecoute n'a pas pris apres %.0fs. "
-        "Verifier `adb shell settings get secure enabled_notification_listeners`." % timeout_s
+        "l'ecoute n'est pas operationnelle apres %.0fs (reglage=%s, service lie=%s). "
+        "Verifier `adb shell settings get secure enabled_notification_listeners`."
+        % (timeout_s, listener_enabled(), listener_bound())
     )
 
 

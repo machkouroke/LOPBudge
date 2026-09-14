@@ -16,9 +16,19 @@ tags:
 # étape -> CA / invariant :
 #   1  -> I-5    la détection est inactive par défaut, on l'active explicitement
 #   2  -> CA-25  l'instantané est injecté sans émulateur ni paiement réel
-#   3  -> CA-15  le compteur d'en-tête reflète les propositions non traitées
-#   4  -> CA-06  exactement une proposition, portant le libellé du commerçant
-#   5  -> CA-07  le libellé est le commerçant seul, sans montant ni nom de carte
+#   3  -> CA-06  la notification produit une proposition, visible au nom du commerçant
+#
+# Ce que ce flow ne prouve **pas**, volontairement :
+#   - la valeur exacte des champs (montant, devise, carte, clé) : TC-108 les assert au caractère
+#     près en unitaire, les redériver ici depuis l'écran donnerait un oracle plus faible ;
+#   - CA-07 « libellé sans montant ni carte » : la carte de la boîte de réception affiche aussi le
+#     nom de carte, le montant **et le texte brut** de la notification. Un `assertNotVisible` sur le
+#     montant serait donc faux : ces éléments sont légitimement à l'écran. Isoler le libellé
+#     demanderait un `testTag` sur son `Text`, qui n'existe pas ;
+#   - CA-15 le compteur d'en-tête : le badge est un `Text` imbriqué dans un `Surface`, et le
+#     sélecteur combiné texte + testTag du bouton ne matche pas. Le cibler seul par son texte
+#     serait ambigu (l'accueil est plein de « 1 »). À porter par un scénario dédié, après avoir
+#     ajouté un `testTag` stable sur le badge.
 #
 # Pourquoi une passerelle HTTP (montage « D ») :
 #   Maestro 2.8.0 n'a aucune commande shell, et son moteur JS est en bac à sable —
@@ -31,17 +41,25 @@ tags:
 #   2. passerelle démarrée :
 #        python scripts/adb_notification_bridge.py
 #
-# L'autorisation d'écoute des notifications n'est PAS une précondition : la passerelle l'accorde
-# elle-même avant de poster, de façon idempotente. C'est délibéré et c'est ce qui rend ce flow
-# portable. L'accorder par l'UI obligerait à taper « Autoriser l'accès aux notifications » puis à
-# piloter l'écran système « Accès aux notifications » — une liste d'applications dont la mise en
-# page, l'ordre et les libellés changent entre One UI, un Pixel et un émulateur. Par adb, la
-# commande est la même partout.
+# L'autorisation d'écoute n'est PAS une précondition manuelle : la passerelle l'accorde elle-même
+# avant de poster, de façon idempotente. Ce n'est pas un confort, c'est **obligatoire** — mesuré le
+# 14/09/2026 : `clearState` (pm clear) **révoque** l'autorisation d'écoute. Elle est donc à rétablir
+# à chaque exécution du flow, juste après la première étape.
 #
-# Deux mesures faites le 14/09/2026 sur SM-S938B / Android 16 et encodées dans la passerelle :
+# Et c'est ce qui rend ce flow portable : l'accorder par l'UI obligerait à taper « Autoriser
+# l'accès aux notifications » puis à piloter l'écran système « Accès aux notifications » — une
+# liste d'applications dont la mise en page, l'ordre et les libellés changent entre One UI, un
+# Pixel et un émulateur. Par adb, la commande est la même partout.
+#
+# Trois mesures faites sur SM-S938B / Android 16, encodées dans la passerelle :
+#   - `clearState` révoque l'autorisation d'écoute ;
 #   - l'écriture du réglage est asynchrone (1 à 2 s), une relecture immédiate ment ;
-#   - l'écran de réglages de LOPBudge ne reflète jamais l'état réel de l'autorisation — le bouton
-#     est affiché inconditionnellement — donc l'UI ne peut pas servir d'oracle sur ce point.
+#   - le réglage accordé ne suffit pas, Android doit encore **lier** le service (< 1 s) : poster
+#     avant la liaison perdrait la notification en silence.
+#
+# L'écran de réglages de LOPBudge ne reflète jamais l'état réel de l'autorisation — le bouton
+# « Autoriser l'accès » est affiché inconditionnellement — donc l'UI ne peut pas servir d'oracle
+# sur ce point. Écart vis-à-vis de CA-02 et CA-03, à ouvrir en anomalie.
 #
 # Hors périmètre (ne pas ajouter ici) :
 #   - L'analyse du texte (montant, libellé, carte, clé) : portée par TC-108, en unitaire.
@@ -76,24 +94,20 @@ tags:
       NOTIF_TEXT: "6,50 € avec la carte Curve Card ••6088"
       NOTIF_TAG: "TC109"
 
-# La passerelle a-t-elle réellement posté ? Sans ce garde-fou, une passerelle éteinte
-# rendrait l'assertion finale rouge pour une raison qui n'a rien de métier.
-- assertTrue: ${output.notificationPosted}
+# `post_notification.js` lève une exception détaillée si la passerelle est éteinte ou refuse de
+# poster — pas besoin d'assertion ici, et le message est lisible directement dans le rapport.
 
-# Then le compteur d'en-tête signale la proposition non traitée (CA-15)
-- extendedWaitUntil:
-    visible:
-      text: "1"
-      id: "nav.detected.button"
-    timeout: 15000
-
-# Then la boîte de réception contient la proposition, au nom du commerçant (CA-06, CA-07)
+# Then on part directement dans la boîte de réception
 - tapOn:
     id: "nav.detected.button"
 - assertVisible:
     id: "screen.detected"
-- assertVisible: "MG ORGANISATION"
 
-# Et le libellé ne véhicule ni le montant ni la carte (CA-07)
-- assertNotVisible: "6,50 €"
-- assertNotVisible: "Curve Card ••6088"
+# Then la proposition détectée y apparaît, au nom du commerçant (CA-06)
+#
+# L'attente est ici, et pas avant le tap : entre la notification système et l'écriture en base il
+# s'écoule un délai variable, et l'écran observe la table. On peut donc ouvrir la boîte vide et
+# laisser la ligne arriver toute seule, ce qui évite d'attendre sur un élément de l'accueil.
+- extendedWaitUntil:
+    visible: "MG ORGANISATION"
+    timeout: 20000
