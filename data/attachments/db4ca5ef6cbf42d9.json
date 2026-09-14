@@ -1,0 +1,2537 @@
+[ {
+  "command" : {
+    "defineVariablesCommand" : {
+      "env" : {
+        "MAESTRO_DRIVER_STARTUP_TIMEOUT" : "600000",
+        "MAESTRO_CLI_NO_ANALYTICS" : "true",
+        "MAESTRO_FILENAME" : "TC-81-1_Creation_Ponctuelle",
+        "MAESTRO_DEVICE_UDID" : "emulator-5554",
+        "MAESTRO_SHARD_ID" : "1",
+        "MAESTRO_SHARD_INDEX" : "0"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421186551,
+    "duration" : 0,
+    "sequenceNumber" : 0,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "defineVariablesCommand" : {
+        "env" : {
+          "MAESTRO_DRIVER_STARTUP_TIMEOUT" : "600000",
+          "MAESTRO_CLI_NO_ANALYTICS" : "true",
+          "MAESTRO_FILENAME" : "TC-81-1_Creation_Ponctuelle",
+          "MAESTRO_DEVICE_UDID" : "emulator-5554",
+          "MAESTRO_SHARD_ID" : "1",
+          "MAESTRO_SHARD_INDEX" : "0"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "applyConfigurationCommand" : {
+      "config" : {
+        "appId" : "com.lop.budget",
+        "name" : "TC-81-1 - Création ponctuelle visible liste et détail",
+        "tags" : [ "tc-81", "creation" ]
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421186551,
+    "duration" : 1,
+    "sequenceNumber" : 1,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "applyConfigurationCommand" : {
+        "config" : {
+          "appId" : "com.lop.budget",
+          "name" : "TC-81-1 - Création ponctuelle visible liste et détail",
+          "tags" : [ "tc-81", "creation" ]
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "applyConfigurationCommand" : {
+          "config" : {
+            "appId" : "com.lop.budget"
+          },
+          "optional" : false
+        }
+      }, {
+        "runScriptCommand" : {
+          "script" : "// dates.js\n// Calcule les noms courts/complets, numéros de mois relatifs et les années correspondantes\n// Version hautement compatible (var)\n\nvar monthLabels = [\n    \"Janv.\", \"Févr.\", \"Mars\", \"Avr.\", \"Mai\", \"Juin\",\n    \"Juil.\", \"Août\", \"Sept.\", \"Oct.\", \"Nov.\", \"Déc.\"\n];\n\nvar monthLabelsFull = [\n    \"Janvier\", \"Février\", \"Mars\", \"Avril\", \"Mai\", \"Juin\",\n    \"Juillet\", \"Août\", \"Septembre\", \"Octobre\", \"Novembre\", \"Décembre\"\n];\n\nfunction formatMonthNumber(monthIndex) {\n    // monthIndex va de 0 à 11, on ajoute 1 pour avoir de 1 à 12\n    var num = monthIndex + 1;\n    return num < 10 ? \"0\" + num : \"\" + num;\n}\n\nfunction getRelativeDate(offsetMonths) {\n    var d = new Date();\n    d.setDate(15);\n    d.setMonth(d.getMonth() + offsetMonths);\n\n    var monthIndex = d.getMonth();\n\n    return {\n        month: monthLabels[monthIndex],\n        monthFull: monthLabelsFull[monthIndex].toLowerCase(),\n        monthNumber: formatMonthNumber(monthIndex),\n        year: d.getFullYear()\n    };\n}\n\nvar prevDate = getRelativeDate(-1);\nvar currDate = getRelativeDate(0);\nvar nextDate = getRelativeDate(1);\n\n// Exportation EXPLICITE via l'objet global output de Maestro\noutput.PREV_MONTH_NAME = prevDate.month;\noutput.PREV_MONTH_FULL_NAME = prevDate.monthFull;\noutput.PREV_MONTH_NUM = prevDate.monthNumber;\noutput.PREV_YEAR = prevDate.year;\n\noutput.CURRENT_MONTH_NAME = currDate.month;\noutput.CURRENT_MONTH_FULL_NAME = currDate.monthFull;\noutput.CURRENT_MONTH_NUM = currDate.monthNumber;\noutput.CURRENT_YEAR = currDate.year;\n\noutput.NEXT_MONTH_NAME = nextDate.month;\noutput.NEXT_MONTH_FULL_NAME = nextDate.monthFull;\noutput.NEXT_MONTH_NUM = nextDate.monthNumber;\noutput.NEXT_YEAR = nextDate.year;\n\n// Log pour la console Maestro\nconsole.log(\"Maestro Dates Initialized: Prev=\" + output.PREV_MONTH_FULL_NAME + \" / \" + output.PREV_MONTH_NAME + \" / \" + output.PREV_MONTH_NUM + \" (\" + output.PREV_YEAR + \")\");\nconsole.log(\"Maestro Dates Initialized: Curr=\" + output.CURRENT_MONTH_FULL_NAME + \" / \" + output.CURRENT_MONTH_NAME + \" / \" + output.CURRENT_MONTH_NUM + \" (\" + output.CURRENT_YEAR + \")\");\nconsole.log(\"Maestro Dates Initialized: Next=\" + output.NEXT_MONTH_FULL_NAME + \" / \" + output.NEXT_MONTH_NAME + \" / \" + output.NEXT_MONTH_NUM + \" (\" + output.NEXT_YEAR + \")\");",
+          "sourceDescription" : "../../scripts/dates.js",
+          "optional" : false,
+          "scriptDir" : "/home/runner/work/LOPBudge/LOPBudge/Maestro/scripts"
+        }
+      }, {
+        "launchAppCommand" : {
+          "appId" : "com.lop.budget",
+          "clearState" : true,
+          "optional" : false
+        }
+      }, {
+        "runFlowCommand" : {
+          "commands" : [ {
+            "applyConfigurationCommand" : {
+              "config" : {
+                "appId" : "com.lop.budget"
+              },
+              "optional" : false
+            }
+          }, {
+            "runFlowCommand" : {
+              "commands" : [ {
+                "scrollUntilVisible" : {
+                  "selector" : {
+                    "idRegex" : "recent_transactions_see_all",
+                    "optional" : false
+                  },
+                  "direction" : "DOWN",
+                  "scrollDuration" : "40",
+                  "visibilityPercentage" : 100,
+                  "timeout" : "20000",
+                  "centerElement" : true,
+                  "originalSpeedValue" : "40",
+                  "optional" : false,
+                  "visibilityPercentageNormalized" : 1.0
+                }
+              }, {
+                "tapOnElement" : {
+                  "selector" : {
+                    "idRegex" : "recent_transactions_see_all",
+                    "optional" : false
+                  },
+                  "retryIfNoChange" : false,
+                  "waitUntilVisible" : false,
+                  "longPress" : false,
+                  "optional" : false
+                }
+              }, {
+                "assertConditionCommand" : {
+                  "condition" : {
+                    "visible" : {
+                      "idRegex" : "screen.monthly",
+                      "optional" : false
+                    }
+                  },
+                  "optional" : false
+                }
+              } ],
+              "condition" : {
+                "notVisible" : {
+                  "idRegex" : "screen.monthly",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          }, {
+            "waitForAnimationToEndCommand" : {
+              "timeout" : "5000",
+              "optional" : false
+            }
+          } ],
+          "sourceDescription" : "open_monthly_history.yaml",
+          "config" : {
+            "appId" : "com.lop.budget"
+          },
+          "optional" : false
+        }
+      } ],
+      "sourceDescription" : "../../.maestro/subflows/bootstrap_monthly.yaml",
+      "config" : {
+        "appId" : "com.lop.budget"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421186552,
+    "duration" : 9416,
+    "sequenceNumber" : 2,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "applyConfigurationCommand" : {
+            "config" : {
+              "appId" : "com.lop.budget"
+            },
+            "optional" : false
+          }
+        }, {
+          "runScriptCommand" : {
+            "script" : "// dates.js\n// Calcule les noms courts/complets, numéros de mois relatifs et les années correspondantes\n// Version hautement compatible (var)\n\nvar monthLabels = [\n    \"Janv.\", \"Févr.\", \"Mars\", \"Avr.\", \"Mai\", \"Juin\",\n    \"Juil.\", \"Août\", \"Sept.\", \"Oct.\", \"Nov.\", \"Déc.\"\n];\n\nvar monthLabelsFull = [\n    \"Janvier\", \"Février\", \"Mars\", \"Avril\", \"Mai\", \"Juin\",\n    \"Juillet\", \"Août\", \"Septembre\", \"Octobre\", \"Novembre\", \"Décembre\"\n];\n\nfunction formatMonthNumber(monthIndex) {\n    // monthIndex va de 0 à 11, on ajoute 1 pour avoir de 1 à 12\n    var num = monthIndex + 1;\n    return num < 10 ? \"0\" + num : \"\" + num;\n}\n\nfunction getRelativeDate(offsetMonths) {\n    var d = new Date();\n    d.setDate(15);\n    d.setMonth(d.getMonth() + offsetMonths);\n\n    var monthIndex = d.getMonth();\n\n    return {\n        month: monthLabels[monthIndex],\n        monthFull: monthLabelsFull[monthIndex].toLowerCase(),\n        monthNumber: formatMonthNumber(monthIndex),\n        year: d.getFullYear()\n    };\n}\n\nvar prevDate = getRelativeDate(-1);\nvar currDate = getRelativeDate(0);\nvar nextDate = getRelativeDate(1);\n\n// Exportation EXPLICITE via l'objet global output de Maestro\noutput.PREV_MONTH_NAME = prevDate.month;\noutput.PREV_MONTH_FULL_NAME = prevDate.monthFull;\noutput.PREV_MONTH_NUM = prevDate.monthNumber;\noutput.PREV_YEAR = prevDate.year;\n\noutput.CURRENT_MONTH_NAME = currDate.month;\noutput.CURRENT_MONTH_FULL_NAME = currDate.monthFull;\noutput.CURRENT_MONTH_NUM = currDate.monthNumber;\noutput.CURRENT_YEAR = currDate.year;\n\noutput.NEXT_MONTH_NAME = nextDate.month;\noutput.NEXT_MONTH_FULL_NAME = nextDate.monthFull;\noutput.NEXT_MONTH_NUM = nextDate.monthNumber;\noutput.NEXT_YEAR = nextDate.year;\n\n// Log pour la console Maestro\nconsole.log(\"Maestro Dates Initialized: Prev=\" + output.PREV_MONTH_FULL_NAME + \" / \" + output.PREV_MONTH_NAME + \" / \" + output.PREV_MONTH_NUM + \" (\" + output.PREV_YEAR + \")\");\nconsole.log(\"Maestro Dates Initialized: Curr=\" + output.CURRENT_MONTH_FULL_NAME + \" / \" + output.CURRENT_MONTH_NAME + \" / \" + output.CURRENT_MONTH_NUM + \" (\" + output.CURRENT_YEAR + \")\");\nconsole.log(\"Maestro Dates Initialized: Next=\" + output.NEXT_MONTH_FULL_NAME + \" / \" + output.NEXT_MONTH_NAME + \" / \" + output.NEXT_MONTH_NUM + \" (\" + output.NEXT_YEAR + \")\");",
+            "sourceDescription" : "../../scripts/dates.js",
+            "optional" : false,
+            "scriptDir" : "/home/runner/work/LOPBudge/LOPBudge/Maestro/scripts"
+          }
+        }, {
+          "launchAppCommand" : {
+            "appId" : "com.lop.budget",
+            "clearState" : true,
+            "optional" : false
+          }
+        }, {
+          "runFlowCommand" : {
+            "commands" : [ {
+              "applyConfigurationCommand" : {
+                "config" : {
+                  "appId" : "com.lop.budget"
+                },
+                "optional" : false
+              }
+            }, {
+              "runFlowCommand" : {
+                "commands" : [ {
+                  "scrollUntilVisible" : {
+                    "selector" : {
+                      "idRegex" : "recent_transactions_see_all",
+                      "optional" : false
+                    },
+                    "direction" : "DOWN",
+                    "scrollDuration" : "40",
+                    "visibilityPercentage" : 100,
+                    "timeout" : "20000",
+                    "centerElement" : true,
+                    "originalSpeedValue" : "40",
+                    "optional" : false,
+                    "visibilityPercentageNormalized" : 1.0
+                  }
+                }, {
+                  "tapOnElement" : {
+                    "selector" : {
+                      "idRegex" : "recent_transactions_see_all",
+                      "optional" : false
+                    },
+                    "retryIfNoChange" : false,
+                    "waitUntilVisible" : false,
+                    "longPress" : false,
+                    "optional" : false
+                  }
+                }, {
+                  "assertConditionCommand" : {
+                    "condition" : {
+                      "visible" : {
+                        "idRegex" : "screen.monthly",
+                        "optional" : false
+                      }
+                    },
+                    "optional" : false
+                  }
+                } ],
+                "condition" : {
+                  "notVisible" : {
+                    "idRegex" : "screen.monthly",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            }, {
+              "waitForAnimationToEndCommand" : {
+                "timeout" : "5000",
+                "optional" : false
+              }
+            } ],
+            "sourceDescription" : "open_monthly_history.yaml",
+            "config" : {
+              "appId" : "com.lop.budget"
+            },
+            "optional" : false
+          }
+        } ],
+        "sourceDescription" : "../../.maestro/subflows/bootstrap_monthly.yaml",
+        "config" : {
+          "appId" : "com.lop.budget"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "applyConfigurationCommand" : {
+      "config" : {
+        "appId" : "com.lop.budget"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421186552,
+    "duration" : 0,
+    "sequenceNumber" : 3,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "applyConfigurationCommand" : {
+        "config" : {
+          "appId" : "com.lop.budget"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runScriptCommand" : {
+      "script" : "// dates.js\n// Calcule les noms courts/complets, numéros de mois relatifs et les années correspondantes\n// Version hautement compatible (var)\n\nvar monthLabels = [\n    \"Janv.\", \"Févr.\", \"Mars\", \"Avr.\", \"Mai\", \"Juin\",\n    \"Juil.\", \"Août\", \"Sept.\", \"Oct.\", \"Nov.\", \"Déc.\"\n];\n\nvar monthLabelsFull = [\n    \"Janvier\", \"Février\", \"Mars\", \"Avril\", \"Mai\", \"Juin\",\n    \"Juillet\", \"Août\", \"Septembre\", \"Octobre\", \"Novembre\", \"Décembre\"\n];\n\nfunction formatMonthNumber(monthIndex) {\n    // monthIndex va de 0 à 11, on ajoute 1 pour avoir de 1 à 12\n    var num = monthIndex + 1;\n    return num < 10 ? \"0\" + num : \"\" + num;\n}\n\nfunction getRelativeDate(offsetMonths) {\n    var d = new Date();\n    d.setDate(15);\n    d.setMonth(d.getMonth() + offsetMonths);\n\n    var monthIndex = d.getMonth();\n\n    return {\n        month: monthLabels[monthIndex],\n        monthFull: monthLabelsFull[monthIndex].toLowerCase(),\n        monthNumber: formatMonthNumber(monthIndex),\n        year: d.getFullYear()\n    };\n}\n\nvar prevDate = getRelativeDate(-1);\nvar currDate = getRelativeDate(0);\nvar nextDate = getRelativeDate(1);\n\n// Exportation EXPLICITE via l'objet global output de Maestro\noutput.PREV_MONTH_NAME = prevDate.month;\noutput.PREV_MONTH_FULL_NAME = prevDate.monthFull;\noutput.PREV_MONTH_NUM = prevDate.monthNumber;\noutput.PREV_YEAR = prevDate.year;\n\noutput.CURRENT_MONTH_NAME = currDate.month;\noutput.CURRENT_MONTH_FULL_NAME = currDate.monthFull;\noutput.CURRENT_MONTH_NUM = currDate.monthNumber;\noutput.CURRENT_YEAR = currDate.year;\n\noutput.NEXT_MONTH_NAME = nextDate.month;\noutput.NEXT_MONTH_FULL_NAME = nextDate.monthFull;\noutput.NEXT_MONTH_NUM = nextDate.monthNumber;\noutput.NEXT_YEAR = nextDate.year;\n\n// Log pour la console Maestro\nconsole.log(\"Maestro Dates Initialized: Prev=\" + output.PREV_MONTH_FULL_NAME + \" / \" + output.PREV_MONTH_NAME + \" / \" + output.PREV_MONTH_NUM + \" (\" + output.PREV_YEAR + \")\");\nconsole.log(\"Maestro Dates Initialized: Curr=\" + output.CURRENT_MONTH_FULL_NAME + \" / \" + output.CURRENT_MONTH_NAME + \" / \" + output.CURRENT_MONTH_NUM + \" (\" + output.CURRENT_YEAR + \")\");\nconsole.log(\"Maestro Dates Initialized: Next=\" + output.NEXT_MONTH_FULL_NAME + \" / \" + output.NEXT_MONTH_NAME + \" / \" + output.NEXT_MONTH_NUM + \" (\" + output.NEXT_YEAR + \")\");",
+      "sourceDescription" : "../../scripts/dates.js",
+      "optional" : false,
+      "scriptDir" : "/home/runner/work/LOPBudge/LOPBudge/Maestro/scripts"
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421186552,
+    "duration" : 23,
+    "sequenceNumber" : 4,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "runScriptCommand" : {
+        "script" : "// dates.js\n// Calcule les noms courts/complets, numéros de mois relatifs et les années correspondantes\n// Version hautement compatible (var)\n\nvar monthLabels = [\n    \"Janv.\", \"Févr.\", \"Mars\", \"Avr.\", \"Mai\", \"Juin\",\n    \"Juil.\", \"Août\", \"Sept.\", \"Oct.\", \"Nov.\", \"Déc.\"\n];\n\nvar monthLabelsFull = [\n    \"Janvier\", \"Février\", \"Mars\", \"Avril\", \"Mai\", \"Juin\",\n    \"Juillet\", \"Août\", \"Septembre\", \"Octobre\", \"Novembre\", \"Décembre\"\n];\n\nfunction formatMonthNumber(monthIndex) {\n    // monthIndex va de 0 à 11, on ajoute 1 pour avoir de 1 à 12\n    var num = monthIndex + 1;\n    return num < 10 ? \"0\" + num : \"\" + num;\n}\n\nfunction getRelativeDate(offsetMonths) {\n    var d = new Date();\n    d.setDate(15);\n    d.setMonth(d.getMonth() + offsetMonths);\n\n    var monthIndex = d.getMonth();\n\n    return {\n        month: monthLabels[monthIndex],\n        monthFull: monthLabelsFull[monthIndex].toLowerCase(),\n        monthNumber: formatMonthNumber(monthIndex),\n        year: d.getFullYear()\n    };\n}\n\nvar prevDate = getRelativeDate(-1);\nvar currDate = getRelativeDate(0);\nvar nextDate = getRelativeDate(1);\n\n// Exportation EXPLICITE via l'objet global output de Maestro\noutput.PREV_MONTH_NAME = prevDate.month;\noutput.PREV_MONTH_FULL_NAME = prevDate.monthFull;\noutput.PREV_MONTH_NUM = prevDate.monthNumber;\noutput.PREV_YEAR = prevDate.year;\n\noutput.CURRENT_MONTH_NAME = currDate.month;\noutput.CURRENT_MONTH_FULL_NAME = currDate.monthFull;\noutput.CURRENT_MONTH_NUM = currDate.monthNumber;\noutput.CURRENT_YEAR = currDate.year;\n\noutput.NEXT_MONTH_NAME = nextDate.month;\noutput.NEXT_MONTH_FULL_NAME = nextDate.monthFull;\noutput.NEXT_MONTH_NUM = nextDate.monthNumber;\noutput.NEXT_YEAR = nextDate.year;\n\n// Log pour la console Maestro\nconsole.log(\"Maestro Dates Initialized: Prev=\" + output.PREV_MONTH_FULL_NAME + \" / \" + output.PREV_MONTH_NAME + \" / \" + output.PREV_MONTH_NUM + \" (\" + output.PREV_YEAR + \")\");\nconsole.log(\"Maestro Dates Initialized: Curr=\" + output.CURRENT_MONTH_FULL_NAME + \" / \" + output.CURRENT_MONTH_NAME + \" / \" + output.CURRENT_MONTH_NUM + \" (\" + output.CURRENT_YEAR + \")\");\nconsole.log(\"Maestro Dates Initialized: Next=\" + output.NEXT_MONTH_FULL_NAME + \" / \" + output.NEXT_MONTH_NAME + \" / \" + output.NEXT_MONTH_NUM + \" (\" + output.NEXT_YEAR + \")\");",
+        "sourceDescription" : "../../scripts/dates.js",
+        "optional" : false,
+        "scriptDir" : "/home/runner/work/LOPBudge/LOPBudge/Maestro/scripts"
+      }
+    }
+  }
+}, {
+  "command" : {
+    "launchAppCommand" : {
+      "appId" : "com.lop.budget",
+      "clearState" : true,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421186575,
+    "duration" : 1457,
+    "sequenceNumber" : 5,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "launchAppCommand" : {
+        "appId" : "com.lop.budget",
+        "clearState" : true,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "applyConfigurationCommand" : {
+          "config" : {
+            "appId" : "com.lop.budget"
+          },
+          "optional" : false
+        }
+      }, {
+        "runFlowCommand" : {
+          "commands" : [ {
+            "scrollUntilVisible" : {
+              "selector" : {
+                "idRegex" : "recent_transactions_see_all",
+                "optional" : false
+              },
+              "direction" : "DOWN",
+              "scrollDuration" : "40",
+              "visibilityPercentage" : 100,
+              "timeout" : "20000",
+              "centerElement" : true,
+              "originalSpeedValue" : "40",
+              "optional" : false,
+              "visibilityPercentageNormalized" : 1.0
+            }
+          }, {
+            "tapOnElement" : {
+              "selector" : {
+                "idRegex" : "recent_transactions_see_all",
+                "optional" : false
+              },
+              "retryIfNoChange" : false,
+              "waitUntilVisible" : false,
+              "longPress" : false,
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "idRegex" : "screen.monthly",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          } ],
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "screen.monthly",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "waitForAnimationToEndCommand" : {
+          "timeout" : "5000",
+          "optional" : false
+        }
+      } ],
+      "sourceDescription" : "open_monthly_history.yaml",
+      "config" : {
+        "appId" : "com.lop.budget"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421188032,
+    "duration" : 7936,
+    "sequenceNumber" : 6,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "applyConfigurationCommand" : {
+            "config" : {
+              "appId" : "com.lop.budget"
+            },
+            "optional" : false
+          }
+        }, {
+          "runFlowCommand" : {
+            "commands" : [ {
+              "scrollUntilVisible" : {
+                "selector" : {
+                  "idRegex" : "recent_transactions_see_all",
+                  "optional" : false
+                },
+                "direction" : "DOWN",
+                "scrollDuration" : "40",
+                "visibilityPercentage" : 100,
+                "timeout" : "20000",
+                "centerElement" : true,
+                "originalSpeedValue" : "40",
+                "optional" : false,
+                "visibilityPercentageNormalized" : 1.0
+              }
+            }, {
+              "tapOnElement" : {
+                "selector" : {
+                  "idRegex" : "recent_transactions_see_all",
+                  "optional" : false
+                },
+                "retryIfNoChange" : false,
+                "waitUntilVisible" : false,
+                "longPress" : false,
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "idRegex" : "screen.monthly",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            } ],
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "screen.monthly",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "waitForAnimationToEndCommand" : {
+            "timeout" : "5000",
+            "optional" : false
+          }
+        } ],
+        "sourceDescription" : "open_monthly_history.yaml",
+        "config" : {
+          "appId" : "com.lop.budget"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "applyConfigurationCommand" : {
+      "config" : {
+        "appId" : "com.lop.budget"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421188032,
+    "duration" : 0,
+    "sequenceNumber" : 7,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "applyConfigurationCommand" : {
+        "config" : {
+          "appId" : "com.lop.budget"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "scrollUntilVisible" : {
+          "selector" : {
+            "idRegex" : "recent_transactions_see_all",
+            "optional" : false
+          },
+          "direction" : "DOWN",
+          "scrollDuration" : "40",
+          "visibilityPercentage" : 100,
+          "timeout" : "20000",
+          "centerElement" : true,
+          "originalSpeedValue" : "40",
+          "optional" : false,
+          "visibilityPercentageNormalized" : 1.0
+        }
+      }, {
+        "tapOnElement" : {
+          "selector" : {
+            "idRegex" : "recent_transactions_see_all",
+            "optional" : false
+          },
+          "retryIfNoChange" : false,
+          "waitUntilVisible" : false,
+          "longPress" : false,
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "screen.monthly",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      } ],
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "screen.monthly",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421188032,
+    "duration" : 7449,
+    "sequenceNumber" : 8,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "scrollUntilVisible" : {
+            "selector" : {
+              "idRegex" : "recent_transactions_see_all",
+              "optional" : false
+            },
+            "direction" : "DOWN",
+            "scrollDuration" : "40",
+            "visibilityPercentage" : 100,
+            "timeout" : "20000",
+            "centerElement" : true,
+            "originalSpeedValue" : "40",
+            "optional" : false,
+            "visibilityPercentageNormalized" : 1.0
+          }
+        }, {
+          "tapOnElement" : {
+            "selector" : {
+              "idRegex" : "recent_transactions_see_all",
+              "optional" : false
+            },
+            "retryIfNoChange" : false,
+            "waitUntilVisible" : false,
+            "longPress" : false,
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "screen.monthly",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        } ],
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "screen.monthly",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "scrollUntilVisible" : {
+      "selector" : {
+        "idRegex" : "recent_transactions_see_all",
+        "optional" : false
+      },
+      "direction" : "DOWN",
+      "scrollDuration" : "40",
+      "visibilityPercentage" : 100,
+      "timeout" : "20000",
+      "centerElement" : true,
+      "originalSpeedValue" : "40",
+      "optional" : false,
+      "visibilityPercentageNormalized" : 1.0
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421188613,
+    "duration" : 4187,
+    "sequenceNumber" : 9,
+    "depth" : 3,
+    "evaluatedCommand" : {
+      "scrollUntilVisible" : {
+        "selector" : {
+          "idRegex" : "recent_transactions_see_all",
+          "optional" : false
+        },
+        "direction" : "DOWN",
+        "scrollDuration" : "601",
+        "visibilityPercentage" : 100,
+        "timeout" : "20000",
+        "centerElement" : true,
+        "originalSpeedValue" : "40",
+        "optional" : false,
+        "visibilityPercentageNormalized" : 1.0
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "recent_transactions_see_all",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421192800,
+    "duration" : 2569,
+    "sequenceNumber" : 10,
+    "depth" : 3,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "recent_transactions_see_all",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "screen.monthly",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421195369,
+    "duration" : 111,
+    "sequenceNumber" : 11,
+    "depth" : 3,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "screen.monthly",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "waitForAnimationToEndCommand" : {
+      "timeout" : "5000",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421195481,
+    "duration" : 487,
+    "sequenceNumber" : 12,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "waitForAnimationToEndCommand" : {
+        "timeout" : "5000",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "applyConfigurationCommand" : {
+          "config" : {
+            "appId" : "com.lop.budget"
+          },
+          "optional" : false
+        }
+      }, {
+        "repeatCommand" : {
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "home.month.picker",
+              "optional" : false
+            }
+          },
+          "commands" : [ {
+            "tapOnElement" : {
+              "selector" : {
+                "idRegex" : "common.btn.back",
+                "optional" : false
+              },
+              "retryIfNoChange" : false,
+              "waitUntilVisible" : false,
+              "longPress" : false,
+              "optional" : false
+            }
+          } ],
+          "optional" : false
+        }
+      } ],
+      "sourceDescription" : "../../.maestro/subflows/go_to_home.yaml",
+      "config" : {
+        "appId" : "com.lop.budget"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421195968,
+    "duration" : 10088,
+    "sequenceNumber" : 13,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "applyConfigurationCommand" : {
+            "config" : {
+              "appId" : "com.lop.budget"
+            },
+            "optional" : false
+          }
+        }, {
+          "repeatCommand" : {
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "home.month.picker",
+                "optional" : false
+              }
+            },
+            "commands" : [ {
+              "tapOnElement" : {
+                "selector" : {
+                  "idRegex" : "common.btn.back",
+                  "optional" : false
+                },
+                "retryIfNoChange" : false,
+                "waitUntilVisible" : false,
+                "longPress" : false,
+                "optional" : false
+              }
+            } ],
+            "optional" : false
+          }
+        } ],
+        "sourceDescription" : "../../.maestro/subflows/go_to_home.yaml",
+        "config" : {
+          "appId" : "com.lop.budget"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "applyConfigurationCommand" : {
+      "config" : {
+        "appId" : "com.lop.budget"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421195969,
+    "duration" : 0,
+    "sequenceNumber" : 14,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "applyConfigurationCommand" : {
+        "config" : {
+          "appId" : "com.lop.budget"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "repeatCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "home.month.picker",
+          "optional" : false
+        }
+      },
+      "commands" : [ {
+        "tapOnElement" : {
+          "selector" : {
+            "idRegex" : "common.btn.back",
+            "optional" : false
+          },
+          "retryIfNoChange" : false,
+          "waitUntilVisible" : false,
+          "longPress" : false,
+          "optional" : false
+        }
+      } ],
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421195969,
+    "duration" : 10087,
+    "sequenceNumber" : 15,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "repeatCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "home.month.picker",
+            "optional" : false
+          }
+        },
+        "commands" : [ {
+          "tapOnElement" : {
+            "selector" : {
+              "idRegex" : "common.btn.back",
+              "optional" : false
+            },
+            "retryIfNoChange" : false,
+            "waitUntilVisible" : false,
+            "longPress" : false,
+            "optional" : false
+          }
+        } ],
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "common.btn.back",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421197004,
+    "duration" : 2040,
+    "sequenceNumber" : 16,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "common.btn.back",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "evalScriptCommand" : {
+      "scriptString" : "console.log(\"TC-81-1 : ouverture du menu d'ajout puis choix Dépense\")\n",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421206056,
+    "duration" : 0,
+    "sequenceNumber" : 17,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "evalScriptCommand" : {
+        "scriptString" : "console.log(\"TC-81-1 : ouverture du menu d'ajout puis choix Dépense\")\n",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "nav.add.button",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421206056,
+    "duration" : 2114,
+    "sequenceNumber" : 18,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "nav.add.button",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "add.action.sheet",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421208170,
+    "duration" : 97,
+    "sequenceNumber" : 19,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "add.action.sheet",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "add.action.expense",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421208268,
+    "duration" : 3332,
+    "sequenceNumber" : 20,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "add.action.expense",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "Choisir une catégorie",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421211600,
+    "duration" : 64,
+    "sequenceNumber" : 21,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "Choisir une catégorie",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "Alimentation",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421211665,
+    "duration" : 68,
+    "sequenceNumber" : 22,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "Alimentation",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "textRegex" : "Revenus",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421211733,
+    "duration" : 582,
+    "sequenceNumber" : 23,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "textRegex" : "Revenus",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "evalScriptCommand" : {
+      "scriptString" : "console.log(\"TC-81-1 : CA-01 vérifié — le picker n'expose que des catégories de dépense\")\n",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421212315,
+    "duration" : 1,
+    "sequenceNumber" : 24,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "evalScriptCommand" : {
+        "scriptString" : "console.log(\"TC-81-1 : CA-01 vérifié — le picker n'expose que des catégories de dépense\")\n",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "textRegex" : "Chercher une catégorie...",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421212316,
+    "duration" : 2872,
+    "sequenceNumber" : 25,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "textRegex" : "Chercher une catégorie...",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "inputTextCommand" : {
+      "text" : "Pharmacie",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421215188,
+    "duration" : 3448,
+    "sequenceNumber" : 26,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "inputTextCommand" : {
+        "text" : "Pharmacie",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "hideKeyboardCommand" : {
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421218637,
+    "duration" : 846,
+    "sequenceNumber" : 27,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "hideKeyboardCommand" : {
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "textRegex" : "Pharmacie",
+        "index" : "1",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421219483,
+    "duration" : 2957,
+    "sequenceNumber" : 28,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "textRegex" : "Pharmacie",
+          "index" : "1",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "screen.transaction.edit",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421222440,
+    "duration" : 109,
+    "sequenceNumber" : 29,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "screen.transaction.edit",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "transaction.edit.type.expense",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421222549,
+    "duration" : 151,
+    "sequenceNumber" : 30,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "transaction.edit.type.expense",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "transaction.edit.field.title",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421222700,
+    "duration" : 3206,
+    "sequenceNumber" : 31,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "transaction.edit.field.title",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "inputTextCommand" : {
+      "text" : "TC-create-ponctuel",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421225906,
+    "duration" : 4416,
+    "sequenceNumber" : 32,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "inputTextCommand" : {
+        "text" : "TC-create-ponctuel",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "hideKeyboardCommand" : {
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421230322,
+    "duration" : 950,
+    "sequenceNumber" : 33,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "hideKeyboardCommand" : {
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "transaction.edit.field.amount",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421231272,
+    "duration" : 1881,
+    "sequenceNumber" : 34,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "transaction.edit.field.amount",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "inputTextCommand" : {
+      "text" : "12.34",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421233153,
+    "duration" : 1542,
+    "sequenceNumber" : 35,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "inputTextCommand" : {
+        "text" : "12.34",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "hideKeyboardCommand" : {
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421234695,
+    "duration" : 899,
+    "sequenceNumber" : 36,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "hideKeyboardCommand" : {
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "scrollUntilVisible" : {
+      "selector" : {
+        "idRegex" : "transaction.edit.block.recurrence",
+        "optional" : false
+      },
+      "direction" : "DOWN",
+      "scrollDuration" : "40",
+      "visibilityPercentage" : 100,
+      "timeout" : "20000",
+      "centerElement" : false,
+      "originalSpeedValue" : "40",
+      "optional" : false,
+      "visibilityPercentageNormalized" : 1.0
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421235595,
+    "duration" : 3097,
+    "sequenceNumber" : 37,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "scrollUntilVisible" : {
+        "selector" : {
+          "idRegex" : "transaction.edit.block.recurrence",
+          "optional" : false
+        },
+        "direction" : "DOWN",
+        "scrollDuration" : "601",
+        "visibilityPercentage" : 100,
+        "timeout" : "20000",
+        "centerElement" : false,
+        "originalSpeedValue" : "40",
+        "optional" : false,
+        "visibilityPercentageNormalized" : 1.0
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "Ne se répète pas",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421238692,
+    "duration" : 100,
+    "sequenceNumber" : 38,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "Ne se répète pas",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "common.btn.save",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421238792,
+    "duration" : 2492,
+    "sequenceNumber" : 39,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "common.btn.save",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "screen.transaction.edit",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421241284,
+    "duration" : 639,
+    "sequenceNumber" : 40,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "screen.transaction.edit",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "screen.transaction.detail",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421241924,
+    "duration" : 96,
+    "sequenceNumber" : 41,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "screen.transaction.detail",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "TC-create-ponctuel",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421242020,
+    "duration" : 100,
+    "sequenceNumber" : 42,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "TC-create-ponctuel",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : ".*12,34.*",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421242120,
+    "duration" : 97,
+    "sequenceNumber" : 43,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : ".*12,34.*",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "evalScriptCommand" : {
+      "scriptString" : "console.log(\"TC-81-1 : CA-11 vérifié sur l'écran de détail\")\n",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421242217,
+    "duration" : 0,
+    "sequenceNumber" : 44,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "evalScriptCommand" : {
+        "scriptString" : "console.log(\"TC-81-1 : CA-11 vérifié sur l'écran de détail\")\n",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "transaction.detail.edit",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421242217,
+    "duration" : 2052,
+    "sequenceNumber" : 45,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "transaction.detail.edit",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "screen.transaction.edit",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421244269,
+    "duration" : 112,
+    "sequenceNumber" : 46,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "screen.transaction.edit",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "recurring.edit.scope.sheet",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421244381,
+    "duration" : 566,
+    "sequenceNumber" : 47,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "recurring.edit.scope.sheet",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "evalScriptCommand" : {
+      "scriptString" : "console.log(\"TC-81-1 : CA-06 vérifié — aucune portée récurrente sur une ponctuelle\")\n",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421244947,
+    "duration" : 0,
+    "sequenceNumber" : 48,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "evalScriptCommand" : {
+        "scriptString" : "console.log(\"TC-81-1 : CA-06 vérifié — aucune portée récurrente sur une ponctuelle\")\n",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "common.btn.back",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421244947,
+    "duration" : 2093,
+    "sequenceNumber" : 49,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "common.btn.back",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "applyConfigurationCommand" : {
+          "config" : {
+            "appId" : "com.lop.budget"
+          },
+          "optional" : false
+        }
+      }, {
+        "repeatCommand" : {
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "home.month.picker",
+              "optional" : false
+            }
+          },
+          "commands" : [ {
+            "tapOnElement" : {
+              "selector" : {
+                "idRegex" : "common.btn.back",
+                "optional" : false
+              },
+              "retryIfNoChange" : false,
+              "waitUntilVisible" : false,
+              "longPress" : false,
+              "optional" : false
+            }
+          } ],
+          "optional" : false
+        }
+      } ],
+      "sourceDescription" : "../../.maestro/subflows/go_to_home.yaml",
+      "config" : {
+        "appId" : "com.lop.budget"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421247040,
+    "duration" : 9855,
+    "sequenceNumber" : 50,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "applyConfigurationCommand" : {
+            "config" : {
+              "appId" : "com.lop.budget"
+            },
+            "optional" : false
+          }
+        }, {
+          "repeatCommand" : {
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "home.month.picker",
+                "optional" : false
+              }
+            },
+            "commands" : [ {
+              "tapOnElement" : {
+                "selector" : {
+                  "idRegex" : "common.btn.back",
+                  "optional" : false
+                },
+                "retryIfNoChange" : false,
+                "waitUntilVisible" : false,
+                "longPress" : false,
+                "optional" : false
+              }
+            } ],
+            "optional" : false
+          }
+        } ],
+        "sourceDescription" : "../../.maestro/subflows/go_to_home.yaml",
+        "config" : {
+          "appId" : "com.lop.budget"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "applyConfigurationCommand" : {
+      "config" : {
+        "appId" : "com.lop.budget"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421247040,
+    "duration" : 1,
+    "sequenceNumber" : 51,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "applyConfigurationCommand" : {
+        "config" : {
+          "appId" : "com.lop.budget"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "repeatCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "home.month.picker",
+          "optional" : false
+        }
+      },
+      "commands" : [ {
+        "tapOnElement" : {
+          "selector" : {
+            "idRegex" : "common.btn.back",
+            "optional" : false
+          },
+          "retryIfNoChange" : false,
+          "waitUntilVisible" : false,
+          "longPress" : false,
+          "optional" : false
+        }
+      } ],
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421247041,
+    "duration" : 9853,
+    "sequenceNumber" : 52,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "repeatCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "home.month.picker",
+            "optional" : false
+          }
+        },
+        "commands" : [ {
+          "tapOnElement" : {
+            "selector" : {
+              "idRegex" : "common.btn.back",
+              "optional" : false
+            },
+            "retryIfNoChange" : false,
+            "waitUntilVisible" : false,
+            "longPress" : false,
+            "optional" : false
+          }
+        } ],
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "common.btn.back",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421247691,
+    "duration" : 2109,
+    "sequenceNumber" : 53,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "common.btn.back",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "applyConfigurationCommand" : {
+          "config" : {
+            "appId" : "com.lop.budget"
+          },
+          "optional" : false
+        }
+      }, {
+        "runFlowCommand" : {
+          "commands" : [ {
+            "scrollUntilVisible" : {
+              "selector" : {
+                "idRegex" : "recent_transactions_see_all",
+                "optional" : false
+              },
+              "direction" : "DOWN",
+              "scrollDuration" : "40",
+              "visibilityPercentage" : 100,
+              "timeout" : "20000",
+              "centerElement" : true,
+              "originalSpeedValue" : "40",
+              "optional" : false,
+              "visibilityPercentageNormalized" : 1.0
+            }
+          }, {
+            "tapOnElement" : {
+              "selector" : {
+                "idRegex" : "recent_transactions_see_all",
+                "optional" : false
+              },
+              "retryIfNoChange" : false,
+              "waitUntilVisible" : false,
+              "longPress" : false,
+              "optional" : false
+            }
+          }, {
+            "assertConditionCommand" : {
+              "condition" : {
+                "visible" : {
+                  "idRegex" : "screen.monthly",
+                  "optional" : false
+                }
+              },
+              "optional" : false
+            }
+          } ],
+          "condition" : {
+            "notVisible" : {
+              "idRegex" : "screen.monthly",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      }, {
+        "waitForAnimationToEndCommand" : {
+          "timeout" : "5000",
+          "optional" : false
+        }
+      } ],
+      "sourceDescription" : "../../.maestro/subflows/open_monthly_history.yaml",
+      "config" : {
+        "appId" : "com.lop.budget"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421256895,
+    "duration" : 3361,
+    "sequenceNumber" : 54,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "applyConfigurationCommand" : {
+            "config" : {
+              "appId" : "com.lop.budget"
+            },
+            "optional" : false
+          }
+        }, {
+          "runFlowCommand" : {
+            "commands" : [ {
+              "scrollUntilVisible" : {
+                "selector" : {
+                  "idRegex" : "recent_transactions_see_all",
+                  "optional" : false
+                },
+                "direction" : "DOWN",
+                "scrollDuration" : "40",
+                "visibilityPercentage" : 100,
+                "timeout" : "20000",
+                "centerElement" : true,
+                "originalSpeedValue" : "40",
+                "optional" : false,
+                "visibilityPercentageNormalized" : 1.0
+              }
+            }, {
+              "tapOnElement" : {
+                "selector" : {
+                  "idRegex" : "recent_transactions_see_all",
+                  "optional" : false
+                },
+                "retryIfNoChange" : false,
+                "waitUntilVisible" : false,
+                "longPress" : false,
+                "optional" : false
+              }
+            }, {
+              "assertConditionCommand" : {
+                "condition" : {
+                  "visible" : {
+                    "idRegex" : "screen.monthly",
+                    "optional" : false
+                  }
+                },
+                "optional" : false
+              }
+            } ],
+            "condition" : {
+              "notVisible" : {
+                "idRegex" : "screen.monthly",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        }, {
+          "waitForAnimationToEndCommand" : {
+            "timeout" : "5000",
+            "optional" : false
+          }
+        } ],
+        "sourceDescription" : "../../.maestro/subflows/open_monthly_history.yaml",
+        "config" : {
+          "appId" : "com.lop.budget"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "applyConfigurationCommand" : {
+      "config" : {
+        "appId" : "com.lop.budget"
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421256895,
+    "duration" : 0,
+    "sequenceNumber" : 55,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "applyConfigurationCommand" : {
+        "config" : {
+          "appId" : "com.lop.budget"
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "runFlowCommand" : {
+      "commands" : [ {
+        "scrollUntilVisible" : {
+          "selector" : {
+            "idRegex" : "recent_transactions_see_all",
+            "optional" : false
+          },
+          "direction" : "DOWN",
+          "scrollDuration" : "40",
+          "visibilityPercentage" : 100,
+          "timeout" : "20000",
+          "centerElement" : true,
+          "originalSpeedValue" : "40",
+          "optional" : false,
+          "visibilityPercentageNormalized" : 1.0
+        }
+      }, {
+        "tapOnElement" : {
+          "selector" : {
+            "idRegex" : "recent_transactions_see_all",
+            "optional" : false
+          },
+          "retryIfNoChange" : false,
+          "waitUntilVisible" : false,
+          "longPress" : false,
+          "optional" : false
+        }
+      }, {
+        "assertConditionCommand" : {
+          "condition" : {
+            "visible" : {
+              "idRegex" : "screen.monthly",
+              "optional" : false
+            }
+          },
+          "optional" : false
+        }
+      } ],
+      "condition" : {
+        "notVisible" : {
+          "idRegex" : "screen.monthly",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421256895,
+    "duration" : 2915,
+    "sequenceNumber" : 56,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "runFlowCommand" : {
+        "commands" : [ {
+          "scrollUntilVisible" : {
+            "selector" : {
+              "idRegex" : "recent_transactions_see_all",
+              "optional" : false
+            },
+            "direction" : "DOWN",
+            "scrollDuration" : "40",
+            "visibilityPercentage" : 100,
+            "timeout" : "20000",
+            "centerElement" : true,
+            "originalSpeedValue" : "40",
+            "optional" : false,
+            "visibilityPercentageNormalized" : 1.0
+          }
+        }, {
+          "tapOnElement" : {
+            "selector" : {
+              "idRegex" : "recent_transactions_see_all",
+              "optional" : false
+            },
+            "retryIfNoChange" : false,
+            "waitUntilVisible" : false,
+            "longPress" : false,
+            "optional" : false
+          }
+        }, {
+          "assertConditionCommand" : {
+            "condition" : {
+              "visible" : {
+                "idRegex" : "screen.monthly",
+                "optional" : false
+              }
+            },
+            "optional" : false
+          }
+        } ],
+        "condition" : {
+          "notVisible" : {
+            "idRegex" : "screen.monthly",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "scrollUntilVisible" : {
+      "selector" : {
+        "idRegex" : "recent_transactions_see_all",
+        "optional" : false
+      },
+      "direction" : "DOWN",
+      "scrollDuration" : "40",
+      "visibilityPercentage" : 100,
+      "timeout" : "20000",
+      "centerElement" : true,
+      "originalSpeedValue" : "40",
+      "optional" : false,
+      "visibilityPercentageNormalized" : 1.0
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421257546,
+    "duration" : 68,
+    "sequenceNumber" : 57,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "scrollUntilVisible" : {
+        "selector" : {
+          "idRegex" : "recent_transactions_see_all",
+          "optional" : false
+        },
+        "direction" : "DOWN",
+        "scrollDuration" : "601",
+        "visibilityPercentage" : 100,
+        "timeout" : "20000",
+        "centerElement" : true,
+        "originalSpeedValue" : "40",
+        "optional" : false,
+        "visibilityPercentageNormalized" : 1.0
+      }
+    }
+  }
+}, {
+  "command" : {
+    "tapOnElement" : {
+      "selector" : {
+        "idRegex" : "recent_transactions_see_all",
+        "optional" : false
+      },
+      "retryIfNoChange" : false,
+      "waitUntilVisible" : false,
+      "longPress" : false,
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421257614,
+    "duration" : 2095,
+    "sequenceNumber" : 58,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "tapOnElement" : {
+        "selector" : {
+          "idRegex" : "recent_transactions_see_all",
+          "optional" : false
+        },
+        "retryIfNoChange" : false,
+        "waitUntilVisible" : false,
+        "longPress" : false,
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "idRegex" : "screen.monthly",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421259709,
+    "duration" : 100,
+    "sequenceNumber" : 59,
+    "depth" : 2,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "idRegex" : "screen.monthly",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "waitForAnimationToEndCommand" : {
+      "timeout" : "5000",
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421259810,
+    "duration" : 446,
+    "sequenceNumber" : 60,
+    "depth" : 1,
+    "evaluatedCommand" : {
+      "waitForAnimationToEndCommand" : {
+        "timeout" : "5000",
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "scrollUntilVisible" : {
+      "selector" : {
+        "textRegex" : "TC-create-ponctuel",
+        "optional" : false
+      },
+      "direction" : "DOWN",
+      "scrollDuration" : "40",
+      "visibilityPercentage" : 100,
+      "timeout" : "20000",
+      "centerElement" : false,
+      "originalSpeedValue" : "40",
+      "optional" : false,
+      "visibilityPercentageNormalized" : 1.0
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421260256,
+    "duration" : 69,
+    "sequenceNumber" : 61,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "scrollUntilVisible" : {
+        "selector" : {
+          "textRegex" : "TC-create-ponctuel",
+          "optional" : false
+        },
+        "direction" : "DOWN",
+        "scrollDuration" : "601",
+        "visibilityPercentage" : 100,
+        "timeout" : "20000",
+        "centerElement" : false,
+        "originalSpeedValue" : "40",
+        "optional" : false,
+        "visibilityPercentageNormalized" : 1.0
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "visible" : {
+          "textRegex" : "TC-create-ponctuel",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421260325,
+    "duration" : 100,
+    "sequenceNumber" : 62,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "visible" : {
+            "textRegex" : "TC-create-ponctuel",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+}, {
+  "command" : {
+    "assertConditionCommand" : {
+      "condition" : {
+        "notVisible" : {
+          "textRegex" : "TC-create-ponctuel",
+          "index" : "1",
+          "optional" : false
+        }
+      },
+      "optional" : false
+    }
+  },
+  "metadata" : {
+    "status" : "COMPLETED",
+    "timestamp" : 1789421260425,
+    "duration" : 631,
+    "sequenceNumber" : 63,
+    "depth" : 0,
+    "evaluatedCommand" : {
+      "assertConditionCommand" : {
+        "condition" : {
+          "notVisible" : {
+            "textRegex" : "TC-create-ponctuel",
+            "index" : "1",
+            "optional" : false
+          }
+        },
+        "optional" : false
+      }
+    }
+  }
+} ]
