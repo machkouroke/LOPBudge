@@ -7,14 +7,14 @@ import javax.inject.Inject
 /**
  * Enregistre la transaction issue d'une proposition, et solde la proposition (US LOP-54, P-10).
  *
- * ÉCARTS CONSERVÉS PAR LA REFONTE — comportement repris tel quel de `DetectedTransactionsViewModel`,
- * à ne pas confondre avec la cible de l'US :
- * - E-4 : la proposition est marquée **ignorée** au lieu de **confirmée**, et `createdTransactionId`
- *   n'est jamais renseigné : le lien proposition -> transaction est perdu (I-6, CA-16) ;
- * - la création et la mise à jour ne partagent **aucune transaction de base** : l'écriture n'est pas
- *   atomique (CA-16). Un échec après la création laisserait une transaction sans confirmation.
+ * C'est l'**unique** chemin d'écriture d'une proposition : accepter n'écrit rien, seule la
+ * validation du formulaire passe ici (P-3). La proposition passe à **confirmée** en portant
+ * l'identifiant de la transaction créée — jamais à ignorée, qui est réservé au refus explicite (I-6).
  *
- * C'est à TC-109 T-04 et T-05 de rendre ces deux écarts visibles.
+ * ÉCART CONSERVÉ — la création et la confirmation ne partagent **aucune transaction de base** :
+ * l'écriture n'est pas atomique (CA-16). Un échec entre les deux laisserait une transaction sans
+ * confirmation. Le correctif suppose une transaction Room couvrant deux repositories ; il est porté
+ * par la fiche d'intégration, avec TC-109 T-04 et T-05.
  */
 class SaveTransactionFromProposalUseCase @Inject constructor(
     private val createTransactionUseCase: CreateTransactionUseCase,
@@ -24,7 +24,7 @@ class SaveTransactionFromProposalUseCase @Inject constructor(
         val transactionId = runCatching { createTransactionUseCase(edition) }
             .getOrElse { return SaveResult.Failed(it.message ?: it::class.java.simpleName) }
 
-        proposals.refuse(proposalId)
+        proposals.confirm(proposalId, transactionId)
         return SaveResult.Created(transactionId)
     }
 }

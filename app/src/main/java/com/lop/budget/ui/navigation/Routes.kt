@@ -42,7 +42,7 @@ object Routes {
     const val DETAIL = "detail/{id}"
     fun detail(id: Long) = "detail/$id"
 
-    const val EDIT = "edit/{id}?scope={scope}&date={date}"
+    const val EDIT = "edit/{id}?scope={scope}&date={date}&proposalId={proposalId}"
     fun edit(id: Long, scope: String? = null, date: Long? = null): String {
         var path = "edit/$id"
         val params = mutableListOf<String>()
@@ -51,6 +51,15 @@ object Routes {
         if (params.isNotEmpty()) path += "?" + params.joinToString("&")
         return path
     }
+
+    /**
+     * Édition ouverte **depuis une proposition détectée**, avant toute écriture (US LOP-54, P-3).
+     *
+     * L'identifiant de transaction vaut `0` : il n'y a rien à éditer en base, le formulaire est
+     * simplement pré-rempli à partir de la proposition et c'est son enregistrement qui crée la
+     * transaction.
+     */
+    fun editFromProposal(proposalId: Long) = "edit/0?proposalId=$proposalId"
 
     // Monthly income/expense pages
     const val MONTHLY = "monthly?type={type}&ym={ym}&mode={mode}"

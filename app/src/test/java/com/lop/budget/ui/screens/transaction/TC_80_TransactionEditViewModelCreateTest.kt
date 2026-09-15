@@ -19,7 +19,9 @@ import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
+import com.lop.budget.domain.usecase.detection.ProposalRepository
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
+import com.lop.budget.domain.usecase.transaction.SaveTransactionFromProposalUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.confirmVerified
@@ -124,6 +126,13 @@ class TransactionEditViewModelCreateTest {
     private val editTransactionWithScopeUseCase =
         mockk<EditTransactionWithScopeUseCase>(relaxed = false)
     private val observeTransactionDetailUseCase = mockk<ObserveTransactionDetailUseCase>(relaxed = false)
+
+    // LOP-54 : dépendances du chemin « édition ouverte depuis une proposition ». Hors périmètre de
+    // TC-80, qui n'ouvre jamais ce chemin — mocks stricts, volontairement non stubés : tout appel
+    // ferait échouer le test, ce qui est l'oracle voulu.
+    private val proposals = mockk<ProposalRepository>(relaxed = false)
+    private val saveTransactionFromProposalUseCase =
+        mockk<SaveTransactionFromProposalUseCase>(relaxed = false)
     private val settings = mockk<SettingsRepository>(relaxed = false)
     private val context = mockk<Context>(relaxed = false)
 
@@ -207,7 +216,7 @@ class TransactionEditViewModelCreateTest {
         TransactionEditViewModel(
             accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, debtRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
-            observeTransactionDetailUseCase, settings,
+            observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase, settings,
             SavedStateHandle(mapOf("type" to type.name)), context
         )
 

@@ -20,6 +20,9 @@ interface DetectedTransactionProposalDao {
     @Query("SELECT * FROM detected_transaction_proposals WHERE dedupeKey = :dedupeKey AND detectedAt >= :sinceMs LIMIT 1")
     suspend fun findRecentDuplicate(dedupeKey: String, sinceMs: Long): DetectedTransactionProposalEntity?
 
+    @Query("SELECT * FROM detected_transaction_proposals WHERE id = :id")
+    suspend fun getById(id: Long): DetectedTransactionProposalEntity?
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(entity: DetectedTransactionProposalEntity): Long
 
@@ -28,6 +31,13 @@ interface DetectedTransactionProposalDao {
 
     @Query("UPDATE detected_transaction_proposals SET status = 'ignored' WHERE id = :id")
     suspend fun ignore(id: Long)
+
+    /**
+     * Acceptation aboutie : la proposition passe à **confirmée** et garde le lien vers la
+     * transaction créée. Distinct de [ignore] — l'un ne peut pas servir à l'autre (I-6).
+     */
+    @Query("UPDATE detected_transaction_proposals SET status = 'confirmed', createdTransactionId = :transactionId WHERE id = :id")
+    suspend fun confirm(id: Long, transactionId: Long)
 
     @Query("DELETE FROM detected_transaction_proposals WHERE id = :id")
     suspend fun delete(id: Long)

@@ -8,11 +8,10 @@ import androidx.annotation.StringRes
  */
 sealed interface InboxEffect {
     /**
-     * @param createdTransactionId porte l'ÉCART E-5 : le chemin actuel crée la transaction **avant**
-     * d'ouvrir l'édition, et l'écran a besoin de son identifiant pour naviguer. Ce champ disparaîtra
-     * quand l'édition s'ouvrira depuis la proposition, comme l'exige P-3.
+     * Ouvre le formulaire d'édition **sur la proposition**, avant toute écriture : aucune
+     * transaction n'existe à ce stade, d'où l'absence d'identifiant de transaction ici (P-3).
      */
-    data class OpenEdition(val proposalId: Long, val createdTransactionId: Long? = null) : InboxEffect
+    data class OpenEdition(val proposalId: Long) : InboxEffect
 
     data class Error(@StringRes val messageRes: Int) : InboxEffect
 }

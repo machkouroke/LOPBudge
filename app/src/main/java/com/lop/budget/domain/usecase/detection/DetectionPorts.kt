@@ -18,11 +18,6 @@ interface DetectionSettings {
     fun isAllowedNotificationSource(packageName: String): Boolean
 }
 
-/** Réglages lus par la boîte de réception : le compte de destination vient des réglages (P-5). */
-interface InboxSettings {
-    suspend fun defaultAccountIdOnce(): Long?
-}
-
 /** Avertissement de l'utilisateur. Émis pour les propositions certaines uniquement (P-7). */
 interface DetectionNotifier {
     fun notifyProposal(proposal: Proposal)
@@ -40,8 +35,22 @@ interface ProposalRepository {
      */
     suspend fun upsertOrMerge(proposal: Proposal, windowMillis: Long, nowMillis: Long): MergeResult
 
+    /**
+     * Lecture d'une proposition par identifiant.
+     *
+     * Le formulaire d'édition s'ouvre **depuis la proposition**, sans qu'aucune transaction
+     * n'existe encore : il lui faut donc ce point de lecture (P-3, P-10).
+     */
+    suspend fun getById(proposalId: Long): Proposal?
+
     /** Refus explicite depuis la boîte de réception : la proposition passe à ignorée (I-6). */
     suspend fun refuse(proposalId: Long)
+
+    /**
+     * Enregistrement abouti : la proposition passe à **confirmée** et porte l'identifiant de la
+     * transaction créée. Une proposition acceptée ne doit jamais passer par [refuse] (I-6).
+     */
+    suspend fun confirm(proposalId: Long, transactionId: Long)
 }
 
 sealed interface MergeResult {

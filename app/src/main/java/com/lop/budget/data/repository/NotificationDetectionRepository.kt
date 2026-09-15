@@ -36,5 +36,11 @@ class NotificationDetectionRepository @Inject constructor(
         return MergeResult.Inserted(dao.insert(proposal.toEntity()))
     }
 
+    override suspend fun getById(proposalId: Long): Proposal? =
+        dao.getById(proposalId)?.toProposal()
+
     override suspend fun refuse(proposalId: Long) = dao.ignore(proposalId)
+
+    override suspend fun confirm(proposalId: Long, transactionId: Long) =
+        dao.confirm(proposalId, transactionId)
 }

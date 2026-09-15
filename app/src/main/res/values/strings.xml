@@ -160,6 +160,7 @@
     <string name="detected_accept">Accepter</string>
     <string name="detected_ignore">Refuser</string>
     <string name="detected_uncertain_badge">À vérifier</string>
+    <string name="detected_error_amount_unreadable">Le montant de cette notification n\'a pas pu être lu. Saisissez la transaction à la main.</string>
 
     <!-- Goals & Debts -->
     <string name="goals_title">Objectifs</string>

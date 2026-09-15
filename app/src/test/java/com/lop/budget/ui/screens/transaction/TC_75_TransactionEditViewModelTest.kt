@@ -21,10 +21,12 @@ import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.detection.ProposalRepository
 import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.transaction.EditOutcome
 import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
+import com.lop.budget.domain.usecase.transaction.SaveTransactionFromProposalUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.confirmVerified
@@ -63,6 +65,12 @@ class TransactionEditViewModelTest {
     private val createTransactionUseCase = mockk<CreateTransactionUseCase>(relaxed = false)
     private val editTransactionWithScopeUseCase = mockk<EditTransactionWithScopeUseCase>(relaxed = false)
     private val observeTransactionDetailUseCase = mockk<ObserveTransactionDetailUseCase>(relaxed = false)
+
+    // LOP-54 : dépendances du chemin « édition ouverte depuis une proposition ». Hors périmètre de
+    // TC-75, qui n'ouvre jamais ce chemin — mocks stricts, volontairement non stubés.
+    private val proposals = mockk<ProposalRepository>(relaxed = false)
+    private val saveTransactionFromProposalUseCase =
+        mockk<SaveTransactionFromProposalUseCase>(relaxed = false)
     private val settings = mockk<SettingsRepository>(relaxed = false)
     private val context = mockk<Context>(relaxed = false)
 
@@ -119,7 +127,8 @@ class TransactionEditViewModelTest {
         return TransactionEditViewModel(
             accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, debtRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
-            observeTransactionDetailUseCase, settings, SavedStateHandle(map), context
+            observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,
+            settings, SavedStateHandle(map), context
         )
     }
 

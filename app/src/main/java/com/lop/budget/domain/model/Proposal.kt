@@ -37,11 +37,11 @@ enum class ProposalStatus { PENDING, UNCERTAIN, CONFIRMED, IGNORED }
  * Pré-remplissage du formulaire d'édition à partir d'une proposition (P-10, fonction pure).
  *
  * Ni l'horloge ni les réglages ne sont lus ici : le compte et la catégorie par défaut sont des
- * paramètres, pour qu'aucun identifiant ne puisse être choisi par le code (I-8).
+ * paramètres, pour qu'aucun identifiant ne puisse être choisi par le code (I-8). La date vient de
+ * la proposition, jamais de l'heure courante (I-11).
  *
- * ÉCART E-5 / P-4 conservé : le statut posé est [TransactionStatus.PLANNED] alors que le paiement a
- * déjà eu lieu au moment de la notification — la convention P-4 impose « réglé ». Le comportement
- * actuel est reconduit tel quel ; c'est à TC-110 T-02 de le rendre visible.
+ * Le statut posé est [TransactionStatus.PAID] : au moment de la notification, le paiement a déjà
+ * eu lieu (P-4). Corrigé par ANO-J, couvert par TC-110 T-02.
  */
 fun buildEdition(
     proposal: Proposal,
@@ -55,7 +55,7 @@ fun buildEdition(
     accountId = defaultAccountId,
     categoryId = proposal.suggestedCategoryId ?: defaultCategoryId ?: 0L,
     note = "Détecté via ${proposal.sourcePackage}",
-    status = TransactionStatus.PLANNED,
+    status = TransactionStatus.PAID,
     frequency = RecurrenceFrequency.NONE,
     interval = 1,
     daysOfWeek = emptySet(),

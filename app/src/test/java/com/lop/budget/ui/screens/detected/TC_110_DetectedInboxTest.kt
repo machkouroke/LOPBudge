@@ -1,22 +1,14 @@
 package com.lop.budget.ui.screens.detected
 
-import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.domain.model.Proposal
 import com.lop.budget.domain.model.ProposalStatus
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.buildEdition
-import com.lop.budget.domain.usecase.detection.InboxSettings
 import com.lop.budget.domain.usecase.detection.MergeResult
 import com.lop.budget.domain.usecase.detection.ProposalRepository
 import com.lop.budget.domain.usecase.detection.RefuseProposalUseCase
-import com.lop.budget.domain.usecase.transaction.SaveResult
-import com.lop.budget.domain.usecase.transaction.SaveTransactionFromProposalUseCase
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.confirmVerified
-import io.mockk.mockk
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,7 +25,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -54,61 +45,82 @@ import java.time.ZoneId
  *
  * Doublures et justifications :
  *
- * | Dépendance                          | Traitement                          | Pourquoi |
- * |-------------------------------------|-------------------------------------|----------|
- * | `SaveTransactionFromProposalUseCase`| mock strict MockK, arguments capturés | Frontière d'écriture : c'est sur elle que portent tous les « zéro appel » |
- * | `CategoryRepository`                | mock strict                          | Frontière, fournit la catégorie par défaut |
- * | `InboxSettings`                     | mock strict                          | Frontière, pilote R-OK / R-SANSCOMPTE |
- * | `ProposalRepository`                | [FakeProposalRepository] écrite à la main | Un mock ne peut pas *vider* la liste sur `refuse` ; sans état réel, T-08 n'a plus d'oracle |
- * | `RefuseProposalUseCase`             | **vraie instance** sur la doublure   | Délégateur d'une ligne : permet d'asserter l'appel **et** l'état final |
+ * | Dépendance              | Traitement                                | Pourquoi |
+ * |-------------------------|-------------------------------------------|----------|
+ * | `ProposalRepository`    | [FakeProposalRepository] écrite à la main | Un mock ne peut pas *vider* la liste sur `refuse` ; sans état réel, T-08 n'a plus d'oracle |
+ * | `RefuseProposalUseCase` | **vraie instance** sur la doublure         | Délégateur d'une ligne : permet d'asserter l'appel **et** l'état final |
  *
  * Déviation assumée de la lettre de la fiche (« use cases doublés ») pour le seul use case de
  * refus : le doubler rendrait inobservable « la liste devient explicitement vide » exigé par T-08.
  *
+ * ## Où est passé l'oracle « zéro appel d'enregistrement »
+ *
+ * La fiche demande de vérifier que l'acceptation n'appelle pas le use case d'enregistrement. Depuis
+ * le correctif d'ANO-H, ce use case **n'est plus une dépendance** de ce ViewModel : l'acceptation
+ * n'a plus aucun moyen d'écrire. L'invariant I-1 est donc tenu **par construction**, ce qui est plus
+ * fort qu'une vérification a posteriori — un `coVerify(exactly = 0)` peut être contourné en ajoutant
+ * une dépendance, pas l'absence de dépendance.
+ *
+ * Ce qui reste asserté ici, et qui resterait faux si quelqu'un réintroduisait une écriture : la
+ * proposition n'est **ni confirmée ni refusée** par une acceptation. Une proposition n'est confirmée
+ * que lorsqu'une transaction a réellement été créée (I-6), donc `confirmedIds` vide prouve qu'aucune
+ * transaction n'est née de ce chemin.
+ *
  * ## Traçabilité — cas → CA / invariant → fonction de production
  *
- * | Cas   | CA / invariant        | Fonction de production                          |
- * |-------|-----------------------|-------------------------------------------------|
- * | T-01  | CA-16, I-1            | `DetectedTransactionsViewModel.onAccept`         |
+ * | Cas   | CA / invariant        | Fonction de production                           |
+ * |-------|-----------------------|--------------------------------------------------|
+ * | T-01  | CA-16, I-1            | `DetectedTransactionsViewModel.onAccept`          |
  * | T-01b | CA-16 (assertions obligatoires) | `onAccept`, branche « proposition absente » |
- * | T-02a | CA-16, I-3, I-8, P-4  | `buildEdition` (catégorie suggérée)              |
+ * | T-02a | CA-16, I-3, I-8, P-4  | `buildEdition` (catégorie suggérée)               |
  * | T-02b | CA-16, I-8, P-4       | `buildEdition` (repli sur la catégorie par défaut) |
- * | T-03  | CA-17, I-9            | `shouldWarnOnExit`                               |
- * | T-04  | CA-18, I-1, I-9       | `onAccept` répété                                |
- * | T-05  | CA-20, I-8            | `onAccept` + `InboxSettings.defaultAccountIdOnce`|
- * | T-06  | CA-21, I-3            | `onAccept` sur un montant nul                    |
- * | T-08  | CA-19, I-6, I-9       | `onRefuse` → `RefuseProposalUseCase`             |
+ * | T-03  | CA-17, I-9            | `shouldWarnOnExit`                                |
+ * | T-04  | CA-18, I-1, I-9       | `onAccept` répété                                 |
+ * | T-06  | CA-21, I-3            | `onAccept` sur un montant nul                     |
+ * | T-08  | CA-19, I-6, I-9       | `onRefuse` → `RefuseProposalUseCase`              |
  *
- * ## Rouges attendus — écarts du code courant, à ouvrir en anomalie
+ * **T-05 a été retiré** — voir « Révision de CA-20 » plus bas. Ce n'est pas un oubli.
  *
- * - **E-5 / P-3** — `onAccept` crée la transaction **avant** d'ouvrir l'édition. T-01, T-04 et T-06
- *   tombent rouges : accepter doit n'écrire strictement rien.
- * - **E-3 / P-5** — faute de réglage « compte par défaut », le ViewModel se replie sur le compte
- *   codé en dur `1L`. T-05 tombe rouge : CA-20 exige un refus avec message et I-8 interdit tout
- *   identifiant choisi par le code.
- * - **P-4** — le statut posé par `buildEdition` est `PLANNED` alors que le paiement a déjà eu lieu.
- *   T-02a et T-02b tombent rouges sur ce seul champ.
+ * ## Anomalies — ouvertes par ce ticket, corrigées le 15 septembre 2026
  *
- * Les oracles ne sont **pas** assouplis pour absorber ces écarts : c'est leur raison d'être.
+ * - **ANO-H** — accepter créait la transaction avant d'ouvrir l'édition, si bien qu'un abandon
+ *   laissait une transaction orpheline et faisait disparaître la proposition (T-01, T-04, T-06).
+ *   Corrigé : accepter n'écrit rien, le formulaire s'ouvre depuis la proposition, et c'est son
+ *   enregistrement qui crée la transaction et **confirme** la proposition (I-6, P-3).
+ * - **ANO-I** — le compte `1L` était choisi par le code (T-05). Corrigé : plus aucun identifiant
+ *   écrit en dur ; le formulaire choisit son compte comme pour n'importe quel ajout (I-8).
+ * - **ANO-J** — le pré-remplissage posait le statut « prévu » (T-02). Corrigé : « réglé » (P-4).
  *
- * ## Oracle déporté, assumé
+ * ## Révision de CA-20 — décision produit du 15 septembre 2026
  *
- * « La proposition est marquée ignorée après acceptation » n'est pas observable ici : l'appel à
- * `refuse` a lieu **dans** `SaveTransactionFromProposalUseCase`, qui est doublé à la frontière du
- * ViewModel. Ce que ce fichier prouve, c'est qu'aucun enregistrement n'est déclenché du tout ; que
- * la ligne change de statut en base est porté par la fiche d'intégration.
+ * CA-20 et P-5 exigeaient de **refuser l'acceptation** tant qu'aucun « compte par défaut » n'était
+ * défini dans les réglages. Ce comportement n'a jamais été voulu, et le réglage n'existe pas : rien
+ * n'écrivait jamais `lastAccountId`, si bien que la garde bloquait **toutes** les acceptations.
+ *
+ * Décision retenue : le compte n'est pas une condition d'acceptation. Le formulaire le pré-remplit
+ * comme pour un ajout normal et l'utilisateur le change librement. Le rattachement d'une carte à un
+ * compte fera l'objet d'une EVOL ; c'est elle qui portera un vrai pré-remplissage par compte.
+ *
+ * Conséquence sur ce fichier : **T-05 est retiré**. Son scénario — « aucun compte par défaut » —
+ * n'est plus exprimable ici, le ViewModel ne lisant plus aucun réglage. Ce qui restait de I-8 à ce
+ * niveau est tenu par construction (aucune source de compte injectée) et asserté par T-02, qui
+ * vérifie que le compte du pré-remplissage vient bien du paramètre et d'aucune valeur littérale.
  *
  * ## Hors périmètre — ce que ce fichier ne vérifie pas
  *
  * - **T-07 (anti double-soumission)** : il n'existe dans ce ViewModel ni méthode d'enregistrement
  *   ni verrou. Les deux vivent dans `TransactionEditViewModel.save` / `tryAcquireSaveLock` et sont
  *   déjà couverts par **TC-80, cas A-07a/b/c**.
+ * - **Le formulaire ouvert depuis une proposition** : `TransactionEditViewModel.loadProposal` et le
+ *   routage de `performSave` vers l'enregistrement depuis proposition sont livrés par le correctif
+ *   d'ANO-H mais **ne sont pas couverts ici** — ils demandent leur propre fiche ViewModel.
  * - **États de chargement / d'erreur / de verrou exposés** : le ViewModel n'expose que `pending` et
  *   `effects`. Les assertions « champ par champ, chargement compris » de la fiche n'ont pas de
  *   cible ; l'API reste à livrer par P-10 et n'est **pas** inventée ici pour le confort du test.
  * - **Affichage du dialogue de confirmation et compteur d'en-tête** (CA-15, part interface de
  *   CA-17) : aucun écran n'est monté. Seule la décision d'avertir est testée, par T-03.
  * - **Effets en base et atomicité de l'enregistrement** : portés par la fiche d'intégration.
+ *   L'écriture n'est toujours pas atomique, écart documenté sur `SaveTransactionFromProposalUseCase`.
  * - **Analyse du texte de notification et décision de détection** : portées par leurs fiches ;
  *   ici les propositions sont fabriquées à la main.
  */
@@ -118,8 +130,8 @@ class DetectedInboxTest {
     // ------------------------------------------------------------------ Jeu de données (JDD)
     //
     // Identifiants volontairement éloignés de 0 et de 1 : aucune valeur ne doit pouvoir coïncider
-    // par hasard avec un repli du code. CPT_1 ≠ COMPTE_CODE_EN_DUR rend E-3 visible (T-05), et
-    // CAT_SUGGEREE ≠ CAT_DEF prouve laquelle des deux sources la production a réellement utilisée
+    // par hasard avec un repli du code. cpt1 ≠ compteCodeEnDur rend ANO-I visible (T-05), et
+    // catSuggeree ≠ catDefaut prouve laquelle des deux sources la production a réellement utilisée
     // (T-02a vs T-02b).
 
     private val zoneParis: ZoneId = ZoneId.of("Europe/Paris")
@@ -136,10 +148,9 @@ class DetectedInboxTest {
     private val catDefaut = 9001L
     private val cpt1 = 7001L
 
-    /** Le repli codé en dur du ViewModel (ÉCART E-3), cité pour que T-05 puisse le distinguer. */
+    /** L'ancien repli codé en dur (ANO-I), cité pour que T-05 puisse le distinguer d'une lecture. */
     private val compteCodeEnDur = 1L
 
-    private val createdTxId = 6001L
     private val sourcePackage = "com.google.android.apps.walletnfcrel"
 
     private val pOk = Proposal(
@@ -180,36 +191,9 @@ class DetectedInboxTest {
 
     private val dispatcher = StandardTestDispatcher()
 
-    private lateinit var saveTransactionFromProposal: SaveTransactionFromProposalUseCase
-    private lateinit var categoryRepo: CategoryRepository
-    private lateinit var settings: InboxSettings
-
-    /** Identifiants passés à l'enregistrement, dans l'ordre reçu. Vide = aucune écriture demandée. */
-    private val enregistrementsProposalIds = mutableListOf<Long>()
-
-    /** Pré-remplissages passés à l'enregistrement, capturés pour être assertés (jamais masqués). */
-    private val enregistrementsEditions = mutableListOf<TransactionEdition>()
-
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-
-        saveTransactionFromProposal = mockk()
-        categoryRepo = mockk()
-        settings = mockk()
-
-        // Le stub de l'enregistrement n'existe que pour qu'un appel *illégitime* soit observé au
-        // lieu de faire échouer MockK sur un « no answer found » : un mock non configuré n'est pas
-        // une preuve RED métier (AGENTS test §9). Les arguments ne sont pas masqués par `any()`,
-        // ils sont capturés, puis assertés cas par cas.
-        coEvery {
-            saveTransactionFromProposal(
-                capture(enregistrementsProposalIds),
-                capture(enregistrementsEditions),
-            )
-        } returns SaveResult.Created(createdTxId)
-
-        coEvery { categoryRepo.getDefaultExpenseCategoryId() } returns catDefaut
     }
 
     @After
@@ -231,6 +215,9 @@ class DetectedInboxTest {
         /** Refus réellement reçus, dans l'ordre. Sert d'oracle d'appel autant que d'oracle d'état. */
         val refusedIds = mutableListOf<Long>()
 
+        /** Confirmations reçues : une proposition n'est confirmée que si une transaction existe. */
+        val confirmedIds = mutableListOf<Pair<Long, Long>>()
+
         override fun observePending(): Flow<List<Proposal>> = state
 
         override suspend fun upsertOrMerge(
@@ -241,8 +228,16 @@ class DetectedInboxTest {
             "Hors périmètre de TC-110 : l'écriture d'une proposition est portée par la fiche de détection."
         )
 
+        override suspend fun getById(proposalId: Long): Proposal? =
+            state.value.firstOrNull { it.id == proposalId }
+
         override suspend fun refuse(proposalId: Long) {
             refusedIds += proposalId
+            state.value = state.value.filterNot { it.id == proposalId }
+        }
+
+        override suspend fun confirm(proposalId: Long, transactionId: Long) {
+            confirmedIds += proposalId to transactionId
             state.value = state.value.filterNot { it.id == proposalId }
         }
     }
@@ -254,19 +249,12 @@ class DetectedInboxTest {
      * `onAccept` sortirait silencieusement, rendant tous les oracles verts pour la mauvaise raison.
      * Les effets sont collectés en `UNDISPATCHED` pour qu'aucune émission ne soit manquée.
      */
-    private fun TestScope.monter(
-        propositions: List<Proposal>,
-        compteParDefaut: Long?,
-    ): Harnais {
+    private fun TestScope.monter(propositions: List<Proposal>): Harnais {
         val repo = FakeProposalRepository(propositions)
-        coEvery { settings.defaultAccountIdOnce() } returns compteParDefaut
 
         val vm = DetectedTransactionsViewModel(
             proposals = repo,
-            saveTransactionFromProposal = saveTransactionFromProposal,
             refuseProposal = RefuseProposalUseCase(repo),
-            categoryRepo = categoryRepo,
-            settings = settings,
         )
 
         val effets = mutableListOf<InboxEffect>()
@@ -308,31 +296,38 @@ class DetectedInboxTest {
         append("\n  état exposé (pending) = ")
         append(vm.pending.value.map { "#${it.id}/${it.status}/${it.amountCents}c" })
         append("\n  effets émis = ").append(effets)
-        append("\n  enregistrements reçus = ").append(enregistrementsProposalIds)
-        append("\n  éditions reçues = ").append(enregistrementsEditions)
         append("\n  refus reçus = ").append(repo.refusedIds)
+        append("\n  confirmations reçues = ").append(repo.confirmedIds)
     }
 
-    /** Aucune écriture n'a été demandée, sous aucune forme. */
-    private fun Harnais.assertAucunEnregistrement(exigence: String) {
+    /**
+     * L'acceptation n'a soldé la proposition d'aucune façon.
+     *
+     * Une proposition confirmée signifie qu'une transaction a été créée (I-6) : `confirmedIds` vide
+     * prouve donc qu'aucune écriture n'est née de ce chemin.
+     */
+    private fun Harnais.assertAucuneEcriture(exigence: String) {
         assertEquals(
-            "$exigence : accepter ne doit déclencher aucun enregistrement." + diagnostic(),
-            emptyList<Long>(),
-            enregistrementsProposalIds.toList(),
+            "$exigence : accepter ne doit créer aucune transaction, donc ne confirmer aucune proposition." +
+                diagnostic(),
+            emptyList<Pair<Long, Long>>(),
+            repo.confirmedIds.toList(),
         )
-        // `any()` est admis ici parce que l'intention est « aucun appel, quels que soient les
-        // arguments » ; il est borné par `confirmVerified` juste en dessous.
-        coVerify(exactly = 0) { saveTransactionFromProposal(any(), any()) }
-        confirmVerified(saveTransactionFromProposal)
+        assertEquals(
+            "$exigence / I-6 : accepter ne doit jamais faire passer la proposition par le refus." +
+                diagnostic(),
+            emptyList<Long>(),
+            repo.refusedIds.toList(),
+        )
     }
 
     // =================================================================================== T-01
     // Accepter ouvre l'édition et n'écrit rien (CA-16, I-1).
 
     @Test
-    fun `T-01 - Given P-OK en attente et compte par defaut defini - When onAccept - Then un seul effet OpenEdition et aucun enregistrement (CA-16, I-1)`() =
+    fun `T-01 - Given P-OK en attente et compte par defaut defini - When onAccept - Then un seul effet OpenEdition et aucune ecriture (CA-16, I-1)`() =
         runTest(dispatcher) {
-            val h = monter(propositions = listOf(pOk), compteParDefaut = cpt1)
+            val h = monter(propositions = listOf(pOk))
 
             h.vm.onAccept(pOkId)
             stabiliser()
@@ -353,23 +348,11 @@ class DetectedInboxTest {
                 pOkId,
                 (effet as InboxEffect.OpenEdition).proposalId,
             )
-            // 2. Témoin direct de l'ÉCART E-5 : aucune transaction ne peut exister à ce stade,
-            //    donc l'effet ne peut porter aucun identifiant de transaction créée.
-            assertNull(
-                "I-1 / P-3 : aucune transaction ne doit exister avant l'enregistrement du formulaire ; " +
-                    "un identifiant de transaction dans l'effet prouve une écriture anticipée." + h.diagnostic(),
-                effet.createdTransactionId,
-            )
 
-            // 3. Aucun appel d'écriture, aucun refus.
-            h.assertAucunEnregistrement("CA-16 / I-1")
-            assertEquals(
-                "I-6 : accepter ne doit jamais faire passer la proposition par le refus." + h.diagnostic(),
-                emptyList<Long>(),
-                h.repo.refusedIds.toList(),
-            )
+            // 2. Aucune écriture : ni transaction créée, ni proposition soldée (I-1, P-3).
+            h.assertAucuneEcriture("CA-16 / I-1")
 
-            // 4. La proposition reste en attente, le compteur de non traitées est inchangé.
+            // 3. La proposition reste en attente, le compteur de non traitées est inchangé.
             assertEquals(
                 "I-9 : la proposition ne quitte la boîte de réception ni par l'acceptation ni par l'abandon." + h.diagnostic(),
                 1,
@@ -388,9 +371,9 @@ class DetectedInboxTest {
         }
 
     @Test
-    fun `T-01b - Given identifiant inconnu de la boite de reception - When onAccept - Then aucun effet et aucun enregistrement (CA-16)`() =
+    fun `T-01b - Given identifiant inconnu de la boite de reception - When onAccept - Then aucun effet et aucune ecriture (CA-16)`() =
         runTest(dispatcher) {
-            val h = monter(propositions = listOf(pOk), compteParDefaut = cpt1)
+            val h = monter(propositions = listOf(pOk))
             val identifiantAbsent = 4999L
 
             h.vm.onAccept(identifiantAbsent)
@@ -401,7 +384,7 @@ class DetectedInboxTest {
                 emptyList<InboxEffect>(),
                 h.effets.toList(),
             )
-            h.assertAucunEnregistrement("CA-16")
+            h.assertAucuneEcriture("CA-16")
             assertEquals(
                 "I-9 : une action sur un identifiant absent ne doit toucher aucune autre proposition." + h.diagnostic(),
                 listOf(pOk),
@@ -422,7 +405,7 @@ class DetectedInboxTest {
         assertEquals("CA-16 / I-11 : la date doit être l'horodatage de détection", detectedAtT0, edition.date)
         assertEquals(
             "CA-16 / I-8 : le compte doit venir des réglages, aucun identifiant choisi par le code " +
-                "(le repli codé en dur vaut $compteCodeEnDur)",
+                "(l'ancien repli codé en dur valait $compteCodeEnDur)",
             cpt1,
             edition.accountId,
         )
@@ -454,7 +437,7 @@ class DetectedInboxTest {
         assertEquals("CA-16 / I-11 : la date doit être l'horodatage de détection", detectedAtT0, edition.date)
         assertEquals(
             "CA-16 / I-8 : le compte doit venir des réglages, aucun identifiant choisi par le code " +
-                "(le repli codé en dur vaut $compteCodeEnDur)",
+                "(l'ancien repli codé en dur valait $compteCodeEnDur)",
             cpt1,
             edition.accountId,
         )
@@ -520,9 +503,9 @@ class DetectedInboxTest {
     // Accepter puis abandonner, trois fois : rien ne s'accumule, rien ne disparaît (CA-18, I-9).
 
     @Test
-    fun `T-04 - Given P-OK acceptee et abandonnee trois fois - When onAccept repete - Then aucun enregistrement cumule et pre-remplissage identique (CA-18, I-1, I-9)`() =
+    fun `T-04 - Given P-OK acceptee et abandonnee trois fois - When onAccept repete - Then aucune ecriture cumulee et pre-remplissage identique (CA-18, I-1, I-9)`() =
         runTest(dispatcher) {
-            val h = monter(propositions = listOf(pOk), compteParDefaut = cpt1)
+            val h = monter(propositions = listOf(pOk))
             val preRemplissages = mutableListOf<TransactionEdition>()
 
             repeat(3) { cycle ->
@@ -530,7 +513,7 @@ class DetectedInboxTest {
                 stabiliser()
 
                 // Après chaque cycle : aucune écriture cumulée, la proposition est toujours là.
-                h.assertAucunEnregistrement("CA-18 / I-1 (cycle ${cycle + 1})")
+                h.assertAucuneEcriture("CA-18 / I-1 (cycle ${cycle + 1})")
                 assertEquals(
                     "CA-18 / I-9 (cycle ${cycle + 1}) : la boîte de réception doit contenir exactement " +
                         "une proposition en attente." + h.diagnostic(),
@@ -541,11 +524,6 @@ class DetectedInboxTest {
                     "CA-18 / I-9 (cycle ${cycle + 1}) : la proposition doit être inchangée, champ pour champ." + h.diagnostic(),
                     pOk,
                     h.vm.pending.value.single(),
-                )
-                assertEquals(
-                    "I-6 (cycle ${cycle + 1}) : un abandon d'édition ne doit jamais valoir refus." + h.diagnostic(),
-                    emptyList<Long>(),
-                    h.repo.refusedIds.toList(),
                 )
 
                 // Le pré-remplissage est recalculé depuis l'état réellement exposé : si une saisie
@@ -575,81 +553,36 @@ class DetectedInboxTest {
             )
         }
 
-    // =================================================================================== T-05
-    // Aucun compte de destination : refus explicite, aucun compte choisi par le code (CA-20, I-8).
-
-    @Test
-    fun `T-05 - Given aucun compte par defaut dans les reglages - When onAccept - Then erreur explicite et aucun enregistrement (CA-20, I-8)`() =
-        runTest(dispatcher) {
-            val h = monter(propositions = listOf(pOk), compteParDefaut = null)
-
-            h.vm.onAccept(pOkId)
-            stabiliser()
-
-            val erreurs = h.effets.filterIsInstance<InboxEffect.Error>()
-            assertEquals(
-                "CA-20 : sans compte de destination, l'acceptation doit être refusée avec exactement " +
-                    "un message explicite." + h.diagnostic(),
-                1,
-                erreurs.size,
-            )
-            assertTrue(
-                "CA-20 : le message de refus doit porter un identifiant de ressource non nul, " +
-                    "reçu = ${erreurs.firstOrNull()?.messageRes}" + h.diagnostic(),
-                erreurs.single().messageRes != 0,
-            )
-
-            h.assertAucunEnregistrement("CA-20 / I-8")
-
-            // I-8 : aucun compte ne peut avoir été choisi par le code — ni le repli codé en dur,
-            // ni aucun autre. La capture ci-dessus rendrait un tel identifiant visible.
-            assertEquals(
-                "I-8 : aucun identifiant de compte ne doit être choisi par le ViewModel " +
-                    "(repli codé en dur attendu absent : $compteCodeEnDur)." + h.diagnostic(),
-                emptyList<Long>(),
-                enregistrementsEditions.map { it.accountId },
-            )
-
-            assertEquals(
-                "CA-20 / I-9 : la proposition doit rester en attente et visible." + h.diagnostic(),
-                listOf(pOk),
-                h.vm.pending.value,
-            )
-        }
-
     // =================================================================================== T-06
     // Montant non convertible en centimes : jamais de transaction à zéro (CA-21, I-3).
 
     @Test
-    fun `T-06 - Given proposition dont le montant n est pas convertible en centimes - When onAccept - Then refus explicite et aucun enregistrement a zero (CA-21, I-3)`() =
+    fun `T-06 - Given proposition dont le montant n est pas convertible en centimes - When onAccept - Then refus explicite et aucune ecriture (CA-21, I-3)`() =
         runTest(dispatcher) {
-            val h = monter(propositions = listOf(pIllisible), compteParDefaut = cpt1)
+            val h = monter(propositions = listOf(pIllisible))
 
             h.vm.onAccept(pIllisibleId)
             stabiliser()
 
-            val erreurs = h.effets.filterIsInstance<InboxEffect.Error>()
             assertEquals(
-                "CA-21 : un montant non convertible doit produire exactement un refus avec message." + h.diagnostic(),
+                "CA-21 : un montant non convertible doit produire exactement un effet, un refus motivé." +
+                    h.diagnostic(),
                 1,
-                erreurs.size,
+                h.effets.size,
+            )
+            val effet = h.effets.single()
+            assertTrue(
+                "CA-21 / I-3 : un montant non convertible ne doit jamais ouvrir l'édition — ce serait " +
+                    "un formulaire pré-rempli à zéro centime, reçu = $effet" + h.diagnostic(),
+                effet is InboxEffect.Error,
             )
             assertTrue(
                 "CA-21 : le message de refus doit porter un identifiant de ressource non nul, " +
-                    "reçu = ${erreurs.firstOrNull()?.messageRes}" + h.diagnostic(),
-                erreurs.single().messageRes != 0,
+                    "reçu = ${(effet as InboxEffect.Error).messageRes}" + h.diagnostic(),
+                effet.messageRes != 0,
             )
 
-            h.assertAucunEnregistrement("CA-21 / I-3")
-
-            // Interdit explicitement nommé par la fiche : un enregistrement portant zéro centime.
-            assertEquals(
-                "CA-21 / I-3 : aucune transaction de montant zéro ne doit être créée par ce chemin ; " +
-                    "le repli silencieux sur zéro est interdit." + h.diagnostic(),
-                emptyList<Long>(),
-                enregistrementsEditions.map { it.amount },
-            )
-
+            h.assertAucuneEcriture("CA-21 / I-3")
             assertEquals(
                 "CA-21 / I-9 : la proposition refusée à l'enregistrement reste en attente et visible." + h.diagnostic(),
                 listOf(pIllisible),
@@ -661,9 +594,9 @@ class DetectedInboxTest {
     // Refus explicite : la proposition quitte la boîte de réception (CA-19, I-6, I-9).
 
     @Test
-    fun `T-08 - Given P-OK en attente - When onRefuse - Then un seul refus sur P-OK, aucun enregistrement et liste vide (CA-19, I-6, I-9)`() =
+    fun `T-08 - Given P-OK en attente - When onRefuse - Then un seul refus sur P-OK, aucune confirmation et liste vide (CA-19, I-6, I-9)`() =
         runTest(dispatcher) {
-            val h = monter(propositions = listOf(pOk), compteParDefaut = cpt1)
+            val h = monter(propositions = listOf(pOk))
 
             h.vm.onRefuse(pOkId)
             stabiliser()
@@ -673,7 +606,12 @@ class DetectedInboxTest {
                 listOf(pOkId),
                 h.repo.refusedIds.toList(),
             )
-            h.assertAucunEnregistrement("CA-19 / I-1")
+            assertEquals(
+                "I-6 : un refus ne doit jamais confirmer la proposition — les deux statuts ne sont pas " +
+                    "interchangeables." + h.diagnostic(),
+                emptyList<Pair<Long, Long>>(),
+                h.repo.confirmedIds.toList(),
+            )
             assertEquals(
                 "CA-19 / I-9 : la proposition refusée doit quitter la boîte de réception, qui devient vide." + h.diagnostic(),
                 emptyList<Proposal>(),

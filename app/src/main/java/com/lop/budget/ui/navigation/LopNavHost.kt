@@ -164,7 +164,9 @@ fun LopNavHost(startRoute: String? = null) {
                     composableAnimated(Routes.DETECTED, NavAnimationType.MAIN) {
                         DetectedTransactionsScreen(
                             onBack = { navController.popBackStack() },
-                            onOpenEdit = { id -> navController.navigate(Routes.edit(id)) },
+                            onOpenEdit = { proposalId ->
+                                navController.navigate(Routes.editFromProposal(proposalId))
+                            },
                         )
                     }
 
@@ -380,6 +382,11 @@ fun LopNavHost(startRoute: String? = null) {
                                 defaultValue = null
                             },
                             navArgument("date") {
+                                type = NavType.LongType
+                                defaultValue = -1L
+                            },
+                            // Édition ouverte depuis une proposition détectée (LOP-54, P-3).
+                            navArgument("proposalId") {
                                 type = NavType.LongType
                                 defaultValue = -1L
                             }

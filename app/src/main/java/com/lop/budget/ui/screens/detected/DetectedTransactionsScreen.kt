@@ -22,9 +22,12 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,13 +59,17 @@ fun DetectedTransactionsScreen(
     vm: DetectedTransactionsViewModel = hiltViewModel(),
 ) {
     val pending = vm.pending.collectAsStateWithLifecycle().value
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
-    // L'écran ne décide rien : il exécute les effets émis par le ViewModel (I-10).
+    // L'écran ne décide rien : il exécute les effets émis par le ViewModel (I-10). Les @StringRes
+    // sont résolus ici, au plus près de l'affichage : le ViewModel ne manipule aucun texte localisé.
     LaunchedEffect(Unit) {
         vm.effects.collect { effect ->
             when (effect) {
-                is InboxEffect.OpenEdition -> effect.createdTransactionId?.let(onOpenEdit)
-                is InboxEffect.Error -> Unit
+                is InboxEffect.OpenEdition -> onOpenEdit(effect.proposalId)
+                // CA-20 / CA-21 : un refus d'acceptation ne peut pas rester silencieux.
+                is InboxEffect.Error -> snackbarHostState.showSnackbar(context.getString(effect.messageRes))
             }
         }
     }
@@ -71,7 +78,8 @@ fun DetectedTransactionsScreen(
         title = stringResource(R.string.detected_title),
         onBack = onBack,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
-        modifier = Modifier.testTag(TestTags.SCREEN_DETECTED)
+        modifier = Modifier.testTag(TestTags.SCREEN_DETECTED),
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) {
         if (pending.isEmpty()) {
             item {

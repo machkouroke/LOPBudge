@@ -13,7 +13,6 @@ import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.usecase.detection.DetectionNotifier
 import com.lop.budget.domain.usecase.detection.DetectionSettings
-import com.lop.budget.domain.usecase.detection.InboxSettings
 import com.lop.budget.domain.usecase.detection.ProposalRepository
 import dagger.Module
 import dagger.Provides
@@ -65,10 +64,6 @@ object NotificationModule {
     @Provides
     @Singleton
     fun provideDetectionSettings(impl: SettingsRepository): DetectionSettings = impl
-
-    @Provides
-    @Singleton
-    fun provideInboxSettings(impl: SettingsRepository): InboxSettings = impl
 
     @Provides
     @Singleton

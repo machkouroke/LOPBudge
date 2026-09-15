@@ -83,7 +83,9 @@ fun TransactionEditScreen(
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
 
     LaunchedEffect(vm.isEditing) {
-        if (vm.isEditing || autoOpenedCategory) return@LaunchedEffect
+        // Ouvert depuis une proposition détectée, le formulaire arrive déjà pré-rempli, catégorie
+        // comprise (CA-16) : ouvrir le sélecteur par-dessus masquerait la saisie proposée.
+        if (vm.isEditing || vm.editingProposalId != null || autoOpenedCategory) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             if (!autoOpenedCategory) {
                 activeSheet = EditSheet.Category

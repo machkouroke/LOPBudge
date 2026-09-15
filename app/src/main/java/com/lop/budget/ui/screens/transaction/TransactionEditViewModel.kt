@@ -22,11 +22,15 @@ import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.model.buildEdition
 import com.lop.budget.domain.model.toDaysOfWeekSet
+import com.lop.budget.domain.usecase.detection.ProposalRepository
 import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.transaction.EditOutcome
 import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
+import com.lop.budget.domain.usecase.transaction.SaveResult
+import com.lop.budget.domain.usecase.transaction.SaveTransactionFromProposalUseCase
 import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -107,6 +111,8 @@ class TransactionEditViewModel @Inject constructor(
     private val createTransactionUseCase: CreateTransactionUseCase,
     private val editTransactionWithScopeUseCase: EditTransactionWithScopeUseCase,
     private val observeTransactionDetailUseCase: ObserveTransactionDetailUseCase,
+    private val proposals: ProposalRepository,
+    private val saveTransactionFromProposalUseCase: SaveTransactionFromProposalUseCase,
     private val settings: SettingsRepository,
     savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context,
@@ -143,6 +149,14 @@ class TransactionEditViewModel @Inject constructor(
     private var initialForm: TransactionForm? = null
 
     val editingTransactionId: Long? = savedStateHandle["id"]
+
+    /**
+     * Proposition détectée à l'origine de ce formulaire, le cas échéant (US LOP-54, P-3).
+     *
+     * Le formulaire s'ouvre alors **pré-rempli sans qu'aucune transaction n'existe** : c'est son
+     * enregistrement qui la crée, et qui confirme la proposition.
+     */
+    val editingProposalId: Long? = savedStateHandle.get<Long>("proposalId")?.takeIf { it > 0L }
     val editScope: EditScope =
         savedStateHandle.get<String>("scope")?.let { EditScope.valueOf(it) } ?: EditScope.SINGLE
     private val seriesDate: Long? = savedStateHandle["date"]
@@ -182,16 +196,57 @@ class TransactionEditViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            if (isEditing) {
-                loadTransaction(editingTransactionId!!)
-            } else {
-                update { f -> f.copy(type = initialType) }
-                // Nouvelle transaction : présélectionner le premier compte disponible.
-                val accounts = accountRepo.observeAll().firstOrNull().orEmpty()
-                accounts.firstOrNull()?.let { update { f -> f.copy(accountId = it.id) } }
-                markLoaded()
+            when {
+                isEditing -> loadTransaction(editingTransactionId!!)
+                editingProposalId != null -> loadProposal(editingProposalId)
+                else -> {
+                    update { f -> f.copy(type = initialType) }
+                    // Nouvelle transaction : présélectionner le premier compte disponible.
+                    val accounts = accountRepo.observeAll().firstOrNull().orEmpty()
+                    accounts.firstOrNull()?.let { update { f -> f.copy(accountId = it.id) } }
+                    markLoaded()
+                }
             }
         }
+    }
+
+    /**
+     * Pré-remplissage depuis une proposition détectée (CA-16).
+     *
+     * La date vient de la proposition, jamais de l'horloge (I-11). Le compte suit **la même règle
+     * qu'un ajout normal** — le premier compte disponible — et reste librement modifiable (P-11) :
+     * l'acceptation n'est conditionnée à aucun réglage. Aucun identifiant n'est écrit en dur, ni
+     * ici ni dans [buildEdition], qui reçoit les valeurs par défaut en paramètres (I-8).
+     */
+    private suspend fun loadProposal(proposalId: Long) {
+        val proposal = proposals.getById(proposalId)
+        if (proposal == null) {
+            markLoaded()
+            return
+        }
+
+        val accounts = accountRepo.observeAll().firstOrNull().orEmpty()
+        val prefillAccountId = accounts.firstOrNull()?.id
+
+        val edition = buildEdition(
+            proposal = proposal,
+            // [buildEdition] exige un identifiant là où le formulaire accepte son absence : quand
+            // aucun compte n'existe encore, cette valeur n'est pas retenue pour le champ ci-dessous,
+            // et l'utilisateur choisit son compte comme à l'ajout.
+            defaultAccountId = prefillAccountId ?: 0L,
+            defaultCategoryId = categoryRepo.getDefaultExpenseCategoryId(),
+        )
+        _form.value = TransactionForm(
+            type = edition.type,
+            amountInput = Format.centsToInput(edition.amount),
+            title = edition.title,
+            date = edition.date,
+            categoryId = edition.categoryId,
+            accountId = prefillAccountId,
+            note = edition.note.orEmpty(),
+            status = edition.status ?: TransactionStatus.PAID,
+        )
+        markLoaded()
     }
 
     private suspend fun loadTransaction(id: Long) {
@@ -455,21 +510,33 @@ class TransactionEditViewModel @Inject constructor(
         if (f.accountId == null || f.categoryId == null) return
         val edition = f.toEdition(context.getString(R.string.tx_default_title))
 
-        val newId = if (isEditing) {
-            val outcome = editTransactionWithScopeUseCase(
-                editingId = editingTransactionId!!,
-                seriesId = f.seriesId,
-                seriesDate = seriesDate?.takeIf { it > 0L },
-                edition = edition,
-                scope = editScope,
-            )
-            when (outcome) {
-                is EditOutcome.Applied -> outcome.transactionId
-                // Refus porté par le domaine : rien n'a été écrit, donc rien à notifier.
-                EditOutcome.RefusedNotEditable -> return
+        val newId = when {
+            isEditing -> {
+                val outcome = editTransactionWithScopeUseCase(
+                    editingId = editingTransactionId!!,
+                    seriesId = f.seriesId,
+                    seriesDate = seriesDate?.takeIf { it > 0L },
+                    edition = edition,
+                    scope = editScope,
+                )
+                when (outcome) {
+                    is EditOutcome.Applied -> outcome.transactionId
+                    // Refus porté par le domaine : rien n'a été écrit, donc rien à notifier.
+                    EditOutcome.RefusedNotEditable -> return
+                }
             }
-        } else {
-            createTransactionUseCase(edition)
+            // CA-16 : l'enregistrement crée la transaction **et** confirme la proposition. C'est
+            // l'unique moment où une proposition devient une écriture (P-3).
+            editingProposalId != null -> {
+                when (val result = saveTransactionFromProposalUseCase(editingProposalId, edition)) {
+                    is SaveResult.Created -> result.transactionId
+                    is SaveResult.Failed -> {
+                        _saveError.value = R.string.tx_error_save_failed
+                        return
+                    }
+                }
+            }
+            else -> createTransactionUseCase(edition)
         }
         onDone(newId)
     }
