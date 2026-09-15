@@ -104,9 +104,36 @@ jobs:
             
             
             adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+            # Passerelle HTTP -> adb, requise par TC-109 (detection de notification).
+            # Le moteur JS de Maestro est en bac a sable : `Java` y est indefini, donc pas de
+            # `Runtime.exec` et aucun moyen de lancer adb depuis un `runScript`. Seul `http` est
+            # expose. La passerelle tourne donc ici, sur l'hote, la ou adb vit deja.
+            # Demarree sur tous les shards : c'est gratuit, et le shard qui porte TC-109 varie.
+            python3 scripts/adb_notification_bridge.py > /tmp/adb-bridge.log 2>&1 &
+            BRIDGE_PID=$!
+
+            for _ in $(seq 1 30); do
+              if curl -sf http://127.0.0.1:8787/health > /dev/null; then break; fi
+              sleep 1
+            done
+            if ! curl -sf http://127.0.0.1:8787/health; then
+              echo "::error::Passerelle adb injoignable, TC-109 echouera. Journal :"
+              cat /tmp/adb-bridge.log
+              exit 1
+            fi
+            echo ""
+
             python3 Maestro/scripts/shard_flows.py --index ${{ matrix.shard }} --count 4 --write-config /tmp/maestro-shard.yaml
             cat /tmp/maestro-shard.yaml
-            maestro test --config /tmp/maestro-shard.yaml Maestro/ --format junit --output build/maestro-junit-shard-${{ matrix.shard }}.xml --test-output-dir build/maestro-results
+
+            # `|| MAESTRO_EXIT=$?` plutot qu'un appel nu : sous `set -e`, un echec de Maestro
+            # couperait le script avant l'arret de la passerelle et masquerait le code de sortie.
+            MAESTRO_EXIT=0
+            maestro test --config /tmp/maestro-shard.yaml Maestro/ --format junit --output build/maestro-junit-shard-${{ matrix.shard }}.xml --test-output-dir build/maestro-results || MAESTRO_EXIT=$?
+
+            kill "$BRIDGE_PID" 2>/dev/null || true
+            exit $MAESTRO_EXIT
 
       - name: Zip Maestro Results
         if: always()
