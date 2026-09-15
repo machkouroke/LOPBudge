@@ -71,6 +71,7 @@ tags:
 # ⚠️ `clearState: true` efface les données de LOPBudge sur l'appareil branché.
 #    À ne lancer que sur un appareil de test.
 # =====================================================================================
+# Ce texte est une base pour les futures test ui relatif à la détection de notifications ce n'est donc pas un test planifié ne pas le calculer pour le moment
 
 # Given l'application démarre d'un état propre
 - launchApp:
