@@ -271,7 +271,10 @@ class TransactionEditViewModel @Inject constructor(
             // LOP-97 : n'utiliser l'argument de navigation que s'il est valide (> 0).
             date = seriesDate?.takeIf { it > 0L } ?: tx.date,
             categoryId = tx.categoryId,
-            accountId = tx.accountId,
+            // `null` est l'unique représentation de « sans compte » dans le formulaire : une
+            // transaction stockée avec NO_ACCOUNT_ID ne doit pas ouvrir le sélecteur sur un
+            // identifiant qui ne désigne aucune ligne.
+            accountId = tx.accountId.takeIf { it != NO_ACCOUNT_ID },
             tagIds = twr.tags.map { it.id }.toSet(),
             note = tx.note ?: "",
             status = tx.status,
@@ -366,7 +369,11 @@ class TransactionEditViewModel @Inject constructor(
         clearFieldError(TransactionFormField.CATEGORY)
     }
 
-    fun setAccount(id: Long) {
+    /**
+     * Choix du compte, `null` valant **« sans compte »** — une option offerte par le sélecteur au
+     * même titre que les comptes existants, et le choix retenu quand aucun compte n'existe (I-7).
+     */
+    fun setAccount(id: Long?) {
         update { it.copy(accountId = id) }
         clearFieldError(TransactionFormField.ACCOUNT)
     }

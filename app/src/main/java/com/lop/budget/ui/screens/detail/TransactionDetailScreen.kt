@@ -55,6 +55,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.domain.model.EditScope
+import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
@@ -544,6 +545,42 @@ private fun AccountBottomSheet(
                     stringResource(R.string.tx_no_accounts),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            // I-7 : « Sans compte » est une option de plein droit, offerte au même titre que les
+            // comptes existants. Elle porte la coche quand la transaction n'est rattachée à aucun
+            // compte — cas d'une transaction saisie avant la création du premier compte.
+            //
+            // `selectedId` vient de la jointure Room, qui rend `null` pour NO_ACCOUNT_ID : l'état
+            // affiché reflète donc directement ce qui est stocké.
+            run {
+                val noneSelected = selectedId == null
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickableNoRipple { onSelect(NO_ACCOUNT_ID) },
+                    color = if (noneSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(R.string.tx_no_account),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (noneSelected) {
+                            Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
             }
 
             accounts.forEach { account ->

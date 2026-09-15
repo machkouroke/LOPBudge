@@ -195,8 +195,13 @@ fun TransactionEditScreen(
                 title = stringResource(R.string.tx_account_sheet_title),
                 items = accounts,
                 isSelected = { it.id == form.accountId },
+                // I-7 : « Sans compte » est une option de plein droit, pas un repli. Quand aucun
+                // compte n'existe, aucune ligne n'est sélectionnée, et c'est donc elle qui porte
+                // la coche — l'état affiché correspond alors à ce qui sera enregistré.
+                allowNone = true,
+                noneLabel = stringResource(R.string.tx_no_account),
                 onSelect = { account ->
-                    account?.let { vm.setAccount(it.id) }
+                    vm.setAccount(account?.id)
                     activeSheet = null
                 },
                 onDismiss = { activeSheet = null },

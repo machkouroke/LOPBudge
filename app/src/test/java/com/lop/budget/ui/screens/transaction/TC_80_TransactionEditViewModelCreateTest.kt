@@ -562,6 +562,68 @@ class TransactionEditViewModelCreateTest {
             confirmVerified(*allMocks)
         }
 
+    /**
+     * **Ajouté le 15 septembre 2026.** « Sans compte » est une option du sélecteur, pas seulement
+     * l'état d'un formulaire qui n'a rien trouvé à présélectionner.
+     *
+     * A-05b couvre le cas où **aucun compte n'existe**. Celui-ci couvre le cas inverse et plus
+     * exigeant : des comptes existent, l'un d'eux est présélectionné, et l'utilisateur choisit
+     * explicitement de n'en rattacher aucun.
+     *
+     * La fixture est **discriminante** : le compte présélectionné vaut `100`, `NO_ACCOUNT_ID` vaut
+     * `0`. Si l'enregistrement réintroduisait le compte présélectionné — par un repli, ou en
+     * ignorant le choix de l'utilisateur — la valeur capturée ne pourrait pas être `0`.
+     */
+    @Test
+    fun `A-05c - Given un compte preselectionne - When on choisit sans compte - Then NO_ACCOUNT_ID est persiste (CA-04)`() =
+        runTest(testDispatcher) {
+            coEvery { createTransactionUseCase(any()) } returns newTransactionId
+
+            val sut = createSut(type = TransactionType.EXPENSE)
+            advanceUntilIdle()
+
+            assertEquals(
+                "CA-04 : précondition du cas — le premier compte est bien présélectionné",
+                primaryAccount.id, sut.form.value.accountId
+            )
+
+            sut.setTitle("Courses")
+            sut.setAmountRaw("42.50")
+            sut.setCategory(expenseCategory.id)
+            // L'utilisateur ouvre le sélecteur et retient « Sans compte ».
+            sut.setAccount(null)
+
+            assertNull(
+                "CA-04 : choisir « sans compte » retire le compte du formulaire",
+                sut.form.value.accountId
+            )
+
+            sut.save(onDone)
+            advanceUntilIdle()
+
+            val edition = slot<TransactionEdition>()
+            coVerify(exactly = 1) { createTransactionUseCase(capture(edition)) }
+            assertEquals(
+                "CA-04 : le compte volontairement retiré se persiste avec NO_ACCOUNT_ID",
+                NO_ACCOUNT_ID, edition.captured.accountId
+            )
+            assertNotEquals(
+                "CA-04 : le compte présélectionné ne doit pas réapparaître à l'enregistrement",
+                primaryAccount.id, edition.captured.accountId
+            )
+            assertEquals(
+                "CA-04 : l'enregistrement aboutit — « sans compte » n'est pas un état fautif",
+                listOf(newTransactionId), doneIds
+            )
+
+            // Aucun compte rattaché, donc aucun solde de référence à consulter.
+            coVerify(exactly = 0) { accountRepo.getById(any()) }
+            coVerify(exactly = 0) {
+                editTransactionWithScopeUseCase(any(), any(), any(), any(), any())
+            }
+            confirmVerified(*allMocks)
+        }
+
     // ------------------------------------------- A-06 : champs optionnels absents (CA-05)
 
     @Test
