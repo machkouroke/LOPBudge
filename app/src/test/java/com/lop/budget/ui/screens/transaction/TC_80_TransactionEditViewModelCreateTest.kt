@@ -13,6 +13,7 @@ import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TagRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
+import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
@@ -497,11 +498,24 @@ class TransactionEditViewModelCreateTest {
             confirmVerified(*allMocks)
         }
 
+    /**
+     * **Cas retourné le 15 septembre 2026, à la suite d'une décision produit.**
+     *
+     * Ce cas exigeait auparavant l'inverse : compte manquant, sauvegarde refusée, erreur posée sur
+     * le champ compte. Le compte n'est plus un champ obligatoire — on note une dépense avant d'avoir
+     * créé ses comptes, ou un paiement en espèces qu'on ne suit nulle part. La règle précédente
+     * bloquait la saisie au lieu de l'aider.
+     *
+     * L'oracle n'est pas affaibli, il est **inversé** : on prouve maintenant que la transaction est
+     * bien créée, et qu'elle porte `NO_ACCOUNT_ID`, la valeur réservée qui signale l'absence de
+     * rattachement. Voir l'US LOP-2, CA-04.
+     */
     @Test
-    fun `A-05b - Given montant valide et accountId null - When save - Then aucune ecriture (CA-04)`() =
+    fun `A-05b - Given aucun compte disponible - When save - Then la transaction est creee sans compte (CA-04)`() =
         runTest(testDispatcher) {
             // Aucun compte en base : rien à présélectionner, `form.accountId` reste null.
             every { accountRepo.observeAll() } returns flowOf(emptyList())
+            coEvery { createTransactionUseCase(any()) } returns newTransactionId
 
             val sut = createSut(type = TransactionType.EXPENSE)
             advanceUntilIdle()
@@ -517,20 +531,34 @@ class TransactionEditViewModelCreateTest {
                 "CA-04 : précondition du cas — aucun compte sélectionnable",
                 sut.form.value.accountId
             )
-            verifyNoWrite()
             assertEquals(
-                "CA-04 : compte manquant — onDone ne doit pas être invoqué",
-                emptyList<Long>(), doneIds
+                "CA-04 : le compte n'est plus obligatoire — aucune erreur de champ ne doit être posée",
+                emptyMap<TransactionFormField, Int>(), sut.fieldErrors.value
+            )
+
+            val edition = slot<TransactionEdition>()
+            coVerify(exactly = 1) { createTransactionUseCase(capture(edition)) }
+            assertEquals(
+                "CA-04 : une transaction sans compte se persiste avec la valeur réservée NO_ACCOUNT_ID",
+                NO_ACCOUNT_ID, edition.captured.accountId
             )
             assertEquals(
-                "CA-04 : l'erreur doit porter sur le compte, et sur lui seul — montant et catégorie sont valides",
-                setOf(TransactionFormField.ACCOUNT), sut.fieldErrors.value.keys
+                "CA-04 : montant et catégorie restent transmis tels que saisis",
+                4_250L to expenseCategory.id,
+                edition.captured.amount to edition.captured.categoryId
             )
             assertEquals(
-                "CA-04 : message attendu près du champ compte",
-                R.string.tx_error_account_required,
-                sut.fieldErrors.value[TransactionFormField.ACCOUNT]
+                "CA-04 : onDone doit être invoqué avec l'id retourné par le use case",
+                listOf(newTransactionId), doneIds
             )
+
+            // Sans compte rattaché, aucun solde de référence n'est à consulter : l'alerte d'impact
+            // sur le solde n'a pas d'objet. `any()` est admis dans une vérification à zéro appel,
+            // et `confirmVerified` ferme la porte aux appels parasites.
+            coVerify(exactly = 0) { accountRepo.getById(any()) }
+            coVerify(exactly = 0) {
+                editTransactionWithScopeUseCase(any(), any(), any(), any(), any())
+            }
             confirmVerified(*allMocks)
         }
 

@@ -25,8 +25,12 @@ class SaveTransactionUseCase @Inject constructor(
      * @return The ID of the saved transaction.
      */
     suspend fun saveSimple(tx: TransactionEntity, tagIds: List<Long> = emptyList()): Long {
+        // Une transaction déclarée réglée est payée **à sa date**, jamais à l'heure où on
+        // l'enregistre. Corrigé le 15 septembre 2026 (ANO-M) : l'heure courante faisait qu'un
+        // paiement détecté le 10 mars et enregistré le 12 était marqué payé le 12, si bien que la
+        // date de la transaction et sa date de paiement divergeaient pour un seul événement.
         val finalTx =
-            if (tx.status == TransactionStatus.PAID && tx.paidAt == null) tx.copy(paidAt = System.currentTimeMillis())
+            if (tx.status == TransactionStatus.PAID && tx.paidAt == null) tx.copy(paidAt = tx.date)
             else if (tx.status == TransactionStatus.PLANNED && tx.paidAt != null) tx.copy(paidAt = null)
             else tx
 

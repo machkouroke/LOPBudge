@@ -187,9 +187,13 @@ fun TransactionRow(
                             )
                         }
                     }
+                    // Une transaction peut n'être rattachée à aucun compte (NO_ACCOUNT_ID) : la
+                    // jointure rend alors `null`, et le libellé de repli le dit au lieu de laisser
+                    // un blanc à la place du compte.
+                    val accountLabel = tx.account?.name ?: stringResource(R.string.tx_no_account)
                     Text(
-                        if (showDate) Format.dayMonth(tx.transaction.date) + " • " + (tx.account?.name ?: "")
-                        else tx.account?.name ?: "",
+                        if (showDate) Format.dayMonth(tx.transaction.date) + " • " + accountLabel
+                        else accountLabel,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

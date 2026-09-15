@@ -33,6 +33,19 @@ interface DetectedTransactionProposalDao {
     suspend fun ignore(id: Long)
 
     /**
+     * Comptabilise une notification écartée comme doublon sur la proposition conservée (I-7, CA-12).
+     *
+     * Un événement écarté ne peut pas disparaître sans trace : le compteur avance et le dernier
+     * horodatage est conservé. L'incrément est fait par SQLite (`occurrences + 1`) plutôt que lu
+     * puis réécrit, pour rester juste même si deux notifications arrivent de front.
+     */
+    @Query(
+        "UPDATE detected_transaction_proposals " +
+            "SET occurrences = occurrences + 1, lastDetectedAt = :detectedAtMillis WHERE id = :id",
+    )
+    suspend fun registerDuplicate(id: Long, detectedAtMillis: Long)
+
+    /**
      * Acceptation aboutie : la proposition passe à **confirmée** et garde le lien vers la
      * transaction créée. Distinct de [ignore] — l'un ne peut pas servir à l'autre (I-6).
      */

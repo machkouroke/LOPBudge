@@ -18,6 +18,7 @@ import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TagRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
+import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
@@ -67,7 +68,11 @@ data class TransactionForm(
 ) {
     /** Frontière UI : [amountInput] porte des euros saisis, [amount] des centimes (I-4). */
     val amount: Long get() = Format.centsOrNull(amountInput) ?: 0L
-    val isValid: Boolean get() = amount > 0L && categoryId != null && accountId != null
+    /**
+     * Le compte n'entre pas dans la validité : il est **facultatif** depuis la décision produit du
+     * 15 septembre 2026. Une transaction sans compte se persiste avec [NO_ACCOUNT_ID].
+     */
+    val isValid: Boolean get() = amount > 0L && categoryId != null
 }
 
 /**
@@ -78,15 +83,17 @@ data class TransactionForm(
 enum class TransactionFormField { AMOUNT, CATEGORY, ACCOUNT }
 
 /**
- * Unique mapper UI -> domaine. Préconditions garanties par save() : amount > 0,
- * categoryId != null, accountId != null.
+ * Unique mapper UI -> domaine. Préconditions garanties par save() : amount > 0, categoryId != null.
+ *
+ * Le compte, lui, peut être absent : il retombe alors sur [NO_ACCOUNT_ID], qui ne désigne aucun
+ * compte et signale l'absence de rattachement.
  */
 fun TransactionForm.toEdition(defaultTitle: String): TransactionEdition = TransactionEdition(
     title = title.ifBlank { defaultTitle },
     amount = amount,
     type = type,
     date = date,
-    accountId = requireNotNull(accountId),
+    accountId = accountId ?: NO_ACCOUNT_ID,
     categoryId = requireNotNull(categoryId),
     note = note.ifBlank { null },
     status = status,
@@ -230,10 +237,10 @@ class TransactionEditViewModel @Inject constructor(
 
         val edition = buildEdition(
             proposal = proposal,
-            // [buildEdition] exige un identifiant là où le formulaire accepte son absence : quand
-            // aucun compte n'existe encore, cette valeur n'est pas retenue pour le champ ci-dessous,
-            // et l'utilisateur choisit son compte comme à l'ajout.
-            defaultAccountId = prefillAccountId ?: 0L,
+            // Quand aucun compte n'existe encore, le pré-remplissage retombe sur NO_ACCOUNT_ID :
+            // la transaction restera enregistrable sans compte, et l'utilisateur peut en choisir
+            // un comme à l'ajout ordinaire.
+            defaultAccountId = prefillAccountId ?: NO_ACCOUNT_ID,
             defaultCategoryId = categoryRepo.getDefaultExpenseCategoryId(),
         )
         _form.value = TransactionForm(
@@ -446,7 +453,8 @@ class TransactionEditViewModel @Inject constructor(
             put(TransactionFormField.AMOUNT, R.string.tx_error_amount_positive)
         }
         if (f.categoryId == null) put(TransactionFormField.CATEGORY, R.string.tx_error_category_required)
-        if (f.accountId == null) put(TransactionFormField.ACCOUNT, R.string.tx_error_account_required)
+        // Le compte ne figure pas ici : il est facultatif depuis le 15 septembre 2026. Une
+        // transaction sans compte est valide et se persiste avec NO_ACCOUNT_ID.
     }
 
     fun save(onDone: (Long) -> Unit) {
@@ -458,7 +466,9 @@ class TransactionEditViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val account = accountRepo.getById(f.accountId!!)
+                // Sans compte rattaché, aucun solde de référence n'est impacté : l'alerte n'a pas
+                // d'objet et la sauvegarde suit son cours.
+                val account = f.accountId?.let { accountRepo.getById(it) }
                 if (account != null && f.status == TransactionStatus.PAID && f.date < account.balanceUpdatedAt) {
                     // L'écriture attend la décision de l'utilisateur : le verrou est relâché
                     // par le `finally`, sinon l'écran resterait bloqué en « sauvegarde en cours ».
@@ -485,7 +495,7 @@ class TransactionEditViewModel @Inject constructor(
             try {
                 if (accountNow) {
                     val f = _form.value
-                    accountRepo.getById(f.accountId!!)?.let {
+                    f.accountId?.let { accountRepo.getById(it) }?.let {
                         accountRepo.upsert(it.copy(balanceUpdatedAt = f.date))
                     }
                 }
@@ -507,7 +517,7 @@ class TransactionEditViewModel @Inject constructor(
     /** Le cycle de vie de `_isSaving` appartient à [save] / [confirmSave] (voir [tryAcquireSaveLock]). */
     private suspend fun performSave(onDone: (Long) -> Unit) {
         val f = _form.value
-        if (f.accountId == null || f.categoryId == null) return
+        if (f.categoryId == null) return
         val edition = f.toEdition(context.getString(R.string.tx_default_title))
 
         val newId = when {

@@ -237,7 +237,7 @@
     <string name="tx_error_amount_required">Saisissez un montant</string>
     <string name="tx_error_amount_positive">Le montant doit être supérieur à zéro</string>
     <string name="tx_error_category_required">Choisissez une catégorie</string>
-    <string name="tx_error_account_required">Choisissez un compte</string>
+    <string name="tx_no_account">Sans compte</string>
     <string name="tx_error_save_failed">L\'enregistrement a échoué. Réessayez.</string>
 
     <string name="payment_detected_default">Paiement détecté</string>

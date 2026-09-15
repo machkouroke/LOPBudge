@@ -2,10 +2,12 @@ package com.lop.budget.domain.usecase.transaction
 
 import android.app.Application
 import androidx.room.Room
+import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
+import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.DebtRepository
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
@@ -84,26 +86,30 @@ import java.util.TimeZone
  *
  * ## Correspondance cas → CA / invariant → fonction de production
  *
- * | Cas | CA / invariant       | Fonction de production                            | Attendu |
- * |-----|----------------------|----------------------------------------------------|---------|
- * | D-1 | CA-16, I-11, P-4     | `buildEdition`                                      | vert   |
- * | D-2 | CA-27, I-6, I-11, P-4 | `SaveTransactionFromProposalUseCase`               | **ROUGE — ANO-M** |
- * | D-3 | CA-27, I-11          | les deux, écart de détection de 30 jours            | vert   |
- * | D-4 | CA-22, I-11          | relecture après fermeture de la base                | vert   |
- * | D-5 | CA-27, I-11          | enregistrement d'une détection en fin de journée    | vert   |
- * | D-6 | P-11                 | enregistrement d'une date saisie à la main          | vert   |
+ * | Cas | CA / invariant        | Fonction de production                            |
+ * |-----|-----------------------|----------------------------------------------------|
+ * | D-1 | CA-16, I-11, P-4      | `buildEdition`                                      |
+ * | D-2 | CA-27, I-6, I-11, P-4 | `SaveTransactionFromProposalUseCase`                |
+ * | D-3 | CA-27, I-11           | les deux, écart de détection de 30 jours            |
+ * | D-4 | CA-22, I-11           | relecture après fermeture de la base                |
+ * | D-5 | CA-27, I-11           | enregistrement d'une détection en fin de journée    |
+ * | D-6 | P-11                  | enregistrement d'une date saisie à la main          |
  *
- * ## Anomalie ouverte par cette fiche
+ * ## Anomalie ouverte par cette fiche, puis corrigée le 15 septembre 2026
  *
- * **ANO-M — la transaction détectée est marquée payée à l'heure d'enregistrement.**
- * `SaveTransactionUseCase.saveSimple` horodate `paidAt` avec `System.currentTimeMillis()` dès qu'un
- * statut réglé arrive sans date de paiement. Un paiement détecté le 10 mars et enregistré le 12 est
- * donc marqué payé le 12 : pour un seul événement, la date de la transaction et sa date de paiement
- * divergent. P-4 et I-11, révisés le 15 septembre 2026, exigent la date de détection dans les deux.
- * **D-2 est rouge et le restera** tant que l'anomalie n'est pas traitée ; l'oracle n'est pas assoupli.
+ * **ANO-M — la transaction détectée était marquée payée à l'heure d'enregistrement** (D-2).
+ * `SaveTransactionUseCase.saveSimple` horodatait `paidAt` avec `System.currentTimeMillis()` dès
+ * qu'un statut réglé arrivait sans date de paiement. Un paiement détecté le 10 mars et enregistré le
+ * 12 était donc marqué payé le 12 : pour un seul événement, la date de la transaction et sa date de
+ * paiement divergeaient.
  *
- * L'assertion de `paidAt` est **volontairement la dernière** de D-2 : les oracles verts qui la
- * précèdent sont donc tous évalués, et le rouge tombe sur la seule cause réelle.
+ * RED constaté : `date=1773172800000` (correct) mais `paidAt=1789492105470`, l'heure réelle
+ * d'exécution. Corrigé — une transaction déclarée réglée est payée **à sa date**. La règle vaut pour
+ * tous les appelants de `saveSimple`, pas seulement la détection, et P-4 a été révisée en ce sens.
+ * L'oracle n'a pas été assoupli : c'est la production qui a changé.
+ *
+ * L'assertion de `paidAt` reste **volontairement la dernière** de D-2 : les oracles qui la précèdent
+ * sont ainsi tous évalués, et un futur rouge tomberait sur la cause réelle plutôt que sur un effet.
  *
  * ## Hors périmètre — ce que ce fichier ne vérifie pas
  *
@@ -582,6 +588,11 @@ class ProposalDetectionDateTest {
                 SaveTransactionUseCase(transactionRepo, syncProgress),
             ),
             propositions,
+            AccountRepository(base.accountDao()),
+            object : AtomicWriter {
+                override suspend fun <T> atomically(block: suspend () -> T): T =
+                    base.withTransaction(block)
+            },
         )
     }
 

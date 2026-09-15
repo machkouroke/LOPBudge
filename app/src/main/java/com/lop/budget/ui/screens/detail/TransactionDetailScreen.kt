@@ -261,7 +261,7 @@ fun TransactionDetailScreen(
 
                             DetailFieldRow(
                                 label = stringResource(R.string.tx_detail_account),
-                                value = twr.account?.name ?: stringResource(R.string.other),
+                                value = twr.account?.name ?: stringResource(R.string.tx_no_account),
                                 leading = {
                                     val account = twr.account
                                     if (account != null) {

@@ -2,6 +2,7 @@ package com.lop.budget.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.withTransaction
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.lop.budget.BuildConfig
 import com.lop.budget.data.local.LopDatabase
@@ -13,6 +14,7 @@ import com.lop.budget.data.local.dao.GoalDao
 import com.lop.budget.data.local.dao.TagDao
 import com.lop.budget.data.local.dao.TransactionDao
 import com.lop.budget.data.seed.DatabaseSeeder
+import com.lop.budget.domain.usecase.transaction.AtomicWriter
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -85,6 +87,19 @@ object AppModule {
     @Provides
     @Singleton
     fun provideClock(): Clock = Clock.systemUTC()
+
+    /**
+     * Implémentation Room du port d'écriture atomique.
+     *
+     * Elle vit ici plutôt que dans le domaine pour que `LopDatabase` ne remonte pas d'un cran :
+     * c'est le compromis déjà acté par `AdjustBalanceUseCase`, qui avait renoncé à une vraie
+     * transaction de base précisément pour ne pas exposer la base au domaine.
+     */
+    @Provides
+    @Singleton
+    fun provideAtomicWriter(db: LopDatabase): AtomicWriter = object : AtomicWriter {
+        override suspend fun <T> atomically(block: suspend () -> T): T = db.withTransaction(block)
+    }
 
     @Provides fun provideTransactionDao(db: LopDatabase): TransactionDao = db.transactionDao()
     @Provides fun provideAccountDao(db: LopDatabase): AccountDao = db.accountDao()

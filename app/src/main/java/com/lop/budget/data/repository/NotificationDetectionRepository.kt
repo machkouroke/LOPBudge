@@ -20,10 +20,12 @@ class NotificationDetectionRepository @Inject constructor(
         dao.observePending().map { rows -> rows.map { it.toProposal() } }
 
     /**
-     * ÉCART E-11 CONSERVÉ : un doublon est bien reconnu, mais **rien n'est incrémenté** — la
-     * colonne `occurrences` reste à 1 et le second horodatage est perdu. L'événement écarté ne
-     * laisse donc aucune trace sur la proposition conservée (I-7, CA-12). TC-107 T-05 et
-     * TC-109 T-02 sont là pour le rendre visible.
+     * Écrit la proposition, ou la regroupe avec une proposition de même clé reçue dans la fenêtre.
+     *
+     * Corrigé le 15 septembre 2026 (ANO-K) : le doublon était bien reconnu mais **rien n'était
+     * incrémenté**, si bien que l'événement écarté disparaissait sans laisser de trace sur la
+     * proposition conservée — ce que I-7 interdit. Le compteur rendu est **relu en base** après la
+     * mise à jour, pour qu'il ne puisse pas s'écarter de ce qui est réellement stocké (CA-12).
      */
     override suspend fun upsertOrMerge(
         proposal: Proposal,
@@ -32,7 +34,11 @@ class NotificationDetectionRepository @Inject constructor(
     ): MergeResult {
         val since = nowMillis - windowMillis
         val duplicate = dao.findRecentDuplicate(proposal.dedupeKey, since)
-        if (duplicate != null) return MergeResult.Merged(duplicate.id, duplicate.occurrences)
+        if (duplicate != null) {
+            dao.registerDuplicate(duplicate.id, proposal.detectedAt)
+            val fusionnee = dao.getById(duplicate.id) ?: return MergeResult.Merged(duplicate.id, duplicate.occurrences)
+            return MergeResult.Merged(fusionnee.id, fusionnee.occurrences)
+        }
         return MergeResult.Inserted(dao.insert(proposal.toEntity()))
     }
 

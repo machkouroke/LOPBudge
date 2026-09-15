@@ -2,6 +2,7 @@ package com.lop.budget.data.repository
 
 import android.app.Application
 import androidx.room.Room
+import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.entity.AccountEntity
@@ -16,6 +17,7 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.SyncProgressUseCase
 import com.lop.budget.domain.usecase.detection.MergeResult
 import com.lop.budget.domain.usecase.detection.RefuseProposalUseCase
+import com.lop.budget.domain.usecase.transaction.AtomicWriter
 import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.transaction.SaveResult
 import com.lop.budget.domain.usecase.transaction.SaveTransactionFromProposalUseCase
@@ -67,31 +69,39 @@ import java.util.TimeZone
  *
  * ## Correspondance cas → CA / invariant → fonction de production
  *
- * | Cas  | CA / invariant       | Fonction de production                                   | Attendu |
- * |------|----------------------|-----------------------------------------------------------|---------|
- * | T-01 | CA-06, I-1, I-3      | `NotificationDetectionRepository.upsertOrMerge` (insertion) | vert   |
- * | T-02 | CA-12, I-7           | idem, branche doublon dans la fenêtre                      | **ROUGE — ANO-K** |
- * | T-03 | CA-13, I-7           | idem, branche hors fenêtre                                 | vert   |
- * | T-04 | CA-16, I-6           | `SaveTransactionFromProposalUseCase` + `confirm`            | vert   |
- * | T-05 | CA-16, I-6           | idem, édition invalide                                     | **ROUGE — ANO-L** |
- * | T-06 | CA-19, I-6, I-9      | `RefuseProposalUseCase` → `ignore`                          | vert   |
- * | T-07 | CA-22, I-9           | relecture après fermeture de la base                       | vert   |
+ * | Cas  | CA / invariant       | Fonction de production                                   |
+ * |------|----------------------|-----------------------------------------------------------|
+ * | T-01 | CA-06, I-1, I-3      | `NotificationDetectionRepository.upsertOrMerge` (insertion) |
+ * | T-02 | CA-12, I-7           | idem, branche doublon dans la fenêtre                      |
+ * | T-03 | CA-13, I-7           | idem, branche hors fenêtre                                 |
+ * | T-04 | CA-16, I-6           | `SaveTransactionFromProposalUseCase` + `confirm`            |
+ * | T-05 | CA-16, I-6           | idem, édition invalide                                     |
+ * | T-06 | CA-19, I-6, I-9      | `RefuseProposalUseCase` → `ignore`                          |
+ * | T-07 | CA-22, I-9           | relecture après fermeture de la base                       |
  *
- * ## Anomalies ouvertes par cette fiche
+ * ## Anomalies ouvertes par cette fiche, puis corrigées le 15 septembre 2026
  *
- * - **ANO-K — le regroupement anti-doublon perd l'occurrence écartée.** `upsertOrMerge` reconnaît
- *   bien le doublon, mais retourne sans rien écrire : `occurrences` reste à 1 et `lastDetectedAt`
- *   à 0. Une notification écartée ne laisse donc aucune trace sur la proposition conservée, ce que
- *   I-7 interdit explicitement. **T-02 est rouge et le restera** tant que l'anomalie n'est pas
- *   traitée. L'oracle n'est pas assoupli.
- * - **ANO-L — l'enregistrement depuis une proposition n'est ni validé ni atomique.**
- *   `SaveTransactionFromProposalUseCase` crée la transaction puis confirme, sans transaction de base
- *   commune ; et la table `transactions` n'a **aucune clé étrangère** sur `accountId`, si bien qu'un
- *   compte inexistant s'insère sans erreur. **T-05 est rouge** sur ses deux assertions à la fois.
+ * Les deux cas ci-dessous ont d'abord été **rouges**, et c'est ce rouge qui a ouvert l'anomalie.
+ * Aucun oracle n'a été assoupli pour les faire passer : c'est la production qui a changé.
+ *
+ * - **ANO-K — le regroupement anti-doublon perdait l'occurrence écartée** (T-02). `upsertOrMerge`
+ *   reconnaissait le doublon mais retournait sans rien écrire : `occurrences` restait à 1 et le
+ *   second horodatage disparaissait, ce que I-7 interdit. RED : `expected:<2> but was:<1>`.
+ *   Corrigé par `DetectedTransactionProposalDao.registerDuplicate`, le compteur rendu étant
+ *   désormais **relu en base** après la mise à jour.
+ * - **ANO-L — l'enregistrement n'était ni validé ni atomique** (T-05). La transaction s'insérait sur
+ *   un compte inexistant, la table `transactions` n'ayant aucune clé étrangère, puis la proposition
+ *   était confirmée par-dessus. RED : `expected:<0> but was:<1>`, avec `accountId=99999` dans
+ *   l'instantané. Corrigé en deux volets : refus avant toute écriture d'un identifiant de compte non
+ *   nul qui ne désigne aucun compte, et création + confirmation réunies dans une transaction Room.
  *
  * Le compteur d'occurrences d'ANO-K est aussi cité par TC-107 dans ses risques, mais **TC-107 ne
  * l'assert pas** : à ce niveau le dépôt est doublé et le défaut y est invisible. Une cause racine,
  * une anomalie, un seul cas qui la prouve.
+ *
+ * **Le compte reste facultatif.** `NO_ACCOUNT_ID` est une valeur valide que la garde d'ANO-L laisse
+ * passer : seul un identifiant non nul sans compte correspondant est refusé. La règle transverse est
+ * portée par TC-118.
  *
  * ## Hors périmètre — ce que ce fichier ne vérifie pas
  *
@@ -637,6 +647,13 @@ class ProposalPersistenceTest {
                 SaveTransactionUseCase(transactionRepo, syncProgress),
             ),
             propositions,
+            AccountRepository(base.accountDao()),
+            // Vraie transaction Room, pas une doublure : c'est elle qui rend les deux écritures
+            // indissociables, et la doubler reviendrait à tester l'atomicité sans l'exercer.
+            object : AtomicWriter {
+                override suspend fun <T> atomically(block: suspend () -> T): T =
+                    base.withTransaction(block)
+            },
         )
     }
 

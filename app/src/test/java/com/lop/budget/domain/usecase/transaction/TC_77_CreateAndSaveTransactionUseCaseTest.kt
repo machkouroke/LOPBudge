@@ -223,24 +223,34 @@ class CreateAndSaveTransactionUseCaseTest {
     // ------------------------- SUT 2 : SaveTransactionUseCase.saveSimple -------------------------
 
     @Test
-    fun `W-04 - PAID sans paidAt - horodatage a la sauvegarde`() = runTest {
+    /**
+     * **Cas retourné le 15 septembre 2026 (ANO-M), à la suite d'une décision produit.**
+     *
+     * L'oracle attendait auparavant l'instant de la sauvegarde. Il attend maintenant **la date de
+     * la transaction** : une transaction qu'on déclare réglée est payée à sa date, pas à l'heure où
+     * on la saisit. L'ancienne règle faisait qu'un paiement détecté le 10 mars et enregistré le 12
+     * était marqué payé le 12 — pour un seul événement, la date et la date de paiement divergeaient.
+     *
+     * L'oracle n'est pas affaibli, il est **durci** : `in before..after` acceptait une fenêtre de
+     * plusieurs millisecondes, l'égalité exacte n'accepte qu'une valeur.
+     */
+    fun `W-04 - PAID sans paidAt - paidAt prend la date de la transaction`() = runTest {
         val tx = txEntity(status = TransactionStatus.PAID, paidAt = null)
         val entitySlot = slot<TransactionEntity>()
         coEvery { transactionRepo.saveWithTags(capture(entitySlot), emptyList()) } returns 30L
 
-        val before = System.currentTimeMillis()
         val result = saveUseCase.saveSimple(tx)
-        val after = System.currentTimeMillis()
 
         assertEquals(30L, result)
         val captured = entitySlot.captured
         assertNotNull("PAID sans paidAt doit être horodaté", captured.paidAt)
-        assertTrue(
-            "paidAt doit être l'instant de la sauvegarde",
-            captured.paidAt!! in before..after,
+        assertEquals(
+            "ANO-M : paidAt doit valoir la date de la transaction, jamais l'heure de sauvegarde",
+            tx.date,
+            captured.paidAt,
         )
         // Tout le reste de l'entité est inchangé (comparaison entière modulo paidAt).
-        assertEquals(tx.copy(paidAt = captured.paidAt), captured)
+        assertEquals(tx.copy(paidAt = tx.date), captured)
         coVerify(exactly = 1) { transactionRepo.saveWithTags(any(), any()) }
         confirmVerified(*allMocks())
     }

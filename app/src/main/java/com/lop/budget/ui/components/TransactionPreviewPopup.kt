@@ -38,7 +38,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.lop.budget.R
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lop.budget.data.local.entity.TransactionWithRelations
@@ -135,7 +137,7 @@ fun TransactionPreviewPopup(
                 )
                 
                 Text(
-                    text = tx.account?.name ?: "",
+                    text = tx.account?.name ?: stringResource(R.string.tx_no_account),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
