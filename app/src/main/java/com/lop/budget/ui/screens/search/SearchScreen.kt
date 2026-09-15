@@ -1,13 +1,11 @@
 package com.lop.budget.ui.screens.search
 
 import androidx.activity.ComponentActivity
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,16 +15,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -37,13 +32,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.R
+import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.AccountBottomSheet
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.LopDateRangePicker
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -125,7 +123,16 @@ fun SearchScreen(
                             label = {
                                 val acc =
                                     state.availableAccounts.find { it.id == state.selectedAccountId }
-                                Text(acc?.name ?: "Compte")
+                                Text(
+                                    when {
+                                        acc != null -> acc.name
+                                        // Filtre actif sur les transactions sans rattachement :
+                                        // aucun compte ne correspond, et pourtant le filtre existe.
+                                        state.selectedAccountId == NO_ACCOUNT_ID ->
+                                            stringResource(R.string.tx_no_account)
+                                        else -> "Compte"
+                                    }
+                                )
                             },
                             leadingIcon = {
                                 Icon(
@@ -267,16 +274,16 @@ fun SearchScreen(
     }
 
     if (showAccountPicker) {
-        ModalBottomSheet(onDismissRequest = { showAccountPicker = false }) {
-            AccountList(
-                accounts = state.availableAccounts,
-                selectedId = state.selectedAccountId,
-                onSelect = { id ->
-                    vm.onAccountFilterChange(id)
-                    showAccountPicker = false
-                }
-            )
-        }
+        AccountBottomSheet(
+            title = "Filtrer par compte",
+            accounts = state.availableAccounts,
+            selectedId = state.selectedAccountId,
+            onSelect = { id ->
+                vm.onAccountFilterChange(id)
+                showAccountPicker = false
+            },
+            onDismiss = { showAccountPicker = false },
+        )
     }
 
     if (showCategoryPicker) {
@@ -301,39 +308,5 @@ fun SearchScreen(
             },
             onDismiss = { showDatePicker = false }
         )
-    }
-}
-
-@Composable
-fun AccountList(
-    accounts: List<com.lop.budget.data.local.entity.AccountEntity>,
-    selectedId: Long?,
-    onSelect: (Long) -> Unit
-) {
-    LazyColumn(Modifier
-        .fillMaxWidth()
-        .padding(bottom = 32.dp)) {
-        item {
-            Text(
-                "Sélectionner un compte",
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.titleLarge
-            )
-        }
-        items(accounts) { acc ->
-            ListItem(
-                headlineContent = { Text(acc.name) },
-                leadingContent = {
-                    com.lop.budget.ui.components.CircleIcon(
-                        icon = com.lop.budget.util.IconMapper.get(acc.icon),
-                        tint = Color(acc.colorArgb),
-                        background = Color(acc.colorArgb).copy(alpha = 0.1f),
-                        size = 32.dp
-                    )
-                },
-                modifier = Modifier.clickable { onSelect(acc.id) },
-                trailingContent = { if (acc.id == selectedId) Icon(Icons.Default.Check, null) }
-            )
-        }
     }
 }

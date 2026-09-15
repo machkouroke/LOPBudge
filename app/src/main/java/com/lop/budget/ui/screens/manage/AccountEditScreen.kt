@@ -34,6 +34,7 @@ import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
+import com.lop.budget.ui.components.PickerBottomSheet
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.util.IconMapper
 import java.time.Instant
@@ -399,50 +400,34 @@ fun SelectorField(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Choix du type de compte. Simple liste mono-sélection : [PickerBottomSheet] la rend telle quelle,
+ * sans refaire la feuille, la coche et le défilement une fois de plus.
+ */
 @Composable
 fun AccountTypeBottomSheet(
     selected: AccountType,
     onSelect: (AccountType) -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp)
-        ) {
-            item {
-                Text(
-                    "Type de compte",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
-            items(AccountType.entries) { type ->
-                val label = when (type) {
-                    AccountType.CHECKING -> "Bancaire / Courant"
-                    AccountType.CASH -> "Espèces / Cash"
-                    AccountType.SAVINGS -> "Épargne"
-                    AccountType.CARD -> "Carte prépayée"
-                    AccountType.CRYPTO -> "Crypto-monnaies"
-                    AccountType.INVESTMENT -> "Investissement"
-                    AccountType.OTHER -> "Autre"
-                }
-                ListItem(
-                    headlineContent = { Text(label) },
-                    modifier = Modifier.clickable { onSelect(type) },
-                    trailingContent = {
-                        if (type == selected) Icon(
-                            Icons.Default.Check,
-                            null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                )
-            }
-        }
-    }
+    PickerBottomSheet(
+        title = "Type de compte",
+        items = AccountType.entries,
+        isSelected = { it == selected },
+        onSelect = { type -> type?.let(onSelect) },
+        onDismiss = onDismiss,
+        itemLabel = { it.libelle() },
+    )
+}
+
+private fun AccountType.libelle(): String = when (this) {
+    AccountType.CHECKING -> "Bancaire / Courant"
+    AccountType.CASH -> "Espèces / Cash"
+    AccountType.SAVINGS -> "Épargne"
+    AccountType.CARD -> "Carte prépayée"
+    AccountType.CRYPTO -> "Crypto-monnaies"
+    AccountType.INVESTMENT -> "Investissement"
+    AccountType.OTHER -> "Autre"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

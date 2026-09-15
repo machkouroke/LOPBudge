@@ -8,7 +8,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -18,7 +17,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -40,8 +38,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.AccountBottomSheet
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.DonutChart
 import com.lop.budget.ui.components.DonutSlice
@@ -220,9 +220,18 @@ fun MonthlyTransactionsScreen(
                                 selected = state.selectedAccountId != null,
                                 onClick = { showAccountPicker = true },
                                 modifier = Modifier.testTag("monthly.filter.account"),
-                                label = { 
+                                label = {
                                     val acc = state.availableAccounts.find { it.id == state.selectedAccountId }
-                                    Text(acc?.name ?: "Compte") 
+                                    Text(
+                                        when {
+                                            acc != null -> acc.name
+                                            // Filtre actif sur les transactions sans rattachement :
+                                            // aucun compte ne correspond, et pourtant le filtre existe.
+                                            state.selectedAccountId == NO_ACCOUNT_ID ->
+                                                stringResource(R.string.tx_no_account)
+                                            else -> "Compte"
+                                        }
+                                    )
                                 },
                                 leadingIcon = { Icon(Icons.Default.Wallet, null, modifier = Modifier.size(18.dp)) },
                                 trailingIcon = if (state.selectedAccountId != null) {
@@ -340,16 +349,19 @@ fun MonthlyTransactionsScreen(
     }
 
     if (showAccountPicker) {
-        ModalBottomSheet(onDismissRequest = { showAccountPicker = false }) {
-            AccountList(
-                accounts = state.availableAccounts,
-                selectedId = state.selectedAccountId,
-                onSelect = { id ->
-                    vm.onAccountFilterChange(id)
-                    showAccountPicker = false
-                }
-            )
-        }
+        // Pas d'option « Tous les comptes » : ne rien filtrer est l'état par défaut, obtenu en
+        // retirant le filtre par la croix du chip. En revanche « Sans compte » est bien un filtre
+        // à part entière, qui ne ramène que les transactions sans rattachement.
+        AccountBottomSheet(
+            title = "Filtrer par compte",
+            accounts = state.availableAccounts,
+            selectedId = state.selectedAccountId,
+            onSelect = { id ->
+                vm.onAccountFilterChange(id)
+                showAccountPicker = false
+            },
+            onDismiss = { showAccountPicker = false },
+        )
     }
 
     if (showCategoryPicker) {
@@ -440,33 +452,5 @@ private fun InsightToggle(
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             textAlign = TextAlign.Center
         )
-    }
-}
-
-@Composable
-fun AccountList(
-    accounts: List<com.lop.budget.data.local.entity.AccountEntity>,
-    selectedId: Long?,
-    onSelect: (Long) -> Unit
-) {
-    LazyColumn(Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
-        item { Text("Sélectionner un compte", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge) }
-        items(accounts) { acc ->
-            ListItem(
-                headlineContent = { Text(acc.name) },
-                leadingContent = { 
-                    com.lop.budget.ui.components.CircleIcon(
-                        icon = com.lop.budget.util.IconMapper.get(acc.icon),
-                        tint = Color(acc.colorArgb),
-                        background = Color(acc.colorArgb).copy(alpha = 0.1f),
-                        size = 32.dp
-                    ) 
-                },
-                modifier = Modifier
-                    .clickable { onSelect(acc.id) }
-                    .testTag("monthly.account.item.${acc.id}"),
-                trailingContent = { if (acc.id == selectedId) Icon(Icons.Default.Check, null) }
-            )
-        }
     }
 }

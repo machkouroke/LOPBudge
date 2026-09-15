@@ -62,6 +62,7 @@ fun <T> PickerBottomSheet(
     modifier: Modifier = Modifier,
     allowNone: Boolean = false,
     noneLabel: String? = null,
+    isNoneSelected: (() -> Boolean)? = null,
     emptyText: String? = null,
     itemIcon: ((T) -> Any?)? = null,
     itemTint: ((T) -> Color?)? = null,
@@ -131,7 +132,14 @@ fun <T> PickerBottomSheet(
             ) {
                 if (allowNone) {
                     item {
-                        val noneSelected = items.none { isSelected(it) }
+                        // Par défaut, « Aucun » est coché quand aucune option ne l'est — ce qui
+                        // suffit aux sélecteurs où « rien » et « aucun » se confondent.
+                        //
+                        // [isNoneSelected] existe pour ceux où les deux états sont distincts. Dans
+                        // un filtre de compte, « pas de filtre » et « filtrer les transactions sans
+                        // compte » ne sélectionnent ni l'un ni l'autre une ligne de la liste, et
+                        // pourtant un seul des deux doit porter la coche.
+                        val noneSelected = isNoneSelected?.invoke() ?: items.none { isSelected(it) }
                         val label = noneLabel ?: "Aucun"
                         val displayLabel = if (noneSelected && BuildConfig.DEBUG) "$label ✅" else label
 

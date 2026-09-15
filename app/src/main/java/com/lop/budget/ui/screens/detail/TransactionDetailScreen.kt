@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,7 +38,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -53,13 +51,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
-import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.common.TransactionActionViewModel
+import com.lop.budget.ui.components.AccountBottomSheet
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
@@ -445,8 +443,12 @@ fun TransactionDetailScreen(
 
     if (showAccountSheet && twr != null) {
         AccountBottomSheet(
+            title = stringResource(R.string.tx_detail_account),
             accounts = state.availableAccounts,
-            selectedId = twr.account?.id,
+            // L'identifiant brut, et non `twr.account?.id` : la jointure rend `null` aussi bien
+            // pour « sans compte » que pour un compte disparu, alors que la colonne, elle, porte
+            // NO_ACCOUNT_ID sans ambiguïté.
+            selectedId = twr.transaction.accountId,
             onSelect = { accountId ->
                 actionVm.confirmEdit(
                     tx = twr,
@@ -510,119 +512,3 @@ private fun DetailFieldRow(
         }
     }
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AccountBottomSheet(
-    accounts: List<AccountEntity>,
-    selectedId: Long?,
-    onSelect: (Long) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val sheetState =
-        androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        scrimColor = Color.Black.copy(alpha = 0.55f),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                stringResource(R.string.tx_detail_account),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            if (accounts.isEmpty()) {
-                Text(
-                    stringResource(R.string.tx_no_accounts),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // I-7 : « Sans compte » est une option de plein droit, offerte au même titre que les
-            // comptes existants. Elle porte la coche quand la transaction n'est rattachée à aucun
-            // compte — cas d'une transaction saisie avant la création du premier compte.
-            //
-            // `selectedId` vient de la jointure Room, qui rend `null` pour NO_ACCOUNT_ID : l'état
-            // affiché reflète donc directement ce qui est stocké.
-            run {
-                val noneSelected = selectedId == null
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .clickableNoRipple { onSelect(NO_ACCOUNT_ID) },
-                    color = if (noneSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(
-                        1.dp,
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            stringResource(R.string.tx_no_account),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (noneSelected) {
-                            Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                }
-            }
-
-            accounts.forEach { account ->
-                val selected = account.id == selectedId
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .clickableNoRipple { onSelect(account.id) },
-                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(
-                        1.dp,
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        val color = Color(account.colorArgb)
-                        CircleIcon(
-                            icon = IconMapper.get(account.icon),
-                            tint = Color.White,
-                            background = color,
-                            size = 38.dp,
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            account.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (selected) {
-                            Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(18.dp))
-        }
-    }
-}
-

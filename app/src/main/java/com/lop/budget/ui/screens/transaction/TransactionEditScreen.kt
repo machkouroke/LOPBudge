@@ -30,8 +30,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.lop.budget.R
+import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.AccountBottomSheet
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -191,24 +193,18 @@ fun TransactionEditScreen(
             )
         }
         EditSheet.Account -> {
-            PickerBottomSheet(
+            // I-7 : « Sans compte » est une option de plein droit, pas un repli. Dans le formulaire
+            // il n'y a que deux états — un compte, ou aucun — donc un `accountId` nul **est** le
+            // choix « sans compte », et se traduit en NO_ACCOUNT_ID pour le sélecteur.
+            AccountBottomSheet(
                 title = stringResource(R.string.tx_account_sheet_title),
-                items = accounts,
-                isSelected = { it.id == form.accountId },
-                // I-7 : « Sans compte » est une option de plein droit, pas un repli. Quand aucun
-                // compte n'existe, aucune ligne n'est sélectionnée, et c'est donc elle qui porte
-                // la coche — l'état affiché correspond alors à ce qui sera enregistré.
-                allowNone = true,
-                noneLabel = stringResource(R.string.tx_no_account),
-                onSelect = { account ->
-                    vm.setAccount(account?.id)
+                accounts = accounts,
+                selectedId = form.accountId ?: NO_ACCOUNT_ID,
+                onSelect = { id ->
+                    vm.setAccount(id.takeIf { it != NO_ACCOUNT_ID })
                     activeSheet = null
                 },
                 onDismiss = { activeSheet = null },
-                itemLabel = { it.name },
-                emptyText = stringResource(R.string.tx_no_accounts),
-                itemIcon = { IconMapper.get(it.icon) },
-                itemTint = { Color(it.colorArgb) }
             )
         }
         EditSheet.Tags -> {

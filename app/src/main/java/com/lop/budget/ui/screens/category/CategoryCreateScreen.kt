@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -26,9 +25,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
-import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
+import com.lop.budget.ui.components.PickerBottomSheet
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.util.IconMapper
 
@@ -194,7 +193,14 @@ fun CategoryCreateScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Choix de la catégorie parente : liste plate, une seule retenue, plus une option « aucune » qui
+ * fait de la catégorie une racine.
+ *
+ * Distinct de `CategoryBottomSheet`, qui sert à choisir la catégorie d'une **transaction** et porte
+ * pour cela une recherche et une navigation parent → enfants. Ici on choisit précisément un parent :
+ * un niveau, pas d'arborescence. C'est donc [PickerBottomSheet] qui le rend.
+ */
 @Composable
 fun CategoryParentBottomSheet(
     categories: List<CategoryEntity>,
@@ -202,24 +208,17 @@ fun CategoryParentBottomSheet(
     onSelect: (Long?) -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        LazyColumn(Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
-            item { Text("Catégorie parente", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge) }
-            item {
-                ListItem(
-                    headlineContent = { Text("Aucune (Catégorie principale)") },
-                    modifier = Modifier.clickable { onSelect(null) },
-                    trailingContent = { if (selectedId == null) Icon(Icons.Default.Check, null) }
-                )
-            }
-            items(categories) { cat ->
-                ListItem(
-                    headlineContent = { Text(cat.name) },
-                    leadingContent = { CircleIcon(IconMapper.get(cat.icon), Color(cat.colorArgb), Color(cat.colorArgb).copy(alpha = 0.1f), size = 32.dp) },
-                    modifier = Modifier.clickable { onSelect(cat.id) },
-                    trailingContent = { if (selectedId == cat.id) Icon(Icons.Default.Check, null) }
-                )
-            }
-        }
-    }
+    PickerBottomSheet(
+        title = "Catégorie parente",
+        items = categories,
+        isSelected = { it.id == selectedId },
+        allowNone = true,
+        noneLabel = "Aucune (Catégorie principale)",
+        isNoneSelected = { selectedId == null },
+        onSelect = { category -> onSelect(category?.id) },
+        onDismiss = onDismiss,
+        itemLabel = { it.name },
+        itemIcon = { IconMapper.get(it.icon) },
+        itemTint = { Color(it.colorArgb) },
+    )
 }
