@@ -1,5 +1,7 @@
 appId: com.lop.budget
-name: "TC-100-1 - Vue mensuelle : aucun filtre par défaut, sélection par feuille"
+# Pas de « : » dans le nom — Maestro en fait un nom de dossier de rapport, et le
+# deux-points est un caractère de chemin illégal sous Windows.
+name: "TC-100-1 - Vue mensuelle, aucun filtre par defaut, selection par feuille"
 tags:
   - tc-100
   - filtres
@@ -169,17 +171,29 @@ tags:
 - tapOn: { id: "monthly.filter.type" }
 - tapOn: "Tous les types"
 
+# Ciblé par l'identifiant de la feuille, et non par son titre : CA-08 exige qu'elle
+# s'ouvre, pas qu'elle porte un libellé donné. Le titre a d'ailleurs changé avec le
+# passage au composant partagé `AccountBottomSheet` (« Sélectionner un compte » ->
+# « Filtrer par compte »), ce qui cassait ce cas sans qu'aucun comportement ne régresse.
 - tapOn: { id: "monthly.filter.account" }
-- assertVisible: "Sélectionner un compte"
+- assertVisible: { id: "picker.account.sheet" }
 - back
-- assertNotVisible: "Sélectionner un compte"
+- assertNotVisible: { id: "picker.account.sheet" }
 - scrollUntilVisible: { element: { text: "Salaire" }, direction: DOWN }
-#- scrollUntilVisible: { element: { id: "monthly.filter.category" }, direction: RIGHT }
-#
-#- tapOn: { id: "monthly.filter.category" }
-#- assertVisible: "Filtrer par catégorie"
-#- back
-#- assertNotVisible: "Filtrer par catégorie"
+
+# La puce catégorie est la dernière d'une `LazyRow` : elle est hors écran à droite. Un
+# `scrollUntilVisible` défile la page entière et ne touche pas cette rangée — d'où le
+# balayage ancré sur une puce voisine, qui part bien à l'intérieur de la liste
+# horizontale. Balayer vers la gauche fait entrer les puces situées à droite.
+- scrollUntilVisible: { element: { id: "monthly.filter.status" }, direction: UP }
+- swipe:
+    from: { id: "monthly.filter.status" }
+    direction: LEFT
+
+- tapOn: { id: "monthly.filter.category" }
+- assertVisible: { id: "picker.category.sheet" }
+- back
+- assertNotVisible: { id: "picker.category.sheet" }
 
 - evalScript: |
     console.log("TC-100-1 : CA-08 vérifié — compte et catégorie ouvrent toujours leur feuille")
