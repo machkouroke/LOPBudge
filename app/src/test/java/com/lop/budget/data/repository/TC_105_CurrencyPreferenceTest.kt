@@ -1,0 +1,685 @@
+package com.lop.budget.data.repository
+
+import android.app.Application
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import com.lop.budget.data.local.LopDatabase
+import com.lop.budget.data.local.entity.AccountEntity
+import com.lop.budget.data.local.entity.CategoryEntity
+import com.lop.budget.data.local.entity.TransactionEntity
+import com.lop.budget.domain.model.AccountType
+import com.lop.budget.domain.model.CurrencyCatalog
+import com.lop.budget.domain.model.TransactionStatus
+import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.SearchCurrenciesUseCase
+import com.lop.budget.notifications.QwenDownloadManager
+import com.lop.budget.ui.screens.settings.SettingsUiState
+import com.lop.budget.ui.screens.settings.SettingsViewModel
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import java.util.Locale
+import java.util.TimeZone
+
+/**
+ * TC-105 — Préférence de devise : défaut, écriture, persistance et propagation.
+ * **Niveau intégration, stockage de préférences réel** (DataStore sur le répertoire temporaire que
+ * Robolectric alloue à chaque méthode de test), plus une partie ViewModel.
+ *
+ * Chaîne exercée : `SettingsRepository` **réel** → DataStore **réel** sur fichier ;
+ * `SettingsViewModel` **réel** → `SearchCurrenciesUseCase` **réel** → `CurrencyCatalog` **réel**.
+ * La chaîne de persistance n'est doublée nulle part : un faux dépôt ne voit pas ce qui est
+ * réellement écrit. Seule doublure, stricte : `QwenDownloadManager`, sans rapport avec la devise.
+ *
+ * Source de vérité : CA-01, CA-06, CA-07, CA-08, CA-11, CA-13 et les invariants I-1, I-3, I-5 de
+ * l'US LOP-58.
+ * **Les comportements actuels de `SettingsRepository` et `SettingsViewModel` ne constituent pas
+ * l'oracle.** Les attendus viennent de la fiche, jamais du code.
+ *
+ * ### cas → CA / invariant → production
+ * ```
+ * T-01   S-VIDE, lecture seule           CA-01, I-3, I-5   SettingsRepository.currency, SettingsUiState.currency
+ * T-02   saisie sans sélection           CA-07, I-5        SettingsViewModel.onCurrencyQueryChange/.onCurrencySheetDismissed
+ * T-03   sélection, observation ouverte   CA-06, CA-13, I-3 SettingsViewModel.setCurrency → SettingsRepository.setCurrency
+ * T-04a  choix puis redémarrage          CA-08             SettingsRepository.currency relu par une instance neuve
+ * T-04b  S-USD puis redémarrage          CA-08             idem
+ * T-05   S-CORROMPU ×4                   CA-11, I-1        CurrencyCatalog.byCodeOrDefault à la lecture
+ * T-06   codes hors catalogue            I-1               SettingsRepository.setCurrency — garde d'écriture
+ * T-07   instantané Room avant/après     I-2, CA-09        aucune écriture en base au changement de devise
+ * T-08   recensement des lectures        CA-13, I-3        analyse, restituée ci-dessous
+ * ```
+ *
+ * ### Montage : pourquoi de la réflexion, et pourquoi une seule écriture par cas
+ *
+ * `SettingsRepository` obtient son stockage par le délégué `private val Context.dataStore`, qui met
+ * en cache **une seule** instance par processus. Deux conséquences, toutes deux vérifiées par sonde
+ * le 16 septembre 2026 :
+ *
+ * 1. **Isolation et redémarrage.** Reconstruire `SettingsRepository(context)` rend le même stockage
+ *    déjà chargé en mémoire : relire ne prouverait rien. [reinitialiserStockage] remet à `null`
+ *    l'instance mise en cache, si bien que le dépôt suivant en construit une neuve qui relit le
+ *    fichier. C'est du **test seul**, aucune ligne de production n'a été ajoutée pour cela.
+ *    Robolectric alloue par ailleurs un `filesDir` neuf à chaque méthode : aucun état ne fuit d'un
+ *    cas à l'autre.
+ * 2. **Une écriture par cas, contrainte de l'environnement.** DataStore publie une écriture par
+ *    `File.renameTo`, qui **sous Windows ne peut pas écraser un fichier existant**. La première
+ *    écriture réussit, la seconde échoue avec `IOException: Unable to rename`. Ce n'est ni un défaut
+ *    du produit ni un choix de conception : c'est la plateforme de développement. Chaque cas est
+ *    donc écrit pour ne persister qu'une fois. Voir le hors-périmètre pour le seul oracle que cette
+ *    contrainte coûte.
+ *
+ * Le semis d'une préférence corrompue passe par [stockage], c'est-à-dire **directement** par le
+ * DataStore, jamais par `setCurrency` : la faire valider par l'API qui la refuse serait tautologique.
+ *
+ * ### Points de synchronisation, distingués des oracles
+ * Les flux de préférences font de l'E/S réelle, que l'horloge virtuelle de `runTest` n'attend pas.
+ * [attendreDevise] fait donc tourner l'ordonnanceur de test **et** laisse l'E/S avancer, sous un
+ * délai borné déclaré localement ([DELAI_OBSERVATION_MS]). Une absence d'émission y devient un échec
+ * **métier** nommant le CA et le dernier état observé, jamais un délai brut. L'attente initiale de
+ * T-03 porte sur l'existence d'une émission, pas sur son contenu.
+ *
+ * ### T-08 — recensement des lectures de la devise (analyse, pas un test)
+ * Effectué le 16 septembre 2026 sur la branche `main`. **Tous** les consommateurs lisent
+ * `SettingsRepository.currency`, aucune copie locale n'est persistée :
+ * `HomeViewModel:100`, `AccountsViewModel:35`, `AccountsManageViewModel:32`,
+ * `AccountDetailViewModel:46`, `AnalyticsViewModel:80`, `MonthlyTransactionsViewModel:185`,
+ * `SearchViewModel:60`, `GoalsViewModel:30`, `SettingsViewModel:42`,
+ * `TransactionEditViewModel:346`, `TransactionActionViewModel:300`, `AiViewModel:100`, et
+ * `BalanceWidget.provideGlance` pour le widget d'écran d'accueil.
+ *
+ * Une seule violation de I-3, et l'US l'avait anticipée : **ANO-A**
+ * (<https://app.notion.com/p/3dd50f34a8c5812b97b3ca0c243f9010>), `HomeUiState.currency = "USD"`
+ * (`ui/screens/home/HomeViewModel.kt:35`) alors que toutes les autres valeurs initiales et le dépôt
+ * répondent `EUR`. L'écran d'accueil peut donc afficher des dollars le temps que le flux émette.
+ * À ouvrir en anomalie, **pas** à corriger ici : l'US le place explicitement hors périmètre.
+ * Cas voisin écarté : `DetectedTransactionsScreen:148` replie sur `"EUR"`, mais il s'agit de la
+ * devise **lue dans une notification bancaire**, hors sujet malgré le nom.
+ *
+ * ### Hors périmètre, explicitement
+ * - Repris de l'US : conversion et taux de change, devise par compte, format régional, devise des
+ *   notifications bancaires.
+ * - Ce niveau ne prouve **pas** le contenu et l'ordre du catalogue (TC-104) ni le formatage des
+ *   montants (TC-106). CA-02, CA-03 et CA-15 restent des vérifications sur appareil.
+ * - **Non couvert, et c'est un manque assumé** : la seconde sélection identique de T-03, qui devait
+ *   prouver l'idempotence de l'écriture. Elle exige une deuxième écriture DataStore, impossible sous
+ *   Windows (voir Montage, point 2). Ni l'oracle ni le périmètre n'ont été assouplis pour contourner
+ *   la contrainte : le cas est déclaré manquant. À porter par un test instrumenté — le dépôt n'a
+ *   aujourd'hui aucun source set `app/src/androidTest`, et aucun appareil n'était connecté.
+ */
+@RunWith(RobolectricTestRunner::class)
+class CurrencyPreferenceTest {
+
+    /**
+     * Fenêtre d'observation des flux, **déclarée localement**.
+     *
+     * Elle conditionne le verdict de T-03 : la partager avec une autre fiche ferait qu'un futur
+     * réglage ailleurs déplacerait le rouge hors d'ici.
+     */
+    private val DELAI_OBSERVATION_MS = 5_000L
+
+    private val cleDevise = stringPreferencesKey("currency")
+
+    private val dispatcher = StandardTestDispatcher()
+    private lateinit var fuseauInitial: TimeZone
+    private lateinit var localeInitiale: Locale
+
+    private val context: Context get() = ApplicationProvider.getApplicationContext()
+
+    private lateinit var depot: SettingsRepository
+    private var db: LopDatabase? = null
+
+    @Before
+    fun setUp() {
+        fuseauInitial = TimeZone.getDefault()
+        localeInitiale = Locale.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("Europe/Paris"))
+        Locale.setDefault(Locale.FRANCE)
+        Dispatchers.setMain(dispatcher)
+
+        reinitialiserStockage()
+        depot = SettingsRepository(context)
+    }
+
+    @After
+    fun tearDown() {
+        db?.close()
+        Dispatchers.resetMain()
+        reinitialiserStockage()
+        TimeZone.setDefault(fuseauInitial)
+        Locale.setDefault(localeInitiale)
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // T-01 — Sans préférence, l'euro ; et lire n'écrit pas.
+    // ---------------------------------------------------------------------------------------
+
+    @Test
+    fun `given aucune preference when lue then EUR expose et rien ecrit`() = runTest(dispatcher) {
+        val vm = viewModel()
+        abonner(vm)
+
+        assertEquals(
+            "T-01 / CA-01 : sans préférence enregistrée, le dépôt doit répondre EUR",
+            "EUR",
+            depot.currency.first(),
+        )
+        val etat = attendreDevise(vm, "EUR", "T-01 / CA-01, I-3")
+        assertEquals(
+            "T-01 / CA-01 : l'écran de réglages doit afficher le symbole de l'euro",
+            "€",
+            etat.currency.symbol,
+        )
+
+        laisserRetomberLesEcrituresEventuelles()
+        assertEquals(
+            "T-01 / I-5 : lire la préférence ne doit rien écrire, la clé devise doit rester absente " +
+                "— clés présentes ${clesPresentes()}",
+            null,
+            deviseStockee(),
+        )
+        assertEquals(
+            "T-01 / I-5 : aucune clé ne doit apparaître dans le stockage du seul fait d'une lecture " +
+                "— clés présentes ${clesPresentes()}",
+            emptyList<String>(),
+            clesPresentes(),
+        )
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // T-02 — Chercher puis refermer n'écrit rien.
+    // ---------------------------------------------------------------------------------------
+
+    @Test
+    fun `given une saisie de recherche sans selection when feuille refermee then aucune ecriture`() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            abonner(vm)
+            attendreDevise(vm, "EUR", "T-02 / CA-01 — état initial")
+
+            listOf("U", "US", "USD").forEach { frappe -> vm.onCurrencyQueryChange(frappe) }
+            advanceUntilIdle()
+            assertEquals(
+                "T-02 / CA-04 : la recherche doit bien filtrer, sinon le cas ne prouve rien sur " +
+                    "l'absence d'écriture",
+                listOf("USD"),
+                vm.currencyResults.value.map { it.code },
+            )
+
+            vm.onCurrencySheetDismissed()
+            advanceUntilIdle()
+            laisserRetomberLesEcrituresEventuelles()
+
+            assertEquals(
+                "T-02 / CA-07, I-5 : taper dans la recherche puis refermer la feuille sans choisir " +
+                    "ne persiste rien, la clé devise doit rester absente — clés ${clesPresentes()}",
+                null,
+                deviseStockee(),
+            )
+            assertEquals(
+                "T-02 / I-5 : aucune clé parasite ne doit apparaître — clés ${clesPresentes()}",
+                emptyList<String>(),
+                clesPresentes(),
+            )
+            assertEquals(
+                "T-02 / CA-07 : la devise exposée reste celle d'avant l'ouverture de la feuille",
+                "EUR",
+                depot.currency.first(),
+            )
+        }
+
+    // ---------------------------------------------------------------------------------------
+    // T-03 — Sélectionner propage sans redémarrage, sur une observation déjà ouverte.
+    // ---------------------------------------------------------------------------------------
+
+    @Test
+    fun `given une observation ouverte when devise selectionnee then propagation sans redemarrage`() =
+        runTest(dispatcher) {
+            // Observation ouverte AVANT la sélection : c'est ce que CA-13 exige de prouver.
+            val emissions = mutableListOf<String>()
+            backgroundScope.launch { depot.currency.collect { emissions += it } }
+            runCurrent()
+
+            val vm = viewModel()
+            abonner(vm)
+            // Point de synchronisation, pas un oracle : on attend qu'une première valeur existe.
+            attendreCondition("T-03 — aucune première émission du flux de devise") {
+                emissions.isNotEmpty()
+            }
+
+            val usd = CurrencyCatalog.byCodeOrNull("USD")!!
+            vm.setCurrency(usd)
+            advanceUntilIdle()
+
+            val etat = attendreDevise(vm, "USD", "T-03 / CA-06, CA-13")
+            assertEquals(
+                "T-03 / CA-06 : la ligne des réglages doit afficher la nouvelle devise en entier",
+                "USD",
+                etat.currency.code,
+            )
+
+            attendreCondition(
+                "T-03 / CA-13 : aucune émission après sélection de USD sur l'observation déjà " +
+                    "ouverte — émissions observées $emissions",
+            ) { emissions.lastOrNull() == "USD" }
+
+            assertEquals(
+                "T-03 / CA-06, I-1 : le stockage doit contenir exactement le code choisi",
+                "USD",
+                deviseStockee(),
+            )
+            assertEquals(
+                "T-03 / I-3 : une seule clé devise, pas de clé parasite — clés ${clesPresentes()}",
+                listOf("currency"),
+                clesPresentes(),
+            )
+            assertEquals(
+                "T-03 / I-3 : la source de vérité est unique, aucune valeur étrangère ne doit " +
+                    "transiter — émissions observées $emissions",
+                emptyList<String>(),
+                emissions.filterNot { it == "EUR" || it == "USD" },
+            )
+        }
+
+    // ---------------------------------------------------------------------------------------
+    // T-04 — Le choix survit au redémarrage, et le défaut ne l'écrase pas.
+    // ---------------------------------------------------------------------------------------
+
+    @Test
+    fun `given une devise choisie when depot recree then le choix survit`() = runTest(dispatcher) {
+        depot.setCurrency("JPY")
+        assertEquals(
+            "T-04a / CA-06 : la sélection doit d'abord avoir été persistée",
+            "JPY",
+            deviseStockee(),
+        )
+
+        val apresRedemarrage = redemarrer().currency.first()
+
+        assertEquals(
+            "T-04a / CA-08 : après redémarrage, la devise choisie est toujours celle affichée — " +
+                "la valeur par défaut EUR ne doit pas écraser le choix",
+            "JPY",
+            apresRedemarrage,
+        )
+        assertEquals(
+            "T-04a / CA-08 : une seule clé devise après redémarrage — clés ${clesPresentes()}",
+            listOf("currency"),
+            clesPresentes(),
+        )
+    }
+
+    @Test
+    fun `given une preference USD when depot recree then le defaut n ecrase pas le choix`() =
+        runTest(dispatcher) {
+            semer("USD")
+
+            val apresRedemarrage = redemarrer().currency.first()
+
+            assertEquals(
+                "T-04b / CA-08 : une préférence déjà présente au démarrage doit être servie telle " +
+                    "quelle, pas remplacée par le défaut",
+                "USD",
+                apresRedemarrage,
+            )
+        }
+
+    // ---------------------------------------------------------------------------------------
+    // T-05 — Une préférence corrompue dégrade vers l'euro sans planter. Une variante par cas.
+    // ---------------------------------------------------------------------------------------
+
+    @Test
+    fun `given une preference vide when lue then repli sur EUR`() = verifierRepli("")
+
+    @Test
+    fun `given une preference avec espace when lue then repli sur EUR`() = verifierRepli("eur ")
+
+    @Test
+    fun `given une preference inconnue when lue then repli sur EUR`() = verifierRepli("ABC")
+
+    @Test
+    fun `given une preference en minuscules when lue then repli sur EUR`() = verifierRepli("usd")
+
+    private fun verifierRepli(valeurCorrompue: String) = runTest(dispatcher) {
+        semer(valeurCorrompue)
+
+        val lue = runCatching { depot.currency.first() }.getOrElse { erreur ->
+            throw AssertionError(
+                "T-05 / CA-11 : une préférence corrompue « $valeurCorrompue » ne doit pas faire " +
+                    "échouer la lecture — obtenu ${erreur::class.simpleName}: ${erreur.message}",
+            )
+        }
+        assertEquals(
+            "T-05 / CA-11, I-1 : « $valeurCorrompue » n'est pas un code du catalogue, la lecture " +
+                "doit dégrader vers l'euro plutôt que le propager au formatage des montants",
+            "EUR",
+            lue,
+        )
+
+        val vm = viewModel()
+        abonner(vm)
+        val etat = attendreDevise(vm, "EUR", "T-05 / CA-11 — variante « $valeurCorrompue »")
+        assertEquals(
+            "T-05 / CA-11 : l'écran doit rester capable d'afficher des montants, donc porter un " +
+                "symbole — variante « $valeurCorrompue »",
+            "€",
+            etat.currency.symbol,
+        )
+        assertEquals(
+            "T-05 / CA-11 : la valeur corrompue ne doit pas avoir été réécrite par la lecture, " +
+                "elle est ignorée et non corrigée — clés ${clesPresentes()}",
+            valeurCorrompue,
+            deviseStockee(),
+        )
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // T-06 — Seul un code du catalogue atteint le stockage.
+    // ---------------------------------------------------------------------------------------
+
+    @Test
+    fun `given des codes hors catalogue when setCurrency then aucune ecriture`() =
+        runTest(dispatcher) {
+            semer("USD")
+
+            listOf("ABC", "", "eur").forEach { tentative ->
+                runCatching { depot.setCurrency(tentative) }.onFailure { erreur ->
+                    throw AssertionError(
+                        "T-06 / I-1 : setCurrency(« $tentative ») a tenté d'atteindre le stockage " +
+                            "au lieu de refuser la valeur — ${erreur::class.simpleName}: " +
+                            "${erreur.message}",
+                    )
+                }
+                assertEquals(
+                    "T-06 / I-1 : « $tentative » n'est pas exactement un code du catalogue et ne " +
+                        "doit jamais être persisté — clés ${clesPresentes()}",
+                    "USD",
+                    deviseStockee(),
+                )
+            }
+
+            assertEquals(
+                "T-06 / I-1 : après les trois tentatives, la préférence antérieure est intacte",
+                "USD",
+                depot.currency.first(),
+            )
+            assertEquals(
+                "T-06 / I-1 : aucune clé parasite n'a été créée — clés ${clesPresentes()}",
+                listOf("currency"),
+                clesPresentes(),
+            )
+        }
+
+    // ---------------------------------------------------------------------------------------
+    // T-07 — Changer de devise ne touche à aucun montant stocké.
+    // ---------------------------------------------------------------------------------------
+
+    @Test
+    fun `given des transactions en base when devise changee then aucune ligne modifiee`() =
+        runTest(dispatcher) {
+            val base = Room.inMemoryDatabaseBuilder(
+                ApplicationProvider.getApplicationContext<Application>(),
+                LopDatabase::class.java,
+            ).allowMainThreadQueries().build().also { db = it }
+
+            val compte = base.accountDao().upsert(
+                AccountEntity(
+                    name = "Compte courant",
+                    type = AccountType.CHECKING,
+                    initialBalance = 100_000L,
+                    colorArgb = 0xFF2196F3.toInt(),
+                    icon = "wallet",
+                ),
+            )
+            val categorie = base.categoryDao().upsert(
+                CategoryEntity(
+                    name = "Courses",
+                    type = TransactionType.EXPENSE,
+                    colorArgb = 0xFF4CAF50.toInt(),
+                    icon = "cart",
+                ),
+            )
+            val dateCourses = 1_757_000_000_000L // 4 septembre 2026, fixe
+            listOf(1_234L to "Courses du marché", 9_900L to "Abonnement mensuel").forEach {
+                    (centimes, libelle) ->
+                base.transactionDao().upsert(
+                    TransactionEntity(
+                        title = libelle,
+                        amount = centimes,
+                        type = TransactionType.EXPENSE,
+                        status = TransactionStatus.PAID,
+                        date = dateCourses,
+                        accountId = compte,
+                        categoryId = categorie,
+                    ),
+                )
+            }
+
+            val avant = base.transactionDao().observeAllEntities().first()
+            val soldeAvant = base.accountDao().observeAll().first().map { it.id to it.initialBalance }
+            assertEquals(
+                "T-07 : le jeu de données doit contenir les deux transactions attendues, sinon le " +
+                    "cas ne prouve rien",
+                2,
+                avant.size,
+            )
+
+            depot.setCurrency("USD")
+            assertEquals(
+                "T-07 / CA-06 : le changement de devise doit avoir eu lieu",
+                "USD",
+                deviseStockee(),
+            )
+
+            val apres = base.transactionDao().observeAllEntities().first()
+            val soldeApres = base.accountDao().observeAll().first().map { it.id to it.initialBalance }
+
+            assertEquals(
+                "T-07 / CA-09, I-2 : changer de devise ne crée ni ne supprime aucune ligne",
+                avant.size,
+                apres.size,
+            )
+            assertEquals(
+                "T-07 / CA-09, I-2 : aucun montant stocké ne bouge, aucune conversion n'est " +
+                    "appliquée — avant ${avant.map { it.id to it.amount }}, " +
+                    "après ${apres.map { it.id to it.amount }}",
+                avant.map { it.id to it.amount },
+                apres.map { it.id to it.amount },
+            )
+            assertEquals(
+                "T-07 / CA-09, I-2 : les lignes sont identiques champ pour champ",
+                avant,
+                apres,
+            )
+            assertEquals(
+                "T-07 / CA-09, I-2 : les soldes de comptes sont inchangés",
+                soldeAvant,
+                soldeApres,
+            )
+        }
+
+    // ---------------------------------------------------------------------------------------
+    // Montage. Rien ici ne produit d'attendu : ces outils préparent et observent.
+    // ---------------------------------------------------------------------------------------
+
+    /** Vrai ViewModel. Seule doublure stricte : le gestionnaire de téléchargement du modèle d'IA. */
+    private fun viewModel(): SettingsViewModel {
+        val telechargement = mockk<QwenDownloadManager>()
+        every { telechargement.isModelInstalled() } returns false
+        return SettingsViewModel(depot, telechargement, SearchCurrenciesUseCase())
+    }
+
+    /**
+     * `uiState` et `currencyResults` sont des `stateIn(WhileSubscribed)` : sans abonné ils restent
+     * sur leur valeur initiale et n'émettent jamais. Les deux sont donc collectés.
+     */
+    private fun TestScope.abonner(vm: SettingsViewModel) {
+        backgroundScope.launch { vm.uiState.collect { } }
+        backgroundScope.launch { vm.currencyResults.collect { } }
+        runCurrent()
+    }
+
+    /**
+     * « Redémarrage » : le stockage mis en cache est jeté, le dépôt suivant relit le fichier.
+     *
+     * Lecture seule après cet appel — voir le point 2 du Montage.
+     */
+    private fun redemarrer(): SettingsRepository {
+        reinitialiserStockage()
+        return SettingsRepository(context)
+    }
+
+    /** Semis direct dans le stockage, sans passer par `setCurrency` qui validerait la valeur. */
+    private suspend fun semer(valeur: String) {
+        stockage().edit { it[cleDevise] = valeur }
+    }
+
+    private suspend fun deviseStockee(): String? = stockage().data.first()[cleDevise]
+
+    private suspend fun clesPresentes(): List<String> =
+        stockage().data.first().asMap().keys.map { it.name }.sorted()
+
+    /**
+     * Attend que l'état du ViewModel porte [attendu], sous un délai réel borné.
+     *
+     * L'horloge de `runTest` est virtuelle et n'attend pas l'E/S du DataStore : il faut donc faire
+     * tourner l'ordonnanceur **et** laisser le temps réel avancer. L'absence d'émission devient un
+     * échec métier nommant le CA et le dernier état observé, jamais un délai brut.
+     */
+    private suspend fun TestScope.attendreDevise(
+        vm: SettingsViewModel,
+        attendu: String,
+        libelle: String,
+    ): SettingsUiState {
+        val limite = System.nanoTime() + DELAI_OBSERVATION_MS * 1_000_000
+        var dernier = vm.uiState.value
+        while (System.nanoTime() < limite) {
+            advanceUntilIdle()
+            dernier = vm.uiState.value
+            if (dernier.currency.code == attendu) return dernier
+            withContext(Dispatchers.Default) { delay(10) }
+        }
+        throw AssertionError(
+            "$libelle : l'état du ViewModel n'a jamais porté « $attendu » en " +
+                "$DELAI_OBSERVATION_MS ms — dernier état observé « ${dernier.currency.code} », " +
+                "stockage « ${deviseStockee()} »",
+        )
+    }
+
+    /** Même principe, pour une condition qui ne porte pas sur l'état du ViewModel. */
+    private suspend fun TestScope.attendreCondition(libelle: String, condition: () -> Boolean) {
+        val limite = System.nanoTime() + DELAI_OBSERVATION_MS * 1_000_000
+        while (System.nanoTime() < limite) {
+            advanceUntilIdle()
+            if (condition()) return
+            withContext(Dispatchers.Default) { delay(10) }
+        }
+        throw AssertionError("$libelle (délai $DELAI_OBSERVATION_MS ms)")
+    }
+
+    /**
+     * Laisse une écriture fautive le temps d'atteindre le disque avant d'asserter son absence.
+     *
+     * Cette attente **durcit** l'oracle au lieu de le relâcher : sans elle, un cas « aucune
+     * écriture » pourrait passer au vert simplement parce que l'E/S n'a pas encore eu lieu.
+     */
+    private suspend fun TestScope.laisserRetomberLesEcrituresEventuelles() {
+        advanceUntilIdle()
+        withContext(Dispatchers.Default) { delay(200) }
+        advanceUntilIdle()
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Accès au DataStore réel du dépôt, par réflexion. Test seul, aucune API de production ajoutée.
+    // ---------------------------------------------------------------------------------------
+
+    private fun champInstance(): Pair<Any, java.lang.reflect.Field> {
+        val facade = Class.forName("com.lop.budget.data.repository.SettingsRepositoryKt")
+        val delegueField = facade.getDeclaredField("dataStore\$delegate")
+        delegueField.isAccessible = true
+        val delegue = delegueField.get(null)!!
+        val instance = delegue.javaClass.getDeclaredField("INSTANCE")
+        instance.isAccessible = true
+        return delegue to instance
+    }
+
+    private fun reinitialiserStockage() {
+        val (delegue, instance) = champInstance()
+        instance.set(delegue, null)
+        libererFichiersActifs()
+    }
+
+    /**
+     * Désenregistre le fichier du registre interne de DataStore.
+     *
+     * DataStore refuse deux instances vivantes sur un même fichier, et ne libère l'entrée qu'à
+     * l'arrêt du `CoroutineScope` de l'instance — or le délégué `preferencesDataStore` lui donne un
+     * scope qui n'est jamais arrêté. Sans ce nettoyage, l'instance créée après
+     * [reinitialiserStockage] lève « There are multiple DataStores active for the same file » et le
+     * redémarrage de T-04 ne peut pas être simulé.
+     *
+     * L'instance précédente n'est plus utilisée après l'appel, et celle qui lui succède ne fait que
+     * **lire** : aucune écriture concurrente n'est rendue possible ici.
+     *
+     * Échoue bruyamment si le champ change de nom dans une version future : mieux vaut un montage
+     * cassé et visible qu'un T-04 qui relirait silencieusement un cache mémoire.
+     */
+    private fun libererFichiersActifs() {
+        val storage = Class.forName("androidx.datastore.core.FileStorage")
+        val porteurs = listOf(
+            null,
+            runCatching {
+                storage.getDeclaredField("Companion").also { it.isAccessible = true }.get(null)
+            }.getOrNull(),
+        )
+        for (porteur in porteurs) {
+            val classe = porteur?.javaClass ?: storage
+            val champ = classe.declaredFields.firstOrNull { it.name == "activeFiles" } ?: continue
+            champ.isAccessible = true
+            val ensemble = runCatching { champ.get(porteur) }.getOrNull() as? MutableSet<*> ?: continue
+            synchronized(ensemble) { ensemble.clear() }
+            return
+        }
+        throw IllegalStateException(
+            "Montage : androidx.datastore.core.FileStorage.activeFiles est introuvable ; le " +
+                "redémarrage de T-04 ne peut pas être simulé de façon fiable.",
+        )
+    }
+
+    /**
+     * L'instance **que le dépôt utilise**, et non une seconde ouverte sur le même fichier : deux
+     * instances concurrentes se bloquent mutuellement à l'écriture.
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun stockage(): DataStore<Preferences> {
+        val (delegue, instance) = champInstance()
+        val courante = instance.get(delegue)
+        assertTrue(
+            "Montage : le dépôt doit avoir créé son stockage avant toute inspection",
+            courante != null,
+        )
+        return courante as DataStore<Preferences>
+    }
+}
