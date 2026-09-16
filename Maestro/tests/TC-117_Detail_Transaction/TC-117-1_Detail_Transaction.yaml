@@ -1,0 +1,240 @@
+appId: com.lop.budget
+name: "TC-117-1 - Détail : titre, informations affichées, pattern des modifications rapides"
+tags:
+  - tc-117
+  - detail
+  - quick-edit
+---
+# =====================================================================================
+# TC-117-1 — Détail de transaction : titre, informations, pattern et parcours
+# -------------------------------------------------------------------------------------
+# Niveau        : E2E / UI (Maestro). Parcours visible uniquement.
+# US            : LOP-53 — Consulter le détail d'une transaction
+# Fiche         : TC-117
+# Chaîne        : liste mensuelle -> TransactionDetailScreen -> sélecteurs partagés
+#                 -> TransactionActionViewModel.quickEdit* -> retour sur le détail
+#
+# cas -> CA -> assertion principale :
+#   T-01 -> CA-01  le titre est visible dans la zone principale, au-dessus du montant
+#   T-02 -> CA-02  les six informations exigées sont présentes, énumérées une à une
+#   T-03 -> CA-11  les trois champs modifiables exposent la MÊME affordance, le type non
+#   T-04 -> CA-06  chacun ouvre SON sélecteur, aucun n'ouvre l'écran d'édition complet
+#   T-05 -> CA-07  après validation, la valeur affichée est à jour sans geste de refresh
+#   T-06 -> CA-13  Modifier et Supprimer joignables ; Modifier ouvre l'édition complète
+#
+# Un seul fichier pour six cas : ce ne sont pas six scénarios indépendants mais les
+# étapes successives d'un même parcours (ouvrir le détail, l'inventorier, activer ses
+# sélecteurs, modifier, revenir). Les découper obligerait à rejouer l'amorçage six fois.
+#
+# Écarts spec/code assumés (le code donne le CHEMIN, la spec reste l'oracle) :
+#   - JDD : la fiche nomme « TX-PAY / Courses mars ». Le seeder ne connaît pas ce
+#     libellé ; sa dépense PAYÉE de profil identique est « Courses Hebdomadaires »
+#     (8 420 centimes, Compte courant, catégorie Courses). C'est elle qui tient le rôle,
+#     conformément à la règle « utiliser les données exactes du seeder ».
+#   - JDD : le seeder ne crée qu'un compte. Le second compte (rôle « B ») est donc créé
+#     par l'interface en préambule, avec un libellé unique pour que sa sélection dans le
+#     sélecteur de comptes ne soit jamais ambiguë.
+#   - ANO CA-02 : l'écran de détail n'a AUCUN affichage de statut. Ses quatre lignes sont
+#     catégorie, date, compte et type ; le statut n'est déductible que du libellé du
+#     bouton d'action (« Marquer comme non payé » sur une transaction payée). L'oracle de
+#     T-02 n'est pas assoupli pour épouser le code : l'assertion de statut est écrite
+#     telle que CA-02 l'exige et rougira tant que l'anomalie n'est pas traitée.
+#
+# Hors périmètre (ne pas ajouter ici) :
+#   - Conditionnement de « Marquer comme payé », verrou anti double-soumission,
+#     annulation sans effet : portés par TC-116 (ViewModel).
+#   - Persistance, cohérence de l'accueil et des listes mensuelles, soldes, occurrences
+#     récurrentes : portés par TC-115 (intégration Room).
+#   - Rendu graphique fin (couleurs, icônes, espacements) : ce niveau prouve la présence
+#     et le parcours, pas le pixel.
+# =====================================================================================
+
+# Given l'application est amorcée sur un état propre (seeder mensuel, clearState)
+- runFlow: ../../.maestro/subflows/bootstrap_monthly.yaml
+
+# -------------------------------------------------------------------------------------
+# Amorçage — second compte, rôle « B » du jeu de données
+# -------------------------------------------------------------------------------------
+- runFlow: ../../.maestro/subflows/go_to_home.yaml
+
+- evalScript: |
+    console.log("TC-117 amorçage : création du second compte (rôle B du JDD)")
+
+- tapOn: { id: "nav.settings.button" }
+- assertVisible: { id: "screen.settings" }
+- tapOn: { id: "settings.nav.accounts" }
+- assertVisible: { id: "screen.accounts" }
+- tapOn: { id: "account.btn.add" }
+
+- tapOn: { id: "account.edit.name.field" }
+- inputText: "Compte B TC117"
+- hideKeyboard
+
+- tapOn: { id: "account.edit.balance.field" }
+- inputText: "250"
+- hideKeyboard
+
+- tapOn: { id: "common.btn.save" }
+- assertVisible: "Compte B TC117"
+
+- runFlow: ../../.maestro/subflows/go_to_home.yaml
+- runFlow: ../../.maestro/subflows/open_monthly_history.yaml
+
+# =====================================================================================
+# T-01 — CA-01 : le titre est affiché dans la zone principale, près du montant
+# Sous-ensemble du JDD exercé : TX-PAY seule.
+# =====================================================================================
+- evalScript: |
+    console.log("TC-117 T-01 / CA-01 : le titre doit être visible près du montant")
+
+- scrollUntilVisible:
+    element:
+      text: "Courses Hebdomadaires"
+    direction: DOWN
+- tapOn: "Courses Hebdomadaires"
+- assertVisible: { id: "screen.transaction.detail" }
+
+- assertVisible:
+    id: "transaction.detail.title"
+    text: "Courses Hebdomadaires"
+
+# « Près du montant » se prouve par la relation structurelle, jamais par une position à
+# l'écran : le montant est rendu immédiatement sous le titre, dans le même bloc.
+- assertVisible:
+    id: "transaction.detail.field.amount"
+    below:
+      id: "transaction.detail.title"
+
+# =====================================================================================
+# T-02 — CA-02 : inventaire des six informations exigées
+# Sous-ensemble du JDD exercé : TX-PAY, son compte A et sa catégorie C1.
+# =====================================================================================
+- evalScript: |
+    console.log("TC-117 T-02 / CA-02 : les six informations exigées doivent être présentes")
+
+# 1. Montant — Format.money (Locale.FRANCE, EUR) place une espace insécable avant le
+#    symbole : on cible les chiffres par expression régulière.
+- assertVisible:
+    id: "transaction.detail.field.amount"
+    text: ".*84,20.*"
+
+# 2. Type — `containsChild` et non `text` : la ligne est un conteneur, son libellé et sa
+#    valeur vivent dans des nœuds enfants. La relation lie explicitement la ligne à la
+#    valeur attendue, là où deux assertions séparées ne prouveraient pas qu'elles vont
+#    ensemble.
+- assertVisible:
+    id: "transaction.detail.field.type"
+    containsChild: "Dépense"
+
+# 3. Date
+- assertVisible: { id: "transaction.detail.field.date" }
+
+# 4. Catégorie
+- assertVisible:
+    id: "transaction.detail.field.category"
+    containsChild: "Courses"
+
+# 5. Compte
+- assertVisible:
+    id: "transaction.detail.field.account"
+    containsChild: "Compte courant"
+
+# 6. Statut — ROUGE ATTENDU, anomalie CA-02.
+#    L'écran n'expose aucun affichage de statut : ni ligne dédiée, ni pastille. Le seul
+#    indice est le libellé du bouton d'action, qui nomme l'action à faire et non l'état
+#    courant. L'oracle reste celui de CA-02. Si le correctif introduit un autre libellé
+#    ou un identifiant de test dédié, c'est ce sélecteur qu'il faudra suivre — pas
+#    l'oracle qu'il faudra affaiblir.
+- evalScript: |
+    console.log("TC-117 T-02 / CA-02 : assertion de statut — rouge attendu, voir ANO CA-02")
+- assertVisible: "Payé"
+
+# =====================================================================================
+# T-03 — CA-11 : les trois champs modifiables partagent la même affordance
+# Sous-ensemble du JDD exercé : TX-PAY seule.
+# =====================================================================================
+- evalScript: |
+    console.log("TC-117 T-03 / CA-11 : même affordance sur les trois champs modifiables")
+
+- assertVisible: { id: "transaction.detail.field.category.edit" }
+- assertVisible: { id: "transaction.detail.field.date.edit" }
+- assertVisible: { id: "transaction.detail.field.account.edit" }
+
+# Donnée de contrôle : le type est affiché dans le même bloc, avec la même mise en forme,
+# mais n'est pas modifiable. Sans cette assertion négative, les trois précédentes
+# passeraient aussi bien si TOUTES les lignes portaient l'affordance.
+- assertNotVisible: { id: "transaction.detail.field.type.edit" }
+
+# =====================================================================================
+# T-04 — CA-06 : chaque champ ouvre son propre sélecteur, jamais l'édition complète
+# Sous-ensemble du JDD exercé : TX-PAY, ses catégories et comptes disponibles.
+# =====================================================================================
+- evalScript: |
+    console.log("TC-117 T-04 / CA-06 : le champ catégorie ouvre le sélecteur de catégorie")
+
+- tapOn: { id: "transaction.detail.field.category" }
+- assertVisible: { id: "picker.category.sheet" }
+- assertNotVisible: { id: "picker.date" }
+- assertNotVisible: { id: "picker.account.sheet" }
+- assertNotVisible: { id: "screen.transaction.edit" }
+- back
+- assertVisible: { id: "screen.transaction.detail" }
+
+- evalScript: |
+    console.log("TC-117 T-04 / CA-06 : le champ date ouvre le sélecteur de date")
+
+- tapOn: { id: "transaction.detail.field.date" }
+- assertVisible: { id: "picker.date" }
+- assertNotVisible: { id: "picker.category.sheet" }
+- assertNotVisible: { id: "picker.account.sheet" }
+- assertNotVisible: { id: "screen.transaction.edit" }
+- tapOn: "Annuler"
+- assertVisible: { id: "screen.transaction.detail" }
+
+- evalScript: |
+    console.log("TC-117 T-04 / CA-06 : le champ compte ouvre le sélecteur de comptes")
+
+- tapOn: { id: "transaction.detail.field.account" }
+- assertVisible: { id: "picker.account.sheet" }
+- assertNotVisible: { id: "picker.date" }
+- assertNotVisible: { id: "picker.category.sheet" }
+- assertNotVisible: { id: "screen.transaction.edit" }
+
+# =====================================================================================
+# T-05 — CA-07 : après validation, la valeur affichée est à jour sans geste manuel
+# Sous-ensemble du JDD exercé : TX-PAY, compte A (courant) et compte B (créé en amorçage).
+# Le sélecteur de comptes est déjà ouvert, laissé par T-04 : on enchaîne sur la
+# validation plutôt que de le refermer pour le rouvrir.
+# =====================================================================================
+- evalScript: |
+    console.log("TC-117 T-05 / CA-07 : le compte affiché doit passer à B sans rafraîchissement")
+
+- tapOn: "Compte B TC117"
+
+# Aucun geste de rafraîchissement, aucune sortie puis retour sur l'écran : on reste sur
+# le détail et on attend la nouvelle valeur. L'attente est bornée — au-delà, Maestro
+# échoue sur ce sélecteur, et le CA en cause est nommé par la trace ci-dessus.
+- assertVisible: { id: "screen.transaction.detail" }
+- extendedWaitUntil:
+    visible:
+      id: "transaction.detail.field.account"
+      containsChild: "Compte B TC117"
+    timeout: 10000
+
+# L'ancien compte ne doit plus être affiché sur la ligne du compte.
+- assertNotVisible:
+    id: "transaction.detail.field.account"
+    containsChild: "Compte courant"
+
+# =====================================================================================
+# T-06 — CA-13 : Modifier et Supprimer restent joignables et inchangés
+# Sous-ensemble du JDD exercé : TX-PAY seule.
+# =====================================================================================
+- evalScript: |
+    console.log("TC-117 T-06 / CA-13 : Modifier et Supprimer joignables, Modifier ouvre l'édition")
+
+- assertVisible: { id: "transaction.detail.edit" }
+- assertVisible: { id: "transaction.detail.delete" }
+
+- tapOn: { id: "transaction.detail.edit" }
+- assertVisible: { id: "screen.transaction.edit" }

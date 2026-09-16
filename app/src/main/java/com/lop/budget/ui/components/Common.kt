@@ -85,6 +85,7 @@ fun LopDatePicker(
     )
 
     DatePickerDialog(
+        modifier = Modifier.testTag(TestTags.PICKER_DATE),
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = {

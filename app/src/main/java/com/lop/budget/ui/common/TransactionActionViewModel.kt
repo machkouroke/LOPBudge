@@ -15,6 +15,7 @@ import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.transaction.SoftDeleteTransactionOccurrenceUseCase
 import com.lop.budget.ui.components.RecurringDeleteChoice
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -47,6 +48,30 @@ class TransactionActionViewModel @Inject constructor(
     // Confirmation request state
     private val _pendingConfirmation = MutableStateFlow<DeleteConfirmationRequest?>(null)
     val pendingConfirmation = _pendingConfirmation.asStateFlow()
+
+    /**
+     * Sauvegarde en cours (CA-15 de LOP-53).
+     *
+     * Le verrou vit ici, dans l'orchestrateur, et non dans l'écran de détail : `confirmEdit` est
+     * le chemin commun des trois modifications rapides, de `togglePaid` et de l'édition complète.
+     * Un garde-fou posé dans un seul appelant laisserait tous les autres sans protection.
+     */
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
+    /**
+     * Dernière modification refusée par le domaine ou interrompue par une erreur.
+     *
+     * Volontairement un simple drapeau : l'écran n'affiche qu'un message générique, et faire
+     * remonter le détail technique d'une exception jusqu'à l'interface n'est demandé par aucun CA.
+     */
+    private val _quickEditFailed = MutableStateFlow(false)
+    val quickEditFailed: StateFlow<Boolean> = _quickEditFailed.asStateFlow()
+
+    /** Acquitte l'erreur après son affichage. */
+    fun dismissQuickEditError() {
+        _quickEditFailed.value = false
+    }
 
     /**
      * Requests the deletion of a transaction. If the transaction is part of a recurring series,
@@ -137,8 +162,36 @@ class TransactionActionViewModel @Inject constructor(
     }
 
     /**
+     * Modification rapide de la **date** depuis le détail (CA-04, CA-06 de LOP-53).
+     *
+     * Les trois modifications rapides passent par la même logique : elles ne diffèrent que par le
+     * champ transmis. La portée est toujours `SINGLE`, sans feuille de choix, conformément à
+     * CA-14 ; la matérialisation d'une occurrence virtuelle reste portée par le domaine.
+     */
+    fun quickEditDate(tx: TransactionWithRelations, date: Long, onDone: () -> Unit = {}) =
+        confirmEdit(tx = tx, scope = EditScope.SINGLE, updatedDate = date, onDone = onDone)
+
+    /** Modification rapide du **compte** depuis le détail (CA-05, CA-06 de LOP-53). */
+    fun quickEditAccount(tx: TransactionWithRelations, accountId: Long, onDone: () -> Unit = {}) =
+        confirmEdit(tx = tx, scope = EditScope.SINGLE, updatedAccountId = accountId, onDone = onDone)
+
+    /** Modification rapide de la **catégorie** depuis le détail (CA-03, CA-06 de LOP-53). */
+    fun quickEditCategory(tx: TransactionWithRelations, categoryId: Long, onDone: () -> Unit = {}) =
+        confirmEdit(
+            tx = tx,
+            scope = EditScope.SINGLE,
+            updatedCategoryId = categoryId,
+            onDone = onDone,
+        )
+
+    /**
      * Orchestrateur central pour la modification d'une transaction.
      * Gère toutes les portées (SINGLE, FUTURE, ALL) et la matérialisation auto.
+     *
+     * CA-15 de LOP-53 : une sauvegarde en cours empêche toute double soumission. Le verrou est
+     * posé **avant** le lancement de la coroutine, et non dans son corps : deux demandes émises
+     * coup sur coup mettraient sinon toutes les deux leur tâche en file, et la seconde trouverait
+     * le verrou déjà relâché au moment où elle s'exécuterait.
      */
     fun confirmEdit(
         tx: TransactionWithRelations,
@@ -159,44 +212,57 @@ class TransactionActionViewModel @Inject constructor(
         updatedTagIds: List<Long> = tx.tags.map { it.id },
         onDone: () -> Unit = {}
     ) {
+        if (!_isSaving.compareAndSet(expect = false, update = true)) return
+        _quickEditFailed.value = false
+
         viewModelScope.launch {
-            val seriesId = tx.transaction.seriesId
-            val series = seriesId?.let { transactionRepo.getSeriesById(it) }
+            try {
+                val seriesId = tx.transaction.seriesId
+                val series = seriesId?.let { transactionRepo.getSeriesById(it) }
 
-            val finalFreq = updatedFrequency ?: series?.frequency
-            ?: com.lop.budget.domain.model.RecurrenceFrequency.NONE
-            val finalInterval = updatedInterval ?: series?.interval ?: 1
-            val finalDow = updatedDaysOfWeek ?: series?.daysOfWeek.toDaysOfWeekSet()
-            val finalEnd = updatedEndDate ?: series?.endDate
-            val finalMax = updatedMaxOccurrences ?: series?.maxOccurrences
+                val finalFreq = updatedFrequency ?: series?.frequency
+                ?: com.lop.budget.domain.model.RecurrenceFrequency.NONE
+                val finalInterval = updatedInterval ?: series?.interval ?: 1
+                val finalDow = updatedDaysOfWeek ?: series?.daysOfWeek.toDaysOfWeekSet()
+                val finalEnd = updatedEndDate ?: series?.endDate
+                val finalMax = updatedMaxOccurrences ?: series?.maxOccurrences
 
-            val edition = TransactionEdition(
-                title = updatedTitle,
-                amount = updatedAmount,
-                type = updatedType,
-                date = updatedDate,
-                accountId = updatedAccountId,
-                categoryId = updatedCategoryId,
-                note = updatedNote,
-                status = updatedStatus,
-                frequency = finalFreq,
-                interval = finalInterval,
-                daysOfWeek = finalDow,
-                endDate = finalEnd,
-                maxOccurrences = finalMax,
-                linkedGoalId = tx.transaction.linkedGoalId,
-                linkedDebtId = tx.transaction.linkedDebtId,
-                tagIds = updatedTagIds
-            )
+                val edition = TransactionEdition(
+                    title = updatedTitle,
+                    amount = updatedAmount,
+                    type = updatedType,
+                    date = updatedDate,
+                    accountId = updatedAccountId,
+                    categoryId = updatedCategoryId,
+                    note = updatedNote,
+                    status = updatedStatus,
+                    frequency = finalFreq,
+                    interval = finalInterval,
+                    daysOfWeek = finalDow,
+                    endDate = finalEnd,
+                    maxOccurrences = finalMax,
+                    linkedGoalId = tx.transaction.linkedGoalId,
+                    linkedDebtId = tx.transaction.linkedDebtId,
+                    tagIds = updatedTagIds
+                )
 
-            editTransactionWithScopeUseCase(
-                editingId = tx.transaction.id,
-                seriesId = tx.transaction.seriesId,
-                seriesDate = tx.transaction.seriesDate,
-                edition = edition,
-                scope = scope
-            )
-            onDone()
+                editTransactionWithScopeUseCase(
+                    editingId = tx.transaction.id,
+                    seriesId = tx.transaction.seriesId,
+                    seriesDate = tx.transaction.seriesDate,
+                    edition = edition,
+                    scope = scope
+                )
+                onDone()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // CA-06/CA-07 : un échec ne doit pas laisser l'écran bloqué sur « Enregistrement ».
+                // L'ancienne valeur reste affichée puisque rien n'a été publié.
+                _quickEditFailed.value = true
+            } finally {
+                _isSaving.value = false
+            }
         }
     }
 

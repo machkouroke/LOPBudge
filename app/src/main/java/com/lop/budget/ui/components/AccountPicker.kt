@@ -1,11 +1,14 @@
 package com.lop.budget.ui.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.util.IconMapper
 
 /**
@@ -48,6 +51,7 @@ fun AccountBottomSheet(
     onDismiss: () -> Unit,
 ) {
     PickerBottomSheet(
+        modifier = Modifier.testTag(TestTags.PICKER_ACCOUNT_SHEET),
         title = title,
         items = accounts,
         isSelected = { it.id == selectedId },

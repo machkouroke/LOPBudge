@@ -31,6 +31,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import com.lop.budget.ui.common.TestTags
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,7 +67,10 @@ fun CategoryBottomSheet(
         categories.filter { it.parentCategoryId == null }
     }
     val recents = remember(rootCategories) { rootCategories.take(3) }
-    LopBottomSheet(onDismiss = onDismiss) {
+    LopBottomSheet(
+        onDismiss = onDismiss,
+        modifier = Modifier.testTag(TestTags.PICKER_CATEGORY_SHEET),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

@@ -56,10 +56,29 @@ object TestTags {
     const val TRANSACTION_ITEM_DELETE = "transaction.item.delete"
 
     // Transaction Detail
+    const val TRANSACTION_DETAIL_TITLE = "transaction.detail.title"
     const val TRANSACTION_DETAIL_AMOUNT = "transaction.detail.field.amount"
     const val TRANSACTION_DETAIL_EDIT = "transaction.detail.edit"
     const val TRANSACTION_DETAIL_DELETE = "transaction.detail.delete"
     const val TRANSACTION_DETAIL_TOGGLE_PAID = "transaction.detail.toggle.paid"
+
+    /**
+     * Lignes du bloc d'informations du détail (LOP-53, CA-11).
+     *
+     * Les trois premières sont modifiables, la quatrième ne l'est pas : c'est la donnée de
+     * contrôle du parcours. L'affordance de modification d'une ligne porte le même identifiant
+     * suffixé de [EDIT_AFFORDANCE_SUFFIX], ce qui rend le pattern commun vérifiable ligne à ligne.
+     */
+    const val TRANSACTION_DETAIL_FIELD_CATEGORY = "transaction.detail.field.category"
+    const val TRANSACTION_DETAIL_FIELD_DATE = "transaction.detail.field.date"
+    const val TRANSACTION_DETAIL_FIELD_ACCOUNT = "transaction.detail.field.account"
+    const val TRANSACTION_DETAIL_FIELD_TYPE = "transaction.detail.field.type"
+    const val EDIT_AFFORDANCE_SUFFIX = ".edit"
+
+    // Sélecteurs partagés
+    const val PICKER_DATE = "picker.date"
+    const val PICKER_ACCOUNT_SHEET = "picker.account.sheet"
+    const val PICKER_CATEGORY_SHEET = "picker.category.sheet"
 
     // Transaction Edit
     const val TX_EDIT_FIELD_AMOUNT = "transaction.edit.field.amount"

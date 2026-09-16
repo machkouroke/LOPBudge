@@ -7,6 +7,7 @@ import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
+import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +23,14 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
+/**
+ * Actions offertes par la page de détail (CA-12, CA-13 de LOP-53).
+ *
+ * L'inventaire est décidé ici et nulle part ailleurs : un `if` posé dans le composable ne vaut
+ * que pour l'écran qui le porte, et ne survit ni à un second point d'entrée ni à un lien profond.
+ */
+enum class DetailAction { EDIT, DELETE, MARK_AS_PAID, MARK_AS_UNPAID }
+
 data class DetailUiState(
     val transaction: TransactionWithRelations? = null,
     val upcomingDates: List<Long> = emptyList(),
@@ -29,7 +38,11 @@ data class DetailUiState(
     val availableCategories: List<CategoryEntity> = emptyList(),
     val availableAccounts: List<AccountEntity> = emptyList(),
     val isLoaded: Boolean = false,
-    val isUpdating: Boolean = false,
+    /**
+     * Actions applicables à la transaction consultée. Vide tant qu'aucune n'est chargée : on
+     * n'offre pas « Supprimer » sur un écran qui n'a rien à supprimer.
+     */
+    val availableActions: Set<DetailAction> = emptySet(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -42,7 +55,7 @@ class TransactionDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val txId = MutableStateFlow<Long?>(null)
-    private val updating = MutableStateFlow(false)
+
     /**
      * Loads a transaction by its ID to display its details.
      *
@@ -79,15 +92,13 @@ class TransactionDetailViewModel @Inject constructor(
             txFlow,
             categoryRepo.observeAll(),
             accountRepo.observeAll(),
-            updating,
             upcomingFlow,
-        ) { tx, categories, accounts, isBusy, upcoming ->
+        ) { tx, categories, accounts, upcoming ->
             if (tx == null) {
                 return@combine DetailUiState(
                     availableCategories = categories,
                     availableAccounts = accounts,
                     isLoaded = txId.value != null,
-                    isUpdating = isBusy,
                 )
             }
 
@@ -97,18 +108,30 @@ class TransactionDetailViewModel @Inject constructor(
                 availableCategories = categories.filter { it.type == tx.transaction.type },
                 availableAccounts = accounts,
                 isLoaded = true,
-                isUpdating = isBusy,
+                availableActions = actionsFor(tx.transaction.status),
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DetailUiState())
 
     /**
-     * Les modifications rapides (Quick Edits) sont désormais déléguées
-     * au TransactionActionViewModel via l'orchestrateur central.
-     * Cette classe ne conserve que l'état local du détail.
+     * Les modifications rapides (Quick Edits) sont déléguées au TransactionActionViewModel via
+     * l'orchestrateur central, qui porte aussi l'état de sauvegarde et le verrou anti double
+     * soumission (CA-15). Cette classe ne conserve que l'état local du détail.
      */
 
     private companion object {
         /** Nombre d'échéances affichées par la section « prochaines occurrences ». */
         const val UPCOMING_COUNT = 6
+
+        /**
+         * CA-12 : « Marquer comme payé » n'est offerte que sur une transaction non payée ;
+         * son inverse la remplace sur une transaction payée. CA-13 : Modifier et Supprimer
+         * restent offertes dans les deux cas.
+         */
+        fun actionsFor(status: TransactionStatus): Set<DetailAction> = setOf(
+            DetailAction.EDIT,
+            DetailAction.DELETE,
+            if (status == TransactionStatus.PAID) DetailAction.MARK_AS_UNPAID
+            else DetailAction.MARK_AS_PAID,
+        )
     }
 }

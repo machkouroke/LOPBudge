@@ -51,9 +51,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
-import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
-import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.common.TransactionActionViewModel
@@ -105,7 +103,9 @@ fun TransactionDetailScreen(
     val twr = state.transaction
     val tx = twr?.transaction
     val scaffoldTitle = tx?.title ?: stringResource(R.string.tx_default_title)
-    val isBusy = state.isUpdating
+    // CA-15 : l'état de sauvegarde vit dans l'orchestrateur qui écrit réellement, pas dans l'état
+    // du détail — sinon le verrou ne protégerait que cet écran.
+    val isBusy by actionVm.isSaving.collectAsStateWithLifecycle()
 
     SwipeDownDismissWrapper(onDismiss = onBack) {
         LopScreenScaffold(
@@ -197,6 +197,7 @@ fun TransactionDetailScreen(
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.testTag(TestTags.TRANSACTION_DETAIL_TITLE)
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
@@ -215,6 +216,7 @@ fun TransactionDetailScreen(
                             DetailFieldRow(
                                 label = stringResource(R.string.tx_detail_category),
                                 value = twr.category?.name ?: stringResource(R.string.other),
+                                testTag = TestTags.TRANSACTION_DETAIL_FIELD_CATEGORY,
                                 leading = {
                                     val c = twr.category?.colorArgb?.let { Color(it) }
                                         ?: com.lop.budget.ui.theme.CategoryOrange
@@ -239,6 +241,7 @@ fun TransactionDetailScreen(
                             DetailFieldRow(
                                 label = stringResource(R.string.tx_detail_date),
                                 value = Format.fullDate(tx.date),
+                                testTag = TestTags.TRANSACTION_DETAIL_FIELD_DATE,
                                 leading = {
                                     Icon(
                                         Icons.Filled.CalendarMonth,
@@ -261,6 +264,7 @@ fun TransactionDetailScreen(
                             DetailFieldRow(
                                 label = stringResource(R.string.tx_detail_account),
                                 value = twr.account?.name ?: stringResource(R.string.tx_no_account),
+                                testTag = TestTags.TRANSACTION_DETAIL_FIELD_ACCOUNT,
                                 leading = {
                                     val account = twr.account
                                     if (account != null) {
@@ -296,6 +300,7 @@ fun TransactionDetailScreen(
                                 value = if (isIncome) stringResource(R.string.tx_type_income) else stringResource(
                                     R.string.tx_type_expense
                                 ),
+                                testTag = TestTags.TRANSACTION_DETAIL_FIELD_TYPE,
                                 leading = {
                                     Icon(
                                         Icons.Filled.SyncAlt,
@@ -365,8 +370,9 @@ fun TransactionDetailScreen(
                     }
                 }
 
-                val isPaid = tx.status == TransactionStatus.PAID
-                if (tx.status == TransactionStatus.PLANNED || isPaid) {
+                // CA-12 : l'inventaire des actions applicables est décidé par le ViewModel.
+                val isPaid = DetailAction.MARK_AS_UNPAID in state.availableActions
+                if (DetailAction.MARK_AS_PAID in state.availableActions || isPaid) {
                     item {
                         val buttonColor =
                             if (isPaid) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
@@ -380,7 +386,8 @@ fun TransactionDetailScreen(
                                 .clickableNoRipple {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     actionVm.togglePaid(twr)
-                                },
+                                }
+                                .testTag(TestTags.TRANSACTION_DETAIL_TOGGLE_PAID),
                             color = buttonColor,
                         ) {
                             Row(
@@ -412,13 +419,7 @@ fun TransactionDetailScreen(
         LopDatePicker(
             initialDateMillis = tx.date,
             onDateSelected = { newDate ->
-                newDate?.let {
-                    actionVm.confirmEdit(
-                        tx = twr,
-                        scope = EditScope.SINGLE,
-                        updatedDate = it
-                    )
-                }
+                newDate?.let { actionVm.quickEditDate(tx = twr, date = it) }
             },
             onDismiss = { showDatePicker = false }
         )
@@ -430,11 +431,7 @@ fun TransactionDetailScreen(
             categories = state.availableCategories,
             selectedId = tx.categoryId,
             onSelect = { categoryId ->
-                actionVm.confirmEdit(
-                    tx = twr,
-                    scope = EditScope.SINGLE,
-                    updatedCategoryId = categoryId
-                )
+                actionVm.quickEditCategory(tx = twr, categoryId = categoryId)
                 showCategorySheet = false
             },
             onDismiss = { showCategorySheet = false }
@@ -450,11 +447,7 @@ fun TransactionDetailScreen(
             // NO_ACCOUNT_ID sans ambiguïté.
             selectedId = twr.transaction.accountId,
             onSelect = { accountId ->
-                actionVm.confirmEdit(
-                    tx = twr,
-                    scope = EditScope.SINGLE,
-                    updatedAccountId = accountId
-                )
+                actionVm.quickEditAccount(tx = twr, accountId = accountId)
                 showAccountSheet = false
             },
             onDismiss = { showAccountSheet = false },
@@ -462,10 +455,19 @@ fun TransactionDetailScreen(
     }
 }
 
+/**
+ * Ligne du bloc d'informations du détail.
+ *
+ * CA-11 : les trois champs modifiables partagent cette même mise en forme et cette même
+ * affordance. [testTag] identifie la ligne ; son affordance de modification porte le même
+ * identifiant suffixé de [TestTags.EDIT_AFFORDANCE_SUFFIX], et n'existe que sur une ligne
+ * réellement modifiable.
+ */
 @Composable
 private fun DetailFieldRow(
     label: String,
     value: String,
+    testTag: String,
     leading: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
@@ -474,7 +476,9 @@ private fun DetailFieldRow(
     val background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(testTag),
         shape = shape,
         color = background,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)),
@@ -507,7 +511,7 @@ private fun DetailFieldRow(
 
             if (trailing != null) {
                 Spacer(Modifier.width(12.dp))
-                trailing()
+                Box(Modifier.testTag(testTag + TestTags.EDIT_AFFORDANCE_SUFFIX)) { trailing() }
             }
         }
     }

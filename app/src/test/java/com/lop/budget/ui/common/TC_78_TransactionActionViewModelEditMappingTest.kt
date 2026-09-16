@@ -353,8 +353,21 @@ class TransactionActionViewModelEditMappingTest {
             confirmVerified(*allMocks())
         }
 
+    /**
+     * Mis à jour le 16 septembre 2026 avec LOP-53 (TC-116 T-06).
+     *
+     * L'oracle précédent attendait **deux** écritures et le déclarait lui-même « comportement
+     * constaté à figer — pas d'attente de dédup » : il gelait ce que le code faisait, sans
+     * exigence derrière. CA-15 de LOP-53 en pose une : « une sauvegarde en cours empêche toute
+     * double soumission de la même action ». Le verrou vit désormais dans `confirmEdit`, seul
+     * chemin d'écriture, donc il vaut aussi pour le marquage payé et pour l'écran d'édition.
+     *
+     * Conséquence assumée : deux modifications **distinctes** enchaînées avant le retour de la
+     * première verraient la seconde ignorée. Le verrou étant relâché dès le retour du domaine,
+     * la fenêtre est celle d'une écriture.
+     */
     @Test
-    fun `A-07 - double invocation - le use case est appele a chaque fois`() =
+    fun `A-07 - double invocation de la meme action - une seule ecriture puis le verrou se relache`() =
         runTest(testDispatcher) {
             coEvery { transactionRepo.getSeriesById(100L) } returns seriesRule
             coEvery {
@@ -362,13 +375,29 @@ class TransactionActionViewModelEditMappingTest {
             } returns EditOutcome.Applied(20L)
             var doneCount = 0
 
-            // Comportement constaté à figer : pas de garde d'état côté édition
-            // (contrairement à confirmDelete/pendingConfirmation) — pas d'attente de dédup.
             sut.confirmEdit(tx = movedException, scope = EditScope.SINGLE, onDone = { doneCount++ })
             sut.confirmEdit(tx = movedException, scope = EditScope.SINGLE, onDone = { doneCount++ })
             advanceUntilIdle()
 
-            assertEquals(2, doneCount)
+            assertEquals(
+                "CA-15 de LOP-53 : la seconde soumission de la même action doit être ignorée.",
+                1,
+                doneCount,
+            )
+            coVerify(exactly = 1) {
+                editTransactionWithScopeUseCase(any(), any(), any(), any(), any())
+            }
+            coVerify(exactly = 1) { transactionRepo.getSeriesById(100L) }
+
+            // Le verrou se relâche : une demande émise après retour est bien transmise.
+            sut.confirmEdit(tx = movedException, scope = EditScope.SINGLE, onDone = { doneCount++ })
+            advanceUntilIdle()
+
+            assertEquals(
+                "CA-15 de LOP-53 : le verrou doit être relâché à la fin de la sauvegarde.",
+                2,
+                doneCount,
+            )
             coVerify(exactly = 2) {
                 editTransactionWithScopeUseCase(any(), any(), any(), any(), any())
             }
