@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -42,6 +43,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -136,7 +139,17 @@ fun LopBottomSheet(
             }
         }
 
-        Box(Modifier.fillMaxSize().imePadding()) {
+        // Cette feuille est montée dans un `Dialog`, donc dans une **racine de composition
+        // distincte** : elle n'hérite pas du `testTagsAsResourceId` posé sur l'activité, et ses
+        // `testTag` restaient invisibles à l'automatisation. Le drapeau est donc reposé ici, à la
+        // racine de la fenêtre. Constaté le 16 septembre 2026 sur le sélecteur de catégorie.
+        @OptIn(ExperimentalComposeUiApi::class)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .imePadding()
+                .semantics { testTagsAsResourceId = true },
+        ) {
             Box(
                 Modifier
                     .fillMaxSize()

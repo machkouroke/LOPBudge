@@ -506,6 +506,7 @@ private fun DetailFieldRow(
                     value,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
+                    modifier = Modifier.testTag(testTag + TestTags.VALUE_SUFFIX),
                 )
             }
 

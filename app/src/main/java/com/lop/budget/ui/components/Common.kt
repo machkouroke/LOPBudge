@@ -46,12 +46,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -84,8 +87,14 @@ fun LopDatePicker(
         initialSelectedDateMillis = initialDateMillis?.let { it + localOffset }
     )
 
+    // `semantics` avant `testTag` : le sélecteur de date est monté dans sa propre fenêtre de
+    // dialogue, qui n'hérite pas du `testTagsAsResourceId` de l'activité. Sans ce drapeau, son
+    // identifiant de test reste invisible à l'automatisation.
+    @OptIn(ExperimentalComposeUiApi::class)
     DatePickerDialog(
-        modifier = Modifier.testTag(TestTags.PICKER_DATE),
+        modifier = Modifier
+            .semantics { testTagsAsResourceId = true }
+            .testTag(TestTags.PICKER_DATE),
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = {

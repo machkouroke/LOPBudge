@@ -1,5 +1,7 @@
 appId: com.lop.budget
-name: "TC-117-1 - Détail : titre, informations affichées, pattern des modifications rapides"
+# Pas de « : » dans le nom — Maestro en fait un nom de dossier de rapport, et le
+# deux-points est un caractère de chemin illégal sous Windows.
+name: "TC-117-1 - Detail, titre, informations affichees, pattern des modifications rapides"
 tags:
   - tc-117
   - detail
@@ -34,11 +36,10 @@ tags:
 #   - JDD : le seeder ne crée qu'un compte. Le second compte (rôle « B ») est donc créé
 #     par l'interface en préambule, avec un libellé unique pour que sa sélection dans le
 #     sélecteur de comptes ne soit jamais ambiguë.
-#   - ANO CA-02 : l'écran de détail n'a AUCUN affichage de statut. Ses quatre lignes sont
-#     catégorie, date, compte et type ; le statut n'est déductible que du libellé du
-#     bouton d'action (« Marquer comme non payé » sur une transaction payée). L'oracle de
-#     T-02 n'est pas assoupli pour épouser le code : l'assertion de statut est écrite
-#     telle que CA-02 l'exige et rougira tant que l'anomalie n'est pas traitée.
+#   - CA-02, statut : l'écran n'a pas de ligne « Statut ». Décision produit du
+#     16 septembre 2026 : le libellé du bouton d'action EST l'affichage du statut, car il
+#     propose toujours la transition inverse de l'état courant. T-02 l'asserte donc sur ce
+#     bouton, assorti de l'assertion négative qui rend l'oracle non vacant.
 #
 # Hors périmètre (ne pas ajouter ici) :
 #   - Conditionnement de « Marquer comme payé », verrou anti double-soumission,
@@ -118,36 +119,53 @@ tags:
     id: "transaction.detail.field.amount"
     text: ".*84,20.*"
 
-# 2. Type — `containsChild` et non `text` : la ligne est un conteneur, son libellé et sa
-#    valeur vivent dans des nœuds enfants. La relation lie explicitement la ligne à la
-#    valeur attendue, là où deux assertions séparées ne prouveraient pas qu'elles vont
-#    ensemble.
+# Les lignes qui suivent sont ciblées sur leur nœud de VALEUR (`<ligne>.value`), et non
+# sur la ligne entière : cela lie l'information à son champ, là où deux assertions
+# séparées ne prouveraient pas qu'elles vont ensemble. Ne pas revenir à `containsChild`
+# sur la ligne — une ligne cliquable interpose une vue, son texte n'est alors plus un
+# enfant direct et l'assertion échoue (constaté le 16 septembre 2026).
+
+# 2. Type
 - assertVisible:
-    id: "transaction.detail.field.type"
-    containsChild: "Dépense"
+    id: "transaction.detail.field.type.value"
+    text: "Dépense"
 
 # 3. Date
-- assertVisible: { id: "transaction.detail.field.date" }
+- assertVisible: { id: "transaction.detail.field.date.value" }
 
 # 4. Catégorie
 - assertVisible:
-    id: "transaction.detail.field.category"
-    containsChild: "Courses"
+    id: "transaction.detail.field.category.value"
+    text: "Courses"
 
 # 5. Compte
 - assertVisible:
-    id: "transaction.detail.field.account"
-    containsChild: "Compte courant"
+    id: "transaction.detail.field.account.value"
+    text: "Compte courant"
 
-# 6. Statut — ROUGE ATTENDU, anomalie CA-02.
-#    L'écran n'expose aucun affichage de statut : ni ligne dédiée, ni pastille. Le seul
-#    indice est le libellé du bouton d'action, qui nomme l'action à faire et non l'état
-#    courant. L'oracle reste celui de CA-02. Si le correctif introduit un autre libellé
-#    ou un identifiant de test dédié, c'est ce sélecteur qu'il faudra suivre — pas
-#    l'oracle qu'il faudra affaiblir.
-- evalScript: |
-    console.log("TC-117 T-02 / CA-02 : assertion de statut — rouge attendu, voir ANO CA-02")
-- assertVisible: "Payé"
+# 6. Statut — porté par le bouton d'action, décision produit du 16 septembre 2026.
+#    L'écran n'a pas de ligne « Statut » : c'est le libellé du bouton qui expose l'état
+#    courant, puisqu'il propose toujours la transition inverse. « Marquer comme non
+#    payé » ne s'affiche que sur une transaction PAYÉE, et « Marquer comme payé » que
+#    sur une non payée — le libellé est donc bien un affichage du statut, et CA-02 est
+#    satisfait ainsi.
+#    Oracle non vacant : l'assertion négative qui suit est indispensable. Sans elle,
+#    l'assertion positive passerait aussi bien si les deux libellés cohabitaient, ou si
+#    le bouton n'était pas conditionné au statut.
+#    Le bouton est en bas de page : on l'amène dans le viewport avant d'asserter, puis on
+#    remonte pour la suite du parcours.
+- scrollUntilVisible:
+    element:
+      id: "transaction.detail.toggle.paid"
+    direction: DOWN
+- assertVisible: { id: "transaction.detail.toggle.paid" }
+- assertVisible: "Marquer comme non payé"
+- assertNotVisible: "Marquer comme payé"
+
+- scrollUntilVisible:
+    element:
+      id: "transaction.detail.title"
+    direction: UP
 
 # =====================================================================================
 # T-03 — CA-11 : les trois champs modifiables partagent la même affordance
@@ -217,14 +235,14 @@ tags:
 - assertVisible: { id: "screen.transaction.detail" }
 - extendedWaitUntil:
     visible:
-      id: "transaction.detail.field.account"
-      containsChild: "Compte B TC117"
+      id: "transaction.detail.field.account.value"
+      text: "Compte B TC117"
     timeout: 10000
 
 # L'ancien compte ne doit plus être affiché sur la ligne du compte.
 - assertNotVisible:
-    id: "transaction.detail.field.account"
-    containsChild: "Compte courant"
+    id: "transaction.detail.field.account.value"
+    text: "Compte courant"
 
 # =====================================================================================
 # T-06 — CA-13 : Modifier et Supprimer restent joignables et inchangés

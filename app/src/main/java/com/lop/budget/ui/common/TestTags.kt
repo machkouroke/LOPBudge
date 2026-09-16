@@ -68,12 +68,19 @@ object TestTags {
      * Les trois premières sont modifiables, la quatrième ne l'est pas : c'est la donnée de
      * contrôle du parcours. L'affordance de modification d'une ligne porte le même identifiant
      * suffixé de [EDIT_AFFORDANCE_SUFFIX], ce qui rend le pattern commun vérifiable ligne à ligne.
+     *
+     * La **valeur** affichée porte le même identifiant suffixé de [VALUE_SUFFIX]. Sans elle, un
+     * parcours devrait viser le texte à travers la ligne, ce qui ne marche pas : une ligne
+     * cliquable interpose une vue supplémentaire, si bien que son texte n'est plus un enfant
+     * direct du nœud identifié — vérifié le 16 septembre 2026, la ligne « Type », seule non
+     * cliquable, était la seule que ce ciblage atteignait.
      */
     const val TRANSACTION_DETAIL_FIELD_CATEGORY = "transaction.detail.field.category"
     const val TRANSACTION_DETAIL_FIELD_DATE = "transaction.detail.field.date"
     const val TRANSACTION_DETAIL_FIELD_ACCOUNT = "transaction.detail.field.account"
     const val TRANSACTION_DETAIL_FIELD_TYPE = "transaction.detail.field.type"
     const val EDIT_AFFORDANCE_SUFFIX = ".edit"
+    const val VALUE_SUFFIX = ".value"
 
     // Sélecteurs partagés
     const val PICKER_DATE = "picker.date"

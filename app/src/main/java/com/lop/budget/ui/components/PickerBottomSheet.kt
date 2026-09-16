@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lop.budget.BuildConfig
@@ -50,7 +51,7 @@ import com.lop.budget.BuildConfig
  *   pas produire (drapeaux). Purement décorative : elle est retirée de l'arbre d'accessibilité,
  *   [itemLabel] doit donc suffire à identifier la ligne.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun <T> PickerBottomSheet(
     title: String,
@@ -88,7 +89,11 @@ fun <T> PickerBottomSheet(
         containerColor = MaterialTheme.colorScheme.surface,
         scrimColor = Color.Black.copy(alpha = 0.55f),
         dragHandle = { BottomSheetDefaults.DragHandle() },
-        modifier = modifier
+        // Une feuille modale est montée dans sa **propre fenêtre**, donc une racine de
+        // composition distincte : elle n'hérite pas du `testTagsAsResourceId` posé sur
+        // l'activité, et les `testTag` de son contenu restent invisibles à l'automatisation.
+        // Constaté le 16 septembre 2026 sur le sélecteur de comptes.
+        modifier = modifier.semantics { testTagsAsResourceId = true }
     ) {
         Column(
             modifier = Modifier
