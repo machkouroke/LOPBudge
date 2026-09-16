@@ -46,9 +46,21 @@ object Format {
         }.getOrElse { String.format(locale, "%.2f %s", amount, currencyCode) }
     }
 
-    /** Soldes et transactions de compte : centimes -> euros affichés. `money(1234L)` == `money(12.34)`. */
-    fun money(amountCents: Long, currencyCode: String = "EUR", locale: Locale = Locale.FRANCE): String =
-        money(amountCents / 100.0, currencyCode, locale)
+    /**
+     * Soldes et transactions de compte : centimes -> euros affichés. `money(1234L)` == `money(12.34)`.
+     *
+     * Passe par [BigDecimal] et **non** par `amountCents / 100.0` : un `Double` ne représente pas
+     * exactement tous les `Long`, si bien que les très gros montants s'affichaient arrondis sans
+     * aucun avertissement — `Long.MAX_VALUE` rendait `…760,00 €` au lieu de `…758,07 €`, soit
+     * 1,93 € d'écart entre le montant stocké et le montant affiché. `BigDecimal.valueOf(cents, 2)`
+     * construit la valeur exacte, et `NumberFormat` la formate sans repasser par un flottant.
+     */
+    fun money(amountCents: Long, currencyCode: String = "EUR", locale: Locale = Locale.FRANCE): String {
+        val exact = BigDecimal.valueOf(amountCents, 2)
+        return runCatching {
+            currencyFormat(currencyCode, locale).format(exact)
+        }.getOrElse { String.format(locale, "%.2f %s", exact, currencyCode) }
+    }
 
     /**
      * Frontière UI : saisie en euros ("12,34" ou "12.34") -> centimes, arrondi half-up.

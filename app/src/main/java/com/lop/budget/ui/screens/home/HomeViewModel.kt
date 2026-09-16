@@ -7,6 +7,7 @@ import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.AccountBalances
+import com.lop.budget.domain.model.CurrencyCatalog
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
 import com.lop.budget.domain.usecase.insight.HomeSummary
@@ -32,7 +33,13 @@ import androidx.compose.runtime.Immutable
 data class HomeUiState(
     val month: YearMonth = YearMonth.now(),
     val isCurrentMonth: Boolean = true,
-    val currency: String = "USD",
+    /**
+     * Même valeur initiale que le dépôt et que tous les autres états (I-3).
+     *
+     * Valait `"USD"` en dur, si bien que l'accueil légendait ses montants en dollars le temps que
+     * le flux de préférences émette — une devise que l'utilisateur n'avait jamais choisie.
+     */
+    val currency: String = CurrencyCatalog.default.code,
     val monthIncome: Long = 0L,
     val monthExpense: Long = 0L,
     val previousPeriodExpense: Long = 0L,

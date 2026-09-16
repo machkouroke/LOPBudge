@@ -18,6 +18,7 @@ import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.SearchCurrenciesUseCase
 import com.lop.budget.notifications.QwenDownloadManager
+import com.lop.budget.ui.screens.home.HomeUiState
 import com.lop.budget.ui.screens.settings.SettingsUiState
 import com.lop.budget.ui.screens.settings.SettingsViewModel
 import io.mockk.every
@@ -112,9 +113,13 @@ import java.util.TimeZone
  *
  * Une seule violation de I-3, et l'US l'avait anticipée : **ANO-A**
  * (<https://app.notion.com/p/3dd50f34a8c5812b97b3ca0c243f9010>), `HomeUiState.currency = "USD"`
- * (`ui/screens/home/HomeViewModel.kt:35`) alors que toutes les autres valeurs initiales et le dépôt
- * répondent `EUR`. L'écran d'accueil peut donc afficher des dollars le temps que le flux émette.
- * À ouvrir en anomalie, **pas** à corriger ici : l'US le place explicitement hors périmètre.
+ * alors que toutes les autres valeurs initiales et le dépôt répondent `EUR`. L'écran d'accueil
+ * affichait donc des dollars le temps que le flux émette.
+ *
+ * **Corrigée le 17 septembre 2026**, sur décision explicite de l'auteur de l'US : la valeur
+ * initiale vaut désormais `CurrencyCatalog.default.code`. L'US plaçait ce défaut hors de son
+ * périmètre (« à ouvrir en anomalie et non à corriger ici ») ; l'arbitrage a été de le corriger
+ * quand même. Le cas T-08 ci-dessous verrouille la correction.
  * Cas voisin écarté : `DetectedTransactionsScreen:148` replie sur `"EUR"`, mais il s'agit de la
  * devise **lue dans une notification bancaire**, hors sujet malgré le nom.
  *
@@ -519,6 +524,30 @@ class CurrencyPreferenceTest {
                 soldeApres,
             )
         }
+
+    // ---------------------------------------------------------------------------------------
+    // T-08 — Le seul volet assertable du recensement : aucune devise codée en dur dans un état.
+    //
+    // La fiche qualifie T-08 d'analyse, et l'essentiel l'est : qu'un écran lise bien le dépôt ne se
+    // prouve pas par un test unitaire. Mais son oracle dit aussi « aucune devise codée en dur »,
+    // et *cela* s'asserte. Ce cas verrouille la correction d'ANO-A.
+    // ---------------------------------------------------------------------------------------
+
+    @Test
+    fun `given les etats d ecran when valeur initiale de devise then celle du catalogue`() {
+        assertEquals(
+            "T-08 / CA-13, I-3 (ANO-A) : l'état d'accueil ne doit pas porter sa propre devise en " +
+                "dur — sinon l'écran légende ses montants dans une devise que l'utilisateur n'a " +
+                "jamais choisie, le temps que le flux de préférences émette",
+            CurrencyCatalog.default.code,
+            HomeUiState().currency,
+        )
+        assertEquals(
+            "T-08 / I-3 : l'état des réglages doit partir de la même devise que le dépôt",
+            CurrencyCatalog.default.code,
+            SettingsUiState().currency.code,
+        )
+    }
 
     // ---------------------------------------------------------------------------------------
     // Montage. Rien ici ne produit d'attendu : ces outils préparent et observent.

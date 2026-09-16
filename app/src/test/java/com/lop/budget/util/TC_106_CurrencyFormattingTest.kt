@@ -54,15 +54,18 @@ import java.util.TimeZone
  *   `min/maximumFractionDigits` sur `defaultFractionDigits` de la devise choisie. T-02 est donc
  *   attendu vert, et sa sensibilité est prouvée par mutation, pas par le rouge.
  *
- * ### ANO connue
+ * ### ANO traitée
  * - **ANO-B** — <https://app.notion.com/p/3dd50f34a8c58120b4b7c8d819392894>
  *   « Un montant très élevé s'affiche arrondi : money(Long) transite par un flottant ».
- *   `Format.money(Long)` divise par `100.0` puis délègue à la surcharge `Double`
- *   ([Format.kt:50][com.lop.budget.util.Format]). Un flottant ne représente pas exactement
- *   `Long.MAX_VALUE / 100`, si bien que le montant affiché s'écarte du montant stocké sans le
- *   moindre avertissement. T-03d le documente et **reste rouge** tant que l'anomalie n'est pas
- *   traitée : l'assouplir reviendrait à signer que l'application a le droit d'afficher un montant
- *   faux. Contredit I-2 (« seul le symbole et le nombre de décimales affichés changent »).
+ *   `Format.money(Long)` divisait par `100.0` puis déléguait à la surcharge `Double`. Un flottant
+ *   ne représente pas exactement `Long.MAX_VALUE / 100`, si bien que le montant affiché s'écartait
+ *   du montant stocké sans le moindre avertissement — 1,93 € sur cette valeur. Contredisait I-2
+ *   (« seul le symbole et le nombre de décimales affichés changent »).
+ *
+ *   **RED le 16 septembre 2026** (T-03d, message conservé dans la fiche Notion), **corrigé et GREEN
+ *   le 17 septembre 2026** : `money(Long)` construit désormais un `BigDecimal.valueOf(cents, 2)`,
+ *   valeur exacte que `NumberFormat` formate sans repasser par un flottant. L'oracle de T-03d n'a
+ *   pas bougé d'un caractère entre le rouge et le vert — c'est la production qui a changé.
  *
  * ### Hors périmètre, explicitement
  * - Repris de l'US : conversion et taux de change, devise par compte, devise lue dans une
