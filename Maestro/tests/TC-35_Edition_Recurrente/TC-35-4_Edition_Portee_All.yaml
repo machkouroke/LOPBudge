@@ -1,5 +1,7 @@
 appId: com.lop.budget
-name: "TC-35-4: Portée ALL — toute la série, passé compris"
+# Pas de « : » dans le nom — Maestro en fait un nom de dossier de rapport, et le
+# deux-points est un caractère de chemin illégal sous Windows.
+name: "TC-35-4 - Portee ALL, toute la serie, passe compris"
 tags:
   - edition
   - recurrence
