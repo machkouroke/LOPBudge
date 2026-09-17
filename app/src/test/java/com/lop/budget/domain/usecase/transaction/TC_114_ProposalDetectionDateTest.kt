@@ -8,7 +8,7 @@ import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.repository.AccountRepository
-import com.lop.budget.data.repository.DebtRepository
+import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.TransactionRepository
@@ -580,7 +580,7 @@ class ProposalDetectionDateTest {
         val syncProgress = SyncProgressUseCase(
             transactionRepo,
             GoalRepository(base.goalDao()),
-            DebtRepository(base.debtDao()),
+            LoanRepository(base.loanDao()),
         )
         return SaveTransactionFromProposalUseCase(
             CreateTransactionUseCase(

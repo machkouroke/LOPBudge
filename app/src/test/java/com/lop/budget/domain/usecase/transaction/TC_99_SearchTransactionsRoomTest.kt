@@ -587,13 +587,13 @@ class SearchTransactionsRoomTest {
     private fun snapshot() = Snapshot(
         transactions = rawRows(
             "SELECT id, title, amount, type, status, kind, date, paidAt, accountId, categoryId, " +
-                "note, seriesId, seriesDate, isException, linkedGoalId, linkedDebtId, deleted " +
+                "note, seriesId, seriesDate, isException, linkedGoalId, linkedLoanId, deleted " +
                 "FROM transactions ORDER BY id",
         ),
         series = rawRows(
             "SELECT id, title, amount, type, categoryId, accountId, frequency, interval, " +
                 "startDate, endDate, maxOccurrences, daysOfWeek, isCancelled, note, " +
-                "linkedGoalId, linkedDebtId FROM recurring_series ORDER BY id",
+                "linkedGoalId, linkedLoanId FROM recurring_series ORDER BY id",
         ),
     )
 

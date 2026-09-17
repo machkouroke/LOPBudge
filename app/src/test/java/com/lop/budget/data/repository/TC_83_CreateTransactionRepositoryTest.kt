@@ -75,7 +75,7 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
     override lateinit var accountRepo: AccountRepository
     override lateinit var categoryRepo: CategoryRepository
     private lateinit var goalRepo: GoalRepository
-    private lateinit var debtRepo: DebtRepository
+    private lateinit var loanRepo: LoanRepository
     private lateinit var syncProgressUseCase: SyncProgressUseCase
     private lateinit var saveTransactionUseCase: SaveTransactionUseCase
     private lateinit var createTransaction: CreateTransactionUseCase
@@ -119,8 +119,8 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
         accountRepo = AccountRepository(db.accountDao())
         categoryRepo = CategoryRepository(db.categoryDao())
         goalRepo = GoalRepository(db.goalDao())
-        debtRepo = DebtRepository(db.debtDao())
-        syncProgressUseCase = SyncProgressUseCase(transactionRepo, goalRepo, debtRepo)
+        loanRepo = LoanRepository(db.loanDao())
+        syncProgressUseCase = SyncProgressUseCase(transactionRepo, goalRepo, loanRepo)
         saveTransactionUseCase = SaveTransactionUseCase(transactionRepo, syncProgressUseCase)
         createTransaction = CreateTransactionUseCase(transactionRepo, saveTransactionUseCase)
         getTransactions = ObserveTransactionsUseCase(transactionRepo, accountRepo, categoryRepo)
@@ -172,7 +172,7 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
             endDate = null,
             maxOccurrences = null,
             linkedGoalId = null,
-            linkedDebtId = null,
+            linkedLoanId = null,
             tagIds = tagIds,
         )
 
@@ -192,7 +192,7 @@ class CreateTransactionRepositoryTest : RepositoryTestInfrastructure {
             endDate = marchSlot, // 1 mars 2024
             maxOccurrences = null,
             linkedGoalId = null,
-            linkedDebtId = null,
+            linkedLoanId = null,
             tagIds = emptyList(),
         )
 

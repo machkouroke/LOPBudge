@@ -222,7 +222,7 @@ class AdjustmentRestrictionsTest {
             seriesId = null,
             seriesDate = null,
             linkedGoalId = null,
-            linkedDebtId = null,
+            linkedLoanId = null,
         ),
         category = category,
         account = accountA,
@@ -763,7 +763,7 @@ class AdjustmentRestrictionsTest {
         endDate = march20,
         maxOccurrences = 4,
         linkedGoalId = 7L,
-        linkedDebtId = 8L,
+        linkedLoanId = 8L,
         tagIds = listOf(42L),
     )
 

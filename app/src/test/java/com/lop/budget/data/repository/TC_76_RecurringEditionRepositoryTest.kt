@@ -75,7 +75,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
     override lateinit var accountRepo: AccountRepository
     override lateinit var categoryRepo: CategoryRepository
     lateinit var goalRepo: GoalRepository
-    lateinit var debtRepo: DebtRepository
+    lateinit var loanRepo: LoanRepository
     lateinit var tagRepo: TagRepository
 
     private lateinit var syncProgressUseCase: SyncProgressUseCase
@@ -109,10 +109,10 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         accountRepo = AccountRepository(db.accountDao())
         categoryRepo = CategoryRepository(db.categoryDao())
         goalRepo = GoalRepository(db.goalDao())
-        debtRepo = DebtRepository(db.debtDao())
+        loanRepo = LoanRepository(db.loanDao())
         tagRepo = TagRepository(db.tagDao())
 
-        syncProgressUseCase = SyncProgressUseCase(transactionRepo, goalRepo, debtRepo)
+        syncProgressUseCase = SyncProgressUseCase(transactionRepo, goalRepo, loanRepo)
         saveTransactionUseCase = SaveTransactionUseCase(transactionRepo, syncProgressUseCase)
         cancelRecurringSeriesUseCase =
             CancelRecurringSeriesUseCase(transactionRepo, syncProgressUseCase)
@@ -822,7 +822,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         endDate = endDate,
         maxOccurrences = null,
         linkedGoalId = twr.transaction.linkedGoalId,
-        linkedDebtId = twr.transaction.linkedDebtId,
+        linkedLoanId = twr.transaction.linkedLoanId,
         tagIds = tagIds
     )
 

@@ -8,7 +8,7 @@ import com.lop.budget.BuildConfig
 import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.dao.AccountDao
 import com.lop.budget.data.local.dao.CategoryDao
-import com.lop.budget.data.local.dao.DebtDao
+import com.lop.budget.data.local.dao.LoanDao
 import com.lop.budget.data.local.dao.DetectedTransactionProposalDao
 import com.lop.budget.data.local.dao.GoalDao
 import com.lop.budget.data.local.dao.TagDao
@@ -63,6 +63,7 @@ object AppModule {
                 LopDatabase.MIGRATION_18_19,
                 LopDatabase.MIGRATION_19_20,
                 LopDatabase.MIGRATION_20_21,
+                LopDatabase.MIGRATION_21_22,
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
@@ -106,7 +107,7 @@ object AppModule {
     @Provides fun provideCategoryDao(db: LopDatabase): CategoryDao = db.categoryDao()
     @Provides fun provideTagDao(db: LopDatabase): TagDao = db.tagDao()
     @Provides fun provideGoalDao(db: LopDatabase): GoalDao = db.goalDao()
-    @Provides fun provideDebtDao(db: LopDatabase): DebtDao = db.debtDao()
+    @Provides fun provideLoanDao(db: LopDatabase): LoanDao = db.loanDao()
     @Provides fun provideRecurringSeriesDao(db: LopDatabase): com.lop.budget.data.local.dao.RecurringSeriesDao = db.recurringSeriesDao()
     @Provides fun provideDetectedProposalDao(db: LopDatabase): DetectedTransactionProposalDao = db.detectedTransactionProposalDao()
 }

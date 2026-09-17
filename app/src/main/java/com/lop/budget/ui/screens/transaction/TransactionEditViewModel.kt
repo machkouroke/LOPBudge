@@ -7,12 +7,12 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
-import com.lop.budget.data.local.entity.DebtEntity
+import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
-import com.lop.budget.data.repository.DebtRepository
+import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TagRepository
@@ -58,7 +58,7 @@ data class TransactionForm(
     val status: TransactionStatus = TransactionStatus.PLANNED,
     val seriesId: Long? = null,
     val linkedGoalId: Long? = null,
-    val linkedDebtId: Long? = null,
+    val linkedLoanId: Long? = null,
     // Récurrence
     val frequency: RecurrenceFrequency = RecurrenceFrequency.NONE,
     val interval: Int = 1,
@@ -103,7 +103,7 @@ fun TransactionForm.toEdition(defaultTitle: String): TransactionEdition = Transa
     endDate = endDate,
     maxOccurrences = maxOccurrences,
     linkedGoalId = linkedGoalId,
-    linkedDebtId = linkedDebtId,
+    linkedLoanId = linkedLoanId,
     tagIds = tagIds.toList(),
 )
 
@@ -114,7 +114,7 @@ class TransactionEditViewModel @Inject constructor(
     private val transactionRepo: TransactionRepository,
     private val tagRepo: TagRepository,
     goalRepo: GoalRepository,
-    debtRepo: DebtRepository,
+    loanRepo: LoanRepository,
     private val createTransactionUseCase: CreateTransactionUseCase,
     private val editTransactionWithScopeUseCase: EditTransactionWithScopeUseCase,
     private val observeTransactionDetailUseCase: ObserveTransactionDetailUseCase,
@@ -280,7 +280,7 @@ class TransactionEditViewModel @Inject constructor(
             status = tx.status,
             seriesId = tx.seriesId,
             linkedGoalId = tx.linkedGoalId,
-            linkedDebtId = tx.linkedDebtId,
+            linkedLoanId = tx.linkedLoanId,
         )
 
         _form.value = when {
@@ -295,7 +295,7 @@ class TransactionEditViewModel @Inject constructor(
                 accountId = series.accountId,
                 note = series.note ?: "",
                 linkedGoalId = series.linkedGoalId,
-                linkedDebtId = series.linkedDebtId,
+                linkedLoanId = series.linkedLoanId,
                 frequency = series.frequency,
                 interval = series.interval,
                 daysOfWeek = series.daysOfWeek.toDaysOfWeekSet(),
@@ -332,10 +332,10 @@ class TransactionEditViewModel @Inject constructor(
     val tags: StateFlow<List<TagEntity>> = tagRepo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val goals: StateFlow<List<GoalEntity>> = goalRepo.observeAll()
+    val goals: StateFlow<List<GoalEntity>> = goalRepo.observeActive()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val debts: StateFlow<List<DebtEntity>> = debtRepo.observeAll()
+    val debts: StateFlow<List<LoanEntity>> = loanRepo.observeActive()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
@@ -379,8 +379,11 @@ class TransactionEditViewModel @Inject constructor(
     }
     fun setNote(note: String) = update { it.copy(note = note) }
     fun setDate(date: Long) = update { it.copy(date = date) }
-    fun setGoal(id: Long?) = update { it.copy(linkedGoalId = id, linkedDebtId = null) }
-    fun setDebt(id: Long?) = update { it.copy(linkedDebtId = id, linkedGoalId = null) }
+    // Choisir un objectif ne retire plus le prêt, ni l'inverse : les deux rattachements sont deux
+    // suivis distincts et se cumulent (P-1 de LOP-80). Un encaissement peut diminuer une créance
+    // et alimenter un objectif d'épargne — l'écran remettait à zéro l'un des deux à chaque choix.
+    fun setGoal(id: Long?) = update { it.copy(linkedGoalId = id) }
+    fun setDebt(id: Long?) = update { it.copy(linkedLoanId = id) }
     fun setInterval(interval: Int) = update { it.copy(interval = interval) }
     fun setEndDate(date: Long?) = update { it.copy(endDate = date, maxOccurrences = null) }
     fun setMaxOccurrences(count: Int?) = update { it.copy(maxOccurrences = count, endDate = null) }

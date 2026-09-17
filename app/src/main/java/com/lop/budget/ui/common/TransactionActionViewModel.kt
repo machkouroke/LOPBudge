@@ -242,7 +242,7 @@ class TransactionActionViewModel @Inject constructor(
                     endDate = finalEnd,
                     maxOccurrences = finalMax,
                     linkedGoalId = tx.transaction.linkedGoalId,
-                    linkedDebtId = tx.transaction.linkedDebtId,
+                    linkedLoanId = tx.transaction.linkedLoanId,
                     tagIds = updatedTagIds
                 )
 

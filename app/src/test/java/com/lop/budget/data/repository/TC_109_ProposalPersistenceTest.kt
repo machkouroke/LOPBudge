@@ -237,7 +237,7 @@ class ProposalPersistenceTest {
         endDate = null,
         maxOccurrences = null,
         linkedGoalId = null,
-        linkedDebtId = null,
+        linkedLoanId = null,
         tagIds = emptyList(),
     )
 
@@ -639,7 +639,7 @@ class ProposalPersistenceTest {
         val syncProgress = SyncProgressUseCase(
             transactionRepo,
             GoalRepository(base.goalDao()),
-            DebtRepository(base.debtDao()),
+            LoanRepository(base.loanDao()),
         )
         return SaveTransactionFromProposalUseCase(
             CreateTransactionUseCase(

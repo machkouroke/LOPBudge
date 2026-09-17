@@ -37,6 +37,6 @@ class CancelRecurringSeriesUseCase @Inject constructor(
 
         // Recalculate progress if linked to a goal or debt
         series.linkedGoalId?.let { syncProgressUseCase.recalculateGoalProgress(it) }
-        series.linkedDebtId?.let { syncProgressUseCase.recalculateDebtProgress(it) }
+        series.linkedLoanId?.let { syncProgressUseCase.recalculateLoanProgress(it) }
     }
 }

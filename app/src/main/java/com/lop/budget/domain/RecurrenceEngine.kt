@@ -186,7 +186,7 @@ object RecurrenceEngine {
             isException = false,
             note = series.note,
             linkedGoalId = series.linkedGoalId,
-            linkedDebtId = series.linkedDebtId
+            linkedLoanId = series.linkedLoanId
         )
     }
 

@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
-import com.lop.budget.data.local.entity.DebtEntity
+import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
@@ -171,7 +171,7 @@ private fun EmptyState(text: String) {
 
 @Composable
 private fun GoalCard(goal: GoalEntity, currency: String, color: Color, onClick: () -> Unit) {
-    val progress = (goal.savedAmount / goal.targetAmount).coerceIn(0.0, 1.0)
+    val progress = (goal.savedAmountCents.toDouble() / goal.targetAmountCents).coerceIn(0.0, 1.0)
     FloatingCard(
         Modifier
             .fillMaxWidth()
@@ -185,7 +185,7 @@ private fun GoalCard(goal: GoalEntity, currency: String, color: Color, onClick: 
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(goal.name, style = MaterialTheme.typography.titleMedium)
-                    Text("${Format.money(goal.savedAmount, currency)} / ${Format.money(goal.targetAmount, currency)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${Format.money(goal.savedAmountCents, currency)} / ${Format.money(goal.targetAmountCents, currency)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text("${(progress * 100).toInt()} %", style = MaterialTheme.typography.titleMedium, color = color, fontWeight = FontWeight.Bold)
             }
@@ -196,8 +196,8 @@ private fun GoalCard(goal: GoalEntity, currency: String, color: Color, onClick: 
 }
 
 @Composable
-private fun DebtCard(debt: DebtEntity, currency: String, color: Color, onClick: () -> Unit) {
-    val progress = (debt.repaidAmount / debt.totalAmount).coerceIn(0.0, 1.0)
+private fun DebtCard(debt: LoanEntity, currency: String, color: Color, onClick: () -> Unit) {
+    val progress = (debt.repaidAmountCents.toDouble() / debt.totalAmountCents).coerceIn(0.0, 1.0)
     FloatingCard(
         Modifier
             .fillMaxWidth()
@@ -211,7 +211,7 @@ private fun DebtCard(debt: DebtEntity, currency: String, color: Color, onClick: 
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(debt.name, style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(R.string.debt_repaid_amount, Format.money(debt.repaidAmount, currency), Format.money(debt.totalAmount, currency)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.debt_repaid_amount, Format.money(debt.repaidAmountCents, currency), Format.money(debt.totalAmountCents, currency)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text("${(progress * 100).toInt()} %", style = MaterialTheme.typography.titleMedium, color = color, fontWeight = FontWeight.Bold)
             }

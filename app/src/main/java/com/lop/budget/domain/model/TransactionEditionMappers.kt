@@ -30,7 +30,7 @@ fun TransactionEdition.toSeriesEntity(): RecurringSeriesEntity = RecurringSeries
     isCancelled = false,
     note = note,
     linkedGoalId = linkedGoalId,
-    linkedDebtId = linkedDebtId,
+    linkedLoanId = linkedLoanId,
 )
 
 /**
@@ -68,5 +68,5 @@ fun TransactionEdition.toTransactionEntity(
     seriesDate = seriesDate,
     isException = isException,
     linkedGoalId = linkedGoalId,
-    linkedDebtId = linkedDebtId,
+    linkedLoanId = linkedLoanId,
 )

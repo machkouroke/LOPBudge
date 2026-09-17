@@ -296,7 +296,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
                 daysOfWeek = edition.daysOfWeek.toDaysOfWeekCsv(),
                 note = edition.note,
                 linkedGoalId = edition.linkedGoalId,
-                linkedDebtId = edition.linkedDebtId,
+                linkedLoanId = edition.linkedLoanId,
             )
         )
 
@@ -363,7 +363,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
             if (edition.note != base.note) add { it.copy(note = edition.note) }
             // CA-12 : les rattachements suivent les mêmes règles de propagation que les autres champs.
             if (edition.linkedGoalId != base.linkedGoalId) add { it.copy(linkedGoalId = edition.linkedGoalId) }
-            if (edition.linkedDebtId != base.linkedDebtId) add { it.copy(linkedDebtId = edition.linkedDebtId) }
+            if (edition.linkedLoanId != base.linkedLoanId) add { it.copy(linkedLoanId = edition.linkedLoanId) }
         }
         return { tx -> patches.fold(tx) { acc, patch -> patch(acc) } }
     }

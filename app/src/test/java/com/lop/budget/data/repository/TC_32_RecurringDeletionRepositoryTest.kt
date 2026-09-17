@@ -56,7 +56,7 @@ class RecurringDeletionRepositoryTest : RepositoryTestInfrastructure {
     override lateinit var accountRepo: AccountRepository
     override lateinit var categoryRepo: CategoryRepository
     lateinit var goalRepo: GoalRepository
-    lateinit var debtRepo: DebtRepository
+    lateinit var loanRepo: LoanRepository
     private lateinit var syncProgressUseCase: SyncProgressUseCase
     private lateinit var softDeleteOccurrence: SoftDeleteTransactionOccurrenceUseCase
     private lateinit var cancelSeries: CancelRecurringSeriesUseCase
@@ -89,8 +89,8 @@ class RecurringDeletionRepositoryTest : RepositoryTestInfrastructure {
         accountRepo = AccountRepository(db.accountDao())
         categoryRepo = CategoryRepository(db.categoryDao())
         goalRepo = GoalRepository(db.goalDao())
-        debtRepo = DebtRepository(db.debtDao())
-        syncProgressUseCase = SyncProgressUseCase(transactionRepo, goalRepo, debtRepo)
+        loanRepo = LoanRepository(db.loanDao())
+        syncProgressUseCase = SyncProgressUseCase(transactionRepo, goalRepo, loanRepo)
         softDeleteOccurrence =
             SoftDeleteTransactionOccurrenceUseCase(transactionRepo, syncProgressUseCase)
         cancelSeries = CancelRecurringSeriesUseCase(transactionRepo, syncProgressUseCase)

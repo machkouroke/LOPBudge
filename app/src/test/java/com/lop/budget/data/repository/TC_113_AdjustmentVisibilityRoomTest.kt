@@ -66,7 +66,7 @@ import kotlin.time.Duration.Companion.seconds
  * GetAccountBalancesUseCase / ObserveTransactionsUseCase / SearchTransactionsUseCase /
  * ObserveMonthlyAnalyticsUseCase / ObserveHomeSummaryUseCase / ObserveAccountDetailUseCase /
  * AdjustBalanceUseCase / EditTransactionWithScopeUseCase / SoftDeleteTransactionOccurrenceUseCase
- *   → TransactionRepository / AccountRepository / CategoryRepository / GoalRepository / DebtRepository (réels)
+ *   → TransactionRepository / AccountRepository / CategoryRepository / GoalRepository / LoanRepository (réels)
  *   → TransactionDao / AccountDao / CategoryDao / RecurringSeriesDao (réels)
  *   → LopDatabase v21 en mémoire (SQLite natif Robolectric)
  *   → BalanceEngine / BreakdownEngine (réels)
@@ -213,7 +213,7 @@ class AdjustmentVisibilityRoomTest {
         val syncProgress = SyncProgressUseCase(
             transactionRepo,
             GoalRepository(db.goalDao()),
-            DebtRepository(db.debtDao()),
+            LoanRepository(db.loanDao()),
         )
 
         balances = GetAccountBalancesUseCase(accountRepo, transactionRepo)
@@ -704,7 +704,7 @@ class AdjustmentVisibilityRoomTest {
                 3,
                 adjustmentRows.size,
             )
-            // `id|seriesId|seriesDate|isException|linkedGoalId|linkedDebtId` : une ligne conforme
+            // `id|seriesId|seriesDate|isException|linkedGoalId|linkedLoanId` : une ligne conforme
             // n'a aucun rattachement et n'est pas une exception de série.
             val attached = adjustmentRows.filterNot { it.endsWith("|null|null|0|null|null") }
             assertEquals(
@@ -1129,7 +1129,7 @@ class AdjustmentVisibilityRoomTest {
         endDate = null,
         maxOccurrences = null,
         linkedGoalId = null,
-        linkedDebtId = null,
+        linkedLoanId = null,
         tagIds = emptyList(),
     )
 
@@ -1326,7 +1326,7 @@ class AdjustmentVisibilityRoomTest {
     /** Toutes les colonnes de toutes les lignes, **tombstones compris** : les DAO les masquent. */
     private fun snapshot(): List<String> = rawRows(
         "SELECT id, title, amount, type, status, kind, date, paidAt, accountId, categoryId, " +
-            "note, seriesId, seriesDate, isException, linkedGoalId, linkedDebtId, deleted " +
+            "note, seriesId, seriesDate, isException, linkedGoalId, linkedLoanId, deleted " +
             "FROM transactions ORDER BY id",
     )
 
@@ -1396,7 +1396,7 @@ class AdjustmentVisibilityRoomTest {
         const val AMOUNT_QUERY = "200"
 
         const val ADJUSTMENT_LINKS_SQL =
-            "SELECT id, seriesId, seriesDate, isException, linkedGoalId, linkedDebtId " +
+            "SELECT id, seriesId, seriesDate, isException, linkedGoalId, linkedLoanId " +
                 "FROM transactions WHERE kind = 'BALANCE_ADJUSTMENT' ORDER BY id"
 
         /** I-9 : toute valeur autre que la sentinelle est un rattachement écrit à tort. */

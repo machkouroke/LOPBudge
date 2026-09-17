@@ -93,7 +93,7 @@ class TransactionActionViewModelEditMappingTest {
             seriesId = seriesId,
             seriesDate = seriesDate,
             linkedGoalId = 7L,
-            linkedDebtId = null,
+            linkedLoanId = null,
         ),
         category = null,
         account = null,
@@ -140,7 +140,7 @@ class TransactionActionViewModelEditMappingTest {
         endDate = endDate,
         maxOccurrences = maxOccurrences,
         linkedGoalId = twr.transaction.linkedGoalId,
-        linkedDebtId = twr.transaction.linkedDebtId,
+        linkedLoanId = twr.transaction.linkedLoanId,
         tagIds = twr.tags.map { it.id },
     )
 

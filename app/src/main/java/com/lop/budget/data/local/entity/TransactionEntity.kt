@@ -1,6 +1,7 @@
 package com.lop.budget.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.lop.budget.domain.model.TransactionKind
@@ -15,10 +16,34 @@ import com.lop.budget.domain.model.TransactionType
  * - [seriesDate] : date d'origine prévue dans la série (pour identifier l'occurrence).
  * - [isException] : true si cette transaction est une matérialisation modifiée d'une série.
  * - [linkedGoalId] : contribution à un objectif d'épargne.
- * - [linkedDebtId] : remboursement d'une dette.
+ * - [linkedLoanId] : remboursement d'une dette, ou encaissement d'une créance.
+ *
+ * Les deux rattachements se cumulent librement (P-1 de LOP-80) : ils mesurent des choses
+ * différentes, et un encaissement peut diminuer une créance tout en alimentant un objectif. Ce qui
+ * est exclu — une dette *et* une créance sur la même ligne — l'est structurellement, puisque
+ * [linkedLoanId] ne porte qu'une référence et que la direction appartient au prêt.
+ *
+ * Les deux colonnes portent une clé étrangère `ON DELETE SET NULL` : supprimer un élément financier
+ * ne supprime aucune transaction et n'en laisse aucune désigner une ligne absente (I-5). La
+ * suppression se traite ainsi à la source plutôt que par un nettoyage applicatif répété à chaque
+ * endroit qui supprime (P-6).
  */
 @Entity(
     tableName = "transactions",
+    foreignKeys = [
+        ForeignKey(
+            entity = GoalEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["linkedGoalId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
+        ForeignKey(
+            entity = LoanEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["linkedLoanId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
+    ],
     indices = [
         Index("accountId"),
         Index("categoryId"),
@@ -32,7 +57,11 @@ import com.lop.budget.domain.model.TransactionType
         Index("paidAt"),
         Index("status"),
         Index("kind"),
-        Index("deleted")
+        Index("deleted"),
+        // Exigés par les clés étrangères ci-dessus : sans index sur la colonne enfant, chaque
+        // suppression d'objectif ou de prêt impose un parcours complet de `transactions`.
+        Index("linkedGoalId"),
+        Index("linkedLoanId"),
     ],
 )
 data class TransactionEntity(
@@ -58,7 +87,7 @@ data class TransactionEntity(
 
     // --- Liens ---
     val linkedGoalId: Long? = null,
-    val linkedDebtId: Long? = null,
+    val linkedLoanId: Long? = null,
 
     // --- Soft Delete ---
     val deleted: Boolean = false,

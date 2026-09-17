@@ -84,13 +84,13 @@ class EditTransactionWithScopeUseCaseTest {
         maxOccurrences: Int? = null,
         tagIds: List<Long> = emptyList(),
         linkedGoalId: Long? = null,
-        linkedDebtId: Long? = null,
+        linkedLoanId: Long? = null,
     ) = TransactionEdition(
         title = title, amount = amount, type = TransactionType.EXPENSE, date = date,
         accountId = accountId, categoryId = categoryId, note = note, status = status,
         frequency = frequency, interval = interval, daysOfWeek = daysOfWeek,
         endDate = endDate, maxOccurrences = maxOccurrences,
-        linkedGoalId = linkedGoalId, linkedDebtId = linkedDebtId, tagIds = tagIds,
+        linkedGoalId = linkedGoalId, linkedLoanId = linkedLoanId, tagIds = tagIds,
     )
 
     private fun rowEntity(
@@ -117,7 +117,7 @@ class EditTransactionWithScopeUseCaseTest {
         categoryId = 20L, accountId = 200L, frequency = RecurrenceFrequency.MONTHLY,
         interval = 1, startDate = startDate, endDate = null, maxOccurrences = null,
         daysOfWeek = null, isCancelled = false, note = "Edited note",
-        linkedGoalId = null, linkedDebtId = null,
+        linkedGoalId = null, linkedLoanId = null,
     )
 
     /** Entité attendue à saveSimple : miroir exact de toTransactionEntity. */
@@ -128,7 +128,7 @@ class EditTransactionWithScopeUseCaseTest {
         id = id, title = ed.title, amount = ed.amount, type = ed.type, status = status,
         date = ed.date, accountId = ed.accountId, categoryId = ed.categoryId, note = ed.note,
         paidAt = paidAt, seriesId = seriesId, seriesDate = seriesDate,
-        isException = isException, linkedGoalId = ed.linkedGoalId, linkedDebtId = ed.linkedDebtId,
+        isException = isException, linkedGoalId = ed.linkedGoalId, linkedLoanId = ed.linkedLoanId,
     )
 
     /** Série attendue à upsertSeries : miroir exact de toSeriesEntity. */
@@ -137,7 +137,7 @@ class EditTransactionWithScopeUseCaseTest {
         accountId = ed.accountId, frequency = ed.frequency, interval = ed.interval,
         startDate = ed.date, endDate = ed.endDate, maxOccurrences = ed.maxOccurrences,
         daysOfWeek = ed.daysOfWeek.toDaysOfWeekCsv(), isCancelled = false, note = ed.note,
-        linkedGoalId = ed.linkedGoalId, linkedDebtId = ed.linkedDebtId,
+        linkedGoalId = ed.linkedGoalId, linkedLoanId = ed.linkedLoanId,
     )
 
     private fun confirmAll() = confirmVerified(transactionRepo, saveTransactionUseCase)
@@ -587,25 +587,25 @@ class EditTransactionWithScopeUseCaseTest {
         coEvery { transactionRepo.updateSeries(any()) } just Runs
         // 30L : personnalisée (title) et non alignée -> sera patchée.
         val custom = rowEntity(id = 30L, seriesDate = marchDate, date = marchDate, title = "Custom", amount = 10_000)
-        // 40L : DÉJÀ alignée sur TOUT le diff (amount 80 ET linkedDebtId 8) -> aucun upsert.
+        // 40L : DÉJÀ alignée sur TOUT le diff (amount 80 ET linkedLoanId 8) -> aucun upsert.
         val alreadyPatched = rowEntity(id = 40L, seriesDate = janStart, date = janStart, amount = 8_000)
-            .copy(linkedDebtId = 8L)
+            .copy(linkedLoanId = 8L)
         coEvery { transactionRepo.getExceptionsBySeries(100L) } returns listOf(custom, alreadyPatched)
         val patched = slot<TransactionEntity>()
         coEvery { transactionRepo.upsert(capture(patched)) } returns 30L
         val saved = slot<TransactionEntity>()
         coEvery { saveTransactionUseCase.saveSimple(capture(saved), emptyList()) } returns 20L
-        // Diff vs base : amount 100 -> 80, linkedDebtId null -> 8 (rattachement propagé, S-27 ALL).
+        // Diff vs base : amount 100 -> 80, linkedLoanId null -> 8 (rattachement propagé, S-27 ALL).
         // La note ne fait PAS partie du diff (note édition == note base).
-        val ed = edition(date = slotFeb, amount = 8_000, linkedDebtId = 8L)
+        val ed = edition(date = slotFeb, amount = 8_000, linkedLoanId = 8L)
 
         sut(20L, 100L, slotFeb, ed, EditScope.ALL)
 
-        // 30L : patch amount + linkedDebtId ; title "Custom" et note "Row note" conservés (I-7).
-        assertEquals(custom.copy(amount = 8_000, linkedDebtId = 8L), patched.captured)
+        // 30L : patch amount + linkedLoanId ; title "Custom" et note "Row note" conservés (I-7).
+        assertEquals(custom.copy(amount = 8_000, linkedLoanId = 8L), patched.captured)
         coVerify(exactly = 1) { transactionRepo.upsert(any()) } // 40L jamais réécrite
         // Consultée : même règle de diff + statut réappliqué ; date/seriesDate intacts (I-1).
-        assertEquals(row.copy(amount = 8_000, linkedDebtId = 8L, status = TransactionStatus.PLANNED), saved.captured)
+        assertEquals(row.copy(amount = 8_000, linkedLoanId = 8L, status = TransactionStatus.PLANNED), saved.captured)
         coVerify(exactly = 1) { transactionRepo.getById(20L) }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(100L) }
         coVerify(exactly = 1) { transactionRepo.updateSeries(any()) }
@@ -682,13 +682,13 @@ class EditTransactionWithScopeUseCaseTest {
         coEvery { transactionRepo.getById(20L) } returns twr(row)
         val saved = slot<TransactionEntity>()
         coEvery { saveTransactionUseCase.saveSimple(capture(saved), listOf(11L, 12L)) } returns 20L
-        val ed = edition(linkedGoalId = 7L, linkedDebtId = 8L, tagIds = listOf(11L, 12L))
+        val ed = edition(linkedGoalId = 7L, linkedLoanId = 8L, tagIds = listOf(11L, 12L))
 
         sut(20L, 100L, slotFeb, ed, EditScope.SINGLE)
 
         assertEquals(
             expectedSaved(ed, 20L, TransactionStatus.PLANNED, null, 100L, slotFeb, true),
-            saved.captured, // linkedGoalId = 7, linkedDebtId = 8 inclus dans l'objet entier
+            saved.captured, // linkedGoalId = 7, linkedLoanId = 8 inclus dans l'objet entier
         )
         coVerify(exactly = 1) { transactionRepo.getById(20L) }
         coVerify(exactly = 1) { saveTransactionUseCase.saveSimple(saved.captured, listOf(11L, 12L)) }

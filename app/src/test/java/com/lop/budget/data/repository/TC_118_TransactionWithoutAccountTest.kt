@@ -158,7 +158,7 @@ class TransactionWithoutAccountTest {
         val syncProgress = SyncProgressUseCase(
             transactionRepo,
             GoalRepository(db.goalDao()),
-            DebtRepository(db.debtDao()),
+            LoanRepository(db.loanDao()),
         )
 
         creerTransaction = CreateTransactionUseCase(
@@ -375,7 +375,7 @@ class TransactionWithoutAccountTest {
         endDate = null,
         maxOccurrences = null,
         linkedGoalId = null,
-        linkedDebtId = null,
+        linkedLoanId = null,
         tagIds = emptyList(),
     )
 }

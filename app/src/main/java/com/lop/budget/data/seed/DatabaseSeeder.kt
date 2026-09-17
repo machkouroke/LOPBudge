@@ -129,8 +129,8 @@ object DatabaseSeeder {
             if (goalDao.getByName("Fonds d'urgence") == null) goalDao.upsert(
                 GoalEntity(
                     name = "Fonds d'urgence",
-                    targetAmount = 6000.0,
-                    savedAmount = 1500.0,
+                    targetAmountCents = 600_000,
+                    startingBalanceCents = 150_000,
                     colorArgb = 0xFF4CAF50.toInt(),
                     icon = "shield"
                 )

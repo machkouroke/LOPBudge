@@ -27,8 +27,8 @@ interface TransactionOperations {
     suspend fun addTagCrossRef(crossRef: TransactionTagCrossRef)
     suspend fun saveWithTags(tx: TransactionEntity, tagIds: List<Long>): Long
     suspend fun getExceptionsBySeries(seriesId: Long): List<TransactionEntity>
-    suspend fun getSumForGoal(goalId: Long): Double
-    suspend fun getSumForDebt(debtId: Long): Double
+    suspend fun getSumForGoal(goalId: Long): Long
+    suspend fun getSumForLoan(loanId: Long): Long
     suspend fun softDeleteTransactionsBySeries(seriesId: Long)
     suspend fun softDeleteTransactionsBySeriesFrom(seriesId: Long, fromDate: Long)
 
@@ -157,19 +157,19 @@ interface TransactionDao : TransactionOperations {
 
     @Query(
         """
-        SELECT SUM(amount) FROM transactions 
+        SELECT COALESCE(SUM(amount), 0) FROM transactions 
         WHERE linkedGoalId = :goalId AND deleted = 0 AND status = 'PAID'
     """
     )
-    override suspend fun getSumForGoal(goalId: Long): Double
+    override suspend fun getSumForGoal(goalId: Long): Long
 
     @Query(
         """
-        SELECT SUM(amount) FROM transactions 
-        WHERE linkedDebtId = :debtId AND deleted = 0 AND status = 'PAID'
+        SELECT COALESCE(SUM(amount), 0) FROM transactions 
+        WHERE linkedLoanId = :loanId AND deleted = 0 AND status = 'PAID'
     """
     )
-    override suspend fun getSumForDebt(debtId: Long): Double
+    override suspend fun getSumForLoan(loanId: Long): Long
 
     @Query(
         """
@@ -215,7 +215,7 @@ interface TransactionDao : TransactionOperations {
                 isException = true,
                 note = series.note,
                 linkedGoalId = series.linkedGoalId,
-                linkedDebtId = series.linkedDebtId
+                linkedLoanId = series.linkedLoanId
             )
         )
     }

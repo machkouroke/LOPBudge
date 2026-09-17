@@ -39,7 +39,13 @@ object Format {
             }
         }.clone() as NumberFormat
 
-    /** Objectifs et dettes : montants en euros `Double` (P-4). */
+    /**
+     * Montants en euros `Double`.
+     *
+     * Ne subsiste que pour les taux et les valeurs d'affichage qui ne sont pas des montants
+     * stockés. Depuis LOP-80, objectifs et prêts comptent en centimes comme les transactions
+     * (I-3) : pour un montant lu en base, utiliser la surcharge `Long`.
+     */
     fun money(amount: Double, currencyCode: String = "EUR", locale: Locale = Locale.FRANCE): String {
         return runCatching {
             currencyFormat(currencyCode, locale).format(amount)
@@ -75,6 +81,17 @@ object Format {
 
     /** Frontière UI : centimes -> texte d'un champ de saisie en euros. */
     fun centsToInput(cents: Long): String = (cents / 100.0).toString()
+
+    /**
+     * Frontière UI : euros d'un champ numérique -> centimes, arrondi au centime le plus proche.
+     *
+     * Passe par [centsOrNull] et donc par [BigDecimal] : `Double.toString()` rend la représentation
+     * décimale exacte la plus courte, si bien que 123,45 € donne 12345 et jamais 12344.
+     */
+    fun centsOf(euros: Double): Long = centsOrNull(euros.toString()) ?: 0L
+
+    /** Frontière UI : centimes -> euros d'un champ numérique, sans perte (cf. [money]). */
+    fun eurosOf(cents: Long): Double = BigDecimal.valueOf(cents, 2).toDouble()
 
     /** Symbole seul ("EUR" -> "€"), pour les champs de saisie qui affichent déjà le nombre. */
     fun currencySymbol(currencyCode: String = "EUR", locale: Locale = Locale.FRANCE): String =

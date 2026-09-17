@@ -7,7 +7,7 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
-import com.lop.budget.data.repository.DebtRepository
+import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TagRepository
@@ -122,7 +122,7 @@ class TransactionEditViewModelCreateTest {
     private val transactionRepo = mockk<TransactionRepository>(relaxed = false)
     private val tagRepo = mockk<TagRepository>(relaxed = false)
     private val goalRepo = mockk<GoalRepository>(relaxed = false)
-    private val debtRepo = mockk<DebtRepository>(relaxed = false)
+    private val loanRepo = mockk<LoanRepository>(relaxed = false)
     private val createTransactionUseCase = mockk<CreateTransactionUseCase>(relaxed = false)
     private val editTransactionWithScopeUseCase =
         mockk<EditTransactionWithScopeUseCase>(relaxed = false)
@@ -138,7 +138,7 @@ class TransactionEditViewModelCreateTest {
     private val context = mockk<Context>(relaxed = false)
 
     private val allMocks = arrayOf(
-        accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, debtRepo,
+        accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, loanRepo,
         createTransactionUseCase, editTransactionWithScopeUseCase,
         observeTransactionDetailUseCase, settings, context
     )
@@ -176,8 +176,8 @@ class TransactionEditViewModelCreateTest {
             flowOf(listOf(incomeCategory))
         every { accountRepo.observeAll() } returns flowOf(listOf(primaryAccount, secondaryAccount))
         every { tagRepo.observeAll() } returns flowOf(emptyList())
-        every { goalRepo.observeAll() } returns flowOf(emptyList())
-        every { debtRepo.observeAll() } returns flowOf(emptyList())
+        every { goalRepo.observeActive() } returns flowOf(emptyList())
+        every { loanRepo.observeActive() } returns flowOf(emptyList())
         every { settings.currency } returns flowOf(appCurrency)
 
         // Lectures d'initialisation : exclues du bilan de `confirmVerified`.
@@ -187,8 +187,8 @@ class TransactionEditViewModelCreateTest {
             categoryRepo.observeByType(any())
             accountRepo.observeAll()
             tagRepo.observeAll()
-            goalRepo.observeAll()
-            debtRepo.observeAll()
+            goalRepo.observeActive()
+            loanRepo.observeActive()
             context.getString(any())
             settings.currency
         }
@@ -215,7 +215,7 @@ class TransactionEditViewModelCreateTest {
     /** SUT en **création** : le `SavedStateHandle` ne porte jamais la clé `id`. */
     private fun createSut(type: TransactionType): TransactionEditViewModel =
         TransactionEditViewModel(
-            accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, debtRepo,
+            accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, loanRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
             observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase, settings,
             SavedStateHandle(mapOf("type" to type.name)), context

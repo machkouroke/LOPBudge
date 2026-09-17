@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.domain.usecase.SyncProgressUseCase
+import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -61,12 +62,12 @@ class GoalEditViewModel @Inject constructor(
             viewModelScope.launch {
                 goalRepo.getById(id)?.let { goal ->
                     _name.value = goal.name
-                    _targetAmount.value = goal.targetAmount
-                    _startingBalance.value = goal.startingBalance
+                    _targetAmount.value = Format.eurosOf(goal.targetAmountCents)
+                    _startingBalance.value = Format.eurosOf(goal.startingBalanceCents)
                     _dueDate.value = goal.dueDate
                     _color.value = goal.colorArgb
                     _icon.value = goal.icon
-                    _savedAmount.value = goal.savedAmount
+                    _savedAmount.value = Format.eurosOf(goal.savedAmountCents)
                 }
             }
         }
@@ -80,18 +81,21 @@ class GoalEditViewModel @Inject constructor(
 
     fun save(onDone: () -> Unit) {
         viewModelScope.launch {
+            // Montants convertis en centimes à la frontière : le modèle ne connaît que des
+            // centimes (I-3 de LOP-80). `savedAmountCents` n'est pas transmis — la progression ne
+            // se saisit jamais (I-2), le repository la reprend de la base et le moteur la
+            // recalcule juste après.
             val goal = GoalEntity(
                 id = goalId ?: 0L,
                 name = _name.value,
-                targetAmount = _targetAmount.value,
-                startingBalance = _startingBalance.value,
-                savedAmount = _savedAmount.value,
+                targetAmountCents = Format.centsOf(_targetAmount.value),
+                startingBalanceCents = Format.centsOf(_startingBalance.value),
                 colorArgb = _color.value,
                 icon = _icon.value,
                 dueDate = _dueDate.value
             )
-            val newId = goalRepo.upsert(goal)
-            syncProgressUseCase.recalculateGoalProgress(goalId ?: newId)
+            val newId = if (goalId == null) goalRepo.create(goal) else { goalRepo.update(goal); goalId }
+            syncProgressUseCase.recalculateGoalProgress(newId)
             onDone()
         }
     }

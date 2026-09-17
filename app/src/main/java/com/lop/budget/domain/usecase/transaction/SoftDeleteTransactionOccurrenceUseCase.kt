@@ -49,8 +49,8 @@ class SoftDeleteTransactionOccurrenceUseCase @Inject constructor(
         current.transaction.linkedGoalId?.let {
             syncProgressUseCase.recalculateGoalProgress(it)
         }
-        current.transaction.linkedDebtId?.let {
-            syncProgressUseCase.recalculateDebtProgress(it)
+        current.transaction.linkedLoanId?.let {
+            syncProgressUseCase.recalculateLoanProgress(it)
         }
         return DeleteOutcome.Deleted(realId)
     }

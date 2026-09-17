@@ -235,7 +235,7 @@ class AdjustBalanceCreationTest {
             assertFalse("I-8 : un ajustement n'est jamais une exception matérialisée", written.isException)
             assertEquals("I-9 / P-5 : un ajustement ne porte aucune catégorie", NO_CATEGORY_ID, written.categoryId)
             assertNull("I-9 : un ajustement n'est rattaché à aucun objectif", written.linkedGoalId)
-            assertNull("I-9 : un ajustement n'est rattaché à aucune dette", written.linkedDebtId)
+            assertNull("I-9 : un ajustement n'est rattaché à aucune dette", written.linkedLoanId)
             assertFalse("CA-01 : la ligne créée n'est pas supprimée", written.deleted)
         }
 

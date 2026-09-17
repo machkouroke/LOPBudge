@@ -33,7 +33,7 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
     private val virtualId = -1L
     private val seriesId = 100L
     private val goalId = 7L
-    private val debtId = 8L
+    private val loanId = 8L
 
     @Before
     fun setUp() {
@@ -47,7 +47,7 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
         date: Long = februarySlot,
         isException: Boolean = false,
         linkedGoalId: Long? = null,
-        linkedDebtId: Long? = null
+        linkedLoanId: Long? = null
     ) = TransactionWithRelations(
         transaction = TransactionEntity(
             id = id,
@@ -63,7 +63,7 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
             seriesDate = seriesDate,
             isException = isException,
             linkedGoalId = linkedGoalId,
-            linkedDebtId = linkedDebtId
+            linkedLoanId = linkedLoanId
         ),
         category = null,
         account = null,
@@ -88,7 +88,7 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
             }
             coVerify(exactly = 0) { transactionRepo.materializeOccurrence(any(), any()) }
             coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
-            coVerify(exactly = 0) { syncProgressUseCase.recalculateDebtProgress(any()) }
+            coVerify(exactly = 0) { syncProgressUseCase.recalculateLoanProgress(any()) }
             confirmVerified(transactionRepo, syncProgressUseCase)
         }
 
@@ -115,7 +115,7 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
             }
             coVerify(exactly = 0) { transactionRepo.materializeOccurrence(any(), any()) }
             coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
-            coVerify(exactly = 0) { syncProgressUseCase.recalculateDebtProgress(any()) }
+            coVerify(exactly = 0) { syncProgressUseCase.recalculateLoanProgress(any()) }
             confirmVerified(transactionRepo, syncProgressUseCase)
         }
 
@@ -146,7 +146,7 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
                 transactionRepo.softDeleteTransaction(realId)
             }
             coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
-            coVerify(exactly = 0) { syncProgressUseCase.recalculateDebtProgress(any()) }
+            coVerify(exactly = 0) { syncProgressUseCase.recalculateLoanProgress(any()) }
             confirmVerified(transactionRepo, syncProgressUseCase)
         }
 
@@ -250,7 +250,7 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
             }
 
             coVerify(exactly = 0) {
-                syncProgressUseCase.recalculateDebtProgress(any())
+                syncProgressUseCase.recalculateLoanProgress(any())
             }
             coVerify(exactly = 0) {
                 transactionRepo.materializeOccurrence(any(), any())
@@ -263,10 +263,10 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
     fun `S-07 - Given transaction linked to debt, When soft deleted, Then debt sync follows deletion`() =
         runTest {
             // Given
-            val twr = createTwr(id = realId, linkedDebtId = debtId)
+            val twr = createTwr(id = realId, linkedLoanId = loanId)
             coEvery { transactionRepo.getById(realId) } returns twr
             coEvery { transactionRepo.softDeleteTransaction(realId) } returns Unit
-            coEvery { syncProgressUseCase.recalculateDebtProgress(debtId) } returns Unit
+            coEvery { syncProgressUseCase.recalculateLoanProgress(loanId) } returns Unit
 
             // When
             sut.invoke(twr)
@@ -275,7 +275,7 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
             coVerifyOrder {
                 transactionRepo.getById(realId)
                 transactionRepo.softDeleteTransaction(realId)
-                syncProgressUseCase.recalculateDebtProgress(debtId)
+                syncProgressUseCase.recalculateLoanProgress(loanId)
             }
             coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
             coVerify(exactly = 0) { transactionRepo.materializeOccurrence(any(), any()) }
@@ -286,11 +286,11 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
     fun `S-08 - Given transaction linked to both, When soft deleted, Then both syncs follow deletion`() =
         runTest {
             // Given
-            val twr = createTwr(id = realId, linkedGoalId = goalId, linkedDebtId = debtId)
+            val twr = createTwr(id = realId, linkedGoalId = goalId, linkedLoanId = loanId)
             coEvery { transactionRepo.getById(realId) } returns twr
             coEvery { transactionRepo.softDeleteTransaction(realId) } returns Unit
             coEvery { syncProgressUseCase.recalculateGoalProgress(goalId) } returns Unit
-            coEvery { syncProgressUseCase.recalculateDebtProgress(debtId) } returns Unit
+            coEvery { syncProgressUseCase.recalculateLoanProgress(loanId) } returns Unit
 
             // When
             sut.invoke(twr)
@@ -303,7 +303,7 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
             }
             coVerifyOrder {
                 transactionRepo.softDeleteTransaction(realId)
-                syncProgressUseCase.recalculateDebtProgress(debtId)
+                syncProgressUseCase.recalculateLoanProgress(loanId)
             }
             coVerify(exactly = 0) { transactionRepo.materializeOccurrence(any(), any()) }
             confirmVerified(transactionRepo, syncProgressUseCase)
@@ -326,7 +326,7 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
                 transactionRepo.softDeleteTransaction(realId)
             }
             coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
-            coVerify(exactly = 0) { syncProgressUseCase.recalculateDebtProgress(any()) }
+            coVerify(exactly = 0) { syncProgressUseCase.recalculateLoanProgress(any()) }
             coVerify(exactly = 0) { transactionRepo.materializeOccurrence(any(), any()) }
             confirmVerified(transactionRepo, syncProgressUseCase)
         }
@@ -363,7 +363,7 @@ class SoftDeleteTransactionOccurrenceUseCaseTest {
             }
             coVerify(exactly = 0) { transactionRepo.materializeOccurrence(any(), movedDisplayDate) }
             coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
-            coVerify(exactly = 0) { syncProgressUseCase.recalculateDebtProgress(any()) }
+            coVerify(exactly = 0) { syncProgressUseCase.recalculateLoanProgress(any()) }
             confirmVerified(transactionRepo, syncProgressUseCase)
         }
 }

@@ -37,7 +37,7 @@ class SaveTransactionUseCase @Inject constructor(
         val txId = transactionRepo.saveWithTags(finalTx, tagIds)
 
         finalTx.linkedGoalId?.let { syncProgressUseCase.recalculateGoalProgress(it) }
-        finalTx.linkedDebtId?.let { syncProgressUseCase.recalculateDebtProgress(it) }
+        finalTx.linkedLoanId?.let { syncProgressUseCase.recalculateLoanProgress(it) }
         return txId
     }
 }

@@ -261,7 +261,7 @@ class ObserveUpcomingOccurrencesRoomTest {
                 isCancelled = false,
                 note = null,
                 linkedGoalId = null,
-                linkedDebtId = null,
+                linkedLoanId = null,
             ),
         )
     }

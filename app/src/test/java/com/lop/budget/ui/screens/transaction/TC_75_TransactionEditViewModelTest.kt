@@ -9,7 +9,7 @@ import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
-import com.lop.budget.data.repository.DebtRepository
+import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TagRepository
@@ -61,7 +61,7 @@ class TransactionEditViewModelTest {
     private val transactionRepo = mockk<TransactionRepository>(relaxed = false)
     private val tagRepo = mockk<TagRepository>(relaxed = false)
     private val goalRepo = mockk<GoalRepository>(relaxed = false)
-    private val debtRepo = mockk<DebtRepository>(relaxed = false)
+    private val loanRepo = mockk<LoanRepository>(relaxed = false)
     private val createTransactionUseCase = mockk<CreateTransactionUseCase>(relaxed = false)
     private val editTransactionWithScopeUseCase = mockk<EditTransactionWithScopeUseCase>(relaxed = false)
     private val observeTransactionDetailUseCase = mockk<ObserveTransactionDetailUseCase>(relaxed = false)
@@ -75,7 +75,7 @@ class TransactionEditViewModelTest {
     private val context = mockk<Context>(relaxed = false)
 
     private val allMocks = arrayOf(
-        accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, debtRepo,
+        accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, loanRepo,
         createTransactionUseCase, editTransactionWithScopeUseCase,
         observeTransactionDetailUseCase, settings, context
     )
@@ -94,8 +94,8 @@ class TransactionEditViewModelTest {
         every { categoryRepo.observeByType(any()) } returns flowOf(emptyList())
         every { accountRepo.observeAll() } returns flowOf(emptyList())
         every { tagRepo.observeAll() } returns flowOf(emptyList())
-        every { goalRepo.observeAll() } returns flowOf(emptyList())
-        every { debtRepo.observeAll() } returns flowOf(emptyList())
+        every { goalRepo.observeActive() } returns flowOf(emptyList())
+        every { loanRepo.observeActive() } returns flowOf(emptyList())
         // CA-01 : le VM lit la devise applicative à l'init pour l'exposer au champ montant.
         // Hors périmètre de ce ticket (couvert par TC-80 A-01/A-02) : simple stub d'init.
         every { settings.currency } returns flowOf("EUR")
@@ -105,8 +105,8 @@ class TransactionEditViewModelTest {
             categoryRepo.observeByType(any())
             accountRepo.observeAll()
             tagRepo.observeAll()
-            goalRepo.observeAll()
-            debtRepo.observeAll()
+            goalRepo.observeActive()
+            loanRepo.observeActive()
             context.getString(any())
             settings.currency
         }
@@ -125,7 +125,7 @@ class TransactionEditViewModelTest {
         if (type != null) map["type"] = type.name
         
         return TransactionEditViewModel(
-            accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, debtRepo,
+            accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, loanRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
             observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,
             settings, SavedStateHandle(map), context
@@ -309,7 +309,7 @@ class TransactionEditViewModelTest {
         // Fixture avec rattachements discriminants
         val twr = createTwr(id = 1L, seriesId = 500L).copy(
             transaction = createTwr(id = 1L, seriesId = 500L).transaction.copy(
-                linkedGoalId = 7L, linkedDebtId = null
+                linkedGoalId = 7L, linkedLoanId = null
             )
         )
         coEvery { observeTransactionDetailUseCase.getById(1L) } returns twr
@@ -349,7 +349,7 @@ class TransactionEditViewModelTest {
         
         // Rattachements
         assertEquals(7L, captured.linkedGoalId)
-        assertEquals(null, captured.linkedDebtId)
+        assertEquals(null, captured.linkedLoanId)
         
         // Récurrence (en SINGLE, frequency est NONE par défaut dans le formulaire non chargé)
         assertEquals(RecurrenceFrequency.NONE, captured.frequency)

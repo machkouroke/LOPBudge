@@ -652,7 +652,7 @@ class TransactionDetailQuickEditTest {
         endDate = null,
         maxOccurrences = null,
         linkedGoalId = source.transaction.linkedGoalId,
-        linkedDebtId = source.transaction.linkedDebtId,
+        linkedLoanId = source.transaction.linkedLoanId,
         tagIds = source.tags.map { it.id },
     )
 

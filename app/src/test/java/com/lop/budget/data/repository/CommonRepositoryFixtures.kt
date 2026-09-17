@@ -75,7 +75,7 @@ interface RepositoryTestInfrastructure {
             endDate = endDate,
             maxOccurrences = s.maxOccurrences,
             linkedGoalId = s.linkedGoalId,
-            linkedDebtId = s.linkedDebtId,
+            linkedLoanId = s.linkedLoanId,
             tagIds = emptyList(),
         )
     }

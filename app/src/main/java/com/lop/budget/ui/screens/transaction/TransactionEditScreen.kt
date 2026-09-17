@@ -237,7 +237,7 @@ fun TransactionEditScreen(
             PickerBottomSheet(
                 title = stringResource(R.string.tx_linked_debt_label),
                 items = debts,
-                isSelected = { it.id == form.linkedDebtId },
+                isSelected = { it.id == form.linkedLoanId },
                 onSelect = { debt ->
                     vm.setDebt(debt?.id)
                     activeSheet = null

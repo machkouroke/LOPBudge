@@ -62,6 +62,6 @@ fun buildEdition(
     endDate = null,
     maxOccurrences = null,
     linkedGoalId = null,
-    linkedDebtId = null,
+    linkedLoanId = null,
     tagIds = emptyList(),
 )

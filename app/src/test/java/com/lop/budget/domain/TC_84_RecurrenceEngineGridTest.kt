@@ -88,7 +88,7 @@ class RecurrenceEngineGridTest {
             isCancelled = false,
             note = "Contrat de location A",
             linkedGoalId = null,
-            linkedDebtId = 31L
+            linkedLoanId = 31L
         )
     }
 
@@ -459,7 +459,7 @@ class RecurrenceEngineGridTest {
             assertEquals(11L, tx.accountId)
             assertEquals(21L, tx.categoryId)
             assertEquals("Contrat de location A", tx.note)
-            assertEquals(31L, tx.linkedDebtId)
+            assertEquals(31L, tx.linkedLoanId)
             assertNull(tx.linkedGoalId)
             assertEquals(TransactionStatus.PLANNED, tx.status)
             assertEquals(TransactionKind.STANDARD, tx.kind)
@@ -488,7 +488,7 @@ class RecurrenceEngineGridTest {
             isCancelled = false,
             note = "Fiche de paie principale",
             linkedGoalId = 41L,
-            linkedDebtId = null
+            linkedLoanId = null
         )
         val incomeSeriesCopy = incomeSeries.copy()
 
@@ -518,7 +518,7 @@ class RecurrenceEngineGridTest {
             assertEquals(22L, tx.categoryId)
             assertEquals("Fiche de paie principale", tx.note)
             assertEquals(41L, tx.linkedGoalId)
-            assertNull(tx.linkedDebtId)
+            assertNull(tx.linkedLoanId)
             assertEquals(TransactionStatus.PLANNED, tx.status)
             assertEquals(TransactionKind.STANDARD, tx.kind)
             assertFalse(tx.isException)

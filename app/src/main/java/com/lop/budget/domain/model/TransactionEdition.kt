@@ -10,6 +10,8 @@ package com.lop.budget.domain.model
  * - AUCUNE valeur par défaut : ajouter un champ force le compilateur à énumérer tous les points de construction.
  * - Aucun format de persistance ici : daysOfWeek est un Set<Int> métier, la conversion CSV Room
  *   vit exclusivement dans TransactionEditionMappers.kt.
+ * - Une transaction peut désigner un objectif, un prêt, ou les deux (P-1 de LOP-80) : ce sont deux
+ *   suivis distincts, et un même mouvement peut faire avancer les deux. Aucune garde ici.
  */
 data class TransactionEdition(
     val title: String,
@@ -27,6 +29,6 @@ data class TransactionEdition(
     val endDate: Long?,
     val maxOccurrences: Int?,
     val linkedGoalId: Long?,
-    val linkedDebtId: Long?,
+    val linkedLoanId: Long?,
     val tagIds: List<Long>,
 )

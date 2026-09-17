@@ -164,7 +164,7 @@ class RecurrenceEngineBoundsTest {
         isCancelled = isCancelled,
         note = null,
         linkedGoalId = null,
-        linkedDebtId = null
+        linkedLoanId = null
     )
 
     // --- Oracle commun ---
@@ -279,7 +279,7 @@ class RecurrenceEngineBoundsTest {
             assertEquals("B-02 — CA-02 : catégorie reprise de la série (occurrence #$index)", 21L, tx.categoryId)
             assertNull("B-02 — CA-02 : note nulle dans le JDD (occurrence #$index)", tx.note)
             assertNull("B-02 — CA-02 : rattachement objectif nul dans le JDD (occurrence #$index)", tx.linkedGoalId)
-            assertNull("B-02 — CA-02 : rattachement dette nul dans le JDD (occurrence #$index)", tx.linkedDebtId)
+            assertNull("B-02 — CA-02 : rattachement dette nul dans le JDD (occurrence #$index)", tx.linkedLoanId)
             assertEquals(
                 "B-02 — I-2 : une occurrence non déplacée affiche sa date de slot (occurrence #$index)",
                 tx.seriesDate,

@@ -64,7 +64,7 @@ class CreateAndSaveTransactionUseCaseTest {
         maxOccurrences: Int? = null,
         tagIds: List<Long> = emptyList(),
         linkedGoalId: Long? = 7L,
-        linkedDebtId: Long? = null,
+        linkedLoanId: Long? = null,
     ) = TransactionEdition(
         title = "Créée",
         amount = 4_250,
@@ -80,7 +80,7 @@ class CreateAndSaveTransactionUseCaseTest {
         endDate = endDate,
         maxOccurrences = maxOccurrences,
         linkedGoalId = linkedGoalId,
-        linkedDebtId = linkedDebtId,
+        linkedLoanId = linkedLoanId,
         tagIds = tagIds,
     )
 
@@ -100,7 +100,7 @@ class CreateAndSaveTransactionUseCaseTest {
         seriesDate = null,
         isException = false,
         linkedGoalId = 7L,
-        linkedDebtId = null,
+        linkedLoanId = null,
         // kind non passé par le mapper : défaut STANDARD conservé
     )
 
@@ -109,7 +109,7 @@ class CreateAndSaveTransactionUseCaseTest {
         status: TransactionStatus = TransactionStatus.PLANNED,
         paidAt: Long? = null,
         linkedGoalId: Long? = null,
-        linkedDebtId: Long? = null,
+        linkedLoanId: Long? = null,
     ) = TransactionEntity(
         id = 30L,
         title = "À sauver",
@@ -125,7 +125,7 @@ class CreateAndSaveTransactionUseCaseTest {
         seriesDate = null,
         isException = false,
         linkedGoalId = linkedGoalId,
-        linkedDebtId = linkedDebtId,
+        linkedLoanId = linkedLoanId,
     )
 
     private fun allMocks() = arrayOf(transactionRepo, saveTransactionUseCase, syncProgressUseCase)
@@ -209,7 +209,7 @@ class CreateAndSaveTransactionUseCaseTest {
                 isCancelled = false,
                 note = "Une note",
                 linkedGoalId = 7L,
-                linkedDebtId = null,
+                linkedLoanId = null,
             )
             assertEquals(expectedSeries, seriesSlot.captured)
             // CA-05 : les tags sont portés par la série.
@@ -294,12 +294,16 @@ class CreateAndSaveTransactionUseCaseTest {
         confirmVerified(*allMocks())
     }
 
+    // Objectif et prêt se cumulent sur une même transaction (P-1 de LOP-80) : ce sont deux suivis
+    // distincts, et un encaissement peut diminuer une créance tout en alimentant un objectif. W-07
+    // couvre le cumul, W-07a et W-07c chaque rattachement seul — une branche `?.let` chacun.
+
     @Test
-    fun `W-07 - Liens objectif et dette - recalculs APRES l ecriture`() = runTest {
-        val tx = txEntity(linkedGoalId = 7L, linkedDebtId = 8L)
+    fun `W-07 - Liens objectif et pret - recalculs APRES l ecriture`() = runTest {
+        val tx = txEntity(linkedGoalId = 7L, linkedLoanId = 8L)
         coEvery { transactionRepo.saveWithTags(tx, emptyList()) } returns 30L
         coEvery { syncProgressUseCase.recalculateGoalProgress(7L) } returns Unit
-        coEvery { syncProgressUseCase.recalculateDebtProgress(8L) } returns Unit
+        coEvery { syncProgressUseCase.recalculateLoanProgress(8L) } returns Unit
 
         saveUseCase.saveSimple(tx)
 
@@ -307,20 +311,53 @@ class CreateAndSaveTransactionUseCaseTest {
         coVerifyOrder {
             transactionRepo.saveWithTags(tx, emptyList())
             syncProgressUseCase.recalculateGoalProgress(7L)
-            syncProgressUseCase.recalculateDebtProgress(8L)
+            syncProgressUseCase.recalculateLoanProgress(8L)
         }
         confirmVerified(*allMocks())
     }
 
     @Test
+    fun `W-07a - Lien objectif seul - recalcul APRES l ecriture`() = runTest {
+        val tx = txEntity(linkedGoalId = 7L, linkedLoanId = null)
+        coEvery { transactionRepo.saveWithTags(tx, emptyList()) } returns 30L
+        coEvery { syncProgressUseCase.recalculateGoalProgress(7L) } returns Unit
+
+        saveUseCase.saveSimple(tx)
+
+        // Ordre causal : écriture d'abord, recalcul ensuite.
+        coVerifyOrder {
+            transactionRepo.saveWithTags(tx, emptyList())
+            syncProgressUseCase.recalculateGoalProgress(7L)
+        }
+        coVerify(exactly = 0) { syncProgressUseCase.recalculateLoanProgress(any()) }
+        confirmVerified(*allMocks())
+    }
+
+    @Test
+    fun `W-07c - Lien pret seul - recalcul APRES l ecriture`() = runTest {
+        val tx = txEntity(linkedGoalId = null, linkedLoanId = 8L)
+        coEvery { transactionRepo.saveWithTags(tx, emptyList()) } returns 30L
+        coEvery { syncProgressUseCase.recalculateLoanProgress(8L) } returns Unit
+
+        saveUseCase.saveSimple(tx)
+
+        coVerifyOrder {
+            transactionRepo.saveWithTags(tx, emptyList())
+            syncProgressUseCase.recalculateLoanProgress(8L)
+        }
+        coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
+        confirmVerified(*allMocks())
+    }
+
+    @Test
     fun `W-07b - Sans lien - aucun recalcul`() = runTest {
-        val tx = txEntity(linkedGoalId = null, linkedDebtId = null)
+        val tx = txEntity(linkedGoalId = null, linkedLoanId = null)
         coEvery { transactionRepo.saveWithTags(tx, emptyList()) } returns 30L
 
         saveUseCase.saveSimple(tx)
 
         coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
-        coVerify(exactly = 0) { syncProgressUseCase.recalculateDebtProgress(any()) }
+        coVerify(exactly = 0) { syncProgressUseCase.recalculateLoanProgress(any()) }
         coVerify(exactly = 1) { transactionRepo.saveWithTags(tx, emptyList()) }
         confirmVerified(*allMocks())
     }

@@ -9,7 +9,8 @@ import app.cash.turbine.turbineScope
 import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
-import com.lop.budget.data.local.entity.DebtEntity
+import com.lop.budget.data.local.entity.LoanEntity
+import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.SeriesTagCrossRef
 import com.lop.budget.data.local.entity.TagEntity
@@ -838,7 +839,7 @@ class ObserveTransactionDetailRoomTest {
     private var tagCoursesId = 0L
     private var tagExceptionId = 0L
     private var tagControlId = 0L
-    private var debtId = 0L
+    private var loanId = 0L
     private var seriesAId = 0L
     private var seriesCId = 0L
     private var punctualId = 0L
@@ -868,11 +869,11 @@ class ObserveTransactionDetailRoomTest {
         tagExceptionId =
             db.tagDao().upsert(TagEntity(name = TAG_EXCEPTION, colorArgb = 0xFF8BC34A.toInt()))
 
-        debtId = db.debtDao().upsert(
-            DebtEntity(
+        loanId = db.loanDao().upsert(
+            LoanEntity(
                 name = "Dette contrôle",
-                totalAmount = 5_000.0,
-                repaidAmount = 0.0,
+                direction = LoanDirection.BORROWED,
+                totalAmountCents = 500_000,
                 colorArgb = 0xFFF44336.toInt(),
                 icon = "debt",
             ),
@@ -894,7 +895,7 @@ class ObserveTransactionDetailRoomTest {
                 isCancelled = false,
                 note = NOTE_A,
                 linkedGoalId = null,
-                linkedDebtId = debtId,
+                linkedLoanId = loanId,
             ),
             listOf(tagFixeId, tagLogementId),
         )
@@ -915,7 +916,7 @@ class ObserveTransactionDetailRoomTest {
                 seriesDate = null,
                 isException = false,
                 linkedGoalId = null,
-                linkedDebtId = null,
+                linkedLoanId = null,
                 deleted = false,
             ),
             listOf(tagCoursesId),
@@ -949,7 +950,7 @@ class ObserveTransactionDetailRoomTest {
                 isCancelled = false,
                 note = NOTE_C,
                 linkedGoalId = null,
-                linkedDebtId = null,
+                linkedLoanId = null,
             ),
             listOf(tagControlId),
         )
@@ -983,7 +984,7 @@ class ObserveTransactionDetailRoomTest {
                 isCancelled = false,
                 note = NOTE_DISTANT,
                 linkedGoalId = null,
-                linkedDebtId = null,
+                linkedLoanId = null,
             ),
             listOf(distantTagId),
         )
@@ -1009,7 +1010,7 @@ class ObserveTransactionDetailRoomTest {
             seriesDate = FEB_10,
             isException = true,
             linkedGoalId = null,
-            linkedDebtId = debtId,
+            linkedLoanId = loanId,
             deleted = false,
         ),
         listOf(tagExceptionId),
@@ -1061,7 +1062,7 @@ class ObserveTransactionDetailRoomTest {
         val category: String?,
         val note: String?,
         val linkedGoalId: Long?,
-        val linkedDebtId: Long?,
+        val linkedLoanId: Long?,
         val tags: List<String>,
     )
 
@@ -1082,7 +1083,7 @@ class ObserveTransactionDetailRoomTest {
         category = category?.name,
         note = transaction.note,
         linkedGoalId = transaction.linkedGoalId,
-        linkedDebtId = transaction.linkedDebtId,
+        linkedLoanId = transaction.linkedLoanId,
         // Le ticket interdit de supposer un ordre contractuel des tags.
         tags = tags.map { it.name }.sorted(),
     )
@@ -1109,7 +1110,7 @@ class ObserveTransactionDetailRoomTest {
         category = category,
         note = NOTE_A,
         linkedGoalId = null,
-        linkedDebtId = debtId,
+        linkedLoanId = loanId,
         tags = tags.sorted(),
     )
 
@@ -1130,7 +1131,7 @@ class ObserveTransactionDetailRoomTest {
         category = "Abonnements",
         note = NOTE_C,
         linkedGoalId = null,
-        linkedDebtId = null,
+        linkedLoanId = null,
         tags = listOf(TAG_CONTROL),
     )
 
@@ -1151,7 +1152,7 @@ class ObserveTransactionDetailRoomTest {
         category = "Assurances",
         note = NOTE_DISTANT,
         linkedGoalId = null,
-        linkedDebtId = null,
+        linkedLoanId = null,
         tags = listOf(TAG_DISTANT),
     )
 
@@ -1172,7 +1173,7 @@ class ObserveTransactionDetailRoomTest {
         category = "Logement",
         note = NOTE_EXCEPTION,
         linkedGoalId = null,
-        linkedDebtId = debtId,
+        linkedLoanId = loanId,
         tags = listOf(TAG_EXCEPTION),
     )
 
@@ -1193,7 +1194,7 @@ class ObserveTransactionDetailRoomTest {
         category = "Courses",
         note = null,
         linkedGoalId = null,
-        linkedDebtId = null,
+        linkedLoanId = null,
         tags = listOf("Courses"),
     )
 
@@ -1405,13 +1406,13 @@ class ObserveTransactionDetailRoomTest {
     private fun snapshot() = Snapshot(
         transactions = rawRows(
             "SELECT id, title, amount, type, status, kind, date, paidAt, accountId, categoryId, " +
-                "note, seriesId, seriesDate, isException, linkedGoalId, linkedDebtId, deleted " +
+                "note, seriesId, seriesDate, isException, linkedGoalId, linkedLoanId, deleted " +
                 "FROM transactions ORDER BY id",
         ),
         series = rawRows(
             "SELECT id, title, amount, type, categoryId, accountId, frequency, interval, " +
                 "startDate, endDate, maxOccurrences, daysOfWeek, isCancelled, note, " +
-                "linkedGoalId, linkedDebtId FROM recurring_series ORDER BY id",
+                "linkedGoalId, linkedLoanId FROM recurring_series ORDER BY id",
         ),
         transactionTags = rawRows(
             "SELECT transactionId, tagId FROM transaction_tags ORDER BY transactionId, tagId",

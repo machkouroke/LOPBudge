@@ -94,7 +94,7 @@ class TC_82_CreateTransactionUseCaseCreateContractTest {
 
     /**
      * Édition discriminante du ticket, **identique d'un cas à l'autre sauf le champ sous test**.
-     * `linkedGoalId` / `linkedDebtId` restent nuls : les recalculs objectif/dette appartiennent à
+     * `linkedGoalId` / `linkedLoanId` restent nuls : les recalculs objectif/dette appartiennent à
      * `saveSimple` (mocké ici), les valoriser n'ajouterait aucune preuve à ce niveau.
      */
     private fun edition(
@@ -119,7 +119,7 @@ class TC_82_CreateTransactionUseCaseCreateContractTest {
         endDate = endDate,
         maxOccurrences = null,
         linkedGoalId = null,
-        linkedDebtId = null,
+        linkedLoanId = null,
         tagIds = tagIds,
     )
 
@@ -148,7 +148,7 @@ class TC_82_CreateTransactionUseCaseCreateContractTest {
         seriesDate = null,
         isException = false,
         linkedGoalId = null,
-        linkedDebtId = null,
+        linkedLoanId = null,
         deleted = false,
     )
 
@@ -230,7 +230,7 @@ class TC_82_CreateTransactionUseCaseCreateContractTest {
                 isCancelled = false,
                 note = "note-opt",
                 linkedGoalId = null,
-                linkedDebtId = null,
+                linkedLoanId = null,
             )
             assertEquals(
                 "CA-07 : la série écrite doit porter la règle saisie, startDate = edition.date " +

@@ -6,14 +6,14 @@ import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.lop.budget.data.local.dao.AccountDao
 import com.lop.budget.data.local.dao.CategoryDao
-import com.lop.budget.data.local.dao.DebtDao
+import com.lop.budget.data.local.dao.LoanDao
 import com.lop.budget.data.local.dao.DetectedTransactionProposalDao
 import com.lop.budget.data.local.dao.GoalDao
 import com.lop.budget.data.local.dao.TagDao
 import com.lop.budget.data.local.dao.TransactionDao
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
-import com.lop.budget.data.local.entity.DebtEntity
+import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
 import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
@@ -32,10 +32,10 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         TransactionTagCrossRef::class,
         SeriesTagCrossRef::class,
         GoalEntity::class,
-        DebtEntity::class,
+        LoanEntity::class,
         DetectedTransactionProposalEntity::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -45,12 +45,214 @@ abstract class LopDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun tagDao(): TagDao
     abstract fun goalDao(): GoalDao
-    abstract fun debtDao(): DebtDao
+    abstract fun loanDao(): LoanDao
     abstract fun recurringSeriesDao(): com.lop.budget.data.local.dao.RecurringSeriesDao
     abstract fun detectedTransactionProposalDao(): DetectedTransactionProposalDao
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        /**
+         * LOP-80 — modèle unifié des objectifs et des prêts.
+         *
+         * Cinq changements de forme, tous sur des tables existantes, **sans perte de donnée** :
+         *
+         * 1. `goals` et `debts` passent des euros `REAL` aux centimes `INTEGER`, arrondis au
+         *    centime le plus proche (I-3, P-2). `CAST(ROUND(x * 100) AS INTEGER)` reprend le modèle
+         *    déjà employé par [MIGRATION_18_19] pour les comptes et les transactions.
+         * 2. `isCompleted` et `isFullyRepaid` deviennent un statut à trois valeurs (CA-03). Aucune
+         *    ligne ne ressort `ARCHIVED` : l'archivage n'existait pas avant, donc rien n'a pu
+         *    l'être. Un booléen vrai devient `COMPLETED`, faux devient `ACTIVE`.
+         * 3. `debts` devient `loans`, chaque dette reprenant la direction `BORROWED` (P-7). **Les
+         *    identifiants sont conservés**, ce qui rend le renommage du rattachement transparent
+         *    pour les transactions qui les désignent déjà.
+         * 4. `transactions.linkedDebtId` et `recurring_series.linkedDebtId` deviennent
+         *    `linkedLoanId`, et les deux colonnes de rattachement reçoivent une clé étrangère
+         *    `ON DELETE SET NULL` (I-5, P-6). SQLite ne sait pas ajouter une contrainte à une table
+         *    existante : les deux tables sont reconstruites, index compris.
+         * 5. Les rattachements déjà incohérents sont assainis en fin de migration — voir plus bas.
+         *
+         * Les migrations antérieures gardent leurs noms de colonnes d'époque : une base en v18 doit
+         * toujours pouvoir remonter toute la chaîne. Seule cette migration renomme.
+         */
+        val MIGRATION_21_22 = object : androidx.room.migration.Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // --- goals : euros -> centimes, booléen -> statut, + compte et commentaire ---
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `goals_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `targetAmountCents` INTEGER NOT NULL,
+                        `startingBalanceCents` INTEGER NOT NULL,
+                        `savedAmountCents` INTEGER NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `dueDate` INTEGER,
+                        `accountId` INTEGER,
+                        `comment` TEXT,
+                        `colorArgb` INTEGER NOT NULL,
+                        `icon` TEXT NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO goals_new (id, name, targetAmountCents, startingBalanceCents, savedAmountCents, status, dueDate, accountId, comment, colorArgb, icon)
+                    SELECT id, name,
+                           CAST(ROUND(targetAmount * 100) AS INTEGER),
+                           CAST(ROUND(startingBalance * 100) AS INTEGER),
+                           CAST(ROUND(savedAmount * 100) AS INTEGER),
+                           CASE WHEN isCompleted = 1 THEN 'COMPLETED' ELSE 'ACTIVE' END,
+                           dueDate, NULL, NULL, colorArgb, icon
+                    FROM goals
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE goals")
+                db.execSQL("ALTER TABLE goals_new RENAME TO goals")
+
+                // --- debts -> loans : direction BORROWED, identifiants conservés ---
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `loans` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `counterpartyName` TEXT,
+                        `direction` TEXT NOT NULL,
+                        `debtType` TEXT NOT NULL,
+                        `totalAmountCents` INTEGER NOT NULL,
+                        `startingBalanceCents` INTEGER NOT NULL,
+                        `repaidAmountCents` INTEGER NOT NULL,
+                        `interestRate` REAL NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `dueDate` INTEGER,
+                        `accountId` INTEGER,
+                        `comment` TEXT,
+                        `colorArgb` INTEGER NOT NULL,
+                        `icon` TEXT NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO loans (id, name, counterpartyName, direction, debtType, totalAmountCents, startingBalanceCents, repaidAmountCents, interestRate, status, dueDate, accountId, comment, colorArgb, icon)
+                    SELECT id, name, creditorName, 'BORROWED', debtType,
+                           CAST(ROUND(totalAmount * 100) AS INTEGER),
+                           CAST(ROUND(startingBalance * 100) AS INTEGER),
+                           CAST(ROUND(repaidAmount * 100) AS INTEGER),
+                           interestRate,
+                           CASE WHEN isFullyRepaid = 1 THEN 'COMPLETED' ELSE 'ACTIVE' END,
+                           dueDate, NULL, NULL, colorArgb, icon
+                    FROM debts
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE debts")
+
+                // --- transactions : linkedDebtId -> linkedLoanId, + clés étrangères ---
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `transactions_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `amount` INTEGER NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `kind` TEXT NOT NULL,
+                        `date` INTEGER NOT NULL,
+                        `accountId` INTEGER NOT NULL,
+                        `categoryId` INTEGER NOT NULL,
+                        `note` TEXT,
+                        `paidAt` INTEGER,
+                        `seriesId` INTEGER,
+                        `seriesDate` INTEGER,
+                        `isException` INTEGER NOT NULL,
+                        `linkedGoalId` INTEGER,
+                        `linkedLoanId` INTEGER,
+                        `deleted` INTEGER NOT NULL,
+                        FOREIGN KEY(`linkedGoalId`) REFERENCES `goals`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL,
+                        FOREIGN KEY(`linkedLoanId`) REFERENCES `loans`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO transactions_new (id, title, amount, type, status, kind, date, accountId, categoryId, note, paidAt, seriesId, seriesDate, isException, linkedGoalId, linkedLoanId, deleted)
+                    SELECT id, title, amount, type, status, kind, date, accountId, categoryId, note, paidAt, seriesId, seriesDate, isException, linkedGoalId, linkedDebtId, deleted FROM transactions
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE transactions")
+                db.execSQL("ALTER TABLE transactions_new RENAME TO transactions")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_accountId` ON `transactions` (`accountId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_categoryId` ON `transactions` (`categoryId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_seriesId` ON `transactions` (`seriesId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_date` ON `transactions` (`date`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_seriesDate` ON `transactions` (`seriesDate`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_paidAt` ON `transactions` (`paidAt`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_status` ON `transactions` (`status`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_kind` ON `transactions` (`kind`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_deleted` ON `transactions` (`deleted`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_linkedGoalId` ON `transactions` (`linkedGoalId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_linkedLoanId` ON `transactions` (`linkedLoanId`)")
+
+                // --- recurring_series : même traitement, car elle porte les mêmes rattachements ---
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `recurring_series_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `amount` INTEGER NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `categoryId` INTEGER NOT NULL,
+                        `accountId` INTEGER NOT NULL,
+                        `frequency` TEXT NOT NULL,
+                        `interval` INTEGER NOT NULL,
+                        `startDate` INTEGER NOT NULL,
+                        `endDate` INTEGER,
+                        `maxOccurrences` INTEGER,
+                        `daysOfWeek` TEXT,
+                        `isCancelled` INTEGER NOT NULL,
+                        `note` TEXT,
+                        `linkedGoalId` INTEGER,
+                        `linkedLoanId` INTEGER,
+                        FOREIGN KEY(`linkedGoalId`) REFERENCES `goals`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL,
+                        FOREIGN KEY(`linkedLoanId`) REFERENCES `loans`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO recurring_series_new (id, title, amount, type, categoryId, accountId, frequency, `interval`, startDate, endDate, maxOccurrences, daysOfWeek, isCancelled, note, linkedGoalId, linkedLoanId)
+                    SELECT id, title, amount, type, categoryId, accountId, frequency, `interval`, startDate, endDate, maxOccurrences, daysOfWeek, isCancelled, note, linkedGoalId, linkedDebtId FROM recurring_series
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE recurring_series")
+                db.execSQL("ALTER TABLE recurring_series_new RENAME TO recurring_series")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_recurring_series_linkedGoalId` ON `recurring_series` (`linkedGoalId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_recurring_series_linkedLoanId` ON `recurring_series` (`linkedLoanId`)")
+
+                // --- Assainissement des rattachements orphelins ---
+                //
+                // Jusqu'ici aucune clé étrangère ne protégeait ces colonnes : la base peut contenir
+                // des rattachements désignant une ligne supprimée (défaut relevé le 17/09/2026).
+                // Les laisser ferait démarrer la v22 en violation de I-5, et `foreign_key_check`
+                // refuserait la base.
+                //
+                // Une ligne qui désigne **à la fois** un objectif et un prêt est en revanche
+                // parfaitement valide et n'est pas touchée : les deux rattachements sont deux
+                // suivis distincts (P-1), et un même mouvement peut faire avancer les deux.
+                for (table in listOf("transactions", "recurring_series")) {
+                    db.execSQL(
+                        "UPDATE $table SET linkedGoalId = NULL " +
+                            "WHERE linkedGoalId IS NOT NULL " +
+                            "AND linkedGoalId NOT IN (SELECT id FROM goals)"
+                    )
+                    db.execSQL(
+                        "UPDATE $table SET linkedLoanId = NULL " +
+                            "WHERE linkedLoanId IS NOT NULL " +
+                            "AND linkedLoanId NOT IN (SELECT id FROM loans)"
+                    )
+                }
+            }
+        }
 
         /**
          * Propositions détectées : montant en centimes (`INTEGER`) et compteur de regroupement.

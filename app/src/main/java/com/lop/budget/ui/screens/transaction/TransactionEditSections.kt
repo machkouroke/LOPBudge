@@ -56,7 +56,7 @@ import com.lop.budget.BuildConfig
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
-import com.lop.budget.data.local.entity.DebtEntity
+import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.domain.model.RecurrenceFrequency
@@ -172,7 +172,7 @@ fun ClassificationSection(
     categories: List<CategoryEntity>,
     accounts: List<AccountEntity>,
     goals: List<GoalEntity>,
-    debts: List<DebtEntity>,
+    debts: List<LoanEntity>,
     tags: List<TagEntity>,
     categoryError: String? = null,
     accountError: String? = null,
@@ -216,7 +216,7 @@ fun ClassificationSection(
                     modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_GOAL)
                 )
 
-                val selectedDebt = debts.find { it.id == form.linkedDebtId }
+                val selectedDebt = debts.find { it.id == form.linkedLoanId }
                 SelectorRow(
                     label = stringResource(R.string.tx_linked_debt_label),
                     value = selectedDebt?.name ?: stringResource(R.string.tx_no_debt_linked),

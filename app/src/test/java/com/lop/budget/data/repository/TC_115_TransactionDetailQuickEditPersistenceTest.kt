@@ -156,8 +156,8 @@ class TransactionDetailQuickEditPersistenceTest {
         settingsRepo = SettingsRepository(ApplicationProvider.getApplicationContext())
 
         val goalRepo = GoalRepository(db.goalDao())
-        val debtRepo = DebtRepository(db.debtDao())
-        val syncProgress = SyncProgressUseCase(transactionRepo, goalRepo, debtRepo)
+        val loanRepo = LoanRepository(db.loanDao())
+        val syncProgress = SyncProgressUseCase(transactionRepo, goalRepo, loanRepo)
         val saveTransaction = SaveTransactionUseCase(transactionRepo, syncProgress)
 
         observeTransactions = ObserveTransactionsUseCase(transactionRepo, accountRepo, categoryRepo)

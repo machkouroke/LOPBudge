@@ -3,10 +3,12 @@ package com.lop.budget.ui.screens.goals
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lop.budget.data.local.entity.DebtEntity
-import com.lop.budget.data.repository.DebtRepository
+import com.lop.budget.data.local.entity.LoanEntity
+import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.domain.model.DebtType
+import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.domain.usecase.SyncProgressUseCase
+import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -31,12 +33,12 @@ data class DebtForm(
 
 @HiltViewModel
 class DebtEditViewModel @Inject constructor(
-    private val debtRepo: DebtRepository,
+    private val loanRepo: LoanRepository,
     private val syncProgressUseCase: SyncProgressUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val debtId: Long? = savedStateHandle["id"]
+    private val loanId: Long? = savedStateHandle["id"]
 
     private val _name = MutableStateFlow("")
     private val _creditorName = MutableStateFlow("")
@@ -68,19 +70,19 @@ class DebtEditViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DebtForm())
 
     init {
-        debtId?.let { id ->
+        loanId?.let { id ->
             viewModelScope.launch {
-                debtRepo.getById(id)?.let { debt ->
-                    _name.value = debt.name
-                    _creditorName.value = debt.creditorName ?: ""
-                    _debtType.value = debt.debtType
-                    _totalAmount.value = debt.totalAmount
-                    _startingBalance.value = debt.startingBalance
-                    _interestRate.value = debt.interestRate
-                    _dueDate.value = debt.dueDate
-                    _color.value = debt.colorArgb
-                    _icon.value = debt.icon
-                    _repaidAmount.value = debt.repaidAmount
+                loanRepo.getById(id)?.let { loan ->
+                    _name.value = loan.name
+                    _creditorName.value = loan.counterpartyName ?: ""
+                    _debtType.value = loan.debtType
+                    _totalAmount.value = Format.eurosOf(loan.totalAmountCents)
+                    _startingBalance.value = Format.eurosOf(loan.startingBalanceCents)
+                    _interestRate.value = loan.interestRate
+                    _dueDate.value = loan.dueDate
+                    _color.value = loan.colorArgb
+                    _icon.value = loan.icon
+                    _repaidAmount.value = Format.eurosOf(loan.repaidAmountCents)
                 }
             }
         }
@@ -97,29 +99,37 @@ class DebtEditViewModel @Inject constructor(
 
     fun save(onDone: () -> Unit) {
         viewModelScope.launch {
-            val debt = DebtEntity(
-                id = debtId ?: 0L,
+            // Montants convertis en centimes à la frontière (I-3 de LOP-80), et progression non
+            // transmise : elle ne se saisit jamais (I-2). Le repository la reprend de la base et
+            // le moteur la recalcule juste après.
+            //
+            // ponytail: direction figée à BORROWED — cet écran est l'ancien formulaire de dette, et
+            // la saisie d'une créance appartient à l'US des écrans. Le modèle porte les deux
+            // directions ; c'est l'UI qui n'en propose qu'une pour l'instant.
+            val loan = LoanEntity(
+                id = loanId ?: 0L,
                 name = _name.value,
-                creditorName = _creditorName.value.takeIf { it.isNotBlank() },
+                counterpartyName = _creditorName.value.takeIf { it.isNotBlank() },
+                direction = LoanDirection.BORROWED,
                 debtType = _debtType.value,
-                totalAmount = _totalAmount.value,
-                startingBalance = _startingBalance.value,
-                repaidAmount = _repaidAmount.value,
+                totalAmountCents = Format.centsOf(_totalAmount.value),
+                startingBalanceCents = Format.centsOf(_startingBalance.value),
                 interestRate = _interestRate.value,
                 colorArgb = _color.value,
                 icon = _icon.value,
                 dueDate = _dueDate.value
             )
-            val newId = debtRepo.upsert(debt)
-            syncProgressUseCase.recalculateDebtProgress(debtId ?: newId)
+            val newId =
+                if (loanId == null) loanRepo.create(loan) else { loanRepo.update(loan); loanId }
+            syncProgressUseCase.recalculateLoanProgress(newId)
             onDone()
         }
     }
 
     fun delete(onDone: () -> Unit) {
-        debtId?.let {
+        loanId?.let {
             viewModelScope.launch {
-                debtRepo.delete(it)
+                loanRepo.delete(it)
                 onDone()
             }
         }
