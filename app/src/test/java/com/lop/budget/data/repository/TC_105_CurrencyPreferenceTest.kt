@@ -3,9 +3,13 @@ package com.lop.budget.data.repository
 import android.app.Application
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.okio.OkioStorage
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.PreferencesSerializer
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.lop.budget.data.local.LopDatabase
@@ -23,7 +27,10 @@ import com.lop.budget.ui.screens.settings.SettingsUiState
 import com.lop.budget.ui.screens.settings.SettingsViewModel
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -42,6 +49,8 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import okio.FileSystem
+import okio.Path.Companion.toPath
 import java.util.Locale
 import java.util.TimeZone
 
@@ -73,27 +82,37 @@ import java.util.TimeZone
  * T-08   recensement des lectures        CA-13, I-3        analyse, restituée ci-dessous
  * ```
  *
- * ### Montage : pourquoi de la réflexion, et pourquoi une seule écriture par cas
+ * ### Montage : pourquoi le stockage est assemblé ici
  *
  * `SettingsRepository` obtient son stockage par le délégué `private val Context.dataStore`, qui met
- * en cache **une seule** instance par processus. Deux conséquences, toutes deux vérifiées par sonde
- * le 16 septembre 2026 :
+ * en cache **une seule** instance par processus et la construit sur `FileStorage`. Deux obstacles en
+ * découlent, tous deux mesurés par sonde jetable les 16 et 17 septembre 2026 :
  *
- * 1. **Isolation et redémarrage.** Reconstruire `SettingsRepository(context)` rend le même stockage
- *    déjà chargé en mémoire : relire ne prouverait rien. [reinitialiserStockage] remet à `null`
- *    l'instance mise en cache, si bien que le dépôt suivant en construit une neuve qui relit le
- *    fichier. C'est du **test seul**, aucune ligne de production n'a été ajoutée pour cela.
- *    Robolectric alloue par ailleurs un `filesDir` neuf à chaque méthode : aucun état ne fuit d'un
- *    cas à l'autre.
- * 2. **Une écriture par cas, contrainte de l'environnement.** DataStore publie une écriture par
- *    `File.renameTo`, qui **sous Windows ne peut pas écraser un fichier existant**. La première
- *    écriture réussit, la seconde échoue avec `IOException: Unable to rename`. Ce n'est ni un défaut
- *    du produit ni un choix de conception : c'est la plateforme de développement. Chaque cas est
- *    donc écrit pour ne persister qu'une fois. Voir le hors-périmètre pour le seul oracle que cette
- *    contrainte coûte.
+ * 1. **Le redémarrage.** Reconstruire `SettingsRepository(context)` rend le stockage déjà chargé en
+ *    mémoire : relire ne prouverait rien. [monterDepot] injecte une instance neuve dans le délégué,
+ *    après avoir arrêté la précédente, si bien que le dépôt qui en sort relit réellement le disque.
+ * 2. **L'écriture répétée.** `FileStorage` publie chaque écriture par `File.renameTo`, qui **sous
+ *    Windows ne peut pas écraser un fichier existant** — mesuré : `renameTo` rend `false` et la
+ *    cible garde son ancien contenu. La 1re écriture passait, les suivantes levaient
+ *    `IOException: Unable to rename`. Le stockage est donc assemblé sur **okio**
+ *    (`OkioStorage` + `FileSystem.SYSTEM`, qui publie par `Files.move(ATOMIC_MOVE)` et sait
+ *    remplacer — mesuré aussi). Sur Android les deux publient à l'identique ; cette substitution
+ *    ne compense qu'une limite du poste de développement, exactement comme forcer un fuseau.
  *
- * Le semis d'une préférence corrompue passe par [stockage], c'est-à-dire **directement** par le
- * DataStore, jamais par `setCurrency` : la faire valider par l'API qui la refuse serait tautologique.
+ * Ce qui reste **réel** : le fichier, le dépôt, le ViewModel, et `PreferencesSerializer` — le
+ * sérialiseur de production lui-même. Seule la primitive de publication du fichier change, et elle
+ * appartient à DataStore, pas au code testé. Aucune ligne de production n'a été ajoutée.
+ *
+ * **Piège écarté au passage.** Quand une écriture échouait, `SettingsRepository.currency` annonçait
+ * malgré tout la nouvelle valeur : l'état en mémoire avançait sans que le fichier bouge. Un oracle
+ * posé sur le flux seul aurait donc viré au vert sur une écriture perdue. Les cas qui prouvent une
+ * persistance relisent pour cette raison le **disque**, par [redemarrer].
+ *
+ * Le semis d'une préférence corrompue passe **directement** par le DataStore, jamais par
+ * `setCurrency` : la faire valider par l'API qui la refuse serait tautologique.
+ *
+ * Robolectric alloue par ailleurs un `filesDir` neuf à chaque méthode : aucun état ne fuit d'un cas
+ * à l'autre.
  *
  * ### Points de synchronisation, distingués des oracles
  * Les flux de préférences font de l'E/S réelle, que l'horloge virtuelle de `runTest` n'attend pas.
@@ -128,11 +147,10 @@ import java.util.TimeZone
  *   notifications bancaires.
  * - Ce niveau ne prouve **pas** le contenu et l'ordre du catalogue (TC-104) ni le formatage des
  *   montants (TC-106). CA-02, CA-03 et CA-15 restent des vérifications sur appareil.
- * - **Non couvert, et c'est un manque assumé** : la seconde sélection identique de T-03, qui devait
- *   prouver l'idempotence de l'écriture. Elle exige une deuxième écriture DataStore, impossible sous
- *   Windows (voir Montage, point 2). Ni l'oracle ni le périmètre n'ont été assouplis pour contourner
- *   la contrainte : le cas est déclaré manquant. À porter par un test instrumenté — le dépôt n'a
- *   aujourd'hui aucun source set `app/src/androidTest`, et aucun appareil n'était connecté.
+ * - Plus aucun manque : la seconde sélection identique de T-03, un temps déclarée non couvrable, l'est
+ *   depuis le 17 septembre 2026 par le montage sur okio décrit plus haut. Elle n'appelait ni test
+ *   instrumenté ni appareil — l'obstacle n'était pas Android, seulement la primitive de renommage du
+ *   poste de développement.
  */
 @RunWith(RobolectricTestRunner::class)
 class CurrencyPreferenceTest {
@@ -154,6 +172,8 @@ class CurrencyPreferenceTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
     private lateinit var depot: SettingsRepository
+    private lateinit var stockage: DataStore<Preferences>
+    private val scopesOuverts = mutableListOf<CoroutineScope>()
     private var db: LopDatabase? = null
 
     @Before
@@ -164,15 +184,16 @@ class CurrencyPreferenceTest {
         Locale.setDefault(Locale.FRANCE)
         Dispatchers.setMain(dispatcher)
 
-        reinitialiserStockage()
-        depot = SettingsRepository(context)
+        depot = monterDepot()
     }
 
     @After
     fun tearDown() {
         db?.close()
         Dispatchers.resetMain()
-        reinitialiserStockage()
+        scopesOuverts.forEach { it.cancel() }
+        scopesOuverts.clear()
+        injecterStockage(null)
         TimeZone.setDefault(fuseauInitial)
         Locale.setDefault(localeInitiale)
     }
@@ -305,6 +326,65 @@ class CurrencyPreferenceTest {
                     "transiter — émissions observées $emissions",
                 emptyList<String>(),
                 emissions.filterNot { it == "EUR" || it == "USD" },
+            )
+        }
+
+    /**
+     * Seconde sélection **identique** : l'écriture est idempotente.
+     *
+     * C'est le cas que la contrainte Windows rendait inaccessible tant que le stockage publiait par
+     * `File.renameTo`. Il exige deux écritures successives sur le même fichier.
+     *
+     * L'oracle final porte sur le **disque**, relu par un stockage neuf, et non sur le flux en
+     * mémoire : une écriture qui échoue peut mettre à jour l'état en mémoire sans jamais atteindre
+     * le fichier, et le flux annoncerait alors une valeur que l'application ne retrouverait pas au
+     * redémarrage.
+     */
+    @Test
+    fun `given une devise deja selectionnee when re-selectionnee then ecriture idempotente`() =
+        runTest(dispatcher) {
+            val emissions = mutableListOf<String>()
+            backgroundScope.launch { depot.currency.collect { emissions += it } }
+            runCurrent()
+
+            val usd = CurrencyCatalog.byCodeOrNull("USD")!!
+            val vm = viewModel()
+            abonner(vm)
+
+            vm.setCurrency(usd)
+            advanceUntilIdle()
+            attendreCondition("T-03 — la première sélection de USD n'a jamais été persistée") {
+                emissions.lastOrNull() == "USD"
+            }
+            val clesApresPremiere = clesPresentes()
+
+            vm.setCurrency(usd)
+            advanceUntilIdle()
+            laisserRetomberLesEcrituresEventuelles()
+
+            assertEquals(
+                "T-03 / CA-06, I-1 : re-sélectionner la même devise ne change pas la valeur stockée",
+                "USD",
+                deviseStockee(),
+            )
+            assertEquals(
+                "T-03 / I-3 : une seconde sélection identique ne doit créer aucune clé " +
+                    "supplémentaire — après la 1re $clesApresPremiere, après la 2de " +
+                    "${clesPresentes()}",
+                clesApresPremiere,
+                clesPresentes(),
+            )
+            assertEquals(
+                "T-03 / I-3 : aucune valeur étrangère n'a transité entre les deux sélections — " +
+                    "émissions observées $emissions",
+                emptyList<String>(),
+                emissions.filterNot { it == "EUR" || it == "USD" },
+            )
+            assertEquals(
+                "T-03 / CA-06 : après les deux sélections, c'est bien USD qui est **sur le disque** " +
+                    "— une écriture qui n'atteint pas le fichier ne compte pas",
+                "USD",
+                redemarrer().currency.first(),
             )
         }
 
@@ -571,24 +651,20 @@ class CurrencyPreferenceTest {
     }
 
     /**
-     * « Redémarrage » : le stockage mis en cache est jeté, le dépôt suivant relit le fichier.
-     *
-     * Lecture seule après cet appel — voir le point 2 du Montage.
+     * « Redémarrage » : l'ancien stockage est arrêté et jeté, un neuf est monté sur le **même**
+     * fichier, et le dépôt qui en sort relit donc le disque et non un cache mémoire.
      */
-    private fun redemarrer(): SettingsRepository {
-        reinitialiserStockage()
-        return SettingsRepository(context)
-    }
+    private fun redemarrer(): SettingsRepository = monterDepot()
 
     /** Semis direct dans le stockage, sans passer par `setCurrency` qui validerait la valeur. */
     private suspend fun semer(valeur: String) {
-        stockage().edit { it[cleDevise] = valeur }
+        stockage.edit { it[cleDevise] = valeur }
     }
 
-    private suspend fun deviseStockee(): String? = stockage().data.first()[cleDevise]
+    private suspend fun deviseStockee(): String? = stockage.data.first()[cleDevise]
 
     private suspend fun clesPresentes(): List<String> =
-        stockage().data.first().asMap().keys.map { it.name }.sorted()
+        stockage.data.first().asMap().keys.map { it.name }.sorted()
 
     /**
      * Attend que l'état du ViewModel porte [attendu], sous un délai réel borné.
@@ -654,61 +730,34 @@ class CurrencyPreferenceTest {
         return delegue to instance
     }
 
-    private fun reinitialiserStockage() {
+    private fun injecterStockage(store: DataStore<Preferences>?) {
         val (delegue, instance) = champInstance()
-        instance.set(delegue, null)
-        libererFichiersActifs()
+        instance.set(delegue, store)
     }
 
     /**
-     * Désenregistre le fichier du registre interne de DataStore.
+     * Monte un stockage neuf sur le fichier de préférences, l'injecte dans le délégué, et rend un
+     * dépôt qui l'utilise. Arrête au passage le stockage précédent : une seule instance vivante à
+     * la fois sur un même fichier, ce que DataStore exige.
      *
-     * DataStore refuse deux instances vivantes sur un même fichier, et ne libère l'entrée qu'à
-     * l'arrêt du `CoroutineScope` de l'instance — or le délégué `preferencesDataStore` lui donne un
-     * scope qui n'est jamais arrêté. Sans ce nettoyage, l'instance créée après
-     * [reinitialiserStockage] lève « There are multiple DataStores active for the same file » et le
-     * redémarrage de T-04 ne peut pas être simulé.
-     *
-     * L'instance précédente n'est plus utilisée après l'appel, et celle qui lui succède ne fait que
-     * **lire** : aucune écriture concurrente n'est rendue possible ici.
-     *
-     * Échoue bruyamment si le champ change de nom dans une version future : mieux vaut un montage
-     * cassé et visible qu'un T-04 qui relirait silencieusement un cache mémoire.
+     * Appelé au montage de chaque cas **et** à chaque « redémarrage » : c'est la même opération.
      */
-    private fun libererFichiersActifs() {
-        val storage = Class.forName("androidx.datastore.core.FileStorage")
-        val porteurs = listOf(
-            null,
-            runCatching {
-                storage.getDeclaredField("Companion").also { it.isAccessible = true }.get(null)
-            }.getOrNull(),
-        )
-        for (porteur in porteurs) {
-            val classe = porteur?.javaClass ?: storage
-            val champ = classe.declaredFields.firstOrNull { it.name == "activeFiles" } ?: continue
-            champ.isAccessible = true
-            val ensemble = runCatching { champ.get(porteur) }.getOrNull() as? MutableSet<*> ?: continue
-            synchronized(ensemble) { ensemble.clear() }
-            return
-        }
-        throw IllegalStateException(
-            "Montage : androidx.datastore.core.FileStorage.activeFiles est introuvable ; le " +
-                "redémarrage de T-04 ne peut pas être simulé de façon fiable.",
-        )
-    }
+    private fun monterDepot(): SettingsRepository {
+        scopesOuverts.forEach { it.cancel() }
+        scopesOuverts.clear()
 
-    /**
-     * L'instance **que le dépôt utilise**, et non une seconde ouverte sur le même fichier : deux
-     * instances concurrentes se bloquent mutuellement à l'écriture.
-     */
-    @Suppress("UNCHECKED_CAST")
-    private fun stockage(): DataStore<Preferences> {
-        val (delegue, instance) = champInstance()
-        val courante = instance.get(delegue)
-        assertTrue(
-            "Montage : le dépôt doit avoir créé son stockage avant toute inspection",
-            courante != null,
+        val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        scopesOuverts += scope
+        val fichier = context.preferencesDataStoreFile("lop_settings")
+        fichier.parentFile?.mkdirs()
+
+        stockage = PreferenceDataStoreFactory.create(
+            storage = OkioStorage(FileSystem.SYSTEM, PreferencesSerializer) {
+                fichier.absolutePath.toPath()
+            },
+            scope = scope,
         )
-        return courante as DataStore<Preferences>
+        injecterStockage(stockage)
+        return SettingsRepository(context)
     }
 }
