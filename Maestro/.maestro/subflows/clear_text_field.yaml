@@ -1,27 +1,49 @@
 appId: com.lop.budget
 ---
 # subflow: clear_text_field.yaml
-# Description: Vide un champ de saisie.
+# Description: Sélectionne tout le texte d'un champ et le supprime intelligemment
 # Paramètres:
 #   - target_id: l'ID de l'élément cible
 #
-# Pourquoi ne PAS passer par « Tout sélectionner »
-# ------------------------------------------------
-# La version précédente faisait un appui long puis cherchait l'entrée « Tout sélectionner »
-# de la barre de sélection de texte d'Android, avec un repli sur l'overflow système. Trois
-# problèmes, tous mesurés le 16 septembre 2026 :
-#   - cette barre appartient au système, pas à l'application : sa forme, son délai
-#     d'apparition et le fait que « Tout sélectionner » soit visible ou replié dans
-#     l'overflow dépendent de l'OEM et de la largeur d'écran. Un Samsung et un émulateur
-#     AOSP ne se comportent pas pareil, d'où des rouges qui ne se reproduisent pas ;
-#   - le `tapOn` final n'est pas `optional` : si la barre tarde, le flow échoue sur un
-#     menu système, à un endroit qui n'a aucun rapport avec la règle métier testée ;
-#   - le sous-flow consommait ~20 s, soit 15 % du temps de TC-35-4 à lui seul.
-#
-# `eraseText` supprime les caractères directement via l'IME, sans aucune fenêtre système.
+# NE PAS remplacer ce corps par `tapOn` + `eraseText: N`. Essayé le 16 septembre 2026,
+# régression immédiate en CI (run #68, TC-35-1) : `tapOn` frappe le CENTRE de l'élément,
+# donc le curseur atterrit au milieu du texte dès que celui-ci remplit le champ, et
+# `eraseText` n'efface que ce qui PRÉCÈDE le curseur. Sur « Loyer » (court) le centre
+# tombe après la fin du texte et tout marche ; sur « Courses Hebdomadaires » il reste un
+# résidu, et la saisie s'insère dedans. Tester un seul flow ne suffit pas à valider ce
+# sous-flow : il sert aussi bien des titres que des montants, de longueurs très
+# différentes.
+
+# 1. Focus le champ pour garantir que le curseur est prêt
 - tapOn:
     id: ${target_id}
 
-# 50 caractères : au-delà de tout libellé ou montant saisi par la suite. Effacer plus que
-# le contenu n'a aucun effet de bord, le champ est simplement vide.
-- eraseText: 50
+# 2. Long press pour faire apparaître le menu contextuel
+- longPressOn:
+    id: ${target_id}
+
+# 3. Laisser le temps au menu système d'apparaître (critique en CI)
+# On attend jusqu'à 2s, mais c'est optionnel pour ne pas faire échouer si c'est dans l'overflow
+- extendedWaitUntil:
+    visible: "Tout sélectionner|Select all"
+    timeout: 2000
+    optional: true
+
+- runFlow:
+    when:
+      notVisible: "Tout sélectionner|Select all"
+    commands:
+      # Si vraiment absent, on tente l'overflow
+      - tapOn:
+          id: "android:id/overflow"
+          optional: true
+      - tapOn:
+          text: "Options supplémentaires|Plus d'options|More options"
+          optional: true
+
+# 4. Sélectionner tout (on utilise un sélecteur explicite pour la regex)
+- tapOn:
+    text: "Tout sélectionner|Select all"
+
+# 5. Supprimer
+- eraseText: 1
