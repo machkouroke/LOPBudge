@@ -17,6 +17,18 @@ interface TransactionOperations {
     fun observePaidByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
     fun observePlannedByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
 
+    /**
+     * Les transactions qui désignent cet objectif — exactement celles-là (CA-04 de LOP-80).
+     *
+     * Le critère est la **désignation**, pas le règlement : une contribution planifiée appartient
+     * déjà à l'objectif. C'est [getSumForGoal] qui restreint aux lignes `PAID`, parce que seule
+     * une somme réellement payée fait avancer la progression enregistrée.
+     */
+    fun observeByGoal(goalId: Long): Flow<List<TransactionWithRelations>>
+
+    /** Les transactions qui désignent ce prêt, dette ou créance confondues (CA-04 de LOP-80). */
+    fun observeByLoan(loanId: Long): Flow<List<TransactionWithRelations>>
+
     fun observeById(id: Long): Flow<TransactionWithRelations?>
     fun observeSlotsAt(slotDates: List<Long>): Flow<List<TransactionWithRelations>>
     suspend fun getById(id: Long): TransactionWithRelations?
@@ -82,7 +94,25 @@ interface TransactionDao : TransactionOperations {
     )
     override fun observePlannedByAccount(accountId: Long): Flow<List<TransactionWithRelations>>
 
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE linkedGoalId = :goalId AND deleted = 0
+        ORDER BY date DESC
+    """
+    )
+    override fun observeByGoal(goalId: Long): Flow<List<TransactionWithRelations>>
 
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE linkedLoanId = :loanId AND deleted = 0
+        ORDER BY date DESC
+    """
+    )
+    override fun observeByLoan(loanId: Long): Flow<List<TransactionWithRelations>>
 
     @Transaction
     @Query(

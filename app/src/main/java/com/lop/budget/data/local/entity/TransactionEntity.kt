@@ -43,6 +43,14 @@ import com.lop.budget.domain.model.TransactionType
             childColumns = ["linkedLoanId"],
             onDelete = ForeignKey.SET_NULL,
         ),
+        // Supprimer une carte ne supprime aucune transaction : elle perd seulement son
+        // rattachement. Traité à la source, comme les deux liens ci-dessus (P-6 de LOP-80).
+        ForeignKey(
+            entity = PaymentCardEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["cardId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
     ],
     indices = [
         Index("accountId"),
@@ -62,6 +70,7 @@ import com.lop.budget.domain.model.TransactionType
         // suppression d'objectif ou de prêt impose un parcours complet de `transactions`.
         Index("linkedGoalId"),
         Index("linkedLoanId"),
+        Index("cardId"),
     ],
 )
 data class TransactionEntity(
@@ -88,6 +97,15 @@ data class TransactionEntity(
     // --- Liens ---
     val linkedGoalId: Long? = null,
     val linkedLoanId: Long? = null,
+
+    /**
+     * Carte de paiement utilisée, si elle est connue.
+     *
+     * Nul par défaut : toute transaction saisie à la main en est dépourvue, et ce n'est pas un
+     * défaut. Sans cette colonne, l'analyse par carte serait incalculable dès que deux cartes
+     * pointent vers le même compte — elles afficheraient le même total.
+     */
+    val cardId: Long? = null,
 
     // --- Soft Delete ---
     val deleted: Boolean = false,
