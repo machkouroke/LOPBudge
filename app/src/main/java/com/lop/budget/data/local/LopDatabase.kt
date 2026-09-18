@@ -16,6 +16,7 @@ import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.local.entity.DetectedTransactionProposalEntity
 import com.lop.budget.data.local.entity.GoalEntity
+import com.lop.budget.data.local.entity.PaymentCardEntity
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.SeriesTagCrossRef
 import com.lop.budget.data.local.entity.TagEntity
@@ -34,9 +35,10 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         GoalEntity::class,
         LoanEntity::class,
         DetectedTransactionProposalEntity::class,
+        PaymentCardEntity::class,
     ],
-    version = 22,
-    exportSchema = false,
+    version = 23,
+    exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class LopDatabase : RoomDatabase() {
@@ -51,6 +53,113 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        /**
+         * Epic « Cartes enregistrées » — introduction de la carte de paiement.
+         *
+         * Deux changements, **sans perte de donnée** :
+         *
+         * 1. Création de `payment_cards`, avec l'index unique `network` + `last4` qui interdit deux
+         *    cartes indiscernables, et une clé étrangère `ON DELETE SET NULL` vers `accounts` :
+         *    supprimer un compte ne supprime aucune carte.
+         * 2. Ajout de `transactions.cardId`. La colonne porte une clé étrangère, or SQLite ne sait
+         *    pas ajouter une contrainte par `ALTER TABLE` : la table est donc **reconstruite**, sur
+         *    le modèle de [MIGRATION_18_19]. Les dix-sept colonnes existantes sont recopiées telles
+         *    quelles et `cardId` arrive à nul partout, ce qui est l'état correct d'une transaction
+         *    saisie avant que les cartes n'existent.
+         *
+         * `PRAGMA foreign_keys` est laissé à Room, qui le désactive le temps de la migration : sans
+         * cela, le `DROP TABLE` intermédiaire viderait les rattachements des tables qui désignent
+         * `transactions`.
+         */
+        val MIGRATION_22_23 = object : androidx.room.migration.Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `payment_cards` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `label` TEXT NOT NULL,
+                        `network` TEXT NOT NULL,
+                        `last4` TEXT NOT NULL,
+                        `appearance` TEXT NOT NULL,
+                        `accountId` INTEGER,
+                        `position` INTEGER NOT NULL,
+                        FOREIGN KEY(`accountId`) REFERENCES `accounts`(`id`)
+                            ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_payment_cards_network_last4` " +
+                        "ON `payment_cards` (`network`, `last4`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_payment_cards_accountId` " +
+                        "ON `payment_cards` (`accountId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_payment_cards_position` " +
+                        "ON `payment_cards` (`position`)"
+                )
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `transactions_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `amount` INTEGER NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `kind` TEXT NOT NULL,
+                        `date` INTEGER NOT NULL,
+                        `accountId` INTEGER NOT NULL,
+                        `categoryId` INTEGER NOT NULL,
+                        `note` TEXT,
+                        `paidAt` INTEGER,
+                        `seriesId` INTEGER,
+                        `seriesDate` INTEGER,
+                        `isException` INTEGER NOT NULL,
+                        `linkedGoalId` INTEGER,
+                        `linkedLoanId` INTEGER,
+                        `deleted` INTEGER NOT NULL,
+                        `cardId` INTEGER,
+                        FOREIGN KEY(`linkedGoalId`) REFERENCES `goals`(`id`)
+                            ON UPDATE NO ACTION ON DELETE SET NULL,
+                        FOREIGN KEY(`linkedLoanId`) REFERENCES `loans`(`id`)
+                            ON UPDATE NO ACTION ON DELETE SET NULL,
+                        FOREIGN KEY(`cardId`) REFERENCES `payment_cards`(`id`)
+                            ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `transactions_new` (
+                        id, title, amount, type, status, kind, date, accountId, categoryId, note,
+                        paidAt, seriesId, seriesDate, isException, linkedGoalId, linkedLoanId,
+                        deleted, cardId
+                    )
+                    SELECT
+                        id, title, amount, type, status, kind, date, accountId, categoryId, note,
+                        paidAt, seriesId, seriesDate, isException, linkedGoalId, linkedLoanId,
+                        deleted, NULL
+                    FROM `transactions`
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE `transactions`")
+                db.execSQL("ALTER TABLE `transactions_new` RENAME TO `transactions`")
+
+                listOf(
+                    "accountId", "categoryId", "seriesId", "date", "seriesDate", "paidAt",
+                    "status", "kind", "deleted", "linkedGoalId", "linkedLoanId", "cardId",
+                ).forEach { column ->
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_transactions_$column` " +
+                            "ON `transactions` (`$column`)"
+                    )
+                }
+            }
+        }
 
         /**
          * LOP-80 — modèle unifié des objectifs et des prêts.

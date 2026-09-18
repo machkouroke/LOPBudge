@@ -4,6 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
+    id("androidx.room")
     id("com.google.dagger.hilt.android")
 }
 
@@ -21,7 +22,15 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    // `MigrationTestHelper` ne sait lire les schémas exportés que depuis les assets. Les assets du
+    // source set `test` ne sont pas fusionnés pour les tests unitaires : on les rattache donc au
+    // variant **debug**, que Robolectric exécute. La release n'embarque rien.
+    sourceSets.getByName("debug").assets.srcDir("$projectDir/schemas")
+
     testOptions {
+        // Nécessaire pour que Robolectric voie les assets, donc les schémas Room exportés : sans
+        // cela, le test de migration ne trouve pas la description de la version précédente.
+        unitTests.isIncludeAndroidResources = true
         unitTests.all { test ->
             test.systemProperty("java.net.preferIPv4Stack", "true")
             test.systemProperty("java.net.preferIPv4Addresses", "true")
@@ -73,6 +82,35 @@ android {
             useLegacyPackaging = false
         }
     }
+}
+
+/**
+ * Room écrit à chaque compilation la description de la base dans `app/schemas`.
+ *
+ * Sans ces fichiers, un test de migration n'a aucun moyen de reconstruire la base telle qu'elle
+ * était à la version précédente : il faudrait recopier le schéma à la main dans le test, où il se
+ * périmerait en silence. Les fichiers produits sont versionnés avec le code.
+ *
+ * Le **plugin** est utilisé plutôt que l'option `room.schemaLocation` de KSP : lui seul déclare le
+ * répertoire comme une vraie sortie de tâche. Avec l'option seule, le fichier n'est pas régénéré
+ * quand il disparaît, et la fusion des assets peut embarquer la version précédente — un test de
+ * migration valide alors contre une description périmée, avec un tour de retard sur le code.
+ * Constaté le 17 septembre 2026.
+ */
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+/**
+ * Le schéma doit être écrit **avant** la fusion des assets.
+ *
+ * Le plugin Room alimente tout seul les assets des tests instrumentés, mais pas ceux des tests
+ * unitaires : sans cet ordre, la fusion embarque le schéma de la compilation précédente. Le test de
+ * migration valide alors contre une description périmée — avec un tour de retard sur le code, ce
+ * qui donne aussi bien des rouges trompeurs que des verts imméritée.
+ */
+tasks.matching { it.name == "mergeDebugAssets" }.configureEach {
+    dependsOn("copyRoomSchemas")
 }
 
 dependencies {
@@ -155,6 +193,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.qameta.allure:allure-junit4:2.35.4")
     testImplementation("org.robolectric:robolectric:4.12.2")
+    testImplementation("androidx.room:room-testing:2.7.0")
     testImplementation("androidx.test:core-ktx:1.6.1")
     testImplementation("androidx.test.ext:junit-ktx:1.2.1")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
