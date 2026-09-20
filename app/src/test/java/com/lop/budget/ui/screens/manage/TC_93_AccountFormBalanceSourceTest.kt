@@ -26,7 +26,13 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * TC-91 — Le formulaire de compte lit le solde chez l'unique producteur (LOP-127).
+ * TC-93 — Le formulaire de compte lit le solde chez l'unique producteur (LOP-127).
+ *
+ * Renuméroté le 20 septembre 2026. Ce fichier s'appelait `TC_91_…`, mais la fiche Notion 91 traite
+ * de la migration Room 18 → 19 : c'est la fiche **93**, « AccountFormViewModel : solde observé, pas
+ * de BalanceEngine », qui décrit ce test. Les deux fiches ayant été créées en lot à trois secondes
+ * d'intervalle, les numéros attribués n'ont pas suivi l'ordre attendu et le fichier a hérité de
+ * celui qu'on croyait lui revenir.
  *
  * ## Niveau
  * Unitaire sur [AccountFormViewModel], use cases et repositories doublés. C'est le seul écart
@@ -38,6 +44,11 @@ import org.junit.Test
  *   ni de `initialBalance`, ni d'un cumul local.
  * - CA-07 : le champ reste en euros ; 851 centimes s'affichent « 8.51 ».
  * - CA-09 : l'enregistrement transmet des centimes à `AdjustBalanceUseCase`.
+ *
+ * **Écart signalé, volontairement non corrigé :** la fiche 93 déclare couvrir CA-01 et CA-02, ce
+ * fichier couvre CA-01, CA-07 et CA-09. CA-02 — « les seuls appels à `BalanceEngine` sont
+ * `AccountRepository` et `AdjustBalanceUseCase` » — est une revue de dépôt, pas une assertion : il
+ * n'a jamais pu être couvert ici. À trancher côté Notion.
  *
  * ## Non couvert
  * Les règles de calcul du solde (US 78) et le contenu de l'ajustement créé (ticket ajustements).
