@@ -30,8 +30,10 @@ import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.job
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -191,8 +193,7 @@ class CurrencyPreferenceTest {
     fun tearDown() {
         db?.close()
         Dispatchers.resetMain()
-        scopesOuverts.forEach { it.cancel() }
-        scopesOuverts.clear()
+        arreterStockagesOuverts()
         injecterStockage(null)
         TimeZone.setDefault(fuseauInitial)
         Locale.setDefault(localeInitiale)
@@ -743,8 +744,7 @@ class CurrencyPreferenceTest {
      * Appelé au montage de chaque cas **et** à chaque « redémarrage » : c'est la même opération.
      */
     private fun monterDepot(): SettingsRepository {
-        scopesOuverts.forEach { it.cancel() }
-        scopesOuverts.clear()
+        arreterStockagesOuverts()
 
         val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         scopesOuverts += scope
@@ -759,5 +759,21 @@ class CurrencyPreferenceTest {
         )
         injecterStockage(stockage)
         return SettingsRepository(context)
+    }
+
+    /**
+     * Arrête les stockages déjà montés et **attend** leur arrêt effectif.
+     *
+     * `OkioStorage` tient un registre global des fichiers ouverts et refuse deux stockages vivants
+     * sur le même fichier. La libération n'a lieu qu'à la **fin** du job du scope, pas à l'appel de
+     * `cancel()`, qui rend la main aussitôt. Un « redémarrage » qui enchaîne sans attendre monte donc
+     * le nouveau stockage pendant que l'ancien détient encore le fichier, et la lecture suivante lève
+     * `IllegalStateException: There are multiple DataStores active for the same file`. La course se
+     * perd surtout quand les deux montages se suivent de près (T-04a, T-04b) ; `cancelAndJoin` la
+     * supprime au lieu de la rendre improbable.
+     */
+    private fun arreterStockagesOuverts() {
+        scopesOuverts.forEach { scope -> runBlocking { scope.coroutineContext.job.cancelAndJoin() } }
+        scopesOuverts.clear()
     }
 }
