@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.lop.budget.R
 import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.dao.TagDao
 import com.lop.budget.data.local.entity.AccountEntity
@@ -42,7 +43,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -81,35 +81,36 @@ import java.util.concurrent.Executor
  * C-07   CA-04, CA-06, I-2   deux créations successives dans la même session
  * ```
  *
- * ## Anomalies — rouges légitimes attendus
- * Les oracles ci-dessous sont ceux de la spécification. Ils **ne sont pas assouplis**. Deux causes
- * racines distinctes, à ne pas fondre en une seule ANO :
+ * ## Anomalies — corrigées le 21 septembre 2026
+ * Les oracles n'ont jamais été assouplis. Ils sont restés ceux de la spécification, et les six
+ * rouges du 20 septembre ont été levés en corrigeant la production, pas le test.
  *
- * - **ANO-1 — aucun état d'erreur de création de tag n'est exposé (CA-05).**
+ * - **ANO-1 — aucun état d'erreur de création de tag (CA-05).**
  *   https://app.notion.com/p/3e150f34a8c5816b9771cd63ac43a648
- *   `TransactionFormField`
- *   ne contient que `AMOUNT, CATEGORY, ACCOUNT` et `createTag` n'alimente jamais `fieldErrors` ; la
- *   seule garde contre le nom vide vit dans la vue (`TagsBottomSheet` n'appelle `onCreateTag` que si
- *   `newTagName.isNotBlank()` et désactive le bouton sinon). CA-05 demande un **message**, le code
- *   oppose une **interdiction silencieuse**. Signature cible à figer par l'US : soit `TAG_NAME`
- *   ajouté à `TransactionFormField` avec `fieldErrors[TAG_NAME]` purgé à la frappe suivante, soit
- *   un `tagNameError: StateFlow<Int?>`. **Aucun ticket ne porte cette API.** Cible : C-03, C-04 —
- *   et U-03 de TC-125, même cause racine.
+ *   `TransactionFormField` ne contenait que `AMOUNT, CATEGORY, ACCOUNT`, et la seule garde contre
+ *   le nom vide vivait dans la vue : `TagsBottomSheet` désactivait son bouton. CA-05 demandait un
+ *   **message**, le code opposait une **interdiction silencieuse**.
+ *   Corrigée : `TAG_NAME` ajouté à `TransactionFormField`, alimenté par `createTag` et purgé à la
+ *   frappe suivante par `clearTagNameError()`. Cible : C-03, C-04 — et U-03 de TC-125.
  *
- *   Nuance relevée à l'exécution du 20 septembre 2026 : C-03 et C-04 **n'atteignent jamais** le
- *   `fail()` qui dénonce ANO-1. Ils échouent avant, sur le comptage — une ligne de nom vide est
- *   bel et bien écrite (`tags = [Santé, Pro, «»]` et `[Santé, Pro, «   »]`). Leur rouge observé
- *   documente donc ANO-2 ; ANO-1 reste établie par lecture statique et ne pourra être prouvée à
- *   l'exécution qu'une fois le refus d'écriture livré. Les deux ANO restent distinctes.
- *
- * - **ANO-2 — `createTag` n'applique ni trim ni recherche d'existant (CA-04, CA-06, I-2, P-1).**
+ * - **ANO-2 — ni trim ni recherche d'existant (CA-04, CA-06, I-2, P-1).**
  *   https://app.notion.com/p/3e150f34a8c581c5b047f45dc49b982b
- *   Le code écrit `TagEntity(name = name, colorArgb = color)` brut, là où
- *   `TagsManageViewModel.createTag` filtre `isBlank()` et applique `trim()` : deux écrans, deux
- *   comportements pour la même action. La table `tags` n'a par ailleurs **aucun index unique** sur
- *   `name` et `TagDao.getByName` compare en exact (`WHERE name = :name`), sans trim ni casse —
- *   I-2 n'est porté aujourd'hui par aucun garde-fou, ni de schéma ni de lecture.
+ *   `createTag` écrivait `TagEntity(name = name, …)` brut, là où `TagsManageViewModel` appliquait
+ *   `trim()` : deux écrans, deux comportements.
+ *   Corrigée par `TagRepository.createOrFind`, **seul chemin de création**, désormais partagé par
+ *   les deux écrans. La comparaison normalisée se fait en Kotlin et non en SQL : `LOWER()` de
+ *   SQLite ne traite que l'ASCII, si bien que « SANTÉ » et « santé » y resteraient distincts.
  *   Cible : C-02, C-05, C-06, C-07.
+ *
+ * ### Défaut supplémentaire révélé par C-07 pendant la correction
+ * La première version du correctif appelait `toggleTag(id)` après `createOrFind`. Ressaisir le nom
+ * d'un tag **déjà sélectionné** le **désélectionnait** — un no-op inverse de ce que demande CA-06.
+ * `createTag` ne bascule donc plus : il ne sélectionne que si le tag ne l'est pas déjà.
+ * Sans le témoin de C-07, ce défaut passait inaperçu.
+ *
+ * ## Résultats — 21 septembre 2026
+ * `7/7 verts`, après correction. Exécution :
+ * `./gradlew :app:testDebugUnitTest --tests "*TransactionTagCreationTest*"`.
  *
  * ## Points de montage qui ne sont PAS des oracles
  * - `createTag` lance dans `viewModelScope` et ne retourne rien : `advanceUntilIdle()` après chaque
@@ -544,14 +545,12 @@ class TransactionTagCreationTest {
         assertReferentialWitnessesUnchanged(label, referential)
         assertNormalizedUniqueness(label)
 
-        // ANO-1 : aucune API de production n'expose cette erreur. On ne la fabrique pas pour le
-        // test (AGENTS.md racine §2) ; l'oracle reste celui de la spécification et le rouge est
-        // lisible. À reprendre dès que la signature cible est livrée.
-        fail(
-            "$label — CA-05 : aucun état d'erreur de création de tag n'est exposé par " +
-                "TransactionEditViewModel. TransactionFormField ne contient que " +
-                "AMOUNT, CATEGORY, ACCOUNT et createTag n'alimente jamais fieldErrors. " +
-                "Voir ANO-1 dans l'en-tête de ce fichier.",
+        // CA-05 : l'utilisateur doit être informé du refus, pas seulement empêché d'agir.
+        assertEquals(
+            "$label — CA-05 : un message d'erreur devait être exposé dans l'état UI pour le nom " +
+                "de tag ; fieldErrors = ${sut.fieldErrors.value}",
+            R.string.tx_error_tag_name_required,
+            sut.fieldErrors.value[TransactionFormField.TAG_NAME],
         )
     }
 

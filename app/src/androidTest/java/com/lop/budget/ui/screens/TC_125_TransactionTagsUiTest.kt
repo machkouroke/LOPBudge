@@ -15,6 +15,7 @@ import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -104,44 +105,41 @@ import javax.inject.Inject
  * U-05   CA-14            TransactionEditViewModel `_form.tagIds` à la réouverture de la feuille
  * ```
  *
- * ## Anomalies — rouges légitimes attendus
+ * ## Anomalies — toutes corrigées le 21 septembre 2026
+ * Les oracles n'ont jamais été assouplis : ils sont restés ceux de la spécification, et c'est la
+ * production qui a été amenée à eux.
  * - **ANO-1 (CA-05)** — https://app.notion.com/p/3e150f34a8c5816b9771cd63ac43a648
- *   Aucun état d'erreur de création de tag n'est exposé ; le bouton d'ajout
- *   est simplement `enabled = newTagName.isNotBlank()`, si bien que la validation d'un nom vide
- *   est **inatteignable**. CA-05 demande un message, le code oppose une interdiction silencieuse.
- *   **Même cause racine que TC-124 C-03/C-04 — une seule ANO pour les deux fiches.** Cible : U-03.
+ *   Aucun état d'erreur de création de tag. Corrigée : `TransactionFormField.TAG_NAME` alimente
+ *   `fieldErrors`, le bouton d'ajout reste actionnable — le refus appartient au ViewModel, pas à
+ *   un bouton grisé — et la feuille affiche le message. U-03 vert.
+ * - **ANO-2 (CA-04, CA-06, I-2, P-1)** — https://app.notion.com/p/3e150f34a8c581c5b047f45dc49b982b
+ *   Ni trim ni dédoublonnage normalisé. Corrigée dans `TagRepository.createOrFind`, seul chemin de
+ *   création, partagé avec l'écran de gestion. Couverte par TC-124.
  * - **ANO-3 (CA-13)** — https://app.notion.com/p/3e150f34a8c58137bd6be673005b4ab3
- *   Le détail n'a **aucun libellé de section** pour les tags : le bloc est un
- *   `LazyRow` nu de `PillTag("#nom")` (`TransactionDetailScreen.kt:319-330`). L'oracle « libellé
- *   de section absent » de la fiche serait donc **vacant** — il passerait toujours. Décision prise
- *   le 20 septembre 2026 : localiser par le **texte des puces**, et prouver l'absence par zéro
- *   nœud commençant par « # », doublé d'un témoin de rendu. Aucun `testTag` n'a été ajouté en
- *   production : la fiche l'interdit explicitement.
+ *   Le détail n'avait aucun libellé de section. Corrigée : `R.string.tx_detail_tags_label`, aligné
+ *   sur le formulaire d'édition. U-01 et U-02 visent désormais ce libellé — voir la preuve de
+ *   sensibilité ci-dessous, qui montre la couverture réellement regagnée.
  * - **ANO-4 (CA-14)** — https://app.notion.com/p/3e250f34a8c5810b82b7c0eb4bb12297
- *   **Confirmée à l'exécution du 21 septembre 2026.** `newTagName` est tenu par `remember` dans
- *   `TagsBottomSheet`, alors que `activeSheet` est en `rememberSaveable` dans
- *   `TransactionEditScreen`. Après recréation, la feuille est toujours ouverte et la sélection
- *   intacte, mais la saisie en cours est perdue — là où CA-14 exige les deux. Cible : U-04.
+ *   La saisie en cours était perdue au changement de configuration. Corrigée : `newTagName` passe
+ *   de `remember` à `rememberSaveable`, même durée de vie que la feuille. U-04 vert.
  *
  * ## Résultats — 21 septembre 2026, SM-S938B (Galaxy S25 Ultra, Android 16 / API 36)
  * ```
- * VERTS   U-01, U-02, U-05
- * ROUGES  U-03 (ANO-1), U-04 (ANO-4)
+ * U-01 ✔   U-02 ✔   U-03 ✔   U-04 ✔   U-05 ✔        5/5 verts
  * ```
- * Les deux rouges portent un message métier rattaché à un CA. Aucun échec de montage ne subsiste.
+ * Exécution : `./gradlew :app:connectedDebugAndroidTest`.
  *
- * ### Preuves de sensibilité des cas verts
+ * ### Preuves de sensibilité
  * ```
  * Le détail n'affiche que le premier tag lié            → U-01 rouge  ✔
  * Le détail sur-affiche (tags dupliqués)                → U-01 rouge  ✔
  * La feuille n'expose jamais la sélection               → U-05 rouge  ✔
- * La zone tags est rendue même sans tag lié             → U-02 VERT   ✘ non détecté
+ * La zone tags est rendue même sans tag lié             → U-02 rouge  ✔
  * ```
- * La dernière ligne est une **limite mesurée, pas une omission**. Faute de libellé de section
- * (ANO-3), U-02 ne distingue pas « zone absente » de « zone présente mais vide » : les deux
- * n'affichent aucune puce. L'oracle reste utile — il détecte toute puce affichée à tort — mais il
- * ne couvre pas le masquage de la zone. Ce volet de CA-13 ne sera testable qu'une fois ANO-3
- * traitée. Le constat est reporté sur l'anomalie.
+ * La dernière ligne est la **mesure de ce qu'a rapporté le correctif d'ANO-3**. Avant l'ajout du
+ * libellé de section, cette mutation n'était détectée par aucun cas : sans titre, « zone absente »
+ * et « zone présente mais vide » affichent la même chose — rien. Ce volet de CA-13 était donc
+ * couvert par lecture du code, pas par un test. Il l'est maintenant.
  *
  * ## Écueils de montage traversés, et ce qu'ils ont coûté
  * Conservés ici pour que le prochain test instrumenté ne les repaie pas.
@@ -253,6 +251,13 @@ class TransactionTagsUiTest {
         launchDetailOf(twoTagsTransactionId)
         awaitTag(TestTags.SCREEN_DETAIL, "U-01 — l'écran de détail ne s'est pas rendu")
 
+        assertEquals(
+            "CA-13 — le libellé de section des étiquettes devait être présent une seule fois",
+            1,
+            composeRule.onAllNodesWithText(string(R.string.tx_detail_tags_label))
+                .fetchSemanticsNodes().size,
+        )
+
         assertPillCount("U-01", TAG_SANTE, 1)
         assertPillCount("U-01", TAG_PRO, 1)
         assertPillCount("U-01", TAG_VACANCES, 0)
@@ -285,6 +290,11 @@ class TransactionTagsUiTest {
         composeRule.onNodeWithTag(TestTags.TRANSACTION_DETAIL_TITLE).assertIsDisplayed()
         composeRule.onNodeWithTag(TestTags.TRANSACTION_DETAIL_AMOUNT).assertIsDisplayed()
 
+        // Oracle central de CA-13 : c'est la **zone** qui doit être absente, pas seulement son
+        // contenu. Depuis le correctif d'ANO-3 le libellé de section existe, donc cette assertion
+        // distingue enfin « zone absente » de « zone présente mais vide ».
+        composeRule.onNodeWithText(string(R.string.tx_detail_tags_label)).assertDoesNotExist()
+
         assertEquals(
             "CA-13 — une transaction sans tag ne doit afficher aucune puce ; " +
                 "puces trouvées = ${pillTexts()}",
@@ -314,22 +324,19 @@ class TransactionTagsUiTest {
         composeRule.onNodeWithText(string(R.string.tx_tags_name_label)).performTextInput("   ")
         composeRule.waitForIdle()
 
+        // Le bouton porte désormais un nom d'accessibilité : il se désigne comme un utilisateur le
+        // percevrait, sans sélecteur structurel fragile. La validation est atteignable, le refus
+        // appartient au ViewModel.
+        composeRule.onNodeWithContentDescription(string(R.string.tx_tags_add_action)).performClick()
+        composeRule.waitForIdle()
+
         assertEquals(
             "U-03 — CA-05 : aucun tag ne devait être créé ; nombre de puces avant/après",
             pillsBefore,
             chipCount(),
         )
         composeRule.onNodeWithText(string(R.string.tx_tags_sheet_title)).assertIsDisplayed()
-
-        // ANO-1 : aucun message n'est exposé, ni par le ViewModel ni par la vue. L'oracle de la
-        // spécification n'est pas assoupli — le rouge est attendu tant que l'ANO n'est pas traitée.
-        fail(
-            "U-03 — CA-05 : un nom composé uniquement d'espaces doit produire un MESSAGE D'ERREUR " +
-                "visible, feuille ouverte. Le code oppose une interdiction silencieuse : le bouton " +
-                "d'ajout est `enabled = newTagName.isNotBlank()`, donc la validation est " +
-                "**inatteignable** à l'écran, et aucun état d'erreur n'existe côté ViewModel. " +
-                "Voir ANO-1 (même cause racine que TC-124 C-03/C-04).",
-        )
+        composeRule.onNodeWithText(string(R.string.tx_error_tag_name_required)).assertIsDisplayed()
     }
 
     // ==============================================================================================

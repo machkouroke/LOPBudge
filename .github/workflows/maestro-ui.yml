@@ -122,6 +122,65 @@ jobs:
             build/maestro-junit-shard-${{ matrix.shard }}.xml
             build/maestro-results-shard-${{ matrix.shard }}.zip
 
+  # Tests instrumentés Compose (`app/src/androidTest`). Job distinct des shards Maestro :
+  # même émulateur, signal différent. Un rouge Maestro dénonce un parcours cassé, un rouge
+  # instrumenté dénonce un écran. Pas de matrice — la suite ne compte que quelques classes ;
+  # ajouter un sharding avant d'en avoir besoin coûterait plus qu'il ne rapporte.
+  instrumented-tests:
+    name: Instrumented Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run Instrumented Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 2
+          force-avd-creation: true
+          emulator-options: >
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -camera-back none -no-metrics -no-snapshot-save -memory 3072
+          # Indispensable : sans cela, `waitForIdle` de Compose peut ne jamais rendre la main
+          # sur une animation. L'application en a plusieurs, dont son écran de démarrage.
+          disable-animations: true
+          disable-spellchecker: true
+          enable-hw-keyboard: true
+          # Gradle construit et installe lui-même les deux APK (application et test) : on ne
+          # réutilise donc pas l'artefact du job `build`, qui ne contient que le premier.
+          script: |
+            adb wait-for-device
+            ./gradlew :app:connectedDebugAndroidTest --no-daemon
+
+      - name: Upload Instrumented Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumented-test-results
+          path: |
+            app/build/outputs/androidTest-results/connected/**/*.xml
+            app/build/reports/androidTests/connected/**
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest

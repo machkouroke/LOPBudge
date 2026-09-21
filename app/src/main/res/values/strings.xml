@@ -78,6 +78,9 @@
     <string name="tx_repeat_occurrences_label">occurrences</string>
     <string name="tx_tags_sheet_title">Étiquettes</string>
     <string name="tx_tags_sheet_subtitle">Sélectionnez jusqu\'à 3 étiquettes pour cette transaction</string>
+    <string name="tx_error_tag_name_required">Indiquez un nom pour cette étiquette</string>
+    <string name="tx_detail_tags_label">Étiquettes</string>
+    <string name="tx_tags_add_action">Ajouter cette étiquette</string>
     <string name="tx_tags_create_title">Créer une étiquette</string>
     <string name="tx_tags_name_label">Nom de l\'étiquette</string>
 

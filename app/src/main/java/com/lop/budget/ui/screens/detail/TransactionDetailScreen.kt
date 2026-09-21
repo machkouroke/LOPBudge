@@ -318,6 +318,16 @@ fun TransactionDetailScreen(
 
                 if (twr.tags.isNotEmpty()) {
                     item {
+                        // CA-13 : la zone porte un libellé, comme celle du formulaire d'édition.
+                        // Sans lui, « zone absente » et « zone présente mais vide » sont
+                        // indiscernables à l'écran — et donc intestables.
+                        Text(
+                            stringResource(R.string.tx_detail_tags_label),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    item {
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(twr.tags, key = { it.id }) {
                                 PillTag(

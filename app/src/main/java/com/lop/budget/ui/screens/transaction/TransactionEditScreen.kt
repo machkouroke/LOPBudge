@@ -67,6 +67,8 @@ fun TransactionEditScreen(
     val amountError = fieldErrors[TransactionFormField.AMOUNT]?.let { stringResource(it) }
     val categoryError = fieldErrors[TransactionFormField.CATEGORY]?.let { stringResource(it) }
     val accountError = fieldErrors[TransactionFormField.ACCOUNT]?.let { stringResource(it) }
+    // CA-05 : message de refus de création d'un tag, affiché dans la feuille de sélection.
+    val tagNameError = fieldErrors[TransactionFormField.TAG_NAME]?.let { stringResource(it) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val saveErrorMessage = saveError?.let { stringResource(it) }
@@ -214,6 +216,8 @@ fun TransactionEditScreen(
                 onToggleTag = vm::toggleTag,
                 onCreateTag = { name, color -> vm.createTag(name, color) },
                 onDismiss = { activeSheet = null },
+                tagNameError = tagNameError,
+                onTagNameChanged = vm::clearTagNameError,
             )
         }
         EditSheet.Goal -> {

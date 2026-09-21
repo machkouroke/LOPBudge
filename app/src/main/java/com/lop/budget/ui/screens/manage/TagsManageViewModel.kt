@@ -32,10 +32,13 @@ class TagsManageViewModel @Inject constructor(
         }
     }
 
+    /**
+     * I-2 : un seul chemin de création pour les deux écrans. `createOrFind` applique le `trim`,
+     * refuse un nom vide et rend le tag existant au lieu d'en créer un doublon normalisé.
+     */
     fun createTag(name: String, color: Int) {
-        if (name.isBlank()) return
         viewModelScope.launch {
-            tagRepo.upsert(TagEntity(name = name.trim(), colorArgb = color))
+            tagRepo.createOrFind(name, color)
         }
     }
 }

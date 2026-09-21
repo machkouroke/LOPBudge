@@ -80,7 +80,7 @@ data class TransactionForm(
  * L'erreur n'est pas un champ de [TransactionForm] : elle ne doit pas entrer dans le
  * dirty-check de `hasUnsavedChanges()`, qui compare le formulaire complet.
  */
-enum class TransactionFormField { AMOUNT, CATEGORY, ACCOUNT }
+enum class TransactionFormField { AMOUNT, CATEGORY, ACCOUNT, TAG_NAME }
 
 /**
  * Unique mapper UI -> domaine. Préconditions garanties par save() : amount > 0, categoryId != null.
@@ -424,12 +424,30 @@ class TransactionEditViewModel @Inject constructor(
         it.copy(daysOfWeek = if (day in it.daysOfWeek) it.daysOfWeek - day else it.daysOfWeek + day)
     }
 
+    /**
+     * Création rapide d'un tag depuis le formulaire (US LOP-3, CA-04 / CA-05 / CA-06).
+     *
+     * Le refus d'un nom vide est porté **ici** et non par la vue : un bouton désactivé n'explique
+     * rien à l'utilisateur, et CA-05 exige un message. La normalisation et le dédoublonnage vivent
+     * dans [TagRepository.createOrFind], seul chemin de création, partagé avec l'écran de gestion.
+     */
     fun createTag(name: String, color: Int) {
         viewModelScope.launch {
-            val id = tagRepo.upsert(TagEntity(name = name, colorArgb = color))
-            toggleTag(id)
+            val id = tagRepo.createOrFind(name, color)
+            if (id == null) {
+                _fieldErrors.value =
+                    _fieldErrors.value + (TransactionFormField.TAG_NAME to R.string.tx_error_tag_name_required)
+                return@launch
+            }
+            clearFieldError(TransactionFormField.TAG_NAME)
+            // CA-04 / CA-06 : le tag **devient** sélectionné, il ne bascule pas. Sans cette garde,
+            // ressaisir le nom d'un tag déjà choisi le désélectionnerait.
+            if (id !in _form.value.tagIds) toggleTag(id)
         }
     }
+
+    /** CA-05 : l'erreur de nom de tag disparaît dès la frappe suivante. */
+    fun clearTagNameError() = clearFieldError(TransactionFormField.TAG_NAME)
 
     fun deleteTag(id: Long) {
         viewModelScope.launch {

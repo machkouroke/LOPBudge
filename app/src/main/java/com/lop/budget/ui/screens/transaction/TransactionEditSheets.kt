@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +48,10 @@ fun TagsBottomSheet(
     onToggleTag: (Long) -> Unit,
     onCreateTag: (String, Int) -> Unit,
     onDismiss: () -> Unit,
+    /** CA-05 : message d'erreur de création, résolu par l'écran. `null` quand il n'y en a pas. */
+    tagNameError: String? = null,
+    /** CA-05 : purge de l'erreur à la frappe suivante. */
+    onTagNameChanged: () -> Unit = {},
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -101,29 +106,46 @@ fun TagsBottomSheet(
                 stringResource(R.string.tx_tags_create_title),
                 style = MaterialTheme.typography.titleMedium
             )
-            var newTagName by remember { mutableStateOf("") }
+            // CA-14 : `rememberSaveable` et non `remember`. La feuille elle-même est sauvegardée
+            // par `activeSheet` ; une saisie en cours doit avoir la même durée de vie, sinon
+            // l'utilisateur retrouve sa feuille ouverte et son champ vidé.
+            var newTagName by rememberSaveable { mutableStateOf("") }
             Row(
                 modifier = Modifier.padding(top = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
                     value = newTagName,
-                    onValueChange = { newTagName = it },
+                    onValueChange = {
+                        newTagName = it
+                        onTagNameChanged()
+                    },
                     modifier = Modifier.weight(1f),
                     placeholder = { Text(stringResource(R.string.tx_tags_name_label)) },
+                    isError = tagNameError != null,
+                    supportingText = if (tagNameError != null) {
+                        { Text(tagNameError) }
+                    } else {
+                        null
+                    },
                     singleLine = true
                 )
                 Spacer(Modifier.width(12.dp))
+                // CA-05 : le bouton reste actionnable même sur un nom vide. Le refus appartient au
+                // ViewModel, qui expose un message ; une interdiction silencieuse n'explique rien.
                 IconButton(
                     onClick = {
-                        if (newTagName.isNotBlank()) {
-                            onCreateTag(newTagName, 0xFF9C27B0.toInt())
-                            newTagName = ""
-                        }
+                        onCreateTag(newTagName, 0xFF9C27B0.toInt())
+                        if (newTagName.isNotBlank()) newTagName = ""
                     },
-                    enabled = newTagName.isNotBlank()
                 ) {
-                    Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary)
+                    // L'icône portait `contentDescription = null` : le bouton n'avait aucun nom
+                    // pour un lecteur d'écran, et rien d'autre ne le désignait.
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = stringResource(R.string.tx_tags_add_action),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
         }
