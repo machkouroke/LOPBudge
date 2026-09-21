@@ -40,6 +40,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.AddActionSheet
 import com.lop.budget.ui.components.DeleteConfirmationDialog
@@ -353,6 +354,10 @@ fun LopNavHost(startRoute: String? = null) {
                                 nullable = true
                                 defaultValue = TransactionType.EXPENSE.name
                             }
+                        ),
+                        // LOP-172 / CA-03 : saisie rapide depuis le widget ou un raccourci.
+                        deepLinks = listOf(
+                            navDeepLink { uriPattern = Routes.deepLinkPattern(Routes.ADD) }
                         )
                     ) {
                         TransactionEditScreen(
@@ -411,7 +416,12 @@ fun LopNavHost(startRoute: String? = null) {
                     composableAnimated(
                         Routes.DETAIL,
                         NavAnimationType.MAIN,
-                        arguments = listOf(navArgument("id") { type = NavType.LongType })
+                        arguments = listOf(navArgument("id") { type = NavType.LongType }),
+                        // LOP-172 / CA-02 : ouverture d'une transaction précise depuis une
+                        // notification ou le widget, avec son identifiant.
+                        deepLinks = listOf(
+                            navDeepLink { uriPattern = Routes.deepLinkPattern(Routes.DETAIL) }
+                        )
                     ) { entry ->
                         val id = entry.arguments?.getLong("id") ?: 0L
                         TransactionDetailScreen(

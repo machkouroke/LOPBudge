@@ -5,6 +5,21 @@ import java.time.YearMonth
 
 /** Routes de navigation de l'application. */
 object Routes {
+
+    /**
+     * Schéma d'URI applicatif (LOP-172, CA-01), déclaré par l'`intent-filter` de `MainActivity`.
+     *
+     * Il sert aux points d'entrée externes — notification, widget, raccourci — à désigner un écran
+     * **avec ses arguments**, là où l'extra `route` ne sait ouvrir qu'une route statique.
+     *
+     * Un motif de deep link reprend exactement les arguments de sa route : une route est exposée
+     * en ajoutant son motif à `deepLinks` dans `LopNavHost`, jamais « au cas où ».
+     */
+    const val DEEP_LINK_SCHEME = "lopbudge"
+
+    /** Motif de deep link correspondant à [route], arguments compris. */
+    fun deepLinkPattern(route: String) = "$DEEP_LINK_SCHEME://$route"
+
     const val HOME = "home"
     const val ANALYTICS = "analytics?type={type}&ym={ym}"
     fun analytics(type: TransactionType, ym: YearMonth) = "analytics?type=${type.name}&ym=$ym"

@@ -23,6 +23,19 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!--
+                LOP-172 (CA-01) : schéma d'URI applicatif. Il permet à un point d'entrée externe
+                — notification, widget, raccourci — de désigner un écran précis avec ses
+                arguments, là où l'extra `route` ne sait ouvrir qu'une route statique.
+                Les motifs exposés sont déclarés route par route dans `LopNavHost`.
+            -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="lopbudge" />
+            </intent-filter>
         </activity>
 
         <service

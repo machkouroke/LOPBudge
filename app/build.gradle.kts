@@ -205,7 +205,12 @@ dependencies {
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
-    androidTestImplementation("io.mockk:mockk-android:1.13.12")
+    // `io.mockk:mockk-android` a été retiré le 21 septembre 2026 : il n'était utilisé par aucun
+    // test instrumenté et embarquait `libmockkjvmtiagent.so`, seule bibliothèque native de l'APK
+    // de test. Non alignée sur 16 Ko, elle déclenche la boîte système « Compatibilité des applis
+    // Android » sur Android 15+, qui prend le focus et intercepte les gestes : toute la suite
+    // instrumentée échouait dessus. `testImplementation("io.mockk:mockk")` reste en place pour
+    // les tests unitaires, qui ne chargent aucune bibliothèque native.
     androidTestImplementation("com.google.dagger:hilt-android-testing:2.54")
     kspAndroidTest("com.google.dagger:hilt-android-compiler:2.54")
 }
