@@ -21,6 +21,9 @@ import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.detection.ProposalRepository
+import com.lop.budget.domain.usecase.tag.CreateTagUseCase
+import com.lop.budget.domain.usecase.tag.DeleteTagUseCase
+import com.lop.budget.domain.usecase.tag.ObserveTagsUseCase
 import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
@@ -55,14 +58,16 @@ import java.util.concurrent.Executor
  * TC-124 — Création rapide d'un tag depuis le formulaire transaction (US LOP-3, réf. 3).
  *
  * ## Niveau et chaîne exercée
- * Unitaire ViewModel avec un `TagRepository` **réel** adossé à une base Room en mémoire
- * (Robolectric SDK 33) ; les douze autres dépendances sont des mocks stricts (`relaxed = false`).
+ * Unitaire ViewModel avec des use cases de tags **réels**, montés sur un `TagRepository` **réel**
+ * adossé à une base Room en mémoire (Robolectric SDK 33) ; les douze autres dépendances sont des
+ * mocks stricts (`relaxed = false`).
  *
  * ```
  * TransactionEditViewModel.createTag(name, color)
+ *   → CreateTagUseCase (trim, refus du vide, dédoublonnage normalisé)
  *   → TagRepository.upsert (délégation `TagOperations by tagDao`) → table `tags`
  *   → TransactionEditViewModel.toggleTag(id) → TransactionForm.tagIds
- * TagRepository.observeAll() → TransactionEditViewModel.tags
+ * ObserveTagsUseCase() → TagRepository.observeAll() → TransactionEditViewModel.tags
  * ```
  *
  * Pourquoi ce montage hybride : trois oracles portent sur le **nombre de lignes** de `tags`
@@ -101,6 +106,8 @@ import java.util.concurrent.Executor
  *   les deux écrans. La comparaison normalisée se fait en Kotlin et non en SQL : `LOWER()` de
  *   SQLite ne traite que l'ASCII, si bien que « SANTÉ » et « santé » y resteraient distincts.
  *   Cible : C-02, C-05, C-06, C-07.
+ *   LOP-21 a depuis déplacé cette règle, inchangée, dans `CreateTagUseCase` ; `createOrFind` n'a
+ *   pas été laissé dans le repository. Les oracles de ce fichier sont les mêmes.
  *
  * ### Défaut supplémentaire révélé par C-07 pendant la correction
  * La première version du correctif appelait `toggleTag(id)` après `createOrFind`. Ressaisir le nom
@@ -158,6 +165,13 @@ class TransactionTagCreationTest {
     private lateinit var db: LopDatabase
     private lateinit var tagDao: TagDao
     private lateinit var tagRepo: TagRepository
+
+    // Use cases **réels** montés sur le repository réel : depuis LOP-21 ils sont le seul chemin du
+    // ViewModel vers le référentiel, et ce sont eux qui portent trim, refus du vide et
+    // dédoublonnage normalisé. Les doubler viderait les oracles de cardinalité de ce fichier.
+    private lateinit var observeTagsUseCase: ObserveTagsUseCase
+    private lateinit var createTagUseCase: CreateTagUseCase
+    private lateinit var deleteTagUseCase: DeleteTagUseCase
 
     private lateinit var defaultLocale: Locale
 
@@ -224,6 +238,9 @@ class TransactionTagCreationTest {
 
         tagDao = db.tagDao()
         tagRepo = TagRepository(tagDao)
+        observeTagsUseCase = ObserveTagsUseCase(tagRepo)
+        createTagUseCase = CreateTagUseCase(tagRepo)
+        deleteTagUseCase = DeleteTagUseCase(tagRepo)
 
         every { categoryRepo.observeByType(TransactionType.EXPENSE.name) } returns
             flowOf(listOf(expenseCategory))
@@ -642,7 +659,8 @@ class TransactionTagCreationTest {
     }
 
     private fun createSutInAdd(): TransactionEditViewModel = TransactionEditViewModel(
-        accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, loanRepo,
+        accountRepo, categoryRepo, transactionRepo,
+        observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
         createTransactionUseCase, editTransactionWithScopeUseCase,
         observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,
         settings, SavedStateHandle(mapOf("type" to TransactionType.EXPENSE.name)), context,

@@ -216,6 +216,9 @@ fun TransactionEditScreen(
                 onToggleTag = vm::toggleTag,
                 onCreateTag = { name, color -> vm.createTag(name, color) },
                 onDismiss = { activeSheet = null },
+                // CA-08 : la feuille reste ouverte après la suppression — le référentiel se met à
+                // jour sous elle, et l'utilisateur peut enchaîner sur un autre tag.
+                onDeleteTag = vm::deleteTag,
                 tagNameError = tagNameError,
                 onTagNameChanged = vm::clearTagNameError,
             )

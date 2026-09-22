@@ -20,8 +20,9 @@ interface TagDao : TagOperations {
     @Query("SELECT * FROM tags WHERE name = :name LIMIT 1")
     suspend fun getByName(name: String): TagEntity?
 
-    @Query("SELECT COUNT(*) FROM transaction_tags WHERE tagId = :tagId")
-    suspend fun countUsages(tagId: Long): Int
+    // `countUsages` retiré (LOP-21, P-1) : aucun appelant, et un tag utilisé se supprime désormais
+    // sans garde d'usage. Le laisser là invitait à rebrancher le blocage que P-1 a tranché — et il
+    // ne comptait que `transaction_tags`, jamais `series_tags`.
 
     @Upsert override suspend fun upsert(tag: TagEntity): Long
 

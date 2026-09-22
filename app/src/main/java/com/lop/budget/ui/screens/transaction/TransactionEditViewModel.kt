@@ -15,7 +15,6 @@ import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.data.repository.TagRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
@@ -26,6 +25,9 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.buildEdition
 import com.lop.budget.domain.model.toDaysOfWeekSet
 import com.lop.budget.domain.usecase.detection.ProposalRepository
+import com.lop.budget.domain.usecase.tag.CreateTagUseCase
+import com.lop.budget.domain.usecase.tag.DeleteTagUseCase
+import com.lop.budget.domain.usecase.tag.ObserveTagsUseCase
 import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.transaction.EditOutcome
 import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
@@ -112,7 +114,9 @@ class TransactionEditViewModel @Inject constructor(
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
     private val transactionRepo: TransactionRepository,
-    private val tagRepo: TagRepository,
+    observeTagsUseCase: ObserveTagsUseCase,
+    private val createTagUseCase: CreateTagUseCase,
+    private val deleteTagUseCase: DeleteTagUseCase,
     goalRepo: GoalRepository,
     loanRepo: LoanRepository,
     private val createTransactionUseCase: CreateTransactionUseCase,
@@ -329,7 +333,7 @@ class TransactionEditViewModel @Inject constructor(
     val accounts: StateFlow<List<AccountEntity>> = accountRepo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val tags: StateFlow<List<TagEntity>> = tagRepo.observeAll()
+    val tags: StateFlow<List<TagEntity>> = observeTagsUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val goals: StateFlow<List<GoalEntity>> = goalRepo.observeActive()
@@ -427,13 +431,14 @@ class TransactionEditViewModel @Inject constructor(
     /**
      * Création rapide d'un tag depuis le formulaire (US LOP-3, CA-04 / CA-05 / CA-06).
      *
-     * Le refus d'un nom vide est porté **ici** et non par la vue : un bouton désactivé n'explique
-     * rien à l'utilisateur, et CA-05 exige un message. La normalisation et le dédoublonnage vivent
-     * dans [TagRepository.createOrFind], seul chemin de création, partagé avec l'écran de gestion.
+     * Le refus d'un nom vide est porté par [CreateTagUseCase] et **traduit ici** en message : un
+     * bouton désactivé n'explique rien à l'utilisateur, et CA-05 exige un message. La
+     * normalisation et le dédoublonnage vivent dans [CreateTagUseCase], seul chemin de création,
+     * partagé avec l'écran de gestion.
      */
     fun createTag(name: String, color: Int) {
         viewModelScope.launch {
-            val id = tagRepo.createOrFind(name, color)
+            val id = createTagUseCase(name, color)
             if (id == null) {
                 _fieldErrors.value =
                     _fieldErrors.value + (TransactionFormField.TAG_NAME to R.string.tx_error_tag_name_required)
@@ -449,9 +454,19 @@ class TransactionEditViewModel @Inject constructor(
     /** CA-05 : l'erreur de nom de tag disparaît dès la frappe suivante. */
     fun clearTagNameError() = clearFieldError(TransactionFormField.TAG_NAME)
 
+    /**
+     * Suppression d'un tag du référentiel depuis la modal tags (LOP-21, CA-08).
+     *
+     * Même use case que l'écran de gestion, donc mêmes effets : le tag et ses liens disparaissent,
+     * les transactions et les séries restent. La confirmation appartient à l'écran ; quand elle
+     * arrive ici, elle a déjà été donnée.
+     *
+     * Le tag est ensuite retiré de la **sélection en cours** s'il y figurait : la transaction
+     * éditée ne peut pas rester porteuse d'un tag qui n'existe plus.
+     */
     fun deleteTag(id: Long) {
         viewModelScope.launch {
-            tagRepo.delete(id)
+            deleteTagUseCase(id)
             if (id in _form.value.tagIds) toggleTag(id)
         }
     }

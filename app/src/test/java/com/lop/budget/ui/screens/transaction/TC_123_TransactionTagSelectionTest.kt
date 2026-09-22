@@ -12,12 +12,14 @@ import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.data.repository.TagRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.detection.ProposalRepository
+import com.lop.budget.domain.usecase.tag.CreateTagUseCase
+import com.lop.budget.domain.usecase.tag.DeleteTagUseCase
+import com.lop.budget.domain.usecase.tag.ObserveTagsUseCase
 import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
@@ -55,7 +57,11 @@ import java.time.ZoneId
  * Test **unitaire ViewModel**, mocks stricts MockK (`relaxed = false`), `StandardTestDispatcher`
  * installé sur `Dispatchers.Main`. Chaîne réellement exercée :
  * `SavedStateHandle` → `TransactionEditViewModel` (`init`, `loadTransaction`, `toggleTag`)
- *   → `TagRepository.observeAll()` et `ObserveTransactionDetailUseCase.getById` (mockés).
+ *   → `ObserveTagsUseCase()` et `ObserveTransactionDetailUseCase.getById` (mockés).
+ *
+ * La frontière doublée a changé avec LOP-21 : le ViewModel ne connaît plus `TagRepository`, il
+ * appelle les use cases de `domain.usecase.tag`. Les oracles sont inchangés — cardinalité de la
+ * lecture, et aucune écriture du référentiel.
  *
  * Rien en dessous n'est exercé. Ce fichier juge **l'état exposé à l'écran**, jamais ce qui est
  * écrit en base : un mock ne voit pas un `INSERT`.
@@ -129,7 +135,9 @@ class TransactionTagSelectionTest {
     private val accountRepo = mockk<AccountRepository>(relaxed = false)
     private val categoryRepo = mockk<CategoryRepository>(relaxed = false)
     private val transactionRepo = mockk<TransactionRepository>(relaxed = false)
-    private val tagRepo = mockk<TagRepository>(relaxed = false)
+    private val observeTagsUseCase = mockk<ObserveTagsUseCase>(relaxed = false)
+    private val createTagUseCase = mockk<CreateTagUseCase>(relaxed = false)
+    private val deleteTagUseCase = mockk<DeleteTagUseCase>(relaxed = false)
     private val goalRepo = mockk<GoalRepository>(relaxed = false)
     private val loanRepo = mockk<LoanRepository>(relaxed = false)
     private val createTransactionUseCase = mockk<CreateTransactionUseCase>(relaxed = false)
@@ -149,7 +157,8 @@ class TransactionTagSelectionTest {
     private val context = mockk<Context>(relaxed = false)
 
     private val allMocks = arrayOf(
-        accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, loanRepo,
+        accountRepo, categoryRepo, transactionRepo,
+        observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
         createTransactionUseCase, editTransactionWithScopeUseCase,
         observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,
         settings, context,
@@ -195,13 +204,13 @@ class TransactionTagSelectionTest {
         every { categoryRepo.observeByType(TransactionType.EXPENSE.name) } returns
             flowOf(listOf(expenseCategory))
         every { accountRepo.observeAll() } returns flowOf(listOf(primaryAccount, secondaryAccount))
-        every { tagRepo.observeAll() } returns flowOf(referentialTags)
+        every { observeTagsUseCase() } returns flowOf(referentialTags)
         every { goalRepo.observeActive() } returns flowOf(emptyList())
         every { loanRepo.observeActive() } returns flowOf(emptyList())
         every { settings.currency } returns flowOf("EUR")
 
         // Lectures d'initialisation, exclues du bilan de `confirmVerified`.
-        // `tagRepo.observeAll` en est volontairement ABSENT : sa cardinalité est un oracle de
+        // `observeTagsUseCase` en est volontairement ABSENT : sa cardinalité est un oracle de
         // CA-01 (« exactement une entrée par tag existant » suppose une source unique).
         excludeRecords {
             categoryRepo.observeByType(any())
@@ -259,7 +268,7 @@ class TransactionTagSelectionTest {
                 sut.form.value.tagIds,
             )
 
-            verify(exactly = 1) { tagRepo.observeAll() }
+            verify(exactly = 1) { observeTagsUseCase() }
             assertNoTagReferentialWrite()
             assertNoTransactionWrite()
             confirmVerified(*allMocks)
@@ -296,7 +305,7 @@ class TransactionTagSelectionTest {
                 availableTagsExposedBy(sut).map { it.id }.toSet(),
             )
 
-            verify(exactly = 1) { tagRepo.observeAll() }
+            verify(exactly = 1) { observeTagsUseCase() }
             assertNoTagReferentialWrite()
             assertNoTransactionWrite()
             confirmVerified(*allMocks)
@@ -338,7 +347,7 @@ class TransactionTagSelectionTest {
                 available.map { it.id }.toSet(),
             )
 
-            verify(exactly = 1) { tagRepo.observeAll() }
+            verify(exactly = 1) { observeTagsUseCase() }
             assertNoTagReferentialWrite()
             assertNoTransactionWrite()
             confirmVerified(*allMocks)
@@ -398,7 +407,7 @@ class TransactionTagSelectionTest {
             coVerify(exactly = 1) {
                 observeTransactionDetailUseCase.getById(TAGGED_TRANSACTION_ID)
             }
-            verify(exactly = 1) { tagRepo.observeAll() }
+            verify(exactly = 1) { observeTagsUseCase() }
             assertNoTagReferentialWrite()
             assertNoTransactionWrite()
             confirmVerified(*allMocks)
@@ -460,7 +469,7 @@ class TransactionTagSelectionTest {
             coVerify(exactly = 1) {
                 observeTransactionDetailUseCase.getById(UNTAGGED_TRANSACTION_ID)
             }
-            verify(exactly = 1) { tagRepo.observeAll() }
+            verify(exactly = 1) { observeTagsUseCase() }
             assertNoTagReferentialWrite()
             assertNoTransactionWrite()
             confirmVerified(*allMocks)
@@ -512,7 +521,7 @@ class TransactionTagSelectionTest {
             coVerify(exactly = 1) {
                 observeTransactionDetailUseCase.getById(TAGGED_TRANSACTION_ID)
             }
-            verify(exactly = 1) { tagRepo.observeAll() }
+            verify(exactly = 1) { observeTagsUseCase() }
             // La persistance de cet état est jugée par TC-122 (cas T-04), pas ici.
             assertNoTagReferentialWrite()
             assertNoTransactionWrite()
@@ -571,7 +580,8 @@ class TransactionTagSelectionTest {
 
     private fun createSut(savedState: Map<String, Any?>): TransactionEditViewModel =
         TransactionEditViewModel(
-            accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, loanRepo,
+            accountRepo, categoryRepo, transactionRepo,
+            observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
             observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,
             settings, SavedStateHandle(savedState), context,
@@ -612,13 +622,17 @@ class TransactionTagSelectionTest {
     /**
      * I-4 — sélectionner n'est pas créer, désélectionner n'est pas supprimer.
      *
+     * Porte désormais sur les use cases, et non sur `TagRepository.upsert` / `delete` : depuis
+     * LOP-21 ce sont les **seuls** chemins d'écriture du référentiel que le ViewModel puisse
+     * emprunter, l'oracle est donc au moins aussi fort qu'avant.
+     *
      * `any()` est ici employé dans une vérification `exactly = 0`, seul usage autorisé par
      * `app/src/test/AGENTS.md` §4 : l'intention est précisément qu'aucun argument, quel qu'il soit,
      * ne soit accepté. Elle est doublée de `confirmVerified` dans chaque cas.
      */
     private fun assertNoTagReferentialWrite() {
-        coVerify(exactly = 0) { tagRepo.upsert(any()) }
-        coVerify(exactly = 0) { tagRepo.delete(any()) }
+        coVerify(exactly = 0) { createTagUseCase(any(), any()) }
+        coVerify(exactly = 0) { deleteTagUseCase(any()) }
     }
 
     /** Aucune sauvegarde de transaction n'est déclenchée par une sélection (même justification). */

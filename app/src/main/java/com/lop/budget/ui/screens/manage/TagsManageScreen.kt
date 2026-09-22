@@ -132,7 +132,11 @@ fun TagsManageScreen(
     if (tagToDelete != null) {
         ConfirmDeleteSheet(
             title = "Supprimer le tag ?",
-            message = "Le tag \"${tagToDelete?.name}\" sera définitivement supprimé et retiré de toutes les transactions.",
+            // Périmètre LOP-21 : la confirmation annonce les deux portées. Le message ne citait que
+            // les transactions, alors que les liens de série disparaissent aussi (CA-07).
+            message = "Le tag \"${tagToDelete?.name}\" sera définitivement supprimé et retiré de " +
+                "toutes les transactions et de toutes les séries récurrentes. " +
+                "Celles-ci ne sont pas supprimées.",
             confirmLabel = stringResource(R.string.delete),
             onDismiss = { tagToDelete = null },
             onConfirm = {

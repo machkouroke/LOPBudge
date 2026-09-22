@@ -1,5 +1,6 @@
 package com.lop.budget.ui.screens.transaction
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TagEntity
+import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.PressScale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -48,11 +51,21 @@ fun TagsBottomSheet(
     onToggleTag: (Long) -> Unit,
     onCreateTag: (String, Int) -> Unit,
     onDismiss: () -> Unit,
+    /**
+     * LOP-21, CA-08 : suppression du tag **du référentiel**, pas de la seule sélection. N'est
+     * appelée qu'après confirmation ; la feuille porte la confirmation, le use case ne confirme pas.
+     */
+    onDeleteTag: (Long) -> Unit,
     /** CA-05 : message d'erreur de création, résolu par l'écran. `null` quand il n'y en a pas. */
     tagNameError: String? = null,
     /** CA-05 : purge de l'erreur à la frappe suivante. */
     onTagNameChanged: () -> Unit = {},
 ) {
+    // CA-08 : l'identifiant, et non l'entité — `TagEntity` n'est pas `Parcelable`, et une fois le
+    // tag supprimé la recherche ne rend plus rien, ce qui referme le dialogue de lui-même.
+    var tagPendingDeleteId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val tagPendingDelete = tags.firstOrNull { it.id == tagPendingDeleteId }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         dragHandle = { BottomSheetDefaults.DragHandle() },
@@ -93,7 +106,24 @@ fun TagsBottomSheet(
                             label = { Text(tag.name) },
                             leadingIcon = if (selected) {
                                 { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
-                            } else null
+                            } else null,
+                            // CA-08 : la corbeille, pas une croix. Une croix sur un chip se lit
+                            // « retirer de la sélection » — or l'action supprime le tag partout.
+                            // Cible tactile de 18 dp, celle que M3 prévoit dans un chip de 32 dp :
+                            // le clic enfant est prioritaire, il ne bascule donc pas la sélection.
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = stringResource(
+                                        R.string.tx_tags_delete_action
+                                    ),
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { tagPendingDeleteId = tag.id }
+                                        .testTag("${TestTags.TAG_CHIP_DELETE}_${tag.id}"),
+                                )
+                            },
                         )
                     }
                 }
@@ -149,6 +179,42 @@ fun TagsBottomSheet(
                 }
             }
         }
+    }
+
+    // CA-08 : confirmation par `AlertDialog` et non par `ConfirmDeleteSheet`. On est déjà dans un
+    // `ModalBottomSheet` ; imbriquer une seconde feuille M3 laisse la première en travers de la
+    // confirmation. Le dialogue ouvre sa propre racine de composition : un test instrumenté qui
+    // vise ces `testTag` doit reposer `testTagsAsResourceId` sur cette racine-là.
+    if (tagPendingDelete != null) {
+        AlertDialog(
+            onDismissRequest = { tagPendingDeleteId = null },
+            title = { Text(stringResource(R.string.tx_tags_delete_title)) },
+            text = {
+                Text(stringResource(R.string.tx_tags_delete_message, tagPendingDelete.name))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteTag(tagPendingDelete.id)
+                        tagPendingDeleteId = null
+                    },
+                    modifier = Modifier.testTag(TestTags.TAG_DELETE_CONFIRM),
+                ) {
+                    Text(
+                        stringResource(R.string.delete),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { tagPendingDeleteId = null },
+                    modifier = Modifier.testTag(TestTags.TAG_DELETE_CANCEL),
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 

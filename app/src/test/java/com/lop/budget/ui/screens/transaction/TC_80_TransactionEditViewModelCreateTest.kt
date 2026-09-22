@@ -10,7 +10,6 @@ import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.data.repository.TagRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
@@ -18,6 +17,9 @@ import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.tag.CreateTagUseCase
+import com.lop.budget.domain.usecase.tag.DeleteTagUseCase
+import com.lop.budget.domain.usecase.tag.ObserveTagsUseCase
 import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
 import com.lop.budget.domain.usecase.detection.ProposalRepository
@@ -120,7 +122,11 @@ class TransactionEditViewModelCreateTest {
     private val accountRepo = mockk<AccountRepository>(relaxed = false)
     private val categoryRepo = mockk<CategoryRepository>(relaxed = false)
     private val transactionRepo = mockk<TransactionRepository>(relaxed = false)
-    private val tagRepo = mockk<TagRepository>(relaxed = false)
+    private val observeTagsUseCase = mockk<ObserveTagsUseCase>(relaxed = false)
+    // Écriture du référentiel de tags : jamais empruntée par TC-80 — mocks stricts, volontairement
+    // non stubés, tout appel ferait échouer le cas.
+    private val createTagUseCase = mockk<CreateTagUseCase>(relaxed = false)
+    private val deleteTagUseCase = mockk<DeleteTagUseCase>(relaxed = false)
     private val goalRepo = mockk<GoalRepository>(relaxed = false)
     private val loanRepo = mockk<LoanRepository>(relaxed = false)
     private val createTransactionUseCase = mockk<CreateTransactionUseCase>(relaxed = false)
@@ -138,7 +144,8 @@ class TransactionEditViewModelCreateTest {
     private val context = mockk<Context>(relaxed = false)
 
     private val allMocks = arrayOf(
-        accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, loanRepo,
+        accountRepo, categoryRepo, transactionRepo,
+        observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
         createTransactionUseCase, editTransactionWithScopeUseCase,
         observeTransactionDetailUseCase, settings, context
     )
@@ -175,7 +182,7 @@ class TransactionEditViewModelCreateTest {
         every { categoryRepo.observeByType(TransactionType.INCOME.name) } returns
             flowOf(listOf(incomeCategory))
         every { accountRepo.observeAll() } returns flowOf(listOf(primaryAccount, secondaryAccount))
-        every { tagRepo.observeAll() } returns flowOf(emptyList())
+        every { observeTagsUseCase() } returns flowOf(emptyList())
         every { goalRepo.observeActive() } returns flowOf(emptyList())
         every { loanRepo.observeActive() } returns flowOf(emptyList())
         every { settings.currency } returns flowOf(appCurrency)
@@ -186,7 +193,7 @@ class TransactionEditViewModelCreateTest {
         excludeRecords {
             categoryRepo.observeByType(any())
             accountRepo.observeAll()
-            tagRepo.observeAll()
+            observeTagsUseCase()
             goalRepo.observeActive()
             loanRepo.observeActive()
             context.getString(any())
@@ -215,7 +222,8 @@ class TransactionEditViewModelCreateTest {
     /** SUT en **création** : le `SavedStateHandle` ne porte jamais la clé `id`. */
     private fun createSut(type: TransactionType): TransactionEditViewModel =
         TransactionEditViewModel(
-            accountRepo, categoryRepo, transactionRepo, tagRepo, goalRepo, loanRepo,
+            accountRepo, categoryRepo, transactionRepo,
+            observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
             observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase, settings,
             SavedStateHandle(mapOf("type" to type.name)), context

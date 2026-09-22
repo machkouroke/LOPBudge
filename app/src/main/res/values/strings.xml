@@ -83,6 +83,9 @@
     <string name="tx_tags_add_action">Ajouter cette étiquette</string>
     <string name="tx_tags_create_title">Créer une étiquette</string>
     <string name="tx_tags_name_label">Nom de l\'étiquette</string>
+    <string name="tx_tags_delete_action">Supprimer cette étiquette</string>
+    <string name="tx_tags_delete_title">Supprimer l\'étiquette ?</string>
+    <string name="tx_tags_delete_message">L\'étiquette « %1$s » sera définitivement supprimée et retirée de toutes les transactions et de toutes les séries récurrentes. Celles-ci ne sont pas supprimées.</string>
 
     <string-array name="tx_days_short">
         <item>L</item>

@@ -152,6 +152,11 @@ object TestTags {
     const val TAG_ITEM_DELETE = "tag.item.delete"
     const val TAG_COLOR_PICKER = "tag.color.picker"
 
+    /** Suppression d'un tag depuis la modal tags du formulaire de transaction (LOP-21, CA-08). */
+    const val TAG_CHIP_DELETE = "tag.chip.delete"
+    const val TAG_DELETE_CONFIRM = "tag.delete.confirm"
+    const val TAG_DELETE_CANCEL = "tag.delete.cancel"
+
     // Accounts
     const val ACC_BTN_ADD = "account.btn.add"
     const val ACC_ROW = "account.row"
