@@ -130,8 +130,9 @@ import java.util.concurrent.Executor
  * - `Locale.FRANCE` forcée et restaurée : la comparaison sans casse d'un nom accentué
  *   (« SANTÉ » / « santé ») en dépend. Laisser la locale de la machine décider serait laisser
  *   l'environnement trancher un oracle.
- * - La couleur passée est celle de la vue (`0xFF9C27B0`) : ne pas exercer un chemin que l'écran
- *   n'emprunte jamais.
+ * - La couleur passée est une couleur réelle de la palette, distincte de celles des témoins. Elle
+ *   vient désormais du sélecteur de `TagsBottomSheet` et non plus d'une constante de la vue : c'est
+ *   l'appelant qui la choisit, le ViewModel ne fait que la transmettre.
  *
  * ## Assertions transverses à tous les cas
  * - Comptage **exact** de `tags` lu par SQL brut — surtout dans les cas où rien ne doit être créé.
@@ -703,7 +704,11 @@ class TransactionTagCreationTest {
         val COLOR_SANTE = 0xFFE91E63.toInt()
         val COLOR_PRO = 0xFF3F51B5.toInt()
 
-        /** Exactement la couleur passée par `TagsBottomSheet` à `onCreateTag`. */
-        val CREATION_COLOR = 0xFF9C27B0.toInt()
+        /**
+         * Une couleur de la palette `TagColors`, telle que `TagsBottomSheet` la transmet à
+         * `onCreateTag` depuis son sélecteur. Distincte de [COLOR_SANTE] et [COLOR_PRO] : un tag
+         * créé qui écraserait un témoin resterait invisible avec une couleur uniforme.
+         */
+        val CREATION_COLOR = 0xFF8E24AA.toInt()
     }
 }

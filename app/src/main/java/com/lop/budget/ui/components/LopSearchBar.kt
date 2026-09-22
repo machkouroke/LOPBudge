@@ -17,6 +17,24 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.lop.budget.ui.common.TestTags
 
+/** Forme « pilule » des champs de saisie modernes de l'app. */
+val LopFieldShape = RoundedCornerShape(32.dp)
+
+/**
+ * Couleurs des champs de saisie « pilule » : bordure invisible au repos, fond tonal léger.
+ *
+ * Extraites de [LopSearchBar] pour que le champ de création de tag de la modal ait exactement le
+ * même rendu sans hériter du comportement de recherche — icône loupe, bouton d'effacement et
+ * `ImeAction.Search` n'ont pas de sens sur un champ qui crée.
+ */
+@Composable
+fun lopFieldColors() = OutlinedTextFieldDefaults.colors(
+    unfocusedBorderColor = Color.Transparent,
+    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+)
+
 /**
  * Composant de recherche moderne et hautement arrondi, utilisé partout dans l'app.
  */
@@ -59,12 +77,7 @@ fun LopSearchBar(
             onSearch = { focusManager.clearFocus() },
             onDone = { focusManager.clearFocus() }
         ),
-        shape = RoundedCornerShape(32.dp), // Hautement arrondi comme demandé
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = Color.Transparent, // Bordure invisible pour un look plus "pilule"
-            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        )
+        shape = LopFieldShape,
+        colors = lopFieldColors(),
     )
 }

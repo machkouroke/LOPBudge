@@ -1,9 +1,6 @@
 package com.lop.budget.ui.screens.manage
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,14 +10,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
@@ -52,8 +47,12 @@ import com.lop.budget.R
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.ConfirmDeleteSheet
+import com.lop.budget.ui.components.DefaultTagColor
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.LopFieldShape
 import com.lop.budget.ui.components.LopScreenScaffold
+import com.lop.budget.ui.components.TagColorPicker
+import com.lop.budget.ui.components.lopFieldColors
 
 @Composable
 fun TagsManageScreen(
@@ -200,14 +199,9 @@ private fun TagEditSheet(
     onSave: (String, Int) -> Unit,
 ) {
     var name by remember { mutableStateOf(tag?.name ?: "") }
-    val colors = listOf(
-        Color(0xFFE53935), Color(0xFFD81B60), Color(0xFF8E24AA), Color(0xFF5E35B1),
-        Color(0xFF3949AB), Color(0xFF1E88E5), Color(0xFF039BE5), Color(0xFF00ACC1),
-        Color(0xFF00897B), Color(0xFF00838F), Color(0xFF43A047), Color(0xFF2E7D32),
-        Color(0xFF7CB342), Color(0xFFC0CA33), Color(0xFFFDD835), Color(0xFFFFB300),
-        Color(0xFFFB8C00), Color(0xFFF4511E), Color(0xFF6D4C41), Color(0xFF546E7A)
-    )
-    var selectedColor by remember { mutableStateOf(tag?.let { Color(it.colorArgb) } ?: colors[0]) }
+    var selectedColor by remember {
+        mutableStateOf(tag?.let { Color(it.colorArgb) } ?: DefaultTagColor)
+    }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
@@ -232,38 +226,17 @@ private fun TagEditSheet(
                 label = { Text("Nom du tag") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = LopFieldShape,
+                colors = lopFieldColors(),
             )
-            
+
             Spacer(Modifier.height(20.dp))
-            
+
             Text("Couleur", style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(12.dp))
-            
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(colors) { color ->
-                    val isSelected = selectedColor == color
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(color)
-                            .clickable { selectedColor = color }
-                            .border(
-                                if (isSelected) 3.dp else 0.dp,
-                                MaterialTheme.colorScheme.onSurface,
-                                CircleShape
-                            )
-                            .testTag("${TestTags.TAG_COLOR_PICKER}_${color.toArgb()}"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isSelected) {
-                            Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                        }
-                    }
-                }
-            }
-            
+
+            TagColorPicker(selected = selectedColor, onSelect = { selectedColor = it })
+
             Spacer(Modifier.height(32.dp))
             
             Button(
