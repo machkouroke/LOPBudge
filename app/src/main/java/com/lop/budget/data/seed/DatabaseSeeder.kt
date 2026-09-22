@@ -2,10 +2,12 @@ package com.lop.budget.data.seed
 
 import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.entity.*
+import com.lop.budget.data.repository.TagRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.tag.CreateTagUseCase
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -26,7 +28,6 @@ object DatabaseSeeder {
         try {
             val accountDao = db.accountDao()
             val categoryDao = db.categoryDao()
-            val tagDao = db.tagDao()
             val goalDao = db.goalDao()
             val seriesDao = db.recurringSeriesDao()
             val txDao = db.transactionDao()
@@ -120,12 +121,16 @@ object DatabaseSeeder {
             }
 
             // Autres données (Tags, Goals)
-            if (tagDao.getByName("Essentiel") == null) tagDao.upsert(
-                TagEntity(
-                    name = "Essentiel",
-                    colorArgb = 0xFF4ADE80.toInt()
-                )
-            )
+            //
+            // Le tag passe par `CreateTagUseCase` (LOP-21, P-4), seul chemin de création : il
+            // porte déjà l'idempotence voulue ici, et la porte plus juste que le `getByName`
+            // qu'il remplace. Celui-ci comparait en exact, donc un « essentiel » saisi par
+            // l'utilisateur laissait le seeder en créer un second — deux tags de même nom
+            // normalisé, interdits par I-2 de LOP-3. Le use case compare après `trim` et hors
+            // casse, et rend le tag existant inchangé : ni son nom ni sa couleur ne sont écrasés
+            // au prochain démarrage.
+            CreateTagUseCase(TagRepository(db.tagDao()))("Essentiel", 0xFF4ADE80.toInt())
+
             if (goalDao.getByName("Fonds d'urgence") == null) goalDao.upsert(
                 GoalEntity(
                     name = "Fonds d'urgence",
