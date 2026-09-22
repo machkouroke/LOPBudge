@@ -102,6 +102,8 @@
 
     <!-- Transaction Detail Screen -->
     <string name="tx_detail_category">Catégorie</string>
+    <!-- LOP-19 : libellé d'une transaction ou d'une série dont la catégorie a été supprimée. -->
+    <string name="tx_detail_no_category">Sans catégorie</string>
     <string name="tx_detail_date">Date</string>
     <string name="tx_detail_type">Type</string>
     <string name="tx_detail_account">Compte</string>

@@ -13,7 +13,7 @@ import javax.inject.Singleton
  * qui enchaînait `isBlank` puis `CategoryRepository.upsert`. Elle est ici, et le ViewModel ne
  * garde pas de second chemin.
  *
- * Nom vide ou blanc : rien n'est écrit et l'appel rend `null` (CA-03). Le formulaire refuse déjà
+ * Nom vide ou blanc : rien n'est écrit et l'appel rend [CategoryRefusal.BlankName] (CA-03). Le formulaire refuse déjà
  * l'enregistrement en amont ; le use case refuse aussi, parce qu'un bouton désactivé ne garantit
  * rien au-delà de l'écran qui le porte.
  *
@@ -30,23 +30,26 @@ class CreateCategoryUseCase @Inject constructor(
         colorArgb: Int,
         icon: String,
         parentCategoryId: Long? = null,
-    ): Long? {
+    ): CategoryWriteResult {
         val trimmed = name.trim()
-        if (trimmed.isEmpty()) return null
+        if (trimmed.isEmpty()) return CategoryWriteResult.Refused(CategoryRefusal.BlankName)
 
-        // I-5 : un parent de l'autre type n'est pas écrit — la catégorie naît parente.
-        val parent = parentCategoryId
-            ?.let { categoryRepo.getById(it) }
-            ?.takeIf { it.type == type }
+        // I-5 : un parent de l'autre type est refusé en bloc, rien n'est écrit (P-13).
+        if (parentCategoryId != null) {
+            val parent = categoryRepo.getById(parentCategoryId)
+                ?: return CategoryWriteResult.Refused(CategoryRefusal.NotFound)
+            if (parent.type != type) return CategoryWriteResult.Refused(CategoryRefusal.ParentTypeMismatch)
+        }
 
-        return categoryRepo.upsert(
+        val id = categoryRepo.upsert(
             CategoryEntity(
                 name = trimmed,
                 type = type,
                 colorArgb = colorArgb,
                 icon = icon,
-                parentCategoryId = parent?.id,
+                parentCategoryId = parentCategoryId,
             )
         )
+        return CategoryWriteResult.Success(id)
     }
 }

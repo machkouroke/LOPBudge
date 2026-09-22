@@ -33,13 +33,10 @@ object Routes {
     const val CATEGORY_CREATE = "category/create?type={type}"
 
     /**
-     * Création d'une catégorie, initialisée au type de la section d'où on l'ouvre (LOP-19, CA-14).
-     *
-     * Sans type, la destination retombe sur son défaut : les appelants qui n'ont pas de section —
-     * la création depuis le sélecteur du formulaire de transaction — n'ont rien à fournir.
+     * Création d'une catégorie, initialisée au type de son contexte d'ouverture : la section de
+     * l'écran de gestion (LOP-19, CA-14) ou la transaction en cours de saisie (CA-16, P-14).
      */
-    fun categoryCreate(type: TransactionType? = null) =
-        if (type == null) "category/create" else "category/create?type=${type.name}"
+    fun categoryCreate(type: TransactionType) = "category/create?type=${type.name}"
 
     const val CATEGORY_EDIT = "category/edit/{id}"
     fun categoryEdit(id: Long) = "category/edit/$id"

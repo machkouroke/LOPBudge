@@ -31,10 +31,10 @@ class DeleteCategoryUseCase @Inject constructor(
     private val categoryRepo: CategoryRepository,
     private val transactionRepo: TransactionRepository,
 ) {
-    suspend operator fun invoke(categoryId: Long) {
+    suspend operator fun invoke(categoryId: Long): CategoryDeleteResult {
         // `NO_CATEGORY_ID` ne désigne aucune ligne du référentiel : le supprimer réaffecterait
         // tous les ajustements de solde à eux-mêmes, pour rien.
-        if (categoryId == NO_CATEGORY_ID) return
+        if (categoryId == NO_CATEGORY_ID) return CategoryDeleteResult.Refused(CategoryRefusal.NotFound)
 
         // L'ordre est contraint : les deux réaffectations désignent les filles par un sous-select
         // sur `categories`, elles n'ont donc plus de prise une fois les filles supprimées.
@@ -42,5 +42,6 @@ class DeleteCategoryUseCase @Inject constructor(
         transactionRepo.reassignSeriesCategoryTree(categoryId, NO_CATEGORY_ID)
         categoryRepo.deleteChildren(categoryId)
         categoryRepo.delete(categoryId)
+        return CategoryDeleteResult.Deleted
     }
 }

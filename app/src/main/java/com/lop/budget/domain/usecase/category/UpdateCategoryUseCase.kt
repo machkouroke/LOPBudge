@@ -12,10 +12,11 @@ import javax.inject.Singleton
  * même identifiant, mêmes rattachements transaction et série, nouveaux nom, icône et couleur
  * (I-2). Un nom vide ou blanc n'écrit rien (CA-05).
  *
- * Le type n'est réécrit que si la catégorie est libre de tout rattachement (I-6, CA-13) ; sinon
- * l'ancien type est conservé tel quel, même si l'appelant en propose un autre (CA-12). Le parent
- * n'est touché que si la catégorie n'a aucune sous-catégorie (I-4, CA-09), et seulement s'il est
- * du même type que celui effectivement écrit (I-5, CA-10).
+ * Une modification qui viole une règle est refusée **en bloc** (P-13) : rien n'est écrit, pas même
+ * le nom, l'icône ou la couleur, et la raison est rendue.
+ * - changer le type d'une catégorie utilisée ou parente (I-6, CA-12) ;
+ * - donner un parent à une catégorie qui a des sous-catégories (I-4, CA-09) ;
+ * - un parent d'un autre type que celui demandé (I-5, CA-10).
  */
 @Singleton
 class UpdateCategoryUseCase @Inject constructor(
@@ -29,32 +30,37 @@ class UpdateCategoryUseCase @Inject constructor(
         colorArgb: Int,
         icon: String,
         parentCategoryId: Long?,
-    ) {
+    ): CategoryWriteResult {
         val trimmed = name.trim()
-        if (trimmed.isEmpty()) return
+        if (trimmed.isEmpty()) return CategoryWriteResult.Refused(CategoryRefusal.BlankName)
 
-        val current = categoryRepo.getById(categoryId) ?: return
+        val current = categoryRepo.getById(categoryId)
+            ?: return CategoryWriteResult.Refused(CategoryRefusal.NotFound)
         val usage = getCategoryUsage(categoryId)
 
-        val newType = if (usage.isTypeLocked) current.type else type
-        val newParentId = if (usage.hasChildren) {
-            // CA-09 : aucun parent n'est écrit, celui déjà en place n'est pas effacé pour autant.
-            current.parentCategoryId
-        } else {
-            parentCategoryId
-                ?.let { categoryRepo.getById(it) }
-                ?.takeIf { it.type == newType }
-                ?.id
+        if (type != current.type && usage.isTypeLocked) {
+            return CategoryWriteResult.Refused(
+                if (usage.isUsed) CategoryRefusal.CategoryInUse else CategoryRefusal.HasChildren
+            )
+        }
+        if (usage.hasChildren && parentCategoryId != current.parentCategoryId) {
+            return CategoryWriteResult.Refused(CategoryRefusal.HasChildren)
+        }
+        if (parentCategoryId != null) {
+            val parent = categoryRepo.getById(parentCategoryId)
+                ?: return CategoryWriteResult.Refused(CategoryRefusal.NotFound)
+            if (parent.type != type) return CategoryWriteResult.Refused(CategoryRefusal.ParentTypeMismatch)
         }
 
         categoryRepo.upsert(
             current.copy(
                 name = trimmed,
-                type = newType,
+                type = type,
                 colorArgb = colorArgb,
                 icon = icon,
-                parentCategoryId = newParentId,
+                parentCategoryId = parentCategoryId,
             )
         )
+        return CategoryWriteResult.Success(categoryId)
     }
 }

@@ -215,7 +215,7 @@ fun TransactionDetailScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             DetailFieldRow(
                                 label = stringResource(R.string.tx_detail_category),
-                                value = twr.category?.name ?: stringResource(R.string.other),
+                                value = twr.category?.name ?: stringResource(R.string.tx_detail_no_category),
                                 testTag = TestTags.TRANSACTION_DETAIL_FIELD_CATEGORY,
                                 leading = {
                                     val c = twr.category?.colorArgb?.let { Color(it) }

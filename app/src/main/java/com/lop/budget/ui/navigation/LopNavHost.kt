@@ -376,7 +376,7 @@ fun LopNavHost() {
                                     navController.popBackStack()
                                 }
                             },
-                            onNavigateToCreateCategory = { navController.navigate(Routes.categoryCreate()) },
+                            onNavigateToCreateCategory = { type -> navController.navigate(Routes.categoryCreate(type)) },
                         )
                     }
 
@@ -414,7 +414,7 @@ fun LopNavHost() {
                                     navController.popBackStack()
                                 }
                             },
-                            onNavigateToCreateCategory = { navController.navigate(Routes.categoryCreate()) },
+                            onNavigateToCreateCategory = { type -> navController.navigate(Routes.categoryCreate(type)) },
                         )
                     }
 

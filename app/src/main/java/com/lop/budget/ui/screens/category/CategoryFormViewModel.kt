@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.category.CategoryUsage
+import com.lop.budget.domain.usecase.category.CategoryWriteResult
 import com.lop.budget.domain.usecase.category.CreateCategoryUseCase
 import com.lop.budget.domain.usecase.category.DeleteCategoryUseCase
 import com.lop.budget.domain.usecase.category.GetCategoryUsageUseCase
@@ -125,31 +126,42 @@ class CategoryFormViewModel @Inject constructor(
 
     fun onColorChange(v: Int) { colorArgb.value = v }
     fun onIconChange(v: String) { icon.value = v }
-    fun onParentChange(id: Long?) { parentId.value = id }
+    fun onParentChange(id: Long?) {
+        // I-4 / CA-09 : une catégorie qui a des sous-catégories ne reçoit pas de parent.
+        if (usage.value.hasChildren) return
+        parentId.value = id
+    }
 
     fun save(onDone: () -> Unit) {
-        if (name.value.isBlank()) return
+        // Posé avant le lancement : un second clic arrivé entre-temps ne lance pas une seconde
+        // écriture (CA-02, « exactement une catégorie »).
+        if (name.value.isBlank() || isSaving.value) return
+        isSaving.value = true
         viewModelScope.launch {
-            isSaving.value = true
-            if (isEdit) {
-                updateCategoryUseCase(
-                    categoryId = categoryId,
-                    name = name.value,
-                    type = type.value,
-                    colorArgb = colorArgb.value,
-                    icon = icon.value,
-                    parentCategoryId = parentId.value,
-                )
-            } else {
-                createCategoryUseCase(
-                    name = name.value,
-                    type = type.value,
-                    colorArgb = colorArgb.value,
-                    icon = icon.value,
-                    parentCategoryId = parentId.value,
-                )
+            val result = try {
+                if (isEdit) {
+                    updateCategoryUseCase(
+                        categoryId = categoryId,
+                        name = name.value,
+                        type = type.value,
+                        colorArgb = colorArgb.value,
+                        icon = icon.value,
+                        parentCategoryId = parentId.value,
+                    )
+                } else {
+                    createCategoryUseCase(
+                        name = name.value,
+                        type = type.value,
+                        colorArgb = colorArgb.value,
+                        icon = icon.value,
+                        parentCategoryId = parentId.value,
+                    )
+                }
+            } finally {
+                isSaving.value = false
             }
-            onDone()
+            // Un refus laisse le formulaire ouvert ; en afficher la raison est une évolution (P-15).
+            if (result is CategoryWriteResult.Success) onDone()
         }
     }
 

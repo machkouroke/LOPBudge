@@ -32,6 +32,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.lop.budget.R
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.AccountBottomSheet
 import com.lop.budget.ui.components.CategoryBottomSheet
@@ -47,7 +48,8 @@ enum class EditSheet { Category, Account, Tags, Goal, Debt, Frequency, Date, End
 @Composable
 fun TransactionEditScreen(
     onDone: (Long) -> Unit,
-    onNavigateToCreateCategory: () -> Unit,
+    /** CA-16 : la catégorie créée depuis le sélecteur prend le type de la transaction (P-14). */
+    onNavigateToCreateCategory: (TransactionType) -> Unit,
     vm: TransactionEditViewModel = hiltViewModel(),
 ) {
     val form by vm.form.collectAsStateWithLifecycle()
@@ -189,7 +191,7 @@ fun TransactionEditScreen(
                 },
                 onCreate = {
                     activeSheet = null
-                    onNavigateToCreateCategory()
+                    onNavigateToCreateCategory(form.type)
                 },
                 onDismiss = { activeSheet = null },
             )
