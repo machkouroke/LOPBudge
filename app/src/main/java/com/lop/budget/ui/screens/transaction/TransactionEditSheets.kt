@@ -253,6 +253,9 @@ fun TagsBottomSheet(
 /** Nombre de tags mis en avant comme « récents » dans la modal. */
 private const val RECENT_TAGS = 5
 
+/** Taille de l'icône de tête d'un chip, identique coche et pastille — voir [TagChipFlow]. */
+private val LEADING_ICON_SIZE = 16.dp
+
 @Composable
 private fun TagSectionLabel(text: String) {
     Text(
@@ -288,16 +291,31 @@ private fun TagChipFlow(
                 selected = selected,
                 onClick = { onToggleTag(tag.id) },
                 label = { Text(tag.name) },
+                // L'icône de tête est **toujours présente**, et ce n'est pas qu'une question de
+                // rendu : un chip qui ne la porte qu'une fois sélectionné change de largeur au
+                // clic et décale ses voisins dans le `FlowRow`. Le clic suivant, résolu sur les
+                // bornes d'avant, tombait alors à côté — U-04 et U-05 de TC-125 échouaient en
+                // ne sélectionnant que le premier des deux tags (CI run #75).
+                // Ne pas revenir à un `leadingIcon = if (selected) ... else null`.
                 leadingIcon = {
-                    if (selected) {
-                        Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp)
-                                .clip(CircleShape)
-                                .background(Color(tag.colorArgb)),
-                        )
+                    // Emprise strictement identique dans les deux états : la pastille de couleur
+                    // est centrée dans un cadre de la taille exacte de la coche. Une pastille
+                    // simplement plus petite laisserait le chip se rétrécir à la sélection, donc
+                    // le défaut ci-dessus, en plus discret et plus difficile à reproduire.
+                    Box(
+                        modifier = Modifier.size(LEADING_ICON_SIZE),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (selected) {
+                            Icon(Icons.Default.Check, null, modifier = Modifier.size(LEADING_ICON_SIZE))
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(tag.colorArgb)),
+                            )
+                        }
                     }
                 },
                 // CA-08 : la corbeille, pas une croix. Une croix sur un chip se lit « retirer de
