@@ -5,9 +5,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -24,9 +24,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -119,16 +121,59 @@ fun SwipeableTransactionRow(
             SwipeDir.None -> null
         }
 
+        // La pastille s'élargit avec le doigt au lieu de dévoiler un fond pleine largeur :
+        // l'action se lit comme un bouton qui grandit, et son icône reste centrée dedans.
         Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(bgColor, RoundedCornerShape(24.dp))
-                .padding(horizontal = 20.dp)
-                .testTag(if (swipeDirection == SwipeDir.Left) TestTags.TRANSACTION_ITEM_DELETE else ""),
+            modifier = Modifier.matchParentSize(),
             contentAlignment = bgAlignment,
         ) {
-            if (bgIcon != null) {
-                Icon(imageVector = bgIcon, contentDescription = null, tint = Color.White)
+            if (swipeDirection != SwipeDir.None) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        // Largeur lue en phase de layout : le geste remesure la pastille sans
+                        // recomposer la ligne à chaque image.
+                        .layout { measurable, constraints ->
+                            val gap = 10.dp.roundToPx()
+                            val width = (abs(offsetX.value).roundToInt() - gap)
+                                .coerceIn(0, constraints.maxWidth)
+                            val placeable = measurable.measure(
+                                constraints.copy(minWidth = width, maxWidth = width)
+                            )
+                            layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                        }
+                        .background(bgColor, RoundedCornerShape(24.dp))
+                        .testTag(
+                            if (swipeDirection == SwipeDir.Left) {
+                                TestTags.TRANSACTION_ITEM_DELETE
+                            } else {
+                                ""
+                            }
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (bgIcon != null) {
+                        Icon(
+                            imageVector = bgIcon,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.graphicsLayer {
+                                // L'icône finit de grandir au seuil : franchir le seuil se voit,
+                                // en plus du retour haptique qui l'accompagne.
+                                val progress = if (componentWidthPx > 0f) {
+                                    (abs(offsetX.value) / (componentWidthPx * thresholdFraction))
+                                        .coerceIn(0f, 1f)
+                                } else {
+                                    0f
+                                }
+                                val scale = 0.7f + 0.3f * progress
+                                scaleX = scale
+                                scaleY = scale
+                                alpha = (progress * 2.5f).coerceAtMost(1f)
+                            },
+                        )
+                    }
+                }
             }
         }
 
