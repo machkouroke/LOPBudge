@@ -278,7 +278,7 @@ fun LopNavHost() {
                     composableAnimated(Routes.CATEGORIES_MANAGE, NavAnimationType.SECONDARY) {
                         CategoriesManageScreen(
                             onBack = { navController.popBackStack() },
-                            onAddCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
+                            onAddCategory = { type -> navController.navigate(Routes.categoryCreate(type)) },
                             onEditCategory = { id: Long ->
                                 navController.navigate(
                                     Routes.categoryEdit(
@@ -289,7 +289,16 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(Routes.CATEGORY_CREATE, NavAnimationType.SECONDARY) {
+                    composableAnimated(
+                        Routes.CATEGORY_CREATE,
+                        NavAnimationType.SECONDARY,
+                        arguments = listOf(
+                            navArgument("type") {
+                                type = NavType.StringType
+                                defaultValue = TransactionType.EXPENSE.name
+                            }
+                        )
+                    ) {
                         CategoryCreateScreen(onBack = { navController.popBackStack() })
                     }
 
@@ -367,7 +376,7 @@ fun LopNavHost() {
                                     navController.popBackStack()
                                 }
                             },
-                            onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
+                            onNavigateToCreateCategory = { navController.navigate(Routes.categoryCreate()) },
                         )
                     }
 
@@ -405,7 +414,7 @@ fun LopNavHost() {
                                     navController.popBackStack()
                                 }
                             },
-                            onNavigateToCreateCategory = { navController.navigate(Routes.CATEGORY_CREATE) },
+                            onNavigateToCreateCategory = { navController.navigate(Routes.categoryCreate()) },
                         )
                     }
 

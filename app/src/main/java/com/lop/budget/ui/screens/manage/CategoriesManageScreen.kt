@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,7 +18,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.data.local.entity.CategoryEntity
+import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.category.CategoryWithSubs
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.CategoryDeleteConfirmSheet
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -28,12 +33,23 @@ import com.lop.budget.util.IconMapper
 @Composable
 fun CategoriesManageScreen(
     onBack: () -> Unit,
-    onAddCategory: () -> Unit,
+    onAddCategory: (TransactionType) -> Unit,
     onEditCategory: (Long) -> Unit,
     vm: CategoriesManageViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
-    var selectedType by remember { mutableIntStateOf(0) } // 0 for Expense, 1 for Income
+    val pendingDelete by vm.pendingDelete.collectAsStateWithLifecycle()
+    var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
+
+    pendingDelete?.let { pending ->
+        CategoryDeleteConfirmSheet(
+            categoryName = pending.category.name,
+            isUsed = pending.usage.isUsed,
+            hasChildren = pending.usage.hasChildren,
+            onDismiss = vm::cancelDelete,
+            onConfirm = vm::confirmDelete,
+        )
+    }
 
     LopScreenScaffold(
         title = "Gérer les catégories",
@@ -48,7 +64,8 @@ fun CategoriesManageScreen(
                 contentAlignment = Alignment.CenterEnd
             ) {
                 FloatingActionButton(
-                    onClick = onAddCategory,
+                    // CA-14 : la création hérite du type de la section ouverte.
+                    onClick = { onAddCategory(selectedType) },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.testTag(TestTags.CAT_BTN_ADD)
@@ -60,25 +77,26 @@ fun CategoriesManageScreen(
     ) {
         item {
             TabRow(
-                selectedTabIndex = selectedType,
+                selectedTabIndex = if (selectedType == TransactionType.EXPENSE) 0 else 1,
                 containerColor = Color.Transparent,
                 contentColor = MaterialTheme.colorScheme.primary,
                 divider = {}
             ) {
                 Tab(
-                    selected = selectedType == 0,
-                    onClick = { selectedType = 0 },
+                    selected = selectedType == TransactionType.EXPENSE,
+                    onClick = { selectedType = TransactionType.EXPENSE },
                     text = { Text("Dépenses") }
                 )
                 Tab(
-                    selected = selectedType == 1,
-                    onClick = { selectedType = 1 },
+                    selected = selectedType == TransactionType.INCOME,
+                    onClick = { selectedType = TransactionType.INCOME },
                     text = { Text("Revenus") }
                 )
             }
         }
 
-        val categories = if (selectedType == 0) state.expenseCategories else state.incomeCategories
+        val categories =
+            if (selectedType == TransactionType.EXPENSE) state.expense else state.income
 
         if (categories.isEmpty()) {
             item {
@@ -90,7 +108,8 @@ fun CategoriesManageScreen(
             items(categories, key = { it.category.id }) { catWithSubs ->
                 CategoryExpandableRow(
                     catWithSubs = catWithSubs,
-                    onEdit = { onEditCategory(it) }
+                    onEdit = { onEditCategory(it) },
+                    onDelete = { vm.requestDelete(it) }
                 )
             }
         }
@@ -100,7 +119,8 @@ fun CategoriesManageScreen(
 @Composable
 fun CategoryExpandableRow(
     catWithSubs: CategoryWithSubs,
-    onEdit: (Long) -> Unit
+    onEdit: (Long) -> Unit,
+    onDelete: (CategoryEntity) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     val cat = catWithSubs.category
@@ -146,6 +166,17 @@ fun CategoryExpandableRow(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+
+                IconButton(
+                    onClick = { onDelete(cat) },
+                    modifier = Modifier.testTag("category.delete.${cat.id}")
+                ) {
+                    Icon(
+                        Icons.Default.DeleteOutline,
+                        contentDescription = "Supprimer ${cat.name}",
+                        tint = MaterialTheme.colorScheme.error
+                    )
                 }
 
                 IconButton(

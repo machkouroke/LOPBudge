@@ -22,12 +22,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.CategoryBottomSheet
+import com.lop.budget.ui.components.CategoryDeleteConfirmSheet
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
-import com.lop.budget.ui.components.PickerBottomSheet
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.util.IconMapper
 
@@ -39,16 +39,38 @@ fun CategoryCreateScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     var showParentSheet by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     if (showParentSheet) {
-        CategoryParentBottomSheet(
+        // CA-11 : le même modal que le sélecteur de catégorie des autres écrans, avec en plus la
+        // ligne « aucune » qui fait de la catégorie une principale.
+        CategoryBottomSheet(
+            title = "Catégorie parente",
             categories = state.availableParents,
             selectedId = state.parentCategoryId,
             onSelect = {
                 vm.onParentChange(it)
                 showParentSheet = false
             },
+            onSelectNone = {
+                vm.onParentChange(null)
+                showParentSheet = false
+            },
+            noneLabel = "Aucune (catégorie principale)",
             onDismiss = { showParentSheet = false }
+        )
+    }
+
+    if (showDeleteConfirm) {
+        CategoryDeleteConfirmSheet(
+            categoryName = state.name,
+            isUsed = state.isUsed,
+            hasChildren = state.hasChildren,
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                showDeleteConfirm = false
+                vm.delete(onBack)
+            },
         )
     }
 
@@ -63,7 +85,8 @@ fun CategoryCreateScreen(
                     onClick = { vm.save(onBack) },
                     modifier = Modifier.fillMaxWidth().height(56.dp).testTag(TestTags.BTN_SAVE),
                     shape = MaterialTheme.shapes.medium,
-                    enabled = state.name.isNotBlank() && !state.isSaving
+                    // CA-03 / CA-05 : sans nom, le formulaire refuse l'enregistrement.
+                    enabled = state.canSave
                 ) {
                     if (state.isSaving) CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
                     else Text("Enregistrer")
@@ -86,41 +109,48 @@ fun CategoryCreateScreen(
                                 singleLine = true
                             )
 
-                            Column {
-                                Text("Type", style = MaterialTheme.typography.labelMedium)
-                                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    FilterChip(
-                                        selected = state.type == TransactionType.EXPENSE,
-                                        onClick = { vm.onTypeChange(TransactionType.EXPENSE) },
-                                        label = { Text("Dépense") },
-                                        modifier = Modifier.testTag("category.edit.type.expense")
-                                    )
-                                    FilterChip(
-                                        selected = state.type == TransactionType.INCOME,
-                                        onClick = { vm.onTypeChange(TransactionType.INCOME) },
-                                        label = { Text("Revenu") },
-                                        modifier = Modifier.testTag("category.edit.type.income")
-                                    )
+                            // CA-12 / I-6 : le choix du type disparaît dès qu'un rattachement
+                            // existe — une catégorie utilisée ou parente ne change pas de type.
+                            if (state.canChangeType) {
+                                Column {
+                                    Text("Type", style = MaterialTheme.typography.labelMedium)
+                                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        FilterChip(
+                                            selected = state.type == TransactionType.EXPENSE,
+                                            onClick = { vm.onTypeChange(TransactionType.EXPENSE) },
+                                            label = { Text("Dépense") },
+                                            modifier = Modifier.testTag("category.edit.type.expense")
+                                        )
+                                        FilterChip(
+                                            selected = state.type == TransactionType.INCOME,
+                                            onClick = { vm.onTypeChange(TransactionType.INCOME) },
+                                            label = { Text("Revenu") },
+                                            modifier = Modifier.testTag("category.edit.type.income")
+                                        )
+                                    }
                                 }
                             }
 
-                            // Catégorie parente
-                            Column {
-                                Text("Catégorie parente (Optionnel)", style = MaterialTheme.typography.labelMedium)
-                                Spacer(Modifier.height(8.dp))
-                                val parentName = state.availableParents.find { it.id == state.parentCategoryId }?.name ?: "Aucune"
-                                Surface(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickableNoRipple { showParentSheet = true }
-                                        .testTag("category.edit.parent.selector"),
-                                    shape = MaterialTheme.shapes.small,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
-                                    color = Color.Transparent
-                                ) {
-                                    Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                        Text(parentName)
-                                        Icon(Icons.Default.ChevronRight, null)
+                            // CA-09 / I-4 : une catégorie qui a déjà des sous-catégories ne peut
+                            // pas devenir elle-même une sous-catégorie.
+                            if (!state.hasChildren) {
+                                Column {
+                                    Text("Catégorie parente (Optionnel)", style = MaterialTheme.typography.labelMedium)
+                                    Spacer(Modifier.height(8.dp))
+                                    val parentName = state.availableParents.find { it.id == state.parentCategoryId }?.name ?: "Aucune"
+                                    Surface(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickableNoRipple { showParentSheet = true }
+                                            .testTag("category.edit.parent.selector"),
+                                        shape = MaterialTheme.shapes.small,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                                        color = Color.Transparent
+                                    ) {
+                                        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                            Text(parentName)
+                                            Icon(Icons.Default.ChevronRight, null)
+                                        }
                                     }
                                 }
                             }
@@ -177,7 +207,8 @@ fun CategoryCreateScreen(
 
                     if (state.isEdit) {
                         Button(
-                            onClick = { vm.delete(onBack) },
+                            // E-2 : la suppression passe par une confirmation, comme CA-06 l'exige.
+                            onClick = { showDeleteConfirm = true },
                             modifier = Modifier.fillMaxWidth().height(56.dp).testTag(TestTags.CAT_BTN_DELETE),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer),
                             shape = MaterialTheme.shapes.medium
@@ -191,34 +222,4 @@ fun CategoryCreateScreen(
             }
         }
     }
-}
-
-/**
- * Choix de la catégorie parente : liste plate, une seule retenue, plus une option « aucune » qui
- * fait de la catégorie une racine.
- *
- * Distinct de `CategoryBottomSheet`, qui sert à choisir la catégorie d'une **transaction** et porte
- * pour cela une recherche et une navigation parent → enfants. Ici on choisit précisément un parent :
- * un niveau, pas d'arborescence. C'est donc [PickerBottomSheet] qui le rend.
- */
-@Composable
-fun CategoryParentBottomSheet(
-    categories: List<CategoryEntity>,
-    selectedId: Long?,
-    onSelect: (Long?) -> Unit,
-    onDismiss: () -> Unit
-) {
-    PickerBottomSheet(
-        title = "Catégorie parente",
-        items = categories,
-        isSelected = { it.id == selectedId },
-        allowNone = true,
-        noneLabel = "Aucune (Catégorie principale)",
-        isNoneSelected = { selectedId == null },
-        onSelect = { category -> onSelect(category?.id) },
-        onDismiss = onDismiss,
-        itemLabel = { it.name },
-        itemIcon = { IconMapper.get(it.icon) },
-        itemTint = { Color(it.colorArgb) },
-    )
 }

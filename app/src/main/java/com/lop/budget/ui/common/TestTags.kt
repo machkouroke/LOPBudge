@@ -86,6 +86,7 @@ object TestTags {
     const val PICKER_DATE = "picker.date"
     const val PICKER_ACCOUNT_SHEET = "picker.account.sheet"
     const val PICKER_CATEGORY_SHEET = "picker.category.sheet"
+    const val PICKER_CATEGORY_NONE = "picker.category.none"
 
     // Transaction Edit
     const val TX_EDIT_FIELD_AMOUNT = "transaction.edit.field.amount"

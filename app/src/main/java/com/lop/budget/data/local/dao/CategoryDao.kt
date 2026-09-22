@@ -12,6 +12,8 @@ interface CategoryOperations {
     suspend fun getById(id: Long): CategoryEntity?
     suspend fun upsert(category: CategoryEntity): Long
     suspend fun delete(id: Long)
+    suspend fun countChildren(parentId: Long): Int
+    suspend fun deleteChildren(parentId: Long)
 }
 
 @Dao
@@ -29,6 +31,12 @@ interface CategoryDao : CategoryOperations {
     override fun observeByType(type: String): Flow<List<CategoryEntity>>
 
     @Upsert override suspend fun upsert(category: CategoryEntity): Long
+
+    @Query("SELECT COUNT(*) FROM categories WHERE parentCategoryId = :parentId")
+    override suspend fun countChildren(parentId: Long): Int
+
+    @Query("DELETE FROM categories WHERE parentCategoryId = :parentId")
+    override suspend fun deleteChildren(parentId: Long)
 
     @Query("DELETE FROM categories WHERE id = :id") override suspend fun delete(id: Long)
 

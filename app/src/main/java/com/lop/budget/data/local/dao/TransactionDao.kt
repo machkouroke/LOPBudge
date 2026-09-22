@@ -43,6 +43,8 @@ interface TransactionOperations {
     suspend fun getSumForLoan(loanId: Long): Long
     suspend fun softDeleteTransactionsBySeries(seriesId: Long)
     suspend fun softDeleteTransactionsBySeriesFrom(seriesId: Long, fromDate: Long)
+    suspend fun countTransactionsByCategory(categoryId: Long): Int
+    suspend fun reassignTransactionsCategoryTree(categoryId: Long, newCategoryId: Long)
 
     fun observeForMerge(start: Long, end: Long): Flow<List<TransactionWithRelations>>
 }
@@ -315,6 +317,31 @@ interface TransactionDao : TransactionOperations {
     """
     )
     override suspend fun softDeleteTransactionsBySeriesFrom(seriesId: Long, fromDate: Long)
+
+    // La catégorie **et ses sous-catégories** : supprimer une parente emporte ses filles (P-12),
+    // donc ce que la confirmation doit annoncer inclut ce qui est rattaché aux filles.
+    @Query(
+        """
+        SELECT COUNT(*) FROM transactions
+        WHERE deleted = 0
+          AND (categoryId = :categoryId
+               OR categoryId IN (SELECT id FROM categories WHERE parentCategoryId = :categoryId))
+    """
+    )
+    override suspend fun countTransactionsByCategory(categoryId: Long): Int
+
+    // La réaffectation ne filtre pas sur `deleted`, contrairement au comptage : une ligne
+    // supprimée ne rend pas la catégorie « utilisée », mais garderait un categoryId orphelin
+    // si on la laissait de côté — il n'y a pas de clé étrangère vers `categories`.
+    @Query(
+        """
+        UPDATE transactions
+        SET categoryId = :newCategoryId
+        WHERE categoryId = :categoryId
+           OR categoryId IN (SELECT id FROM categories WHERE parentCategoryId = :categoryId)
+    """
+    )
+    override suspend fun reassignTransactionsCategoryTree(categoryId: Long, newCategoryId: Long)
 
     @Query(
         """

@@ -27,6 +27,8 @@ interface RecurringSeriesOperations {
     suspend fun saveSeriesWithTags(series: RecurringSeriesEntity, tagIds: List<Long>): Long
     suspend fun getTagsForSeries(seriesId: Long): List<TagEntity>
     fun observeAllSeriesTags(): Flow<List<SeriesTag>>
+    suspend fun countSeriesByCategory(categoryId: Long): Int
+    suspend fun reassignSeriesCategoryTree(categoryId: Long, newCategoryId: Long)
 }
 
 @Dao
@@ -88,6 +90,28 @@ interface RecurringSeriesDao : RecurringSeriesOperations {
         tagIds.forEach { addSeriesTagCrossRef(SeriesTagCrossRef(finalId, it)) }
         return finalId
     }
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM recurring_series
+        WHERE isCancelled = 0
+          AND (categoryId = :categoryId
+               OR categoryId IN (SELECT id FROM categories WHERE parentCategoryId = :categoryId))
+    """
+    )
+    override suspend fun countSeriesByCategory(categoryId: Long): Int
+
+    // Même asymétrie que côté transactions : une série annulée ne compte pas comme un usage,
+    // mais son categoryId est réaffecté pour ne pas rester orphelin.
+    @Query(
+        """
+        UPDATE recurring_series
+        SET categoryId = :newCategoryId
+        WHERE categoryId = :categoryId
+           OR categoryId IN (SELECT id FROM categories WHERE parentCategoryId = :categoryId)
+    """
+    )
+    override suspend fun reassignSeriesCategoryTree(categoryId: Long, newCategoryId: Long)
 
     @Query("DELETE FROM recurring_series") fun deleteAll()
 }

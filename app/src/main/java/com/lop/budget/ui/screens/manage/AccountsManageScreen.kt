@@ -16,15 +16,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Unarchive
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
+import com.lop.budget.ui.components.ConfirmDeleteSheet
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.clickableNoRipple
@@ -56,32 +54,17 @@ fun AccountsManageScreen(
     val state by vm.uiState.collectAsStateWithLifecycle()
     var accountToDelete by remember { mutableStateOf<AccountEntity?>(null) }
 
-    if (accountToDelete != null) {
-        AlertDialog(
-            onDismissRequest = { accountToDelete = null },
-            modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_DIALOG),
-            title = { Text("Supprimer le compte ?") },
-            text = { Text("Cette action est irréversible. Toutes les transactions liées seront orphelines.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        vm.deleteAccount(accountToDelete!!.id)
-                        accountToDelete = null
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_SUBMIT)
-                ) {
-                    Text("Supprimer")
-                }
+    accountToDelete?.let { account ->
+        ConfirmDeleteSheet(
+            title = "Supprimer le compte ?",
+            message = "Cette action est irréversible. Toutes les transactions liées seront orphelines.",
+            confirmLabel = "Supprimer",
+            onDismiss = { accountToDelete = null },
+            onConfirm = {
+                vm.deleteAccount(account.id)
+                accountToDelete = null
             },
-            dismissButton = {
-                TextButton(
-                    onClick = { accountToDelete = null },
-                    modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_CANCEL)
-                ) {
-                    Text("Annuler")
-                }
-            }
+            modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_DIALOG),
         )
     }
 

@@ -27,8 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.lop.budget.ui.common.TestTags
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,6 +97,7 @@ fun ConfirmDeleteSheet(
                 title = confirmLabel,
                 tone = ActionTone.Danger,
                 onClick = onConfirm,
+                modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_SUBMIT),
             )
 
             Spacer(Modifier.height(4.dp))
@@ -104,6 +107,7 @@ fun ConfirmDeleteSheet(
                 title = "Annuler",
                 tone = ActionTone.Neutral,
                 onClick = onDismiss,
+                modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_CANCEL),
             )
 
             Spacer(Modifier.height(18.dp))
@@ -112,12 +116,45 @@ fun ConfirmDeleteSheet(
 }
 
 
+/**
+ * Confirmation de suppression d'une catégorie (LOP-19, CA-06, CA-07, CA-15).
+ *
+ * L'écran de gestion et le formulaire ouvrent **ce** popup, pas deux popups qui se ressemblent :
+ * le message énonce exactement ce que la confirmation va écrire, et rien ne l'écrit deux fois.
+ */
+@Composable
+fun CategoryDeleteConfirmSheet(
+    categoryName: String,
+    isUsed: Boolean,
+    hasChildren: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    ConfirmDeleteSheet(
+        title = "Supprimer la catégorie ?",
+        message = buildString {
+            append("La catégorie \"$categoryName\" sera définitivement supprimée")
+            if (hasChildren) append(", ainsi que ses sous-catégories")
+            append(".")
+            if (isUsed) {
+                append(" Les transactions et les séries récurrentes concernées afficheront ")
+                append("\"Sans catégorie\" ; aucune n'est supprimée.")
+            }
+        },
+        confirmLabel = "Supprimer",
+        onDismiss = onDismiss,
+        onConfirm = onConfirm,
+        modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_DIALOG),
+    )
+}
+
 @Composable
 private fun ActionRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector?,
     title: String,
     tone: ActionTone,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(22.dp)
     val border = when (tone) {
@@ -130,7 +167,7 @@ private fun ActionRow(
 
         border = BorderStroke(1.dp, border),
 
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(

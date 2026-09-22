@@ -31,6 +31,7 @@ import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
+import com.lop.budget.ui.components.ConfirmDeleteSheet
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -68,26 +69,16 @@ fun AccountEditScreen(
     }
 
     if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Supprimer le compte ?") },
-            text = { Text("Toutes les transactions liées à ce compte seront orphelines. Cette action est irréversible.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        vm.deleteAccount(onBack)
-                        showDeleteDialog = false
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Supprimer")
-                }
+        ConfirmDeleteSheet(
+            title = "Supprimer le compte ?",
+            message = "Toutes les transactions liées à ce compte seront orphelines. Cette action est irréversible.",
+            confirmLabel = "Supprimer",
+            onDismiss = { showDeleteDialog = false },
+            onConfirm = {
+                showDeleteDialog = false
+                vm.deleteAccount(onBack)
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Annuler")
-                }
-            }
+            modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_DIALOG),
         )
     }
 

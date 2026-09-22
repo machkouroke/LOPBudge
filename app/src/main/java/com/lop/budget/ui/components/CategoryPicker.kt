@@ -48,6 +48,13 @@ fun CategoryBottomSheet(
     onSelect: (Long) -> Unit,
     onCreate: (() -> Unit)? = null,
     onDismiss: () -> Unit,
+    /**
+     * Ligne « aucune » en tête de liste, pour les champs où ne rien choisir est un choix —
+     * le champ catégorie parente du formulaire de catégorie (LOP-19, CA-11), qui réutilise ce
+     * modal plutôt que d'en ouvrir un second.
+     */
+    onSelectNone: (() -> Unit)? = null,
+    noneLabel: String = "Aucune",
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var currentParent by remember { mutableStateOf<CategoryEntity?>(null) }
@@ -117,6 +124,13 @@ fun CategoryBottomSheet(
                     onSelect(currentParent!!.id)
                 }
                 SectionLabel("Sous-catégories")
+            }
+            if (!isSearching && currentParent == null && onSelectNone != null) {
+                NoneRow(
+                    label = noneLabel,
+                    isSelected = selectedId == null,
+                    onClick = onSelectNone,
+                )
             }
             if (!isSearching && currentParent == null && recents.isNotEmpty()) {
                 SectionLabel("Récente")
@@ -314,6 +328,35 @@ private fun AddCategoryTile(
                 color = color,
                 fontWeight = FontWeight.SemiBold,
             )
+        }
+    }
+}
+
+@Composable
+private fun NoneRow(label: String, isSelected: Boolean, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pressScaleClickable(intent = HapticIntent.Selection, onClick = onClick)
+            .testTag(TestTags.PICKER_CATEGORY_NONE),
+        shape = RoundedCornerShape(16.dp),
+        color = if (isSelected) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        },
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.primary.copy(alpha = if (isSelected) 0.4f else 0.15f),
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.Close, contentDescription = null)
+            Spacer(Modifier.width(12.dp))
+            Text(label, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
