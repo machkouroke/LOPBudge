@@ -102,8 +102,6 @@ fun TagsManageScreen(
                 onDelete = { tagToDelete = tag }
             )
         }
-        
-        item { Spacer(Modifier.height(100.dp)) }
     }
 
     if (editingTag != null) {

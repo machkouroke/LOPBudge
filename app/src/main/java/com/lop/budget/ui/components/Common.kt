@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -52,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -250,14 +254,24 @@ fun LopScreenScaffold(
                 }
             }
         },
-        bottomBar = bottomBar
+        // La barre du bas se pose au-dessus des barres système, jamais dessous : sans ça le
+        // bouton qu'elle porte chevauche la barre de navigation.
+        bottomBar = { Box(Modifier.navigationBarsPadding()) { bottomBar() } }
     ) { padding ->
+        val layoutDirection = LocalLayoutDirection.current
         LazyColumn(
             state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(20.dp),
+            modifier = Modifier.fillMaxSize(),
+            // Les marges du Scaffold sont portées par le contenu, pas par la liste : celle-ci
+            // occupe tout l'écran et **défile sous** les barres, qui restent donc transparentes.
+            // Posées sur le `Modifier`, elles découpaient une bande opaque autour de la barre du
+            // bas, dans laquelle rien ne pouvait défiler.
+            contentPadding = PaddingValues(
+                start = padding.calculateStartPadding(layoutDirection) + 20.dp,
+                end = padding.calculateEndPadding(layoutDirection) + 20.dp,
+                top = padding.calculateTopPadding() + 20.dp,
+                bottom = padding.calculateBottomPadding() + 20.dp,
+            ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             content()
