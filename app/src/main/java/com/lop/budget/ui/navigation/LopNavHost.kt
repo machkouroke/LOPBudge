@@ -74,7 +74,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LopNavHost(startRoute: String? = null) {
+fun LopNavHost() {
     val navController = rememberNavController()
     val hazeState = rememberHazeState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -96,17 +96,6 @@ fun LopNavHost(startRoute: String? = null) {
     val showBar =
         (currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts")
 
-    // deep link simple depuis notification
-    LaunchedEffect(startRoute, navController) {
-        if (!startRoute.isNullOrBlank()) {
-            snapshotFlow { navController.graph }.distinctUntilChanged().collect {
-                if (navController.currentDestination == null) {
-                    navController.navigate(startRoute) { launchSingleTop = true }
-                }
-            }
-        }
-    }
-
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -124,7 +113,7 @@ fun LopNavHost(startRoute: String? = null) {
             ) {
                 NavHost(
                     navController = navController,
-                    startDestination = startRoute ?: Routes.HOME,
+                    startDestination = Routes.HOME,
                     modifier = Modifier
                         .fillMaxSize()
                         .statusBarsPadding(),
@@ -162,7 +151,14 @@ fun LopNavHost(startRoute: String? = null) {
                             )
                     }
 
-                    composableAnimated(Routes.DETECTED, NavAnimationType.MAIN) {
+                    composableAnimated(
+                        Routes.DETECTED,
+                        NavAnimationType.MAIN,
+                        // LOP-172 / CA-05 : point d'entrée de la notification de détection.
+                        deepLinks = listOf(
+                            navDeepLink { uriPattern = Routes.deepLinkPattern(Routes.DETECTED) }
+                        )
+                    ) {
                         DetectedTransactionsScreen(
                             onBack = { navController.popBackStack() },
                             onOpenEdit = { proposalId ->

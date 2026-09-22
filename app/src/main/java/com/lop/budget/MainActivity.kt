@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
                             testTagsAsResourceId = true
                         }
                 ) {
-                    LopNavHost(startRoute = intent.getStringExtra("route"))
+                    LopNavHost()
                 }
             }
         }

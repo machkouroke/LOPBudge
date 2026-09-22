@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.lop.budget.MainActivity
@@ -36,9 +37,16 @@ class AndroidDetectionNotifier @Inject constructor(
     override fun notifyProposal(proposal: Proposal) {
         ensureChannel()
 
-        val intent = Intent(context, MainActivity::class.java).apply {
+        // LOP-172 : la notification ouvre son écran par une **adresse externe**, seul mécanisme
+        // d'entrée de l'application. L'ancien extra `route` a été retiré : il était redondant avec
+        // la destination de départ du graphe et faisait planter le démarrage (voir ANO-5).
+        val intent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse(Routes.deepLinkPattern(Routes.DETECTED)),
+            context,
+            MainActivity::class.java,
+        ).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("route", Routes.DETECTED)
         }
 
         val pi = PendingIntent.getActivity(
