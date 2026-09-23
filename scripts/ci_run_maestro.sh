@@ -53,12 +53,60 @@ python3 Maestro/scripts/shard_flows.py \
     --write-config /tmp/maestro-shard.yaml
 cat /tmp/maestro-shard.yaml
 
+JUNIT="build/maestro-junit-shard-${SHARD_INDEX}.xml"
+
+run_shard() {
+    maestro test --config /tmp/maestro-shard.yaml Maestro/ \
+        --format junit \
+        --output "$JUNIT" \
+        --test-output-dir build/maestro-results 2>&1 | tee "$1"
+}
+
+# Vrai seulement si CHAQUE echec du shard porte la signature d'une mort du serveur Maestro sur
+# l'emulateur. Constate les 22 et 23 septembre 2026 : le pilote meurt des le premier `deviceInfo`
+# et les trois flows du shard tombent ensemble, sans avoir execute une commande. Un echec
+# d'assertion, lui, ne correspond jamais et n'est donc jamais relance.
+is_infra_failure() {
+    python3 - "$JUNIT" "$1" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+junit, log = sys.argv[1], sys.argv[2]
+signatures = ("DeviceServerDiedException", "StatusRuntimeException: UNAVAILABLE")
+console = open(log, encoding="utf-8", errors="replace").read()
+try:
+    cases = list(ET.parse(junit).getroot().iter("testcase"))
+except (OSError, ET.ParseError):
+    sys.exit(0 if any(s in console for s in signatures) else 1)
+
+failures = [c.find("failure") if c.find("failure") is not None else c.find("error") for c in cases]
+failures = [f for f in failures if f is not None]
+
+
+def is_infra(failure):
+    text = (failure.text or "") + (failure.get("message") or "")
+    if text.strip():
+        return any(s in text for s in signatures)
+    # Sans texte, le rapport affiche « Unknown error » : on s'en remet a la sortie de la console.
+    return any(s in console for s in signatures)
+
+
+sys.exit(0 if failures and all(is_infra(f) for f in failures) else 1)
+PY
+}
+
 # `|| MAESTRO_EXIT=$?` plutot qu'un appel nu : sous `set -e`, un echec de Maestro couperait le
 # script avant l'arret de la passerelle et masquerait le code de sortie reel.
 MAESTRO_EXIT=0
-maestro test --config /tmp/maestro-shard.yaml Maestro/ \
-    --format junit \
-    --output "build/maestro-junit-shard-${SHARD_INDEX}.xml" \
-    --test-output-dir build/maestro-results || MAESTRO_EXIT=$?
+run_shard /tmp/maestro-attempt-1.log || MAESTRO_EXIT=$?
+
+# Maestro Cloud relance d'office les incidents d'infrastructure ; le CLI ne le fait pas. Une seule
+# nouvelle tentative, signalee en avertissement, pour que l'incident reste visible sans rougir la CI.
+if [ "$MAESTRO_EXIT" -ne 0 ] && is_infra_failure /tmp/maestro-attempt-1.log; then
+    echo "::warning::Shard ${SHARD_INDEX} : le serveur Maestro de l'emulateur est mort (DeviceServerDiedException). Shard relance une fois ; un echec de test reel n'est jamais relance."
+    rm -rf build/maestro-results "$JUNIT"
+    MAESTRO_EXIT=0
+    run_shard /tmp/maestro-attempt-2.log || MAESTRO_EXIT=$?
+fi
 
 exit "$MAESTRO_EXIT"
