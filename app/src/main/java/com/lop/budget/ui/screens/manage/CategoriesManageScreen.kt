@@ -1,19 +1,26 @@
 package com.lop.budget.ui.screens.manage
 
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -27,6 +34,7 @@ import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.motion.MotionSpec
 import com.lop.budget.util.IconMapper
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,97 +132,142 @@ fun CategoryExpandableRow(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val cat = catWithSubs.category
-    val color = Color(cat.colorArgb)
+    val hasSubs = catWithSubs.subCategories.isNotEmpty()
+    // Deux gestes, deux signes : la flèche vers le bas qui pivote déplie la liste, le crayon ouvre
+    // le formulaire. La même flèche pour les deux laissait deviner lequel faisait quoi.
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = MotionSpec.mediumTween(),
+        label = "categoryExpandChevron",
+    )
 
     Column {
-        FloatingCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickableNoRipple { 
-                    if (catWithSubs.subCategories.isNotEmpty()) expanded = !expanded
-                    else onEdit(cat.id)
-                }
-                .testTag("${TestTags.CAT_ROW}_${cat.id}"),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        CategoryBlock(
+            category = cat,
+            onClick = { if (hasSubs) expanded = !expanded else onEdit(cat.id) },
+            subtitle = if (hasSubs) "${catWithSubs.subCategories.size} sous-catégories" else null,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircleIcon(
-                    icon = IconMapper.get(cat.icon),
-                    tint = color,
-                    background = color.copy(alpha = 0.15f)
+            if (hasSubs) {
+                IconButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.testTag("${TestTags.CAT_EXPAND}_${cat.id}")
+                ) {
+                    Icon(
+                        Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) {
+                            "Masquer les sous-catégories de ${cat.name}"
+                        } else {
+                            "Afficher les sous-catégories de ${cat.name}"
+                        },
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.rotate(chevronRotation),
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = { onDelete(cat) },
+                modifier = Modifier.testTag("category.delete.${cat.id}")
+            ) {
+                Icon(
+                    Icons.Default.DeleteOutline,
+                    contentDescription = "Supprimer ${cat.name}",
+                    tint = MaterialTheme.colorScheme.error
                 )
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(cat.name, style = MaterialTheme.typography.titleMedium)
-                    if (catWithSubs.subCategories.isNotEmpty()) {
-                        Text(
-                            "${catWithSubs.subCategories.size} sous-catégories",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+            }
 
-                if (catWithSubs.subCategories.isNotEmpty()) {
-                    IconButton(
-                        onClick = { expanded = !expanded },
-                        modifier = Modifier.testTag("${TestTags.CAT_EXPAND}_${cat.id}")
+            EditCategoryButton(cat, onEdit)
+        }
+
+        // La liste se déroule depuis la carte au lieu d'apparaître d'un bloc : même ressort que les
+        // feuilles de l'application, sans rebond à la fermeture.
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(MotionSpec.sheetEnterSpring(), expandFrom = Alignment.Top) +
+                fadeIn(MotionSpec.mediumTween()),
+            exit = shrinkVertically(MotionSpec.sheetExitSpring(), shrinkTowards = Alignment.Top) +
+                fadeOut(MotionSpec.fastTween()),
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 14.dp).padding(top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                catWithSubs.subCategories.forEach { sub ->
+                    CategoryBlock(
+                        category = sub,
+                        onClick = { onEdit(sub.id) },
+                        // FloatingCard fixe lui-même l'opacité de la bordure : on adoucit donc la teinte, pas l'alpha.
+                        borderColor = lerp(Color(cat.colorArgb), MaterialTheme.colorScheme.surface, 0.5f),
+                        compact = true,
                     ) {
-                        Icon(
-                            if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
-                            null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        EditCategoryButton(sub, onEdit)
                     }
                 }
+            }
+        }
+    }
+}
 
-                IconButton(
-                    onClick = { onDelete(cat) },
-                    modifier = Modifier.testTag("category.delete.${cat.id}")
-                ) {
-                    Icon(
-                        Icons.Default.DeleteOutline,
-                        contentDescription = "Supprimer ${cat.name}",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-
-                IconButton(
-                    onClick = { onEdit(cat.id) },
-                    modifier = Modifier.testTag("category.edit.${cat.id}")
-                ) {
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+/**
+ * Le bloc d'une catégorie, commun aux principales et à leurs sous-catégories : même carte, même
+ * pastille, mêmes actions à droite. Une sous-catégorie s'en distingue par un bloc plus compact,
+ * plus étroit et centré sous sa principale, bordé d'une teinte adoucie de la couleur de celle-ci.
+ */
+@Composable
+private fun CategoryBlock(
+    category: CategoryEntity,
+    onClick: () -> Unit,
+    borderColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+    compact: Boolean = false,
+    subtitle: String? = null,
+    actions: @Composable RowScope.() -> Unit,
+) {
+    val color = Color(category.colorArgb)
+    FloatingCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickableNoRipple(onClick)
+            .testTag("${TestTags.CAT_ROW}_${category.id}"),
+        color = borderColor,
+        cornerRadius = if (compact) 22.dp else 28.dp,
+        contentPadding = if (compact) PaddingValues(horizontal = 18.dp, vertical = 8.dp) else PaddingValues(18.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircleIcon(
+                icon = IconMapper.get(category.icon),
+                tint = color,
+                background = color.copy(alpha = 0.15f),
+                size = if (compact) 36.dp else 44.dp,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    category.name,
+                    style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
+                )
+                if (subtitle != null) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+            actions()
         }
+    }
+}
 
-        if (expanded) {
-            catWithSubs.subCategories.forEach { sub ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 32.dp, top = 8.dp)
-                        .clickable { onEdit(sub.id) }
-                        .testTag("${TestTags.CAT_ROW}_${sub.id}"),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val subColor = Color(sub.colorArgb)
-                    CircleIcon(
-                        icon = IconMapper.get(sub.icon),
-                        tint = subColor,
-                        background = subColor.copy(alpha = 0.15f),
-                        size = 32.dp
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(sub.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-        }
+@Composable
+private fun EditCategoryButton(category: CategoryEntity, onEdit: (Long) -> Unit) {
+    IconButton(
+        onClick = { onEdit(category.id) },
+        modifier = Modifier.testTag("category.edit.${category.id}")
+    ) {
+        Icon(
+            Icons.Outlined.Edit,
+            contentDescription = "Modifier ${category.name}",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
