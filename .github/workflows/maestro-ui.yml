@@ -70,6 +70,20 @@ jobs:
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
 
+      # L'action telecharge l'emulateur et l'image systeme sans jamais reessayer. Le 23 septembre
+      # 2026, une archive tronquee (« Error on ZipFile unknown archive ») a tue le shard 4 avant
+      # le demarrage de l'emulateur. Preinstalles ici avec relance, ils sont deja a jour quand
+      # l'action lance son propre `sdkmanager`, qui ne retelecharge alors rien.
+      - name: Preinstall emulator and system image
+        run: |
+          for attempt in 1 2 3; do
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator 'system-images;android-36;google_apis;x86_64' > /dev/null && exit 0
+            echo "::warning::sdkmanager : tentative $attempt en echec, nouvel essai"
+            rm -rf "$ANDROID_HOME/.downloadIntermediates" "$ANDROID_HOME/.temp"
+            sleep 15
+          done
+          exit 1
+
       - name: Run Maestro Tests
         uses: reactivecircus/android-emulator-runner@v2
         env:
@@ -148,6 +162,17 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      # Meme raison que dans le job `maestro` : telechargement du SDK relance en cas d'archive tronquee.
+      - name: Preinstall emulator and system image
+        run: |
+          for attempt in 1 2 3; do
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator 'system-images;android-36;google_apis;x86_64' > /dev/null && exit 0
+            echo "::warning::sdkmanager : tentative $attempt en echec, nouvel essai"
+            rm -rf "$ANDROID_HOME/.downloadIntermediates" "$ANDROID_HOME/.temp"
+            sleep 15
+          done
+          exit 1
 
       - name: Run Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
