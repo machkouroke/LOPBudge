@@ -64,14 +64,15 @@ run_shard() {
 
 # Vrai seulement si CHAQUE echec du shard porte la signature d'une mort du serveur Maestro sur
 # l'emulateur. Constate les 22 et 23 septembre 2026 : le pilote meurt des le premier `deviceInfo`
-# et les trois flows du shard tombent ensemble, sans avoir execute une commande. Un echec
-# d'assertion, lui, ne correspond jamais et n'est donc jamais relance.
+# et les flows du shard tombent, sans avoir execute une commande. Un echec d'assertion, lui, ne
+# correspond jamais et n'est donc jamais relance.
 is_infra_failure() {
-    python3 - "$JUNIT" "$1" <<'PY'
+    python3 - "$JUNIT" "$1" build/maestro-results <<'PY'
 import sys
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
-junit, log = sys.argv[1], sys.argv[2]
+junit, log, results = sys.argv[1], sys.argv[2], sys.argv[3]
 signatures = ("DeviceServerDiedException", "StatusRuntimeException: UNAVAILABLE")
 console = open(log, encoding="utf-8", errors="replace").read()
 try:
@@ -79,19 +80,33 @@ try:
 except (OSError, ET.ParseError):
     sys.exit(0 if any(s in console for s in signatures) else 1)
 
-failures = [c.find("failure") if c.find("failure") is not None else c.find("error") for c in cases]
-failures = [f for f in failures if f is not None]
+
+def key(name):
+    # Maestro remplace « : » par « _ » dans le dossier d'un flow : on normalise les deux cotes.
+    return "".join(c if c.isalnum() else "_" for c in name)
 
 
-def is_infra(failure):
+# Le JUnit ne porte que « Unknown error » et la console ne montre que « [Failed] » : la trace de la
+# mort n'est que dans le maestro.log du flow (constate sur le shard 5 du run 35895348604).
+died = {
+    key(p.parent.parent.name)
+    for p in Path(results).glob("*/*/logs/maestro.log")
+    if any(s in p.read_text(encoding="utf-8", errors="replace") for s in signatures)
+}
+
+
+def failure_of(case):
+    return case.find("failure") if case.find("failure") is not None else case.find("error")
+
+
+def is_infra(case):
+    failure = failure_of(case)
     text = (failure.text or "") + (failure.get("message") or "")
-    if text.strip():
-        return any(s in text for s in signatures)
-    # Sans texte, le rapport affiche « Unknown error » : on s'en remet a la sortie de la console.
-    return any(s in console for s in signatures)
+    return any(s in text for s in signatures) or key(case.get("name", "")) in died
 
 
-sys.exit(0 if failures and all(is_infra(f) for f in failures) else 1)
+failed = [c for c in cases if failure_of(c) is not None]
+sys.exit(0 if failed and all(is_infra(c) for c in failed) else 1)
 PY
 }
 
