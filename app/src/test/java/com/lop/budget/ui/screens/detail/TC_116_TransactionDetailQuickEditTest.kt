@@ -15,6 +15,7 @@ import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
 import com.lop.budget.domain.usecase.transaction.CancelRecurringSeriesUseCase
 import com.lop.budget.domain.usecase.transaction.EditOutcome
 import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
@@ -29,6 +30,8 @@ import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,8 +50,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.time.LocalDate
-import java.time.ZoneId
 
 /**
  * TC-116 — Détail de transaction : modifications rapides, annulation, verrou de sauvegarde.
@@ -193,7 +194,7 @@ class TransactionDetailQuickEditTest {
             observeTransactionDetailUseCase = observeTransactionDetailUseCase,
             observeTransactionsUseCase = observeTransactionsUseCase,
             accountRepo = accountRepo,
-            categoryRepo = categoryRepo,
+            observeCategories = ObserveCategoriesUseCase(categoryRepo),
         )
         actionVm = TransactionActionViewModel(
             transactionRepo = transactionRepo,
@@ -583,7 +584,7 @@ class TransactionDetailQuickEditTest {
                 observeTransactionDetailUseCase = observeTransactionDetailUseCase,
                 observeTransactionsUseCase = observeTransactionsUseCase,
                 accountRepo = accountRepo,
-                categoryRepo = categoryRepo,
+                observeCategories = ObserveCategoriesUseCase(categoryRepo),
             )
             backgroundScope.launch { dueVm.uiState.collect { } }
             dueVm.load(txDueId)

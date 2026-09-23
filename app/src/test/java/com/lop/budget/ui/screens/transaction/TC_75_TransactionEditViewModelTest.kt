@@ -9,8 +9,8 @@ import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
-import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.GoalRepository
+import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
@@ -20,6 +20,7 @@ import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
 import com.lop.budget.domain.usecase.detection.ProposalRepository
 import com.lop.budget.domain.usecase.tag.CreateTagUseCase
 import com.lop.budget.domain.usecase.tag.DeleteTagUseCase
@@ -36,6 +37,7 @@ import io.mockk.every
 import io.mockk.excludeRecords
 import io.mockk.mockk
 import io.mockk.slot
+import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -50,7 +52,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TransactionEditViewModelTest {
@@ -132,7 +133,7 @@ class TransactionEditViewModelTest {
         if (type != null) map["type"] = type.name
         
         return TransactionEditViewModel(
-            accountRepo, categoryRepo, transactionRepo,
+            accountRepo, ObserveCategoriesUseCase(categoryRepo), transactionRepo,
             observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
             observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,

@@ -5,15 +5,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
-import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.BreakdownEngine
 import com.lop.budget.domain.CategoryBreakdown
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
 import com.lop.budget.domain.usecase.transaction.SearchTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
+import java.time.YearMonth
+import java.time.ZoneId
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -27,10 +31,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import java.time.Instant
-import java.time.YearMonth
-import java.time.ZoneId
-import javax.inject.Inject
 
 enum class PaidFilter { ALL, PAID, PLANNED }
 enum class InsightMode { CATEGORY, TAG }
@@ -61,7 +61,7 @@ data class MonthlyTransactionsUiState(
 class MonthlyTransactionsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     accountRepo: AccountRepository,
-    categoryRepo: CategoryRepository,
+    observeCategories: ObserveCategoriesUseCase,
     private val searchTransactionsUseCase: SearchTransactionsUseCase,
     settings: SettingsRepository,
 ) : ViewModel() {
@@ -191,7 +191,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
             selectedAccountId,
             selectedCategoryId,
             accountRepo.observeAll(),
-            categoryRepo.observeAll(),
+            observeCategories(),
             isAnalyticsMode,
         ) { args ->
             val (criteria, filtered) = args[0] as MonthlyResult

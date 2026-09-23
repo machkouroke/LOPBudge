@@ -13,6 +13,7 @@ import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
 import com.lop.budget.domain.usecase.detection.ProposalRepository
 import com.lop.budget.domain.usecase.tag.CreateTagUseCase
 import com.lop.budget.domain.usecase.tag.DeleteTagUseCase
@@ -335,7 +336,7 @@ class TransactionEditDeleteTagSelectionTest {
 
     /** Ajout : le `SavedStateHandle` ne porte jamais la clé `id`, ni la clé `proposalId`. */
     private fun createSutInAdd(): TransactionEditViewModel = TransactionEditViewModel(
-        accountRepo, categoryRepo, transactionRepo,
+        accountRepo, ObserveCategoriesUseCase(categoryRepo), transactionRepo,
         observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
         createTransactionUseCase, editTransactionWithScopeUseCase,
         observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,

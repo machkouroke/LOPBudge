@@ -3,16 +3,16 @@ package com.lop.budget.ui.screens.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.AccountRepository
-import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.DayGroup
+import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
 import com.lop.budget.domain.usecase.transaction.SearchTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
-import javax.inject.Inject
 
 data class SearchUiState(
     val query: String = "",
@@ -32,7 +32,7 @@ data class SearchUiState(
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val accountRepo: AccountRepository,
-    private val categoryRepo: CategoryRepository,
+    private val observeCategories: ObserveCategoriesUseCase,
     private val searchTransactionsUseCase: SearchTransactionsUseCase,
     private val settings: SettingsRepository
 ) : ViewModel() {
@@ -64,7 +64,7 @@ class SearchViewModel @Inject constructor(
         _startDate,
         _endDate,
         accountRepo.observeAll(),
-        categoryRepo.observeAll()
+        observeCategories()
     ) { args ->
         @Suppress("UNCHECKED_CAST")
         val txs = args[0] as List<com.lop.budget.data.local.entity.TransactionWithRelations>

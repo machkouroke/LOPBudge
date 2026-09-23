@@ -6,11 +6,12 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
-import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.domain.model.TransactionStatus
-import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
+import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
+import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,7 +22,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
-import javax.inject.Inject
 
 /**
  * Actions offertes par la page de détail (CA-12, CA-13 de LOP-53).
@@ -51,7 +51,7 @@ class TransactionDetailViewModel @Inject constructor(
     private val observeTransactionDetailUseCase: ObserveTransactionDetailUseCase,
     private val observeTransactionsUseCase: ObserveTransactionsUseCase,
     private val accountRepo: AccountRepository,
-    private val categoryRepo: CategoryRepository,
+    private val observeCategories: ObserveCategoriesUseCase,
 ) : ViewModel() {
 
     private val txId = MutableStateFlow<Long?>(null)
@@ -90,7 +90,7 @@ class TransactionDetailViewModel @Inject constructor(
     val uiState: StateFlow<DetailUiState> =
         combine(
             txFlow,
-            categoryRepo.observeAll(),
+            observeCategories(),
             accountRepo.observeAll(),
             upcomingFlow,
         ) { tx, categories, accounts, upcoming ->

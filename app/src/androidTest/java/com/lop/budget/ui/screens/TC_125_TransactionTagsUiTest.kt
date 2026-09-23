@@ -3,12 +3,15 @@ package com.lop.budget.ui.screens
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isRoot
@@ -20,6 +23,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
 import androidx.test.core.app.ActivityScenario
@@ -42,6 +46,9 @@ import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.navigation.Routes
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
+import java.time.LocalDate
+import java.time.ZoneId
+import javax.inject.Inject
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -50,9 +57,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.time.LocalDate
-import java.time.ZoneId
-import javax.inject.Inject
 
 /**
  * TC-125 — Rendu des tags au détail et survie de la sélection à la rotation (US LOP-3, réf. 3).
@@ -152,6 +156,9 @@ import javax.inject.Inject
  *   `UiDevice.pressBack()`, qui agit au niveau du gestionnaire de fenêtres.
  * - La zone des tags est en bas d'un formulaire défilant : **composée mais hors viewport**, donc un
  *   clic tombe à côté sans erreur explicite. `performScrollTo()` avant toute action.
+ * - Depuis f5ff2bd (22 septembre 2026), la liste défile **sous** la barre du bas : un champ amené
+ *   au bord par `performScrollTo()` reste caché par le bouton Enregistrer, qui reçoit le clic.
+ *   [scrollAboveBottomBar] fait défiler du chevauchement restant avant de toucher.
  * - Un nom de fixture ne doit collisionner avec **aucun libellé de l'application** : « Dépenses »
  *   entrait en conflit avec `R.string.expense`.
  * - Un sélecteur structurel large (`hasClickAction() and hasAnySibling(hasSetTextAction())`)
@@ -409,7 +416,8 @@ class TransactionTagsUiTest {
         composeRule.onNodeWithTag(TestTags.TX_EDIT_FIELD_TITLE).performTextInput("Voyage")
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithTag(TestTags.TX_EDIT_FIELD_TAGS).performScrollTo().performClick()
+        scrollAboveBottomBar(TestTags.TX_EDIT_FIELD_TAGS)
+        composeRule.onNodeWithTag(TestTags.TX_EDIT_FIELD_TAGS).performClick()
         awaitText(
             string(R.string.tx_tags_sheet_title),
             "U-05 — la feuille de tags devait se rouvrir",
@@ -547,11 +555,32 @@ class TransactionTagsUiTest {
 
         // La zone des tags est en bas d'un formulaire défilant : elle est composée mais hors
         // viewport, et un clic y tomberait à côté. Faire défiler explicitement avant d'agir.
-        composeRule.onNodeWithTag(TestTags.TX_EDIT_FIELD_TAGS).performScrollTo().performClick()
+        scrollAboveBottomBar(TestTags.TX_EDIT_FIELD_TAGS)
+        composeRule.onNodeWithTag(TestTags.TX_EDIT_FIELD_TAGS).performClick()
         awaitText(
             string(R.string.tx_tags_sheet_title),
             "$label — la feuille de tags ne s'est pas ouverte",
         )
+    }
+
+    /**
+     * Amène [tag] **au-dessus** de la barre du bas avant de le toucher.
+     *
+     * Depuis f5ff2bd (22 septembre 2026), la liste du formulaire défile sous la barre du bas,
+     * transparente. `performScrollTo()` s'arrête au bord de la liste, donc sous le bouton
+     * Enregistrer : le clic tombait sur lui et la feuille ne s'ouvrait pas. On fait défiler la liste
+     * du chevauchement restant, comme le ferait le doigt. Chemin d'action, jamais un oracle.
+     */
+    private fun scrollAboveBottomBar(tag: String) {
+        composeRule.onNodeWithTag(tag).performScrollTo()
+        val field = composeRule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+        val bar = composeRule.onNodeWithTag(TestTags.BTN_SAVE).fetchSemanticsNode().boundsInRoot
+        val overlap = field.bottom - bar.top
+        if (overlap > 0f) {
+            composeRule.onNode(hasScrollAction() and hasAnyDescendant(hasTestTag(tag)))
+                .performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, overlap) }
+            composeRule.waitForIdle()
+        }
     }
 
     private fun awaitTag(tag: String, failureMessage: String) = awaitCondition(failureMessage) {

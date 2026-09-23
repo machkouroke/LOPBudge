@@ -7,13 +7,12 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
-import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.local.entity.GoalEntity
+import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.repository.AccountRepository
-import com.lop.budget.data.repository.CategoryRepository
-import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.GoalRepository
+import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
@@ -24,6 +23,7 @@ import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.buildEdition
 import com.lop.budget.domain.model.toDaysOfWeekSet
+import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
 import com.lop.budget.domain.usecase.detection.ProposalRepository
 import com.lop.budget.domain.usecase.tag.CreateTagUseCase
 import com.lop.budget.domain.usecase.tag.DeleteTagUseCase
@@ -37,6 +37,7 @@ import com.lop.budget.domain.usecase.transaction.SaveTransactionFromProposalUseC
 import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -46,7 +47,6 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class TransactionForm(
     val type: TransactionType = TransactionType.EXPENSE,
@@ -112,7 +112,7 @@ fun TransactionForm.toEdition(defaultTitle: String): TransactionEdition = Transa
 @HiltViewModel
 class TransactionEditViewModel @Inject constructor(
     private val accountRepo: AccountRepository,
-    private val categoryRepo: CategoryRepository,
+    private val observeCategories: ObserveCategoriesUseCase,
     private val transactionRepo: TransactionRepository,
     observeTagsUseCase: ObserveTagsUseCase,
     private val createTagUseCase: CreateTagUseCase,
@@ -245,7 +245,7 @@ class TransactionEditViewModel @Inject constructor(
             // la transaction restera enregistrable sans compte, et l'utilisateur peut en choisir
             // un comme à l'ajout ordinaire.
             defaultAccountId = prefillAccountId ?: NO_ACCOUNT_ID,
-            defaultCategoryId = categoryRepo.getDefaultExpenseCategoryId(),
+            defaultCategoryId = observeCategories.defaultExpenseCategoryId(),
         )
         _form.value = TransactionForm(
             type = edition.type,
@@ -327,7 +327,7 @@ class TransactionEditViewModel @Inject constructor(
     // ------------------------------------------------------------- Référentiels
 
     val categories: StateFlow<List<CategoryEntity>> = _form.flatMapLatest { f ->
-        categoryRepo.observeByType(f.type.name)
+        observeCategories.observeByType(f.type)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val accounts: StateFlow<List<AccountEntity>> = accountRepo.observeAll()

@@ -16,6 +16,7 @@ import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
 import com.lop.budget.domain.usecase.detection.ProposalRepository
 import com.lop.budget.domain.usecase.tag.CreateTagUseCase
 import com.lop.budget.domain.usecase.tag.DeleteTagUseCase
@@ -31,6 +32,8 @@ import io.mockk.every
 import io.mockk.excludeRecords
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -47,8 +50,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.time.LocalDate
-import java.time.ZoneId
 
 /**
  * TC-123 — Sélection et pré-sélection des tags dans le formulaire transaction (US LOP-3, réf. 3).
@@ -580,7 +581,7 @@ class TransactionTagSelectionTest {
 
     private fun createSut(savedState: Map<String, Any?>): TransactionEditViewModel =
         TransactionEditViewModel(
-            accountRepo, categoryRepo, transactionRepo,
+            accountRepo, ObserveCategoriesUseCase(categoryRepo), transactionRepo,
             observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
             observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,

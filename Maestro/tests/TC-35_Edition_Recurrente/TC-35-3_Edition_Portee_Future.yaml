@@ -1,5 +1,5 @@
 appId: com.lop.budget
-name: "TC-35-3: Portee FUTURE - occurrence ciblee et suivantes, passe intact"
+name: "TC-35-3 - Portee FUTURE - occurrence ciblee et suivantes, passe intact"
 tags:
   - edition
   - recurrence
@@ -28,6 +28,13 @@ tags:
 # Section récurrence VISIBLE et préremplie depuis la série
 - scrollUntilVisible:
     element: { id: "transaction.edit.block.recurrence" }
+# Le champ de fréquence est centré avant l'assertion. Sans centrage, scrollUntilVisible s'arrêtait
+# dès que le bord haut du bloc récurrence entrait à l'écran : Maestro mesure le bloc découpé par le
+# bas de l'écran et le juge visible à 100 %, alors que « Tous les mois » reste dessous. Depuis
+# f5ff2bd la liste défile aussi sous le bouton Enregistrer. Échec intermittent en CI le 22/09/2026.
+- scrollUntilVisible:
+    element: { id: "transaction.edit.field.frequency" }
+    centerElement: true
 - assertVisible: "Tous les mois"
 - tapOn: { id: "transaction.edit.btn.advanced" }
 - scrollUntilVisible:

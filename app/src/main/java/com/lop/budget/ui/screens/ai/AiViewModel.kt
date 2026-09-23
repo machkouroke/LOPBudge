@@ -7,16 +7,17 @@ import com.lop.budget.R
 import com.lop.budget.ai.GeminiClient
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
+import com.lop.budget.domain.model.NO_CATEGORY_LABEL
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class ChatMessage(val fromUser: Boolean, val text: String)
 
@@ -105,7 +106,7 @@ class AiViewModel @Inject constructor(
             .sumOf { it.transaction.amount }
         val planned = txs.filter { it.transaction.status == TransactionStatus.PLANNED }
         val byCat = txs.filter { it.transaction.type == TransactionType.EXPENSE }
-            .groupBy { it.category?.name ?: "Autre" }
+            .groupBy { it.category?.name ?: NO_CATEGORY_LABEL }
             .mapValues { e -> e.value.sumOf { it.transaction.amount } }
             .entries.sortedByDescending { it.value }
             .take(5)

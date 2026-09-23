@@ -37,6 +37,13 @@ class ObserveCategoriesUseCase @Inject constructor(
     /** La catégorie ouverte par le formulaire d'édition, ou `null` si elle n'existe plus. */
     suspend fun getById(categoryId: Long): CategoryEntity? = categoryRepo.getById(categoryId)
 
+    /** Les catégories d'un type, parentes et filles : ce que propose le sélecteur de transaction. */
+    fun observeByType(type: TransactionType): Flow<List<CategoryEntity>> =
+        categoryRepo.observeByType(type.name)
+
+    /** La catégorie de dépense proposée par défaut à la saisie d'une transaction. */
+    suspend fun defaultExpenseCategoryId(): Long = categoryRepo.getDefaultExpenseCategoryId()
+
     /**
      * Les parentes séparées par type, chacune avec ses sous-catégories.
      *

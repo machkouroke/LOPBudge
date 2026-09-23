@@ -20,6 +20,7 @@ import com.lop.budget.data.repository.TagRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
 import com.lop.budget.domain.usecase.detection.ProposalRepository
 import com.lop.budget.domain.usecase.tag.CreateTagUseCase
 import com.lop.budget.domain.usecase.tag.DeleteTagUseCase
@@ -32,6 +33,8 @@ import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.excludeRecords
 import io.mockk.mockk
+import java.util.Locale
+import java.util.concurrent.Executor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -51,8 +54,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.util.Locale
-import java.util.concurrent.Executor
 
 /**
  * TC-124 — Création rapide d'un tag depuis le formulaire transaction (US LOP-3, réf. 3).
@@ -660,7 +661,7 @@ class TransactionTagCreationTest {
     }
 
     private fun createSutInAdd(): TransactionEditViewModel = TransactionEditViewModel(
-        accountRepo, categoryRepo, transactionRepo,
+        accountRepo, ObserveCategoriesUseCase(categoryRepo), transactionRepo,
         observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
         createTransactionUseCase, editTransactionWithScopeUseCase,
         observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,

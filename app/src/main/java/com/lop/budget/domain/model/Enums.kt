@@ -20,6 +20,14 @@ enum class TransactionKind { STANDARD, BALANCE_ADJUSTMENT }
 const val NO_CATEGORY_ID = 0L
 
 /**
+ * Libellé d'une ligne sans catégorie : [NO_CATEGORY_ID], ou catégorie supprimée (LOP-19, CA-07).
+ *
+ * ÉCART (LOP-87, P-8) : libellé en français codé dans le domaine. Il vit ici, une seule fois, pour
+ * que la répartition et le contexte de l'assistant disent la même chose que l'écran de détail.
+ */
+const val NO_CATEGORY_LABEL = "Sans catégorie"
+
+/**
  * Absence de compte sur une transaction. Décision produit du 15 septembre 2026.
  *
  * **Le compte n'est pas obligatoire.** Une transaction peut n'être rattachée à aucun compte : on

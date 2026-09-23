@@ -7,8 +7,8 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
-import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.GoalRepository
+import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
@@ -17,12 +17,13 @@ import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
+import com.lop.budget.domain.usecase.detection.ProposalRepository
 import com.lop.budget.domain.usecase.tag.CreateTagUseCase
 import com.lop.budget.domain.usecase.tag.DeleteTagUseCase
 import com.lop.budget.domain.usecase.tag.ObserveTagsUseCase
 import com.lop.budget.domain.usecase.transaction.CreateTransactionUseCase
 import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
-import com.lop.budget.domain.usecase.detection.ProposalRepository
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
 import com.lop.budget.domain.usecase.transaction.SaveTransactionFromProposalUseCase
 import io.mockk.coEvery
@@ -32,6 +33,9 @@ import io.mockk.every
 import io.mockk.excludeRecords
 import io.mockk.mockk
 import io.mockk.slot
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -53,9 +57,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
 
 /**
  * TC-80 — `TransactionEditViewModel` en **mode ajout uniquement** (`id` absent du
@@ -222,7 +223,7 @@ class TransactionEditViewModelCreateTest {
     /** SUT en **création** : le `SavedStateHandle` ne porte jamais la clé `id`. */
     private fun createSut(type: TransactionType): TransactionEditViewModel =
         TransactionEditViewModel(
-            accountRepo, categoryRepo, transactionRepo,
+            accountRepo, ObserveCategoriesUseCase(categoryRepo), transactionRepo,
             observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
             observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase, settings,

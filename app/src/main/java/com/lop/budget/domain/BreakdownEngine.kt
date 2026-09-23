@@ -1,6 +1,7 @@
 package com.lop.budget.domain
 
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.domain.model.NO_CATEGORY_LABEL
 
 /**
  * Une part d'une répartition : un groupe, son total et son poids relatif.
@@ -33,8 +34,6 @@ data class CategoryBreakdown(
  */
 object BreakdownEngine {
 
-    /** ÉCART (LOP-87, P-8) : libellé de repli en français, codé dans le domaine. */
-    private const val NO_CATEGORY = "Sans catégorie"
     private const val NO_CATEGORY_COLOR = 0xFF9E9E9E.toInt()
 
     fun byCategory(rows: List<TransactionWithRelations>): List<CategoryBreakdown> {
@@ -44,7 +43,7 @@ object BreakdownEngine {
             .map { (category, list) ->
                 val sum = list.sumOf { it.transaction.amount }
                 CategoryBreakdown(
-                    name = category?.name ?: NO_CATEGORY,
+                    name = category?.name ?: NO_CATEGORY_LABEL,
                     colorArgb = category?.colorArgb ?: NO_CATEGORY_COLOR,
                     total = sum,
                     share = share(sum, total),
