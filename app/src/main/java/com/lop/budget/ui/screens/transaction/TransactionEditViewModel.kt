@@ -132,9 +132,6 @@ class TransactionEditViewModel @Inject constructor(
     private val _form = MutableStateFlow(TransactionForm())
     val form: StateFlow<TransactionForm> = _form.asStateFlow()
 
-    private val _showBalanceImpactAlert = MutableStateFlow(false)
-    val showBalanceImpactAlert = _showBalanceImpactAlert.asStateFlow()
-
     private val _isSaving = MutableStateFlow(false)
     val isSaving = _isSaving.asStateFlow()
 
@@ -478,7 +475,7 @@ class TransactionEditViewModel @Inject constructor(
      *
      * Le drapeau est levé **synchroniquement**, avant tout `launch` : sans cela, deux appuis
      * rapides successifs lisent tous deux un `_isSaving` encore à `false` et produisent deux
-     * écritures. Le verrou appartient à l'appelant ([save] / [confirmSave]), qui le relâche
+     * écritures. Le verrou appartient à l'appelant ([save]), qui le relâche
      * dans son `finally` ; [performSave] n'y touche pas.
      */
     private fun tryAcquireSaveLock(): Boolean =
@@ -509,16 +506,10 @@ class TransactionEditViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                // Sans compte rattaché, aucun solde de référence n'est impacté : l'alerte n'a pas
-                // d'objet et la sauvegarde suit son cours.
-                val account = f.accountId?.let { accountRepo.getById(it) }
-                if (account != null && f.status == TransactionStatus.PAID && f.date < account.balanceUpdatedAt) {
-                    // L'écriture attend la décision de l'utilisateur : le verrou est relâché
-                    // par le `finally`, sinon l'écran resterait bloqué en « sauvegarde en cours ».
-                    _showBalanceImpactAlert.value = true
-                } else {
-                    performSave(onDone)
-                }
+                // Aucune alerte « Impact sur le solde » (LOP-20, P-8) : la dernière correction de
+                // solde n'est plus une borne de calcul (P-3), toute transaction payée compte au solde
+                // quelle que soit sa date, et cette date n'est jamais saisie par l'utilisateur (I-4).
+                performSave(onDone)
             } catch (e: CancellationException) {
                 // L'annulation du viewModelScope n'est pas un échec de sauvegarde.
                 throw e
@@ -531,33 +522,7 @@ class TransactionEditViewModel @Inject constructor(
         }
     }
 
-    fun confirmSave(accountNow: Boolean, onDone: (Long) -> Unit) {
-        _showBalanceImpactAlert.value = false
-        if (!tryAcquireSaveLock()) return
-        viewModelScope.launch {
-            try {
-                if (accountNow) {
-                    val f = _form.value
-                    f.accountId?.let { accountRepo.getById(it) }?.let {
-                        accountRepo.upsert(it.copy(balanceUpdatedAt = f.date))
-                    }
-                }
-                performSave(onDone)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                _saveError.value = R.string.tx_error_save_failed
-            } finally {
-                _isSaving.value = false
-            }
-        }
-    }
-
-    fun dismissAlert() {
-        _showBalanceImpactAlert.value = false
-    }
-
-    /** Le cycle de vie de `_isSaving` appartient à [save] / [confirmSave] (voir [tryAcquireSaveLock]). */
+    /** Le cycle de vie de `_isSaving` appartient à [save] (voir [tryAcquireSaveLock]). */
     private suspend fun performSave(onDone: (Long) -> Unit) {
         val f = _form.value
         if (f.categoryId == null) return

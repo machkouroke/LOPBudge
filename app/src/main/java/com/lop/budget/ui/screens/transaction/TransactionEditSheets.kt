@@ -337,32 +337,3 @@ private fun TagChipFlow(
         }
     }
 }
-
-@Composable
-fun BalanceImpactDialog(
-    onConfirm: (Boolean) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        modifier = Modifier.testTag("impact_alert_dialog"),
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.impact_balance_title)) },
-        text = { Text(stringResource(R.string.impact_balance_msg)) },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(true) },
-                modifier = Modifier.testTag("impact_alert_confirm")
-            ) {
-                Text(stringResource(R.string.impact_balance_account_now))
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = { onConfirm(false) },
-                modifier = Modifier.testTag("impact_alert_dismiss")
-            ) {
-                Text(stringResource(R.string.impact_balance_do_not_account))
-            }
-        }
-    )
-}

@@ -20,7 +20,8 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -72,7 +73,9 @@ import java.time.ZoneId
  */
 class AccountFormBalanceSourceTest {
 
-    private val dispatcher = UnconfinedTestDispatcher()
+    // StandardTestDispatcher partagé avec runTest (app/src/test/AGENTS.md §3) : les coroutines du
+    // ViewModel ne tournent que quand le test fait avancer l'ordonnanceur.
+    private val dispatcher = StandardTestDispatcher()
 
     private val saveAccountUseCase = mockk<SaveAccountUseCase>(relaxed = false)
     private val getAccountBalances = mockk<GetAccountBalancesUseCase>(relaxed = false)
@@ -122,7 +125,7 @@ class AccountFormBalanceSourceTest {
     )
 
     @Test
-    fun `F-01 - le solde preaffiche vient du use case et non du solde initial`() = runTest {
+    fun `F-01 - le solde preaffiche vient du use case et non du solde initial`() = runTest(dispatcher) {
         every { getAccountBalances.observeBalances() } returns flowOf(mapOf(accountId to 851L))
 
         sut().uiState.test {
@@ -135,7 +138,7 @@ class AccountFormBalanceSourceTest {
     }
 
     @Test
-    fun `F-02 - un compte absent des soldes retombe sur son solde initial`() = runTest {
+    fun `F-02 - un compte absent des soldes retombe sur son solde initial`() = runTest(dispatcher) {
         every { getAccountBalances.observeBalances() } returns flowOf(emptyMap())
 
         sut().uiState.test {
@@ -146,7 +149,7 @@ class AccountFormBalanceSourceTest {
     }
 
     @Test
-    fun `F-03 - l'enregistrement transmet la saisie exacte au use case de sauvegarde`() = runTest {
+    fun `F-03 - l'enregistrement transmet la saisie exacte au use case de sauvegarde`() = runTest(dispatcher) {
         every { getAccountBalances.observeBalances() } returns flowOf(mapOf(accountId to 851L))
         val expectedDraft = AccountDraft(
             id = accountId,
@@ -170,6 +173,7 @@ class AccountFormBalanceSourceTest {
         vm.onNameChange("Compte courant")
         vm.onInitialBalanceChange("12,34")
         vm.save {}
+        advanceUntilIdle()
 
         coVerify(exactly = 1) { saveAccountUseCase(expectedDraft) }
         coVerify(exactly = 1) { accountRepo.getById(accountId) }

@@ -64,6 +64,7 @@ import kotlin.time.Duration.Companion.seconds
  * V-01  CA-03, I-3   save, nom blanc — refus BlankName exposé, aucune écriture par le ViewModel
  * V-02  CA-03, I-3   save, solde « 12,3,4 » — refus InvalidBalance exposé, saisie transmise brute
  * V-03  CA-03        onTypeChange(CASH) après une banque — champ masqué, établissement nul transmis
+ * V-04  CA-05, P-7   save → Refused(NotFound) — le formulaire se ferme, aucun refus affiché
  * D-01  CA-05, I-4   onInitialBalanceChange — la dernière correction affichée ne suit pas la saisie
  * D-02  CA-05, I-4   save → NoChange — dernière correction inchangée
  * D-03  CA-05, I-4   save → Created — dernière correction à l'instant de l'horloge
@@ -90,7 +91,9 @@ import kotlin.time.Duration.Companion.seconds
  *   cette règle, l'utilisateur choisit `wallet` après la bascule : l'icône relève alors du seul
  *   dernier geste (I-6).
  *
- * ## Anomalies — les rouges de cette fiche (2 octobre 2026)
+ * ## Anomalies — corrigées le 2 octobre 2026
+ * Les six cas suivants étaient rouges avant correctif, chacun pour la raison annoncée ; aucun
+ * oracle n'a été assoupli pour les faire passer.
  * ```
  * LOP-184  onInitialBalanceChange réécrit la dernière correction (CA-05, I-4)    → D-01, D-03 (avant)
  *          https://app.notion.com/p/3ed50f34a8c5813aa71fd81e2803b304
@@ -109,6 +112,10 @@ import kotlin.time.Duration.Companion.seconds
  * ```
  * I-01 ✔  I-02 ✔  I-03 ✔  I-04 ✔  I-05 ✘  I-06 ✔  I-07 ✘  I-08 ✔
  * I-09 ✔  V-01 ✘  V-02 ✘  V-03 ✔  D-01 ✘  D-02 ✔  D-03 ✘           9 verts, 6 rouges
+ *
+ * Après correctifs (LOP-183, 184, 186, 187, 188), même jour :         16 verts sur 16
+ * (V-04 compris, ajouté avec P-7 ; sa sensibilité est prouvée par la mutation « NotFound ne
+ * ferme plus le formulaire », qui le fait rougir)
  * ```
  *
  * ### Preuves de sensibilité des verts (quatre séries, mutations retirées, sommes vérifiées)
@@ -439,6 +446,30 @@ class AccountFormRulesTest {
                 cancelAndIgnoreRemainingEvents()
             }
             coVerify(exactly = 1) { saveAccountUseCase(expectedDraft) }
+            confirmVerified(saveAccountUseCase)
+        }
+
+    /**
+     * V-04 — Given l'édition de CPT-EDITE, supprimé entre-temps, When on sauvegarde, Then le
+     * formulaire se ferme sans afficher de refus : rien n'a été écrit et il n'y a rien à corriger
+     * (CA-05, P-7). Ajouté le 2 octobre 2026 avec P-7.
+     */
+    @Test
+    fun `V-04 - Given compte supprime pendant l'edition - When sauvegarde - Then formulaire ferme sans refus`() =
+        runTest(dispatcher) {
+            val draft = editDraft(balanceInput = "1000.0")
+            coEvery { saveAccountUseCase(draft) } returns AccountSaveResult.Refused(AccountRefusal.NotFound)
+
+            val vm = editVm()
+            vm.uiState.test(timeout = TIMEOUT) {
+                awaitLoaded()
+                vm.save { doneCount++ }
+                val state = current(vm)
+                assertEquals("V-04 — P-7 : le formulaire se ferme. État : $state", 1, doneCount)
+                assertEquals("V-04 — P-7 : aucun refus affiché. État : $state", null, state.refusal)
+                cancelAndIgnoreRemainingEvents()
+            }
+            coVerify(exactly = 1) { saveAccountUseCase(draft) }
             confirmVerified(saveAccountUseCase)
         }
 

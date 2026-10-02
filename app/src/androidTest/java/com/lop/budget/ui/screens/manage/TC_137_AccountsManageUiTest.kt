@@ -84,7 +84,9 @@ import javax.inject.Inject
  * R-03  CA-05, I-4   AccountEditScreen + AccountFormViewModel.onInitialBalanceChange
  * ```
  *
- * ## Anomalies — les rouges de cette fiche (2 octobre 2026)
+ * ## Anomalies — corrigées le 2 octobre 2026
+ * Les trois cas suivants étaient rouges avant correctif, chacun pour la raison annoncée ; aucun
+ * oracle n'a été assoupli pour les faire passer.
  * ```
  * LOP-185  La dernière correction est un champ cliquable qui ouvre un sélecteur
  *          de date (CA-05, I-4, P-3)                                 → R-01, R-02
@@ -99,7 +101,14 @@ import javax.inject.Inject
  * N-01 ✔  L-01 ✔  L-02 ✔  L-03 ✔  L-04 ✔  R-01 ✘  R-02 ✘  R-03 ✘      5 verts, 3 rouges
  * ```
  * R-01 : nœud « 02 mars 2026, 10:00 » porteur de `OnClick`. R-02 : `picker.date` ouvert sur le
- * calendrier de mars 2026. La valeur persistée s'affiche bien : seul le contrôle est en défaut.
+ * calendrier de mars 2026. La valeur persistée s'affichait bien : seul le contrôle était en défaut.
+ *
+ * Après correctifs (LOP-184, LOP-185), même appareil, suite instrumentée complète :
+ * ```
+ * N-01 ✔  L-01 ✔  L-02 ✔  L-03 ✔  L-04 ✔  R-01 ✔  R-02 ✔  R-03 ✔      8 verts sur 8
+ * ```
+ * La dernière correction s'affiche désormais en texte non cliquable, balisé
+ * `account.edit.lastcorrection.value` ; le sélecteur `account.edit.date.selector` n'existe plus.
  *
  * ### Preuves de sensibilité des verts (deux séries, mutations retirées, sommes vérifiées)
  * ```

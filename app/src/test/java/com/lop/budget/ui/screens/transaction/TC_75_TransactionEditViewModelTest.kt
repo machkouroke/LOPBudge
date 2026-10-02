@@ -323,7 +323,6 @@ class TransactionEditViewModelTest {
         )
         coEvery { observeTransactionDetailUseCase.getById(1L) } returns twr
         coEvery { transactionRepo.getSeriesById(500L) } returns seriesRule
-        coEvery { accountRepo.getById(100L) } returns createAccount(100L)
         
         val sut = createSut(id = 1L, scope = EditScope.SINGLE, date = dateSlot)
         advanceUntilIdle()
@@ -368,7 +367,6 @@ class TransactionEditViewModelTest {
         assertEquals(null, captured.maxOccurrences)
         
         coVerify { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) }
-        coVerify { accountRepo.getById(100L) }
         coVerify { observeTransactionDetailUseCase.getById(1L) }
         coVerify { transactionRepo.getSeriesById(500L) }
         confirmVerified(*allMocks)
@@ -378,7 +376,6 @@ class TransactionEditViewModelTest {
     fun `V-08 - performSave en creation - Mapping exhaustif`() = runTest(testDispatcher) {
         val account = createAccount(id = 1L)
         every { accountRepo.observeAll() } returns flowOf(listOf(account))
-        coEvery { accountRepo.getById(1L) } returns account
         
         var savedId: Long = -1
         val sut = createSut(id = 0L)
@@ -411,7 +408,6 @@ class TransactionEditViewModelTest {
         assertEquals(null, captured.maxOccurrences)
         
         coVerify { createTransactionUseCase(any()) }
-        coVerify { accountRepo.getById(1L) }
         confirmVerified(*allMocks)
     }
 
@@ -420,7 +416,6 @@ class TransactionEditViewModelTest {
         // Init avec un compte pour pouvoir tester amount/category séparément
         val account = createAccount(id = 1L)
         every { accountRepo.observeAll() } returns flowOf(listOf(account))
-        coEvery { accountRepo.getById(1L) } returns account
         
         val sut = createSut(id = 0L)
         advanceUntilIdle()
@@ -452,53 +447,41 @@ class TransactionEditViewModelTest {
         confirmVerified(*allMocks)
     }
 
+    /**
+     * V-10 — Given une transaction payée datée avant la dernière correction de solde de son compte,
+     * When on enregistre, Then la sauvegarde part directement : aucune alerte, aucune lecture ni
+     * écriture du compte (LOP-20, P-3, P-8, I-4).
+     *
+     * Remplace, le 2 octobre 2026, l'ancien V-10 « Alerte solde — 3 branches ». L'alerte annonçait
+     * qu'une telle transaction ne compterait pas au solde, ce qui est faux depuis P-3, et son option
+     * « Comptabiliser maintenant » réécrivait `balanceUpdatedAt` avec la date de la transaction, ce
+     * que I-4 interdit. P-8 la retire. Le compte reste semé avec une dernière correction postérieure :
+     * c'est le déclencheur de l'ancienne alerte, qui ferait échouer le cas si elle revenait.
+     */
     @Test
-    fun `V-10 - Alerte solde - Verification des 3 branches`() = runTest(testDispatcher) {
-        val account = createAccount(id = 100L, balanceUpdatedAt = dateSlot)
-        coEvery { accountRepo.getById(100L) } returns account
+    fun `V-10 - Given transaction payee anterieure a la derniere correction - When save - Then sauvegarde directe sans toucher au compte`() = runTest(testDispatcher) {
+        coEvery { accountRepo.getById(100L) } returns createAccount(id = 100L, balanceUpdatedAt = dateSlot)
         coEvery { observeTransactionDetailUseCase.getById(1L) } returns createTwr(id = 1L)
-        
         val sut = createSut(id = 1L, scope = EditScope.SINGLE)
         advanceUntilIdle()
-        
-        // Trigger de l'alerte : date < balanceUpdatedAt et status = PAID
+
         sut.setDate(dateSlot - 1000L)
         sut.setStatus(TransactionStatus.PAID)
-        sut.save {}
+        val editionSlot = slot<TransactionEdition>()
+        // Série absente de ce cas : ses deux paramètres ne décident de rien ici.
+        coEvery {
+            editTransactionWithScopeUseCase(1L, any(), any(), capture(editionSlot), EditScope.SINGLE)
+        } returns EditOutcome.Applied(1L)
+        var done = 0
+        sut.save { done++ }
         advanceUntilIdle()
-        assertTrue(sut.showBalanceImpactAlert.value)
-        
-        // 1. dismissAlert() : masque sans sauvegarder
-        sut.dismissAlert()
-        assertFalse(sut.showBalanceImpactAlert.value)
-        coVerify(exactly = 0) { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) }
 
-        // 2. confirmSave(accountNow = false) : sauvegarde sans toucher au compte
-        sut.save {} // Re-trigger
-        advanceUntilIdle()
-        coEvery { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) } returns EditOutcome.Applied(1L)
-        sut.confirmSave(accountNow = false) {}
-        advanceUntilIdle()
-        coVerify(exactly = 0) { accountRepo.upsert(any()) }
-        coVerify(exactly = 1) { editTransactionWithScopeUseCase(any(), any(), any(), any(), any()) }
-
-        // 3. confirmSave(accountNow = true) : update compte PUIS sauvegarde
-        sut.save {} // Re-trigger
-        advanceUntilIdle()
-        
-        coEvery { accountRepo.upsert(any()) } returns 1L
-        sut.confirmSave(accountNow = true) {}
-        advanceUntilIdle()
-        
-        // Vérification de l'ordre causal
-        io.mockk.coVerifyOrder {
-            accountRepo.getById(100L)
-            accountRepo.upsert(match { it.balanceUpdatedAt == dateSlot - 1000L })
-            editTransactionWithScopeUseCase(any(), any(), any(), any(), any())
-        }
-        
+        assertEquals("V-10 — P-8 : la sauvegarde aboutit sans étape intermédiaire", 1, done)
+        assertEquals("V-10 — date transmise telle que saisie", dateSlot - 1000L, editionSlot.captured.date)
+        assertEquals("V-10 — statut transmis tel que saisi", TransactionStatus.PAID, editionSlot.captured.status)
+        coVerify(exactly = 1) { editTransactionWithScopeUseCase(1L, any(), any(), any(), EditScope.SINGLE) }
         coVerify(atLeast = 1) { observeTransactionDetailUseCase.getById(1L) }
-        coVerify(atLeast = 1) { accountRepo.getById(100L) }
+        // I-4 : le compte n'est ni lu ni écrit — confirmVerified échoue sur tout appel non vérifié.
         confirmVerified(*allMocks)
     }
 

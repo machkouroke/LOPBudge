@@ -10,6 +10,7 @@ import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.usecase.account.AccountDraft
 import com.lop.budget.domain.usecase.account.AccountRefusal
 import com.lop.budget.domain.usecase.account.AccountSaveResult
+import com.lop.budget.domain.usecase.account.AdjustOutcome
 import com.lop.budget.domain.usecase.account.DeleteAccountUseCase
 import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
 import com.lop.budget.domain.usecase.account.SaveAccountUseCase
@@ -68,7 +69,8 @@ class AccountFormViewModel @Inject constructor(
     private val name = MutableStateFlow("")
     private val type = MutableStateFlow(AccountType.CHECKING)
     private val initialBalance = MutableStateFlow("0")
-    private val lastBalanceCorrectionAt = MutableStateFlow<Long?>(clock.millis())
+    /** Nulle tant qu'aucune sauvegarde n'a posé de correction : jamais saisie (I-4). */
+    private val lastBalanceCorrectionAt = MutableStateFlow<Long?>(null)
     private val colorArgb = MutableStateFlow(0xFF9C27B0.toInt())
     private val iconName = MutableStateFlow("account_balance")
     private val bankName = MutableStateFlow("")
@@ -77,6 +79,15 @@ class AccountFormViewModel @Inject constructor(
     private val archived = MutableStateFlow(false)
     private val isSaving = MutableStateFlow(false)
     private val isLoaded = MutableStateFlow(!isEdit)
+    private val refusal = MutableStateFlow<AccountRefusal?>(null)
+
+    /**
+     * Règle du dernier geste (I-6, P-5) : tant que l'utilisateur n'a pas choisi d'icône, celle du
+     * compte suit la proposition — l'icône de la banque, sinon l'icône de base du type (CA-04, P-6).
+     * Une icône déjà persistée est traitée comme un choix : changer le type ne la défait pas.
+     */
+    private var iconChosenByUser = isEdit
+    private var bankIcon: String? = null
     
     // UI Local state for search
     private val searchQuery = MutableStateFlow("")
@@ -102,8 +113,7 @@ class AccountFormViewModel @Inject constructor(
                         getAccountBalances.observeBalances().first()[accountId] ?: account.initialBalance
                     initialBalance.value = Format.centsToInput(currentBalance)
 
-                    lastBalanceCorrectionAt.value =
-                        if (account.balanceUpdatedAt == 0L) clock.millis() else account.balanceUpdatedAt
+                    lastBalanceCorrectionAt.value = account.balanceUpdatedAt.takeIf { it != 0L }
                     colorArgb.value = account.colorArgb
                     iconName.value = account.icon
                     bankName.value = account.bankName ?: ""
@@ -118,7 +128,7 @@ class AccountFormViewModel @Inject constructor(
 
     val uiState: StateFlow<AccountFormUiState> = combine(
         name, type, initialBalance, lastBalanceCorrectionAt, colorArgb, iconName, bankName, comment, 
-        includeInTotal, archived, isSaving, isLoaded, searchQuery, iconResults, isSearching
+        includeInTotal, archived, isSaving, isLoaded, searchQuery, iconResults, isSearching, refusal
     ) { args ->
         AccountFormUiState(
             id = accountId,
@@ -138,45 +148,55 @@ class AccountFormViewModel @Inject constructor(
             searchQuery = args[12] as String,
             iconResults = args[13] as List<IconResult>,
             isSearching = args[14] as Boolean,
+            refusal = args[15] as AccountRefusal?,
             isEdit = isEdit,
             knownBanks = iconSearch.getKnownBanks()
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountFormUiState())
 
-    fun onNameChange(v: String) { name.value = v }
-    fun onTypeChange(v: AccountType) { 
-        type.value = v 
-        // Suggestion d'icône par défaut selon le type
-        when (v) {
-            AccountType.CASH -> iconName.value = "payments"
-            AccountType.SAVINGS -> iconName.value = "savings"
-            AccountType.CRYPTO -> iconName.value = "trending_up"
-            else -> iconName.value = "account_balance"
-        }
+    // Un refus ne porte que sur le nom ou le solde : il s'efface quand l'un d'eux est ressaisi, et
+    // reste affiché tant que la saisie fautive n'a pas changé.
+    fun onNameChange(v: String) { name.value = v; refusal.value = null }
+    fun onTypeChange(v: AccountType) {
+        type.value = v
+        proposeIcon()
     }
-    fun onInitialBalanceChange(v: String) { 
-        initialBalance.value = v 
-        // ÉCART CA-05 / I-4 : la saisie réécrit la dernière correction de solde, qui devrait
-        // rester celle persistée tant qu'aucune sauvegarde n'a corrigé le solde.
-        lastBalanceCorrectionAt.value = clock.millis()
-    }
-    // ÉCART I-4 : la dernière correction de solde est saisissable depuis l'écran.
-    fun onBalanceDateChange(v: Long) { lastBalanceCorrectionAt.value = v }
+    fun onInitialBalanceChange(v: String) { initialBalance.value = v; refusal.value = null }
     fun onColorChange(v: Int) { colorArgb.value = v }
-    fun onIconChange(v: String) { iconName.value = v }
-    
+    fun onIconChange(v: String) {
+        iconName.value = v
+        iconChosenByUser = true
+    }
+
+    /** Revient à l'icône proposée, que le choix suivant de l'utilisateur pourra remplacer. */
+    fun onIconReset() {
+        iconChosenByUser = false
+        proposeIcon()
+    }
+
     fun onBankSelected(bank: IconSearchRepository.BankInfo?) {
+        bankIcon = null
         if (bank == null) {
+            // CA-09 : retirer l'établissement ramène l'icône de base du type, elle-même remplaçable.
             bankName.value = ""
+            onIconReset()
             return
         }
         bankName.value = bank.name
-        // Recherche automatique d'icône pour la banque sélectionnée
         viewModelScope.launch {
+            // CA-09 : la banque repose son icône, même par-dessus un choix de l'utilisateur. Sans
+            // icône trouvée, l'icône courante reste (CA-04).
             iconSearch.searchBankIcon(bank.name)?.let {
+                bankIcon = it.iconName
+                iconChosenByUser = false
                 iconName.value = it.iconName
             }
         }
+    }
+
+    private fun proposeIcon() {
+        if (iconChosenByUser) return
+        iconName.value = bankIcon?.takeIf { type.value == AccountType.CHECKING } ?: baseIconOf(type.value)
     }
 
     fun onCommentChange(v: String) { comment.value = v }
@@ -216,11 +236,28 @@ class AccountFormViewModel @Inject constructor(
                     includeInTotal = includeInTotal.value,
                 )
             )
-            when (result) {
-                is AccountSaveResult.Saved -> onDone()
-                // ÉCART CA-03 : le refus n'est pas exposé à l'utilisateur, `refusal` reste nul.
-                is AccountSaveResult.Refused -> isSaving.value = false
+            when {
+                result is AccountSaveResult.Saved -> {
+                    // I-4 : la dernière correction ne bouge que si la sauvegarde a corrigé le solde.
+                    if (result.adjustment is AdjustOutcome.Created) lastBalanceCorrectionAt.value = clock.millis()
+                    onDone()
+                }
+                // P-7 : le compte a disparu pendant l'édition ; rien n'a été écrit, le formulaire se
+                // ferme comme après une sauvegarde.
+                result is AccountSaveResult.Refused && result.reason == AccountRefusal.NotFound -> onDone()
+                result is AccountSaveResult.Refused -> {
+                    refusal.value = result.reason
+                    isSaving.value = false
+                }
             }
         }
     }
+}
+
+/** Icône de base d'un type de compte (P-6). */
+internal fun baseIconOf(type: AccountType): String = when (type) {
+    AccountType.CASH -> "payments"
+    AccountType.SAVINGS -> "savings"
+    AccountType.CRYPTO -> "trending_up"
+    AccountType.CHECKING, AccountType.CARD, AccountType.INVESTMENT, AccountType.OTHER -> "account_balance"
 }

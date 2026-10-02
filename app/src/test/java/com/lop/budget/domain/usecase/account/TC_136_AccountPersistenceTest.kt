@@ -2,12 +2,14 @@ package com.lop.budget.domain.usecase.account
 
 import android.app.Application
 import androidx.room.Room
+import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
+import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.TransactionRepository
@@ -15,8 +17,10 @@ import com.lop.budget.domain.model.AccountBalances
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.NO_CATEGORY_ID
+import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.transaction.AtomicWriter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -49,7 +53,7 @@ import kotlin.time.Duration.Companion.seconds
  * ## Chaîne réellement exercée
  * ```
  * SaveAccountUseCase / SetAccountFlagsUseCase / DeleteAccountUseCase / GetAccountBalancesUseCase
- *   → AdjustBalanceUseCase (réel)
+ *   → AdjustBalanceUseCase (réel), AtomicWriter sur `withTransaction` (liaison de production)
  *   → AccountRepository / TransactionRepository (réels)
  *   → AccountDao / TransactionDao (réels)
  *   → LopDatabase en mémoire (SQLite natif Robolectric)
@@ -73,6 +77,7 @@ import kotlin.time.Duration.Companion.seconds
  * S-02  CA-08, I-5        TransactionDao.observe*ByAccount + GetAccountBalancesUseCase
  * S-03  CA-08, I-5        TransactionDao.observeForMerge — lecture non filtrée par compte
  * S-04  CA-08             DeleteAccountUseCase — identifiant inconnu
+ * S-05  CA-08, P-9        DeleteAccountUseCase — séries du compte détachées (ajouté avec P-9)
  * ```
  *
  * ## Fixtures discriminantes
@@ -97,9 +102,9 @@ import kotlin.time.Duration.Companion.seconds
  * - Les dates de TX-TEMOIN (8 mars) et de TX-DEJA-DETACHEE (12 mars), non fixées par la fiche, sont
  *   placées en mars pour entrer dans la lecture de S-03.
  *
- * ## Anomalies — les rouges de cette fiche (2 octobre 2026)
- * Aucun oracle n'est assoupli pour les faire passer : le rouge **est** le résultat attendu tant
- * que l'ANO n'est pas traitée.
+ * ## Anomalies — corrigées le 2 octobre 2026
+ * Les cinq cas suivants étaient rouges avant correctif, chacun pour la raison annoncée ; aucun
+ * oracle n'a été assoupli pour les faire passer.
  * ```
  * LOP-180  DeleteAccountUseCase ne supprime que la ligne accounts : ajustement survivant,
  *          opérations gardant l'identifiant défunt (CA-08, I-5)                  → S-01, S-02
@@ -117,6 +122,11 @@ import kotlin.time.Duration.Companion.seconds
  * ```
  * C-01 ✘  C-02 ✔  V-01 ✔  V-02 ✘  E-01 ✔  E-02 ✘  E-03 ✔  A-01 ✔
  * A-02 ✔  T-01 ✔  T-02 ✔  S-01 ✘  S-02 ✘  S-03 ✔  S-04 ✔           10 verts, 5 rouges
+ *
+ * Après correctifs (LOP-180 à LOP-183), même jour :                    15 verts sur 15
+ *
+ * S-05, ajouté avec P-9 : rouge avant correctif (`accountId=1` au lieu de 0 sur la série du compte
+ * supprimé, série témoin intacte), vert après détachement des séries.     16 verts sur 16
  * ```
  * Dans chaque rouge, les oracles témoins assertés avant l'oracle fautif sont verts : solde de
  * 120 000 et ajustement de 24 550 en E-02, CPT-TEMOIN, TX-TEMOIN, TX-DEJA-DETACHEE et total de
@@ -133,8 +143,9 @@ import kotlin.time.Duration.Companion.seconds
  * B2  SetAccountFlagsUseCase ignore `includeInTotal`            → T-01, T-02 rouges
  * B3  `observeForMerge` masque les lignes sans compte existant  → S-03 rouge
  * ```
- * Limite : l'oracle « instantanés inchangés » de S-04 ne peut pas être rendu rouge tant qu'aucun
- * chemin n'écrit sur `transactions` à la suppression ; son oracle de résultat l'est (A4).
+ * Limite : avant correctif, l'oracle « instantanés inchangés » de S-04 ne pouvait pas rougir, aucun
+ * chemin n'écrivant sur `transactions` à la suppression ; son oracle de résultat l'était (A4).
+ * Le correctif ajoute ce chemin ; sa sensibilité n'a pas été reprouvée par mutation.
  *
  * ## Hors périmètre
  * - État exposé par le formulaire, refus affichés, icône proposée : **TC-135**.
@@ -191,7 +202,11 @@ class AccountPersistenceTest {
 
         saveAccount = SaveAccountUseCase(accountRepo, adjustBalance, clock)
         setAccountFlags = SetAccountFlagsUseCase(accountRepo)
-        deleteAccount = DeleteAccountUseCase(accountRepo)
+        // Même liaison que la production (AppModule) : la suppression court dans une transaction base.
+        val atomicWriter = object : AtomicWriter {
+            override suspend fun <T> atomically(block: suspend () -> T): T = db.withTransaction(block)
+        }
+        deleteAccount = DeleteAccountUseCase(accountRepo, transactionRepo, atomicWriter)
         balances = GetAccountBalancesUseCase(accountRepo, transactionRepo)
     }
 
@@ -725,6 +740,64 @@ class AccountPersistenceTest {
                 "S-04 — CA-08 : transactions strictement inchangée, aucune ligne détachée",
                 transactionsBefore,
                 rawRows("transactions"),
+            )
+        }
+
+    /**
+     * S-05 — Given SERIE-COURANT sur CPT-COURANT et SERIE-TEMOIN sur CPT-TEMOIN, When on supprime
+     * CPT-COURANT, Then SERIE-COURANT subsiste rattachée à `NO_ACCOUNT_ID`, tous ses autres champs
+     * inchangés, et SERIE-TEMOIN est intacte (CA-08, P-9).
+     *
+     * Une série est la source des occurrences planifiées à venir : laissée sur le compte supprimé,
+     * elle en produirait de nouvelles rattachées à un compte inexistant.
+     */
+    @Test
+    fun `S-05 - Given une serie sur CPT-COURANT - When suppression du compte - Then serie detachee et serie temoin intacte`() =
+        runTest {
+            seedCourant()
+            seedTemoin()
+            seedCategories()
+            val courantSeriesId = db.recurringSeriesDao().upsertSeries(
+                RecurringSeriesEntity(
+                    title = "Loyer",
+                    amount = 80_000,
+                    type = TransactionType.EXPENSE,
+                    categoryId = expenseCategoryId,
+                    accountId = courantId,
+                    frequency = RecurrenceFrequency.MONTHLY,
+                    startDate = at(2026, 3, 1),
+                )
+            )
+            val temoinSeriesId = db.recurringSeriesDao().upsertSeries(
+                RecurringSeriesEntity(
+                    title = "Intérêts",
+                    amount = 1_500,
+                    type = TransactionType.INCOME,
+                    categoryId = incomeCategoryId,
+                    accountId = temoinId,
+                    frequency = RecurrenceFrequency.MONTHLY,
+                    startDate = at(2026, 3, 1),
+                )
+            )
+            val courantBefore = db.recurringSeriesDao().getSeriesById(courantSeriesId)!!
+            val temoinBefore = db.recurringSeriesDao().getSeriesById(temoinSeriesId)!!
+
+            deleteAccount(courantId)
+
+            assertEquals(
+                "S-05 — CA-08 : aucune série supprimée",
+                2,
+                count("SELECT COUNT(*) FROM recurring_series"),
+            )
+            assertEquals(
+                "S-05 — CA-08 : SERIE-TEMOIN strictement inchangée",
+                temoinBefore,
+                db.recurringSeriesDao().getSeriesById(temoinSeriesId),
+            )
+            assertEquals(
+                "S-05 — CA-08/P-9 : SERIE-COURANT rattachée à NO_ACCOUNT_ID, tous ses autres champs inchangés",
+                courantBefore.copy(accountId = NO_ACCOUNT_ID),
+                db.recurringSeriesDao().getSeriesById(courantSeriesId),
             )
         }
 

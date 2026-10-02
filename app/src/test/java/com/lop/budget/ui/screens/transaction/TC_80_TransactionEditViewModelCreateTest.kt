@@ -638,7 +638,6 @@ class TransactionEditViewModelCreateTest {
     @Test
     fun `A-06 - Given formulaire valide sans note ni tags - When save - Then une seule creation et onDone (CA-05)`() =
         runTest(testDispatcher) {
-            coEvery { accountRepo.getById(primaryAccount.id) } returns primaryAccount
             coEvery { createTransactionUseCase(any()) } returns newTransactionId
 
             val sut = createSut(type = TransactionType.EXPENSE)
@@ -681,7 +680,6 @@ class TransactionEditViewModelCreateTest {
             coVerify(exactly = 0) {
                 editTransactionWithScopeUseCase(any(), any(), any(), any(), any())
             }
-            coVerify(exactly = 1) { accountRepo.getById(primaryAccount.id) }
             confirmVerified(*allMocks)
         }
 
@@ -690,7 +688,6 @@ class TransactionEditViewModelCreateTest {
     @Test
     fun `A-07a - Given formulaire valide - When deux save consecutifs - Then une seule creation (CA-10, I-2)`() =
         runTest(testDispatcher) {
-            coEvery { accountRepo.getById(primaryAccount.id) } returns primaryAccount
             coEvery { createTransactionUseCase(any()) } returns newTransactionId
 
             val sut = createSut(type = TransactionType.EXPENSE)
@@ -716,7 +713,6 @@ class TransactionEditViewModelCreateTest {
                 "I-2 : des appuis rapides répétés ne doivent produire qu'une seule écriture",
                 listOf(newTransactionId), doneIds
             )
-            coVerify { accountRepo.getById(primaryAccount.id) }
             confirmVerified(*allMocks)
         }
 
@@ -724,7 +720,6 @@ class TransactionEditViewModelCreateTest {
     fun `A-07b - Given sauvegarde en vol - When second save pendant isSaving - Then une seule creation (CA-10, I-2)`() =
         runTest(testDispatcher) {
             val inFlight = CompletableDeferred<Unit>()
-            coEvery { accountRepo.getById(primaryAccount.id) } returns primaryAccount
             coEvery { createTransactionUseCase(any()) } coAnswers {
                 inFlight.await()
                 newTransactionId
@@ -763,14 +758,12 @@ class TransactionEditViewModelCreateTest {
                 "I-2 : un second appui pendant isSaving ne doit produire aucune écriture supplémentaire",
                 listOf(newTransactionId), doneIds
             )
-            coVerify(exactly = 1) { accountRepo.getById(primaryAccount.id) }
             confirmVerified(*allMocks)
         }
 
     @Test
     fun `A-07c - Given use case en echec - When save - Then isSaving retombe et aucune seconde ecriture (CA-10, I-2)`() =
         runTest(testDispatcher) {
-            coEvery { accountRepo.getById(primaryAccount.id) } returns primaryAccount
             coEvery { createTransactionUseCase(any()) } throws IllegalStateException("échec de sauvegarde")
 
             val sut = createSut(type = TransactionType.EXPENSE)
@@ -800,14 +793,12 @@ class TransactionEditViewModelCreateTest {
                 "CA-10 : un échec de sauvegarde doit être signalé à l'utilisateur",
                 R.string.tx_error_save_failed, sut.saveError.value
             )
-            coVerify { accountRepo.getById(primaryAccount.id) }
             confirmVerified(*allMocks)
         }
 
     @Test
     fun `A-07d - Given sauvegarde annulee - When CancellationException - Then aucune erreur affichee (CA-10)`() =
         runTest(testDispatcher) {
-            coEvery { accountRepo.getById(primaryAccount.id) } returns primaryAccount
             coEvery { createTransactionUseCase(any()) } throws CancellationException("scope annulé")
 
             val sut = createSut(type = TransactionType.EXPENSE)
@@ -834,7 +825,6 @@ class TransactionEditViewModelCreateTest {
                 emptyList<Long>(), doneIds
             )
             coVerify(exactly = 1) { createTransactionUseCase(any()) }
-            coVerify { accountRepo.getById(primaryAccount.id) }
             confirmVerified(*allMocks)
         }
 

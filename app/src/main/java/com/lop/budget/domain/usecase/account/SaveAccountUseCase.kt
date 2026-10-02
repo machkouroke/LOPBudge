@@ -32,10 +32,10 @@ sealed interface AccountSaveResult {
 /**
  * Création et modification d'un compte (LOP-20, CA-02, CA-03, CA-05).
  *
- * **Extrait à comportement constant** de `AccountFormViewModel.save` : un ViewModel n'est pas un
- * lieu de règles, et CA-03 comme I-4 ne se testent pas sans passer par l'UI tant que l'écriture
- * y vit. Les écarts à l'US sont reconduits tels quels et nommés ci-dessous ; les corriger ici
- * rendrait verts, sans rien prouver, les cas de TC-135 et TC-136 qui doivent les révéler.
+ * Seul écrivain d'une ligne `accounts` hors archivage et suppression. Refuse **avant toute
+ * écriture** un nom vide une fois les espaces de bord retirés et un solde illisible (I-3). Pose la
+ * dernière correction de solde à la création, puis seulement quand une sauvegarde crée réellement
+ * un ajustement (I-4) : l'utilisateur ne la saisit jamais.
  */
 @Singleton
 class SaveAccountUseCase @Inject constructor(
@@ -44,19 +44,18 @@ class SaveAccountUseCase @Inject constructor(
     private val clock: Clock,
 ) {
     suspend operator fun invoke(draft: AccountDraft): AccountSaveResult {
-        if (draft.name.isBlank()) return AccountSaveResult.Refused(AccountRefusal.BlankName)
-
-        // ÉCART CA-03 / I-3 : un solde non numérique est ramené à 0 et écrit, au lieu d'un refus
-        // InvalidBalance.
-        val balance = Format.centsOrNull(draft.balanceInput) ?: 0L
-        val bankName = if (draft.type == AccountType.CHECKING) draft.bankName else null
+        val name = draft.name.trim()
+        if (name.isEmpty()) return AccountSaveResult.Refused(AccountRefusal.BlankName)
+        val balance = Format.centsOrNull(draft.balanceInput)
+            ?: return AccountSaveResult.Refused(AccountRefusal.InvalidBalance)
+        // Un établissement vide n'est pas un établissement : `null`, comme hors type Bancaire.
+        val bankName = draft.bankName?.takeIf { draft.type == AccountType.CHECKING && it.isNotBlank() }
         val comment = draft.comment?.takeIf { it.isNotBlank() }
 
         if (draft.id == 0L) {
             val id = accountRepo.upsert(
                 AccountEntity(
-                    // ÉCART CA-02 : le nom est écrit sans suppression des espaces de bord.
-                    name = draft.name,
+                    name = name,
                     type = draft.type,
                     initialBalance = balance,
                     balanceUpdatedAt = clock.millis(),
@@ -70,20 +69,20 @@ class SaveAccountUseCase @Inject constructor(
             return AccountSaveResult.Saved(id, AdjustOutcome.NoChange)
         }
 
-        // ÉCART CA-05 : deux écritures hors transaction, et `balanceUpdatedAt` n'est jamais posé,
-        // même quand la correction a créé un ajustement (I-4).
         val adjustment = adjustBalanceUseCase.adjust(draft.id, balance)
         val current = accountRepo.getById(draft.id)
             ?: return AccountSaveResult.Refused(AccountRefusal.NotFound)
         accountRepo.upsert(
             current.copy(
-                name = draft.name,
+                name = name,
                 type = draft.type,
                 colorArgb = draft.colorArgb,
                 icon = draft.iconName,
                 bankName = bankName,
                 comment = comment,
                 includeInTotal = draft.includeInTotal,
+                balanceUpdatedAt =
+                    if (adjustment is AdjustOutcome.Created) clock.millis() else current.balanceUpdatedAt,
             )
         )
         return AccountSaveResult.Saved(draft.id, adjustment)

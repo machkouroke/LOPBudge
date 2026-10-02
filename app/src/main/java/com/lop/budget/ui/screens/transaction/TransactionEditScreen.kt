@@ -58,7 +58,6 @@ fun TransactionEditScreen(
     val tags by vm.tags.collectAsStateWithLifecycle()
     val goals by vm.goals.collectAsStateWithLifecycle()
     val debts by vm.debts.collectAsStateWithLifecycle()
-    val showAlert by vm.showBalanceImpactAlert.collectAsStateWithLifecycle()
     val isSaving by vm.isSaving.collectAsStateWithLifecycle()
     val currency by vm.currency.collectAsStateWithLifecycle()
     val fieldErrors by vm.fieldErrors.collectAsStateWithLifecycle()
@@ -98,12 +97,6 @@ fun TransactionEditScreen(
                 autoOpenedCategory = true
             }
         }
-    }
-    if (showAlert) {
-        BalanceImpactDialog(
-            onConfirm = { accountNow -> vm.confirmSave(accountNow, onDone) },
-            onDismiss = vm::dismissAlert
-        )
     }
 
     LopScreenScaffold(

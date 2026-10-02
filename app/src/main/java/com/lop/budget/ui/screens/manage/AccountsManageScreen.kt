@@ -57,7 +57,7 @@ fun AccountsManageScreen(
     accountToDelete?.let { account ->
         ConfirmDeleteSheet(
             title = "Supprimer le compte ?",
-            message = "Cette action est irréversible. Toutes les transactions liées seront orphelines.",
+            message = "Ses transactions resteront visibles, sans compte. Ses ajustements de solde seront supprimés. Cette action est irréversible.",
             confirmLabel = "Supprimer",
             onDismiss = { accountToDelete = null },
             onConfirm = {

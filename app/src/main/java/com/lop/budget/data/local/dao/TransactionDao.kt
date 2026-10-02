@@ -45,6 +45,8 @@ interface TransactionOperations {
     suspend fun softDeleteTransactionsBySeriesFrom(seriesId: Long, fromDate: Long)
     suspend fun countTransactionsByCategory(categoryId: Long): Int
     suspend fun reassignTransactionsCategoryTree(categoryId: Long, newCategoryId: Long)
+    suspend fun deleteAdjustmentsByAccount(accountId: Long): Int
+    suspend fun detachTransactionsFromAccount(accountId: Long, noAccountId: Long): Int
 
     fun observeForMerge(start: Long, end: Long): Flow<List<TransactionWithRelations>>
 }
@@ -342,6 +344,16 @@ interface TransactionDao : TransactionOperations {
     """
     )
     override suspend fun reassignTransactionsCategoryTree(categoryId: Long, newCategoryId: Long)
+
+    // Suppression d'un compte (LOP-20, P-4) : ses ajustements n'ont plus d'objet sans lui, ses
+    // transactions métier deviennent des transactions sans compte. Ni l'une ni l'autre ne filtre
+    // `deleted` : une ligne supprimée logiquement garderait sinon l'identifiant d'un compte disparu.
+    // `noAccountId` est passé en paramètre faute de pouvoir interpoler une constante ici.
+    @Query("DELETE FROM transactions WHERE accountId = :accountId AND kind = 'BALANCE_ADJUSTMENT'")
+    override suspend fun deleteAdjustmentsByAccount(accountId: Long): Int
+
+    @Query("UPDATE transactions SET accountId = :noAccountId WHERE accountId = :accountId AND kind = 'STANDARD'")
+    override suspend fun detachTransactionsFromAccount(accountId: Long, noAccountId: Long): Int
 
     @Query(
         """

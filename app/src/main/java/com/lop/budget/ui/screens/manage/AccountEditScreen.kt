@@ -29,11 +29,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.data.repository.IconResult
 import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
+import com.lop.budget.domain.usecase.account.AccountRefusal
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.ConfirmDeleteSheet
 import com.lop.budget.ui.components.FloatingCard
-import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.PickerBottomSheet
 import com.lop.budget.ui.components.clickableNoRipple
@@ -52,7 +52,6 @@ fun AccountEditScreen(
     var showTypeSheet by remember { mutableStateOf(false) }
     var showBankSheet by remember { mutableStateOf(false) }
     var showIconSheet by remember { mutableStateOf(false) }
-    var showDatePicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     val balanceDateLabel = remember(state.lastBalanceCorrectionAt) {
@@ -62,18 +61,10 @@ fun AccountEditScreen(
         }.orEmpty()
     }
 
-    if (showDatePicker) {
-        LopDatePicker(
-            initialDateMillis = state.lastBalanceCorrectionAt,
-            onDateSelected = { it?.let { vm.onBalanceDateChange(it) } },
-            onDismiss = { showDatePicker = false }
-        )
-    }
-
     if (showDeleteDialog) {
         ConfirmDeleteSheet(
             title = "Supprimer le compte ?",
-            message = "Toutes les transactions liées à ce compte seront orphelines. Cette action est irréversible.",
+            message = "Ses transactions resteront visibles, sans compte. Ses ajustements de solde seront supprimés. Cette action est irréversible.",
             confirmLabel = "Supprimer",
             onDismiss = { showDeleteDialog = false },
             onConfirm = {
@@ -117,7 +108,7 @@ fun AccountEditScreen(
                 vm.onIconChange(it)
                 showIconSheet = false
             },
-            onReset = { vm.onIconChange("account_balance") },
+            onReset = vm::onIconReset,
             onSearch = { vm.triggerSearch() },
             onDismiss = { showIconSheet = false }
         )
@@ -170,6 +161,10 @@ fun AccountEditScreen(
                                 value = state.name,
                                 onValueChange = vm::onNameChange,
                                 label = { Text("Nom du compte") },
+                                isError = state.refusal == AccountRefusal.BlankName,
+                                supportingText = if (state.refusal == AccountRefusal.BlankName) {
+                                    { Text("Le nom du compte est obligatoire") }
+                                } else null,
                                 modifier = Modifier.fillMaxWidth().testTag("account.edit.name.field"),
                                 singleLine = true
                             )
@@ -208,18 +203,31 @@ fun AccountEditScreen(
                                 value = state.initialBalance,
                                 onValueChange = vm::onInitialBalanceChange,
                                 label = { Text("Solde du compte") },
+                                isError = state.refusal == AccountRefusal.InvalidBalance,
+                                supportingText = if (state.refusal == AccountRefusal.InvalidBalance) {
+                                    { Text("Saisissez un montant valide, par exemple 1250,50") }
+                                } else null,
                                 modifier = Modifier.fillMaxWidth().testTag("account.edit.balance.field"),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true
                             )
 
-                            // Date du solde
-                            SelectorField(
-                                label = "Date du solde de référence",
-                                value = balanceDateLabel,
-                                onClick = { showDatePicker = true },
-                                modifier = Modifier.testTag("account.edit.date.selector")
-                            )
+                            // Dernière correction de solde : affichée, jamais saisie (I-4, P-3).
+                            if (state.lastBalanceCorrectionAt != null) {
+                                Column {
+                                    Text(
+                                        "Dernière correction de solde",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        balanceDateLabel,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        modifier = Modifier.testTag("account.edit.lastcorrection.value")
+                                    )
+                                }
+                            }
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {

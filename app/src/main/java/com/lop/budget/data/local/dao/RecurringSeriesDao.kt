@@ -29,6 +29,7 @@ interface RecurringSeriesOperations {
     fun observeAllSeriesTags(): Flow<List<SeriesTag>>
     suspend fun countSeriesByCategory(categoryId: Long): Int
     suspend fun reassignSeriesCategoryTree(categoryId: Long, newCategoryId: Long)
+    suspend fun detachSeriesFromAccount(accountId: Long, noAccountId: Long): Int
 }
 
 @Dao
@@ -112,6 +113,12 @@ interface RecurringSeriesDao : RecurringSeriesOperations {
     """
     )
     override suspend fun reassignSeriesCategoryTree(categoryId: Long, newCategoryId: Long)
+
+    // Suppression d'un compte (LOP-20, P-9) : ses séries, sources des occurrences à venir, deviennent
+    // des séries sans compte. `noAccountId` est passé en paramètre faute de pouvoir interpoler une
+    // constante ici.
+    @Query("UPDATE recurring_series SET accountId = :noAccountId WHERE accountId = :accountId")
+    override suspend fun detachSeriesFromAccount(accountId: Long, noAccountId: Long): Int
 
     @Query("DELETE FROM recurring_series") fun deleteAll()
 }
