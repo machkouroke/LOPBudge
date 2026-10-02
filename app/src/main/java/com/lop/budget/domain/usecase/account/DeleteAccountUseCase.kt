@@ -4,30 +4,34 @@ import com.lop.budget.data.repository.AccountRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
+sealed interface AccountDeleteResult {
+    data class Deleted(val detachedTransactions: Int, val deletedAdjustments: Int) : AccountDeleteResult
+    data object NotFound : AccountDeleteResult
+}
+
 /**
- * Suppression d'un compte (LOP-20, section « Suppression / archivage »).
+ * Suppression d'un compte (LOP-20, CA-08, I-5).
  *
  * **Unique point d'entrée** de la suppression d'un compte. `AccountRepository.delete` n'est
  * appelé que d'ici : les deux écrans qui l'invoquaient directement — `AccountsManageViewModel`
- * et `AccountFormViewModel` — passent désormais par ce use case. Un ViewModel n'est pas un lieu
- * de règles, et deux appelants directs du repository, c'est deux endroits où la règle se perdra
- * au prochain écran.
+ * et `AccountFormViewModel` — passent par ce use case.
  *
- * **Comportement constant, volontairement.** Aujourd'hui ce use case ne fait que déléguer :
- * `AccountDao.delete` est un `DELETE` nu, `TransactionEntity` ne déclare aucune clé étrangère
- * vers `accounts`, et les transactions du compte survivent donc, orphelines — ce que l'interface
- * annonce d'ailleurs à l'utilisateur (« toutes les transactions liées seront orphelines »).
- * L'extraction est un **prérequis de forme** : corriger le comportement dans le même geste
- * masquerait ce que le test de non-régression doit pouvoir observer.
+ * La règle est tranchée par P-4 : les ajustements du compte sont supprimés, ses transactions
+ * métier détachées vers `NO_ACCOUNT_ID`, le tout en une seule transaction base.
  *
- * Le sort des transactions d'un compte supprimé — suppression logique, archivage forcé ou refus
- * quand le compte est utilisé — appartient à LOP-20 et n'est pas tranché ici.
+ * ÉCART CA-08 / I-5, **reconduit volontairement** : ce use case ne fait encore que supprimer la
+ * ligne `accounts`. `TransactionEntity` ne déclare aucune clé étrangère vers `accounts` : les
+ * transactions du compte gardent un `accountId` défunt et ses ajustements survivent. Les compteurs
+ * de [AccountDeleteResult.Deleted] valent donc zéro par construction. Le corriger dans le même
+ * geste que l'extraction masquerait ce que TC-136 doit révéler.
  */
 @Singleton
 class DeleteAccountUseCase @Inject constructor(
     private val accountRepo: AccountRepository,
 ) {
-    suspend operator fun invoke(accountId: Long) {
+    suspend operator fun invoke(accountId: Long): AccountDeleteResult {
+        accountRepo.getById(accountId) ?: return AccountDeleteResult.NotFound
         accountRepo.delete(accountId)
+        return AccountDeleteResult.Deleted(detachedTransactions = 0, deletedAdjustments = 0)
     }
 }

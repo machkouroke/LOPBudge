@@ -3,14 +3,16 @@ package com.lop.budget.ui.screens.manage
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.IconResult
 import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
-import com.lop.budget.domain.usecase.account.AdjustBalanceUseCase
+import com.lop.budget.domain.usecase.account.AccountDraft
+import com.lop.budget.domain.usecase.account.AccountRefusal
+import com.lop.budget.domain.usecase.account.AccountSaveResult
 import com.lop.budget.domain.usecase.account.DeleteAccountUseCase
 import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
+import com.lop.budget.domain.usecase.account.SaveAccountUseCase
 import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Clock
 import javax.inject.Inject
 
 data class AccountFormUiState(
@@ -27,10 +30,13 @@ data class AccountFormUiState(
     val name: String = "",
     val type: AccountType = AccountType.CHECKING,
     val initialBalance: String = "0",
-    val balanceUpdatedAt: Long = System.currentTimeMillis(),
+    /** Dernière correction de solde (I-4) : affichée, jamais saisie. */
+    val lastBalanceCorrectionAt: Long? = null,
     val colorArgb: Int = 0xFF9C27B0.toInt(),
     val iconName: String = "account_balance",
     val bankName: String = "",
+    /** Le champ établissement n'est proposé que pour le type Bancaire (CA-03). */
+    val bankFieldVisible: Boolean = true,
     val comment: String = "",
     val includeInTotal: Boolean = true,
     val archived: Boolean = false,
@@ -41,16 +47,19 @@ data class AccountFormUiState(
     val searchQuery: String = "",
     val knownBanks: List<IconSearchRepository.BankInfo> = emptyList(),
     val isSearching: Boolean = false,
+    /** Dernier refus de sauvegarde (CA-03). */
+    val refusal: AccountRefusal? = null,
 )
 
 @HiltViewModel
 class AccountFormViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val adjustBalanceUseCase: AdjustBalanceUseCase,
+    private val saveAccountUseCase: SaveAccountUseCase,
     private val getAccountBalances: GetAccountBalancesUseCase,
     private val deleteAccountUseCase: DeleteAccountUseCase,
     private val accountRepo: AccountRepository,
     private val iconSearch: IconSearchRepository,
+    private val clock: Clock,
 ) : ViewModel() {
 
     private val accountId = savedStateHandle.get<Long>("id") ?: 0L
@@ -59,7 +68,7 @@ class AccountFormViewModel @Inject constructor(
     private val name = MutableStateFlow("")
     private val type = MutableStateFlow(AccountType.CHECKING)
     private val initialBalance = MutableStateFlow("0")
-    private val balanceUpdatedAt = MutableStateFlow(System.currentTimeMillis())
+    private val lastBalanceCorrectionAt = MutableStateFlow<Long?>(clock.millis())
     private val colorArgb = MutableStateFlow(0xFF9C27B0.toInt())
     private val iconName = MutableStateFlow("account_balance")
     private val bankName = MutableStateFlow("")
@@ -93,7 +102,8 @@ class AccountFormViewModel @Inject constructor(
                         getAccountBalances.observeBalances().first()[accountId] ?: account.initialBalance
                     initialBalance.value = Format.centsToInput(currentBalance)
 
-                    balanceUpdatedAt.value = if (account.balanceUpdatedAt == 0L) System.currentTimeMillis() else account.balanceUpdatedAt
+                    lastBalanceCorrectionAt.value =
+                        if (account.balanceUpdatedAt == 0L) clock.millis() else account.balanceUpdatedAt
                     colorArgb.value = account.colorArgb
                     iconName.value = account.icon
                     bankName.value = account.bankName ?: ""
@@ -107,7 +117,7 @@ class AccountFormViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<AccountFormUiState> = combine(
-        name, type, initialBalance, balanceUpdatedAt, colorArgb, iconName, bankName, comment, 
+        name, type, initialBalance, lastBalanceCorrectionAt, colorArgb, iconName, bankName, comment, 
         includeInTotal, archived, isSaving, isLoaded, searchQuery, iconResults, isSearching
     ) { args ->
         AccountFormUiState(
@@ -115,10 +125,11 @@ class AccountFormViewModel @Inject constructor(
             name = args[0] as String,
             type = args[1] as AccountType,
             initialBalance = args[2] as String,
-            balanceUpdatedAt = args[3] as Long,
+            lastBalanceCorrectionAt = args[3] as Long?,
             colorArgb = args[4] as Int,
             iconName = args[5] as String,
             bankName = args[6] as String,
+            bankFieldVisible = args[1] == AccountType.CHECKING,
             comment = args[7] as String,
             includeInTotal = args[8] as Boolean,
             archived = args[9] as Boolean,
@@ -145,10 +156,12 @@ class AccountFormViewModel @Inject constructor(
     }
     fun onInitialBalanceChange(v: String) { 
         initialBalance.value = v 
-        // Mise à jour automatique de la date de référence lors du changement de solde
-        balanceUpdatedAt.value = System.currentTimeMillis()
+        // ÉCART CA-05 / I-4 : la saisie réécrit la dernière correction de solde, qui devrait
+        // rester celle persistée tant qu'aucune sauvegarde n'a corrigé le solde.
+        lastBalanceCorrectionAt.value = clock.millis()
     }
-    fun onBalanceDateChange(v: Long) { balanceUpdatedAt.value = v }
+    // ÉCART I-4 : la dernière correction de solde est saisissable depuis l'écran.
+    fun onBalanceDateChange(v: Long) { lastBalanceCorrectionAt.value = v }
     fun onColorChange(v: Int) { colorArgb.value = v }
     fun onIconChange(v: String) { iconName.value = v }
     
@@ -188,50 +201,26 @@ class AccountFormViewModel @Inject constructor(
     }
 
     fun save(onDone: () -> Unit) {
-        if (name.value.isBlank()) return
-        
         viewModelScope.launch {
             isSaving.value = true
-            // Frontière UI : le champ porte des euros, la persistance des centimes (I-4).
-            val newInitialBalance = Format.centsOrNull(initialBalance.value) ?: 0L
-
-            if (isEdit) {
-                // Pour un compte existant, on ajuste via transaction compensatoire
-                adjustBalanceUseCase.adjust(accountId, newInitialBalance)
-                
-                // On met à jour les autres champs du compte (sans toucher au solde initial)
-                val currentAccount = accountRepo.getById(accountId)
-                if (currentAccount != null) {
-                    val updatedAccount = currentAccount.copy(
-                        name = name.value,
-                        type = type.value,
-                        colorArgb = colorArgb.value,
-                        icon = iconName.value,
-                        bankName = if (type.value == AccountType.CHECKING) bankName.value else null,
-                        comment = comment.value.takeIf { it.isNotBlank() },
-                        includeInTotal = includeInTotal.value,
-                        archived = archived.value
-                    )
-                    accountRepo.upsert(updatedAccount)
-                }
-            } else {
-                // Création : on garde le comportement standard
-                val account = AccountEntity(
+            val result = saveAccountUseCase(
+                AccountDraft(
                     id = accountId,
                     name = name.value,
                     type = type.value,
-                    initialBalance = newInitialBalance,
-                    balanceUpdatedAt = System.currentTimeMillis(),
+                    balanceInput = initialBalance.value,
                     colorArgb = colorArgb.value,
-                    icon = iconName.value,
+                    iconName = iconName.value,
                     bankName = if (type.value == AccountType.CHECKING) bankName.value else null,
-                    comment = comment.value.takeIf { it.isNotBlank() },
+                    comment = comment.value,
                     includeInTotal = includeInTotal.value,
-                    archived = archived.value
                 )
-                accountRepo.upsert(account)
+            )
+            when (result) {
+                is AccountSaveResult.Saved -> onDone()
+                // ÉCART CA-03 : le refus n'est pas exposé à l'utilisateur, `refusal` reste nul.
+                is AccountSaveResult.Refused -> isSaving.value = false
             }
-            onDone()
         }
     }
 }

@@ -6,10 +6,14 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
-import com.lop.budget.domain.usecase.account.AdjustBalanceUseCase
+import com.lop.budget.domain.usecase.account.AccountDraft
+import com.lop.budget.domain.usecase.account.AccountSaveResult
+import com.lop.budget.domain.usecase.account.AdjustOutcome
 import com.lop.budget.domain.usecase.account.DeleteAccountUseCase
 import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
+import com.lop.budget.domain.usecase.account.SaveAccountUseCase
 import io.mockk.coEvery
+import io.mockk.confirmVerified
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -24,6 +28,9 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
 
 /**
  * TC-93 — Le formulaire de compte lit le solde chez l'unique producteur (LOP-127).
@@ -43,7 +50,13 @@ import org.junit.Test
  * - CA-01 : le solde préaffiché à l'édition vient de `GetAccountBalancesUseCase.observeBalances()`,
  *   ni de `initialBalance`, ni d'un cumul local.
  * - CA-07 : le champ reste en euros ; 851 centimes s'affichent « 8.51 ».
- * - CA-09 : l'enregistrement transmet des centimes à `AdjustBalanceUseCase`.
+ * - CA-09 : l'enregistrement transmet la saisie telle quelle à `SaveAccountUseCase`.
+ *
+ * **Déplacement du 2 octobre 2026 (LOP-20, décision D5).** L'écriture du compte a quitté le
+ * ViewModel pour `SaveAccountUseCase`, qui porte désormais la conversion euros → centimes. F-03 ne
+ * peut plus constater cette conversion ici : il assert le brouillon exact transmis, saisie « 12,34 »
+ * comprise. La conversion d'une saisie à virgule est prouvée sur base réelle par TC-136 E-02
+ * (« 1200,00 » → 120 000 centimes).
  *
  * **Écart signalé, volontairement non corrigé :** la fiche 93 déclare couvrir CA-01 et CA-02, ce
  * fichier couvre CA-01, CA-07 et CA-09. CA-02 — « les seuls appels à `BalanceEngine` sont
@@ -61,7 +74,7 @@ class AccountFormBalanceSourceTest {
 
     private val dispatcher = UnconfinedTestDispatcher()
 
-    private val adjustBalanceUseCase = mockk<AdjustBalanceUseCase>(relaxed = true)
+    private val saveAccountUseCase = mockk<SaveAccountUseCase>(relaxed = false)
     private val getAccountBalances = mockk<GetAccountBalancesUseCase>(relaxed = false)
     private val accountRepo = mockk<AccountRepository>(relaxed = false)
     private val iconSearch = mockk<IconSearchRepository>(relaxed = false)
@@ -100,11 +113,12 @@ class AccountFormBalanceSourceTest {
 
     private fun sut() = AccountFormViewModel(
         savedStateHandle = SavedStateHandle(mapOf("id" to accountId)),
-        adjustBalanceUseCase = adjustBalanceUseCase,
+        saveAccountUseCase = saveAccountUseCase,
         getAccountBalances = getAccountBalances,
         deleteAccountUseCase = deleteAccountUseCase,
         accountRepo = accountRepo,
         iconSearch = iconSearch,
+        clock = Clock.fixed(Instant.parse("2026-03-10T08:00:00Z"), ZoneId.of("Europe/Paris")),
     )
 
     @Test
@@ -132,9 +146,21 @@ class AccountFormBalanceSourceTest {
     }
 
     @Test
-    fun `F-03 - l'enregistrement transmet des centimes a l'ajustement`() = runTest {
+    fun `F-03 - l'enregistrement transmet la saisie exacte au use case de sauvegarde`() = runTest {
         every { getAccountBalances.observeBalances() } returns flowOf(mapOf(accountId to 851L))
-        coEvery { accountRepo.upsert(any()) } returns accountId
+        val expectedDraft = AccountDraft(
+            id = accountId,
+            name = "Compte courant",
+            type = AccountType.CHECKING,
+            balanceInput = "12,34",
+            colorArgb = 0,
+            iconName = "account_balance",
+            bankName = "",
+            comment = "",
+            includeInTotal = true,
+        )
+        coEvery { saveAccountUseCase(expectedDraft) } returns
+            AccountSaveResult.Saved(accountId, AdjustOutcome.Created(transactionId = 12L, delta = 383L))
 
         val vm = sut()
         vm.uiState.test {
@@ -145,7 +171,10 @@ class AccountFormBalanceSourceTest {
         vm.onInitialBalanceChange("12,34")
         vm.save {}
 
-        coVerify(exactly = 1) { adjustBalanceUseCase.adjust(accountId, 1_234L) }
+        coVerify(exactly = 1) { saveAccountUseCase(expectedDraft) }
+        coVerify(exactly = 1) { accountRepo.getById(accountId) }
+        coVerify(exactly = 0) { accountRepo.upsert(any()) }
+        confirmVerified(accountRepo)
     }
 }
 

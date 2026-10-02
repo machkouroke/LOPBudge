@@ -55,14 +55,16 @@ fun AccountEditScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    val balanceDateLabel = remember(state.balanceUpdatedAt) {
-        val zdt = Instant.ofEpochMilli(state.balanceUpdatedAt).atZone(ZoneId.systemDefault())
-        zdt.format(DateTimeFormatter.ofPattern("dd MMMM yyyy, HH:mm"))
+    val balanceDateLabel = remember(state.lastBalanceCorrectionAt) {
+        state.lastBalanceCorrectionAt?.let {
+            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
+                .format(DateTimeFormatter.ofPattern("dd MMMM yyyy, HH:mm"))
+        }.orEmpty()
     }
 
     if (showDatePicker) {
         LopDatePicker(
-            initialDateMillis = state.balanceUpdatedAt,
+            initialDateMillis = state.lastBalanceCorrectionAt,
             onDateSelected = { it?.let { vm.onBalanceDateChange(it) } },
             onDismiss = { showDatePicker = false }
         )
@@ -188,7 +190,7 @@ fun AccountEditScreen(
                                 modifier = Modifier.testTag("account.edit.type.selector")
                             )
 
-                            if (state.type == AccountType.CHECKING) {
+                            if (state.bankFieldVisible) {
                                 SelectorField(
                                     label = "Établissement bancaire",
                                     value = state.bankName.ifBlank { "Choisir une banque..." },

@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.res.stringResource
@@ -307,12 +308,17 @@ fun CircleIcon(
     background: Color,
     size: Dp = 44.dp,
     modifier: Modifier = Modifier,
+    contentDescription: String? = null,
 ) {
     Box(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(if (icon is String && icon.startsWith("http")) Color.White else background),
+            .background(if (icon is String && icon.startsWith("http")) Color.White else background)
+            .then(
+                if (contentDescription == null) Modifier
+                else Modifier.semantics { this.contentDescription = contentDescription }
+            ),
         contentAlignment = Alignment.Center,
     ) {
         when (icon) {

@@ -167,7 +167,8 @@ fun AccountManageRow(
             CircleIcon(
                 icon = IconMapper.get(account.icon),
                 tint = color,
-                background = color.copy(alpha = 0.15f)
+                background = color.copy(alpha = 0.15f),
+                contentDescription = account.icon,
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {

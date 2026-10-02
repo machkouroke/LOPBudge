@@ -6,6 +6,7 @@ import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.usecase.account.DeleteAccountUseCase
+import com.lop.budget.domain.usecase.account.SetAccountFlagsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +25,7 @@ data class AccountsManageUiState(
 class AccountsManageViewModel @Inject constructor(
     private val accountRepo: AccountRepository,
     private val deleteAccountUseCase: DeleteAccountUseCase,
+    private val setAccountFlags: SetAccountFlagsUseCase,
     settings: SettingsRepository,
 ) : ViewModel() {
 
@@ -40,7 +42,7 @@ class AccountsManageViewModel @Inject constructor(
 
     fun toggleArchive(account: AccountEntity) {
         viewModelScope.launch {
-            accountRepo.upsert(account.copy(archived = !account.archived))
+            setAccountFlags(account.id, archived = !account.archived)
         }
     }
 
