@@ -31,6 +31,7 @@ interface TransactionOperations {
 
     fun observeById(id: Long): Flow<TransactionWithRelations?>
     fun observeSlotsAt(slotDates: List<Long>): Flow<List<TransactionWithRelations>>
+    fun observeSeriesRows(seriesId: Long): Flow<List<TransactionEntity>>
     suspend fun getById(id: Long): TransactionWithRelations?
     suspend fun upsert(tx: TransactionEntity): Long
     suspend fun softDeleteTransaction(id: Long)
@@ -150,6 +151,16 @@ interface TransactionDao : TransactionOperations {
     """
     )
     override fun observeSlotsAt(slotDates: List<Long>): Flow<List<TransactionWithRelations>>
+
+    /**
+     * Toutes les lignes persistées d'une série, **tombstones compris**, sans relations (LOP-7, CA-01).
+     *
+     * Sert à borner la recherche des prochaines échéances visibles : chaque ligne peut masquer des
+     * slots, ou s'afficher au-delà du dernier slot de la série. Sans `@Transaction` ni relation, la
+     * requête n'observe que la table `transactions`.
+     */
+    @Query("SELECT * FROM transactions WHERE seriesId = :seriesId")
+    override fun observeSeriesRows(seriesId: Long): Flow<List<TransactionEntity>>
 
     @Transaction
     @Query(

@@ -109,6 +109,8 @@
     <string name="tx_detail_account">Compte</string>
     <string name="tx_detail_edit_category">Modifier la catégorie</string>
     <string name="tx_detail_upcoming_occurrences">Prochaines occurrences</string>
+    <string name="tx_detail_no_upcoming">Aucune prochaine échéance</string>
+    <string name="tx_detail_open_calendar">Voir le calendrier</string>
     <string name="tx_detail_mark_as_paid">Marquer comme payé</string>
     <string name="tx_detail_mark_as_unpaid">Marquer comme non payé</string>
     <string name="tx_detail_delete_title">Supprimer la transaction ?</string>
@@ -267,4 +269,25 @@
     <string name="add_action_subtitle">Quel type de transaction ?</string>
     <string name="add_action_expense">Dépense</string>
     <string name="add_action_income">Revenu</string>
+
+    <!-- LOP-7 : calendrier des occurrences d'une série -->
+    <string name="occurrence_status_paid">Payé</string>
+    <string name="occurrence_status_planned">Planifié</string>
+    <string name="series_calendar_title">Calendrier de la série</string>
+    <string name="series_calendar_prev_month">Mois précédent</string>
+    <string name="series_calendar_next_month">Mois suivant</string>
+    <string name="series_calendar_pick_month">Choisir le mois et l\'année, actuellement %1$s</string>
+    <string name="series_calendar_next_due">Prochaine échéance</string>
+    <string name="series_calendar_select_day">Sélectionnez un jour</string>
+    <string name="series_calendar_empty_day">Aucune occurrence ce jour</string>
+    <string name="series_calendar_unavailable">Cette occurrence n\'est plus disponible</string>
+    <string name="series_calendar_load_error">Impossible de charger les occurrences</string>
+    <string name="series_calendar_retry">Réessayer</string>
+    <string name="series_calendar_day_selected">sélectionné</string>
+    <string name="series_calendar_day_today">aujourd\'hui</string>
+    <plurals name="series_calendar_day_count">
+        <item quantity="one">%d occurrence</item>
+        <item quantity="many">%d occurrences</item>
+        <item quantity="other">%d occurrences</item>
+    </plurals>
 </resources>

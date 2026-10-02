@@ -110,6 +110,8 @@ fun LazyListScope.transactionDayGroups(
  *   domaine, jamais déduit ici du type technique.
  * @param allowedActions actions que le domaine autorise sur cette ligne. Chaque geste et chaque
  *   rappel est conditionné à cet ensemble, et à rien d'autre.
+ * @param supportingText ligne d'information supplémentaire, formatée par l'appelant (LOP-7 :
+ *   date complète, type et statut des occurrences d'une série).
  */
 @Composable
 fun TransactionRow(
@@ -120,6 +122,7 @@ fun TransactionRow(
     showDate: Boolean = false,
     isAdjustment: Boolean = false,
     allowedActions: Set<AccountRowAction> = AccountRowAction.entries.toSet(),
+    supportingText: String? = null,
     actionVm: TransactionActionViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
 ) {
     val ext = LopTheme.extended
@@ -131,6 +134,9 @@ fun TransactionRow(
     val canOpen = AccountRowAction.OPEN in allowedActions
     val canTogglePaid = AccountRowAction.TOGGLE_PAID in allowedActions
     val canDelete = AccountRowAction.DELETE in allowedActions
+    // L'aperçu rapide n'est qu'un raccourci vers modifier, payer et supprimer : une ligne qui
+    // n'autorise aucune de ces actions ne l'ouvre pas (LOP-7, aperçu en lecture seule).
+    val canPreview = canOpen && (canTogglePaid || canDelete || AccountRowAction.EDIT in allowedActions)
 
     SwipeableTransactionRow(
         isPaid = isPaid,
@@ -154,7 +160,7 @@ fun TransactionRow(
                             onOpenTransaction(tx.transaction.id)
                         }
                     },
-                    onLongClick = { if (canOpen) actionVm.showPreview(tx) }
+                    onLongClick = { if (canPreview) actionVm.showPreview(tx) }
                 )
                 .graphicsLayer {
                     alpha = if (isPaid && !isAdjustment) 0.5f else 1f
@@ -197,7 +203,14 @@ fun TransactionRow(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    
+                    if (supportingText != null) {
+                        Text(
+                            supportingText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
                     if (tx.tags.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -82,6 +82,25 @@ object TestTags {
     const val EDIT_AFFORDANCE_SUFFIX = ".edit"
     const val VALUE_SUFFIX = ".value"
 
+    // Aperçu des prochaines échéances et calendrier de la série (LOP-7)
+    const val TRANSACTION_DETAIL_UPCOMING = "transaction.detail.upcoming"
+    const val TRANSACTION_DETAIL_UPCOMING_ROW = "transaction.detail.upcoming.row"
+    const val TRANSACTION_DETAIL_UPCOMING_EMPTY = "transaction.detail.upcoming.empty"
+    const val TRANSACTION_DETAIL_OPEN_CALENDAR = "transaction.detail.calendar.open"
+    const val SCREEN_SERIES_CALENDAR = "screen.series.calendar"
+    const val SERIES_CALENDAR_PREV_MONTH = "series.calendar.month.prev"
+    const val SERIES_CALENDAR_NEXT_MONTH = "series.calendar.month.next"
+    const val SERIES_CALENDAR_MONTH_PICKER = "series.calendar.month.picker"
+    const val SERIES_CALENDAR_NEXT_DUE = "series.calendar.next.due"
+
+    /** Suivi de la date ISO du jour : `series.calendar.day.2027-02-10`. */
+    const val SERIES_CALENDAR_DAY_PREFIX = "series.calendar.day."
+    const val SERIES_CALENDAR_ROW = "series.calendar.row"
+    const val SERIES_CALENDAR_SELECT_HINT = "series.calendar.hint.select"
+    const val SERIES_CALENDAR_EMPTY_DAY = "series.calendar.day.empty"
+    const val SERIES_CALENDAR_ERROR = "series.calendar.error"
+    const val SERIES_CALENDAR_RETRY = "series.calendar.retry"
+
     // Sélecteurs partagés
     const val PICKER_DATE = "picker.date"
     const val PICKER_ACCOUNT_SHEET = "picker.account.sheet"

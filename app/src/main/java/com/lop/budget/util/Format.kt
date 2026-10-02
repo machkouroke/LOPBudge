@@ -4,6 +4,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
 import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -106,8 +107,9 @@ object Format {
         Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(dayMonth)
 
     fun fullDate(millis: Long): String =
-        Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(full)
-            .replaceFirstChar { it.uppercase() }
+        fullDate(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate())
+
+    fun fullDate(date: LocalDate): String = date.format(full).replaceFirstChar { it.uppercase() }
 
     /** Exécute : "juin 2026" → "Juin 2026" */
     fun monthYear(ym: YearMonth): String =

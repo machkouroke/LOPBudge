@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,11 +31,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +64,7 @@ import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
+import com.lop.budget.ui.components.OccurrenceRow
 import com.lop.budget.ui.components.PillTag
 import com.lop.budget.ui.components.SwipeDownDismissWrapper
 import com.lop.budget.ui.components.clickableNoRipple
@@ -68,12 +72,16 @@ import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionDetailScreen(
     transactionId: Long,
     onBack: () -> Unit,
+    /** Ouvre le détail d'une échéance de l'aperçu, revalidée par le ViewModel (LOP-7, CA-05). */
+    onOpenOccurrence: (Long) -> Unit,
+    onOpenCalendar: () -> Unit,
     vm: TransactionDetailViewModel = hiltViewModel(),
     actionVm: TransactionActionViewModel = hiltViewModel(LocalContext.current as androidx.activity.ComponentActivity),
     snackbarHostState: SnackbarHostState,
@@ -84,7 +92,17 @@ fun TransactionDetailScreen(
     val ext = LopTheme.extended
     val haptic = LocalHapticFeedback.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
+    val unavailable = stringResource(R.string.series_calendar_unavailable)
 
+    LaunchedEffect(vm) {
+        vm.events.collect { event ->
+            when (event) {
+                is DetailEvent.OpenOccurrence -> onOpenOccurrence(event.id)
+                DetailEvent.OccurrenceUnavailable -> scope.launch { snackbarHostState.showSnackbar(unavailable) }
+            }
+        }
+    }
 
     LaunchedEffect(state.transaction, state.isLoaded, pendingDeletes) {
         val currentId = state.transaction?.transaction?.id
@@ -124,7 +142,6 @@ fun TransactionDetailScreen(
                 }
             } else {
                 val isIncome = tx.type == TransactionType.INCOME
-                val accent = if (isIncome) ext.income else ext.expense
 
                 item {
                     Row(
@@ -339,9 +356,16 @@ fun TransactionDetailScreen(
                     }
                 }
 
-                if (tx.seriesId != null && state.upcomingDates.isNotEmpty()) {
+                // LOP-7, CA-01 : `upcoming` vaut null pour une transaction ponctuelle, qui n'a ni aperçu
+                // ni calendrier. Une série sans échéance restante garde l'accès au calendrier.
+                val upcoming = state.upcoming
+                if (upcoming != null) {
                     item {
-                        FloatingCard(Modifier.fillMaxWidth()) {
+                        FloatingCard(
+                            Modifier
+                                .fillMaxWidth()
+                                .testTag(TestTags.TRANSACTION_DETAIL_UPCOMING)
+                        ) {
                             Column {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
@@ -357,23 +381,32 @@ fun TransactionDetailScreen(
                                     )
                                 }
                                 Spacer(Modifier.height(10.dp))
-                                state.upcomingDates.forEach { d ->
-                                    Row(
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 6.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                    ) {
-                                        Text(
-                                            Format.fullDate(d),
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                        Text(
-                                            (if (isIncome) "+" else "−") + Format.money(tx.amount),
-                                            color = accent,
-                                            style = MaterialTheme.typography.bodyLarge
+                                if (upcoming.isEmpty()) {
+                                    Text(
+                                        stringResource(R.string.tx_detail_no_upcoming),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.testTag(TestTags.TRANSACTION_DETAIL_UPCOMING_EMPTY)
+                                    )
+                                }
+                                // P-6 : la ligne de transaction de l'accueil, en lecture seule.
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    upcoming.forEach { occurrence ->
+                                        OccurrenceRow(
+                                            occurrence = occurrence,
+                                            onClick = { vm.openOccurrence(occurrence) },
+                                            modifier = Modifier.testTag(TestTags.TRANSACTION_DETAIL_UPCOMING_ROW),
+                                            actionVm = actionVm,
                                         )
                                     }
+                                }
+                                TextButton(
+                                    onClick = onOpenCalendar,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 48.dp)
+                                        .testTag(TestTags.TRANSACTION_DETAIL_OPEN_CALENDAR)
+                                ) {
+                                    Text(stringResource(R.string.tx_detail_open_calendar))
                                 }
                             }
                         }

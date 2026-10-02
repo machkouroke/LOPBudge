@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
@@ -72,12 +73,15 @@ class ObserveTransactionsUseCase @Inject constructor(
         }.flowOn(Dispatchers.Default)
 
     /**
-     * Les [count] prochaines occurrences visibles d'une série, strictement après [after].
+     * Les [count] prochaines occurrences **visibles** d'une série, strictement après [after], ou
+     * toutes celles qui restent s'il y en a moins (CA-01 de LOP-7).
      *
-     * L'horizon est **dérivé du calendrier de la série** — la date de la `count`-ième occurrence
-     * candidate — et non d'une durée arbitraire : une série annuelle reste donc consultable aussi
-     * loin que ses échéances se projettent. La fusion est réutilisée telle quelle, donc les
-     * exceptions déplacées et les slots supprimés restent pris en compte (I-3, I-5).
+     * L'horizon est dérivé du calendrier de la série et de ses lignes persistées, jamais d'une durée
+     * arbitraire (LOP-124). Une ligne persistée masque au plus deux slots, celui de sa `seriesDate`
+     * et celui de sa `date` (I-3) : la `count + 2 × lignes`-ième candidate borne donc à coup sûr
+     * `count` occurrences visibles. L'horizon s'étend aussi jusqu'à la dernière exception visible,
+     * qui reste une échéance même déplacée au-delà du dernier slot d'une série finie. La fusion est
+     * réutilisée telle quelle (I-3, I-5).
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observeUpcoming(
@@ -85,14 +89,19 @@ class ObserveTransactionsUseCase @Inject constructor(
         after: Long,
         count: Int,
     ): Flow<List<TransactionWithRelations>> =
-        transactionRepo.observeActiveSeries().flatMapLatest { seriesList ->
-            val series = seriesList.find { it.id == seriesId }
-            val horizon = series
-                ?.let { RecurrenceEngine.nextOccurrences(it, after, count) }
+        combine(
+            transactionRepo.observeActiveSeries(),
+            transactionRepo.observeSeriesRows(seriesId),
+        ) { seriesList, rows ->
+            val ahead = rows.filter { it.date > after || (it.seriesDate ?: it.date) > after }
+            val lastSlot = seriesList.find { it.id == seriesId }
+                ?.let { RecurrenceEngine.nextOccurrences(it, after, count + 2 * ahead.size) }
                 ?.lastOrNull()
                 ?.date
-                ?: return@flatMapLatest flowOf(emptyList())
-
+            val lastException = ahead.filter { !it.deleted && it.date > after }.maxOfOrNull { it.date }
+            listOfNotNull(lastSlot, lastException).maxOrNull()
+        }.distinctUntilChanged().flatMapLatest { horizon ->
+            if (horizon == null) return@flatMapLatest flowOf(emptyList())
             invoke(after + 1, horizon).map { rows ->
                 rows.filter { it.transaction.seriesId == seriesId }.take(count)
             }

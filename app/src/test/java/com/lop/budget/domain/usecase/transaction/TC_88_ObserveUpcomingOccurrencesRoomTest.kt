@@ -63,8 +63,8 @@ import kotlin.time.Duration.Companion.seconds
  * attendues sont écrites en clair, jamais recalculées par le moteur testé.
  *
  * ## Hors périmètre
- * Rendu de la section dans `TransactionDetailScreen`, et cardinalité choisie par le ViewModel
- * (`UPCOMING_COUNT`) : ce fichier teste le contrat du domaine, pas la valeur retenue par l'écran.
+ * Rendu de la section dans `TransactionDetailScreen`, et cardinalité retenue par l'aperçu
+ * (`ObserveRecurringOccurrencesUseCase.PREVIEW_COUNT`) : ce fichier teste le contrat du domaine.
  *
  * ## Exécution
  * `./gradlew :app:testDebugUnitTest --tests "*ObserveUpcomingOccurrencesRoomTest"`
@@ -140,11 +140,11 @@ class ObserveUpcomingOccurrencesRoomTest {
 
     /**
      * U-02 — Given un slot supprimé parmi les prochaines échéances, When on les demande, Then il est
-     * exclu et ne se régénère pas en occurrence virtuelle (I-5).
+     * exclu, ne se régénère pas en occurrence virtuelle (I-5), et l'échéance suivante le remplace.
      *
-     * L'horizon reste calé sur la 6ᵉ occurrence **candidate** : masquer un slot rend donc cinq
-     * lignes, pas six. C'est le comportement voulu — l'horizon décrit le calendrier de la série, pas
-     * un quota à remplir coûte que coûte.
+     * Le compte demandé est un compte d'occurrences **visibles** (CA-01 de LOP-7) : masquer un slot
+     * ne doit pas rendre cinq lignes alors que la série en a encore. L'oracle précédent, cinq
+     * lignes, décrivait l'horizon calé sur la 6ᵉ candidate ; LOP-7 l'a explicitement désavoué.
      */
     @Test
     fun `U-02 - un slot supprime est exclu des prochaines occurrences sans se regenerer`() = runTest {
@@ -161,6 +161,7 @@ class ObserveUpcomingOccurrencesRoomTest {
                 at09(2030, 2, 10),
                 at09(2031, 2, 10),
                 at09(2032, 2, 10),
+                at09(2033, 2, 10),
             ),
         )
     }

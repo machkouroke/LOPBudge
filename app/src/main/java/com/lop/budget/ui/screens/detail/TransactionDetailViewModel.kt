@@ -8,11 +8,14 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
+import com.lop.budget.domain.usecase.transaction.ObserveRecurringOccurrencesUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
-import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
+import com.lop.budget.domain.usecase.transaction.TargetResolution
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,8 +23,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
  * Actions offertes par la page de détail (CA-12, CA-13 de LOP-53).
@@ -33,8 +38,11 @@ enum class DetailAction { EDIT, DELETE, MARK_AS_PAID, MARK_AS_UNPAID }
 
 data class DetailUiState(
     val transaction: TransactionWithRelations? = null,
-    val upcomingDates: List<Long> = emptyList(),
-    val seriesOccurrences: List<TransactionWithRelations> = emptyList(),
+    /**
+     * Prochaines échéances de la série, chacune avec son identité et ses valeurs propres (CA-01 de
+     * LOP-7). `null` pour une transaction ponctuelle : ni aperçu ni accès au calendrier.
+     */
+    val upcoming: List<TransactionWithRelations>? = null,
     val availableCategories: List<CategoryEntity> = emptyList(),
     val availableAccounts: List<AccountEntity> = emptyList(),
     val isLoaded: Boolean = false,
@@ -45,11 +53,17 @@ data class DetailUiState(
     val availableActions: Set<DetailAction> = emptySet(),
 )
 
+/** Navigation demandée par l'aperçu, une fois la cible revalidée (CA-05 de LOP-7). */
+sealed interface DetailEvent {
+    data class OpenOccurrence(val id: Long) : DetailEvent
+    data object OccurrenceUnavailable : DetailEvent
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TransactionDetailViewModel @Inject constructor(
     private val observeTransactionDetailUseCase: ObserveTransactionDetailUseCase,
-    private val observeTransactionsUseCase: ObserveTransactionsUseCase,
+    private val observeRecurringOccurrences: ObserveRecurringOccurrencesUseCase,
     private val accountRepo: AccountRepository,
     private val observeCategories: ObserveCategoriesUseCase,
 ) : ViewModel() {
@@ -73,18 +87,27 @@ class TransactionDetailViewModel @Inject constructor(
         .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5000), replay = 1)
 
     /**
-     * Prochaines échéances de la série consultée.
-     *
-     * La borne est demandée en **nombre** d'occurrences : aucune durée n'est décidée ici. Le
-     * calcul de récurrence reste entièrement dans le domaine (CA-13 de LOP-49).
+     * Aperçu des prochaines échéances. Leur nombre, leur recherche et le cas ponctuel sont décidés
+     * par le use case : rien de la récurrence n'est calculé ici (CA-13 de LOP-49, LOP-7).
      */
-    private val upcomingFlow = txFlow.flatMapLatest { tx ->
-        val seriesId = tx?.transaction?.seriesId ?: return@flatMapLatest flowOf(emptyList())
-        observeTransactionsUseCase.observeUpcoming(
-            seriesId = seriesId,
-            after = tx.transaction.date,
-            count = UPCOMING_COUNT,
-        )
+    private val upcomingFlow: Flow<List<TransactionWithRelations>?> = txFlow.flatMapLatest { tx ->
+        if (tx == null) flowOf(null)
+        else observeRecurringOccurrences.observeUpcoming(tx)
+    }
+
+    private val _events = Channel<DetailEvent>(Channel.BUFFERED)
+    val events: Flow<DetailEvent> = _events.receiveAsFlow()
+
+    /** Ouvre une échéance de l'aperçu après revalidation de son slot (CA-01, CA-05 de LOP-7). */
+    fun openOccurrence(occurrence: TransactionWithRelations) {
+        viewModelScope.launch {
+            _events.send(
+                when (val target = observeRecurringOccurrences.resolveTarget(occurrence)) {
+                    is TargetResolution.Available -> DetailEvent.OpenOccurrence(target.id)
+                    else -> DetailEvent.OccurrenceUnavailable
+                }
+            )
+        }
     }
 
     val uiState: StateFlow<DetailUiState> =
@@ -104,7 +127,7 @@ class TransactionDetailViewModel @Inject constructor(
 
             DetailUiState(
                 transaction = tx,
-                upcomingDates = upcoming.map { it.transaction.date },
+                upcoming = upcoming,
                 availableCategories = categories.filter { it.type == tx.transaction.type },
                 availableAccounts = accounts,
                 isLoaded = true,
@@ -119,9 +142,6 @@ class TransactionDetailViewModel @Inject constructor(
      */
 
     private companion object {
-        /** Nombre d'échéances affichées par la section « prochaines occurrences ». */
-        const val UPCOMING_COUNT = 6
-
         /**
          * CA-12 : « Marquer comme payé » n'est offerte que sur une transaction non payée ;
          * son inverse la remplace sur une transaction payée. CA-13 : Modifier et Supprimer

@@ -19,6 +19,7 @@ import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
 import com.lop.budget.domain.usecase.transaction.CancelRecurringSeriesUseCase
 import com.lop.budget.domain.usecase.transaction.EditOutcome
 import com.lop.budget.domain.usecase.transaction.EditTransactionWithScopeUseCase
+import com.lop.budget.domain.usecase.transaction.ObserveRecurringOccurrencesUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionDetailUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
 import com.lop.budget.domain.usecase.transaction.SoftDeleteTransactionOccurrenceUseCase
@@ -192,7 +193,10 @@ class TransactionDetailQuickEditTest {
 
         detailVm = TransactionDetailViewModel(
             observeTransactionDetailUseCase = observeTransactionDetailUseCase,
-            observeTransactionsUseCase = observeTransactionsUseCase,
+            observeRecurringOccurrences = ObserveRecurringOccurrencesUseCase(
+                observeTransactionsUseCase,
+                observeTransactionDetailUseCase,
+            ),
             accountRepo = accountRepo,
             observeCategories = ObserveCategoriesUseCase(categoryRepo),
         )
@@ -582,7 +586,10 @@ class TransactionDetailQuickEditTest {
 
             val dueVm = TransactionDetailViewModel(
                 observeTransactionDetailUseCase = observeTransactionDetailUseCase,
-                observeTransactionsUseCase = observeTransactionsUseCase,
+                observeRecurringOccurrences = ObserveRecurringOccurrencesUseCase(
+                    observeTransactionsUseCase,
+                    observeTransactionDetailUseCase,
+                ),
                 accountRepo = accountRepo,
                 observeCategories = ObserveCategoriesUseCase(categoryRepo),
             )

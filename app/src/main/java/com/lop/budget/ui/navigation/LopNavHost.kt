@@ -53,6 +53,8 @@ import com.lop.budget.ui.screens.accounts.AccountDetailScreen
 import com.lop.budget.ui.screens.accounts.AccountsScreen
 import com.lop.budget.ui.screens.ai.AiScreen
 import com.lop.budget.ui.screens.analytics.AnalyticsScreen
+import com.lop.budget.ui.screens.calendar.SeriesCalendarScreen
+import com.lop.budget.ui.screens.calendar.SeriesCalendarViewModel
 import com.lop.budget.ui.screens.category.CategoryCreateScreen
 import com.lop.budget.ui.screens.detail.TransactionDetailScreen
 import com.lop.budget.ui.screens.detected.DetectedTransactionsScreen
@@ -429,10 +431,41 @@ fun LopNavHost() {
                         )
                     ) { entry ->
                         val id = entry.arguments?.getLong("id") ?: 0L
+                        // LOP-7, CA-06 : un détail ouvert depuis le calendrier y revient, et les
+                        // détails consultés depuis lui le remplacent au lieu de s'empiler.
+                        val openedFromCalendar = {
+                            navController.previousBackStackEntry?.destination?.route == Routes.SERIES_CALENDAR
+                        }
                         TransactionDetailScreen(
                             transactionId = id,
                             onBack = { navController.popBackStack() },
+                            onOpenOccurrence = { targetId ->
+                                val replace = openedFromCalendar()
+                                navController.navigate(Routes.detail(targetId)) {
+                                    if (replace) popUpTo(Routes.SERIES_CALENDAR)
+                                }
+                            },
+                            onOpenCalendar = {
+                                if (openedFromCalendar()) navController.popBackStack()
+                                else navController.navigate(Routes.seriesCalendar(id))
+                            },
                             snackbarHostState = snackbarHostState
+                        )
+                    }
+
+                    composableAnimated(
+                        Routes.SERIES_CALENDAR,
+                        NavAnimationType.SECONDARY,
+                        arguments = listOf(
+                            navArgument(SeriesCalendarViewModel.ARG_START_ID) { type = NavType.LongType }
+                        ),
+                    ) {
+                        SeriesCalendarScreen(
+                            onBack = { navController.popBackStack() },
+                            onOpenOccurrence = { id ->
+                                navController.navigate(Routes.detail(id)) { launchSingleTop = true }
+                            },
+                            snackbarHostState = snackbarHostState,
                         )
                     }
                 }
