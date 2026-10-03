@@ -41,6 +41,7 @@ import com.lop.budget.util.IconMapper
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +58,9 @@ fun AccountEditScreen(
     val balanceDateLabel = remember(state.lastBalanceCorrectionAt) {
         state.lastBalanceCorrectionAt?.let {
             Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
-                .format(DateTimeFormatter.ofPattern("dd MMMM yyyy, HH:mm"))
+                // Locale explicite, comme `Format` : l'app est en français, quelle que soit la langue de
+                // l'appareil (échec CI de TC-137, émulateur en anglais).
+                .format(DateTimeFormatter.ofPattern("dd MMMM yyyy, HH:mm", Locale.FRANCE))
         }.orEmpty()
     }
 
