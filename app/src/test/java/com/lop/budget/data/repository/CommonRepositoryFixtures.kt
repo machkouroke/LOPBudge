@@ -74,6 +74,7 @@ interface RepositoryTestInfrastructure {
             daysOfWeek = s.daysOfWeek.toDaysOfWeekSet(),
             endDate = endDate,
             maxOccurrences = s.maxOccurrences,
+            missingDayBehavior = s.missingDayBehavior,
             linkedGoalId = s.linkedGoalId,
             linkedLoanId = s.linkedLoanId,
             tagIds = emptyList(),

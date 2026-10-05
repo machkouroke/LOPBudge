@@ -28,6 +28,8 @@ data class TransactionEdition(
     val daysOfWeek: Set<Int>,
     val endDate: Long?,
     val maxOccurrences: Int?,
+    /** Comportement pour jour absent de la règle (LOP-88). Sans effet hors MONTHLY / YEARLY. */
+    val missingDayBehavior: MissingDayBehavior,
     val linkedGoalId: Long?,
     val linkedLoanId: Long?,
     val tagIds: List<Long>,

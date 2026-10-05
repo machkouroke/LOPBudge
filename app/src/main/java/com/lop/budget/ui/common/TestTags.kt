@@ -129,6 +129,13 @@ object TestTags {
     const val TX_EDIT_CHIP_NONE = "transaction.edit.chip.none"
     const val TX_EDIT_FIELD_INTERVAL = "transaction.edit.field.interval"
 
+    /** Avertissement de jour absent avant enregistrement de la règle (LOP-88, CA-01 à CA-03). */
+    const val TX_EDIT_MISSING_DAY_SHEET = "transaction.edit.missing_day.sheet"
+    const val TX_EDIT_MISSING_DAY_EXAMPLE = "transaction.edit.missing_day.example"
+    const val TX_EDIT_MISSING_DAY_SKIP = "transaction.edit.missing_day.skip"
+    const val TX_EDIT_MISSING_DAY_LAST = "transaction.edit.missing_day.last"
+    const val TX_EDIT_MISSING_DAY_CANCEL = "transaction.edit.missing_day.cancel"
+
     // Recurring Delete Sheet
     const val RECURRING_DELETE_SHEET = "recurring.delete.scope.sheet"
     const val RECURRING_DELETE_SINGLE = "recurring.delete.scope.single"

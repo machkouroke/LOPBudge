@@ -2,6 +2,7 @@ package com.lop.budget.data.local
 
 import androidx.room.TypeConverter
 import com.lop.budget.domain.model.AccountType
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
@@ -16,6 +17,9 @@ class Converters {
 
     @TypeConverter fun toRecurrenceFrequency(v: String) = RecurrenceFrequency.valueOf(v)
     @TypeConverter fun fromRecurrenceFrequency(v: RecurrenceFrequency) = v.name
+
+    @TypeConverter fun toMissingDayBehavior(v: String) = MissingDayBehavior.valueOf(v)
+    @TypeConverter fun fromMissingDayBehavior(v: MissingDayBehavior) = v.name
 
     @TypeConverter fun toAccountType(v: String) = AccountType.valueOf(v)
     @TypeConverter fun fromAccountType(v: AccountType) = v.name

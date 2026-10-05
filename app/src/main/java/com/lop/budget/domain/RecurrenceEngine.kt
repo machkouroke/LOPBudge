@@ -2,6 +2,8 @@ package com.lop.budget.domain
 
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionEntity
+import com.lop.budget.domain.model.MissingDay
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
@@ -15,6 +17,9 @@ import java.time.temporal.ChronoUnit
  * Gère la génération d'occurrences virtuelles à partir d'une série.
  */
 object RecurrenceEngine {
+
+    /** Nombre de périodes examinées par [firstMissingDay] pour une règle sans fin. */
+    private const val MISSING_DAY_SCAN = 400
 
     /**
      * Génère les occurrences virtuelles d'une série sur une période donnée.
@@ -74,14 +79,81 @@ object RecurrenceEngine {
             0L
         }
 
+        val skip = series.missingDayBehavior == MissingDayBehavior.SKIP_PERIOD
         var count = 0
         for (slot in slots(series, fromStep)) {
             if (series.endDate != null && slot > series.endDate) break
             if (series.maxOccurrences != null && count >= series.maxOccurrences) break
 
+            // P-1 de LOP-88 : une période sautée consomme `maxOccurrences`, d'où le compteur
+            // avancé avant le saut.
             count++
+            if (skip && lacksAnchorDay(series, slot)) continue
             yield(slot)
         }
+    }
+
+    /**
+     * CA-01 de LOP-88 : premier slot de la règle dont la période ne possède pas le jour d'ancrage,
+     * ou `null` si la règle n'en rencontre aucun.
+     *
+     * La grille est parcourue en mode « dernier jour valide », limites de série comprises
+     * (intervalle, `endDate`, `maxOccurrences`) : ce sont les périodes **visées** par la règle,
+     * quel que soit le comportement finalement retenu. La date rendue est la date rabattue, qui
+     * sert d'exemple à l'avertissement.
+     */
+    fun firstMissingDay(series: RecurringSeriesEntity): MissingDay? {
+        if (series.isCancelled) return null
+        if (series.frequency != RecurrenceFrequency.MONTHLY && series.frequency != RecurrenceFrequency.YEARLY) {
+            return null
+        }
+        // ponytail: plafond de 400 périodes pour une règle sans fin. Il couvre le cycle grégorien
+        // d'un annuel au 29 février (2100 compris) ; le relever si un intervalle plus exotique
+        // devait être détecté au-delà.
+        return validSlots(series.copy(missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY))
+            .take(MISSING_DAY_SCAN)
+            .firstOrNull { lacksAnchorDay(series, it) }
+            ?.let { MissingDay(anchorDay = anchorDay(series), date = it) }
+    }
+
+    /** Jour d'ancrage de la série : [RecurringSeriesEntity.anchorDayOfMonth], sinon celui de sa date de début. */
+    private fun anchorDay(series: RecurringSeriesEntity): Int =
+        series.anchorDayOfMonth ?: Instant.ofEpochMilli(series.startDate).atZone(ZoneId.systemDefault()).dayOfMonth
+
+    /**
+     * P-4 de LOP-88 : jour d'ancrage qu'une nouvelle série démarrée sur [from] doit reprendre de
+     * [series], ou `null`.
+     *
+     * Non nul seulement si [from] est une date **rabattue** de la grille : dernier jour d'un mois
+     * plus court que l'ancrage (28 février pour une série au 31) et, pour l'annuel, dans le mois
+     * de la date de début. Sans ce report, « Cette occurrence et les suivantes » ouvert le
+     * 28 février ancrerait la nouvelle série au 28 et perdrait le 31 sans avertir.
+     */
+    fun carriedAnchorDay(series: RecurringSeriesEntity, from: Long): Int? {
+        if (series.frequency != RecurrenceFrequency.MONTHLY && series.frequency != RecurrenceFrequency.YEARLY) {
+            return null
+        }
+        val zone = ZoneId.systemDefault()
+        val date = Instant.ofEpochMilli(from).atZone(zone).toLocalDate()
+        val start = Instant.ofEpochMilli(series.startDate).atZone(zone)
+        val anchor = anchorDay(series)
+        val clamped = date.dayOfMonth < anchor && date.dayOfMonth == date.lengthOfMonth()
+        val sameMonth = series.frequency == RecurrenceFrequency.MONTHLY || date.month == start.month
+        return anchor.takeIf { clamped && sameMonth }
+    }
+
+    /**
+     * La période de [slot] ne possède pas le jour d'ancrage : le slot a été rabattu.
+     *
+     * Le slot de départ n'est jamais concerné. Il ne peut l'être que pour une série ancrée par
+     * [carriedAnchorDay], dont le départ est justement l'occurrence que l'utilisateur édite.
+     */
+    private fun lacksAnchorDay(series: RecurringSeriesEntity, slot: Long): Boolean {
+        if (series.frequency != RecurrenceFrequency.MONTHLY && series.frequency != RecurrenceFrequency.YEARLY) {
+            return false
+        }
+        if (slot == series.startDate) return false
+        return Instant.ofEpochMilli(slot).atZone(ZoneId.systemDefault()).dayOfMonth != anchorDay(series)
     }
 
     /**
@@ -138,7 +210,8 @@ object RecurrenceEngine {
                     if (!slot.isBefore(start)) yield(slot.toInstant().toEpochMilli())
                 }
             } else {
-                yield(shift(start, series.frequency, step * series.interval).toInstant().toEpochMilli())
+                val slot = anchored(shift(start, series.frequency, step * series.interval), series)
+                yield(slot.toInstant().toEpochMilli())
             }
 
             // Sécurité : une fréquence NONE ou un intervalle invalide ne produit pas de suite.
@@ -157,6 +230,18 @@ object RecurrenceEngine {
         RecurrenceFrequency.MONTHLY -> start.plusMonths(offset)
         RecurrenceFrequency.YEARLY -> start.plusYears(offset)
         RecurrenceFrequency.NONE -> start
+    }
+
+    /**
+     * Ramène [slot] sur le jour d'ancrage reporté (P-4 de LOP-88), borné au dernier jour du mois.
+     * Une série démarrée le 28 février et ancrée au 31 donne ainsi le 31 mars, puis le 30 avril.
+     */
+    private fun anchored(slot: ZonedDateTime, series: RecurringSeriesEntity): ZonedDateTime {
+        val day = series.anchorDayOfMonth ?: return slot
+        if (series.frequency != RecurrenceFrequency.MONTHLY && series.frequency != RecurrenceFrequency.YEARLY) {
+            return slot
+        }
+        return slot.withDayOfMonth(minOf(day, slot.toLocalDate().lengthOfMonth()))
     }
 
     private fun parseDaysOfWeek(raw: String?): List<Int> {

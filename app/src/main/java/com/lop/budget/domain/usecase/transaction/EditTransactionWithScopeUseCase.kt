@@ -6,6 +6,7 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.EditScope
+import com.lop.budget.domain.model.MissingDay
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
@@ -60,10 +61,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
             return EditOutcome.RefusedNotEditable
         }
 
-        val originalSeriesDate = seriesDate?.takeIf { it > 0L }
-            ?: current?.transaction?.seriesDate
-            ?: current?.transaction?.date
-            ?: edition.date
+        val originalSeriesDate = originalSeriesDate(seriesDate, current, edition)
         val status = edition.status ?: current?.transaction?.status ?: TransactionStatus.PLANNED
 
         val appliedId = when (scope) {
@@ -96,6 +94,44 @@ class EditTransactionWithScopeUseCase @Inject constructor(
         }
         return EditOutcome.Applied(appliedId)
     }
+
+    /**
+     * CA-01 de LOP-88 : première période sans le jour d'ancrage dans la règle que [invoke]
+     * écrirait avec ces mêmes arguments, ou `null`. **Lecture seule** : rien n'est écrit, c'est
+     * l'étape de décision qui précède la sauvegarde.
+     *
+     * La série examinée est celle qu'écrirait la portée : nouvelle série en FUTURE (ancrage
+     * reporté compris), série mise à jour en ALL, série créée par une ponctuelle devenue
+     * récurrente. Une occurrence en SINGLE ne touche jamais la règle : rien à décider (CA-06).
+     */
+    suspend fun firstMissingDay(
+        editingId: Long,
+        seriesId: Long?,
+        seriesDate: Long?,
+        edition: TransactionEdition,
+        scope: EditScope,
+    ): MissingDay? {
+        val target = when (scope) {
+            EditScope.SINGLE -> edition.toSeriesEntity().takeIf { seriesId == null }
+            EditScope.FUTURE -> seriesId?.let { transactionRepo.getSeriesById(it) }?.let { old ->
+                val current = transactionRepo.getById(editingId)
+                val displayDate = current?.transaction?.date ?: originalSeriesDate(seriesDate, current, edition)
+                futureSeries(old, edition, displayDate)
+            }
+            EditScope.ALL -> seriesId?.let { transactionRepo.getSeriesById(it) }?.let { allSeries(it, edition) }
+        }
+        return target?.let { RecurrenceEngine.firstMissingDay(it) }
+    }
+
+    /** Slot d'origine de l'occurrence éditée, argument de navigation d'abord (LOP-97). */
+    private fun originalSeriesDate(
+        seriesDate: Long?,
+        current: TransactionWithRelations?,
+        edition: TransactionEdition,
+    ): Long = seriesDate?.takeIf { it > 0L }
+        ?: current?.transaction?.seriesDate
+        ?: current?.transaction?.date
+        ?: edition.date
 
     // ---------------------------------------------------------------- SINGLE
 
@@ -210,7 +246,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
         }
 
         // Cas nominal : nouvelle série ancrée sur la date du formulaire (CA-09 FUTURE).
-        val newSeriesId = transactionRepo.upsertSeries(edition.toSeriesEntity())
+        val newSeriesId = transactionRepo.upsertSeries(futureSeries(oldSeries, edition, displayDate))
 
         // CA-03 / CA-05 : les exceptions à partir du pivot migrent vers la nouvelle série et ne
         // reçoivent que les champs réellement modifiés ; `date` et `seriesDate` conservés (I-1).
@@ -281,24 +317,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
 
         // CA-08 / CA-09 ALL : le formulaire est prérempli avec les valeurs de base de la série ;
         // edition.date représente la date de début, réappliquée telle quelle.
-        transactionRepo.updateSeries(
-            existing.copy(
-                title = edition.title,
-                amount = edition.amount,
-                type = edition.type,
-                categoryId = edition.categoryId,
-                accountId = edition.accountId,
-                frequency = edition.frequency,
-                interval = edition.interval,
-                startDate = edition.date,
-                endDate = edition.endDate,
-                maxOccurrences = edition.maxOccurrences,
-                daysOfWeek = edition.daysOfWeek.toDaysOfWeekCsv(),
-                note = edition.note,
-                linkedGoalId = edition.linkedGoalId,
-                linkedLoanId = edition.linkedLoanId,
-            )
-        )
+        transactionRepo.updateSeries(allSeries(existing, edition))
 
         // CA-05 / I-7 : propagation du seul diff ; `date` et `seriesDate` jamais réécrits (I-1, I-4).
         transactionRepo.getExceptionsBySeries(seriesId)
@@ -343,6 +362,46 @@ class EditTransactionWithScopeUseCase @Inject constructor(
         return real?.id ?: RecurrenceEngine.calculateVirtualId(seriesId, slot)
     }
     // --------------------------------------------------------------- Helpers
+
+    /**
+     * Série créée par FUTURE, ancrée sur la date du formulaire (CA-09 de LOP-52).
+     *
+     * P-4 de LOP-88 : si cette date est l'occurrence affichée, inchangée, et qu'elle est rabattue
+     * (28 février d'une série au 31), la nouvelle série garde le 31. Une date modifiée devient
+     * l'ancrage, comme avant.
+     */
+    private fun futureSeries(
+        oldSeries: RecurringSeriesEntity,
+        edition: TransactionEdition,
+        displayDate: Long,
+    ): RecurringSeriesEntity = edition.toSeriesEntity().copy(
+        anchorDayOfMonth =
+            if (edition.date == displayDate) RecurrenceEngine.carriedAnchorDay(oldSeries, edition.date) else null,
+    )
+
+    /**
+     * Série après ALL : la règle du formulaire remplace celle de [existing], choix pour jour
+     * absent compris (CA-06 de LOP-88). L'ancrage reporté (P-4) survit tant que la date de début
+     * n'est pas modifiée.
+     */
+    private fun allSeries(existing: RecurringSeriesEntity, edition: TransactionEdition) = existing.copy(
+        title = edition.title,
+        amount = edition.amount,
+        type = edition.type,
+        categoryId = edition.categoryId,
+        accountId = edition.accountId,
+        frequency = edition.frequency,
+        interval = edition.interval,
+        startDate = edition.date,
+        endDate = edition.endDate,
+        maxOccurrences = edition.maxOccurrences,
+        daysOfWeek = edition.daysOfWeek.toDaysOfWeekCsv(),
+        note = edition.note,
+        linkedGoalId = edition.linkedGoalId,
+        linkedLoanId = edition.linkedLoanId,
+        missingDayBehavior = edition.missingDayBehavior,
+        anchorDayOfMonth = existing.anchorDayOfMonth.takeIf { edition.date == existing.startDate },
+    )
 
     /**
      * CA-05 / I-7 : patch ne portant que les champs réellement modifiés, calculés par différence

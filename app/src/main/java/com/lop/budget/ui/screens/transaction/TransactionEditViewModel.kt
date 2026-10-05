@@ -16,6 +16,8 @@ import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
+import com.lop.budget.domain.model.MissingDay
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
@@ -67,6 +69,8 @@ data class TransactionForm(
     val daysOfWeek: Set<Int> = emptySet(),
     val endDate: Long? = null,
     val maxOccurrences: Int? = null,
+    /** LOP-88 : fixé par la feuille d'avertissement, prérempli depuis la série en FUTURE/ALL. */
+    val missingDayBehavior: MissingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
 ) {
     /** Frontière UI : [amountInput] porte des euros saisis, [amount] des centimes (I-4). */
     val amount: Long get() = Format.centsOrNull(amountInput) ?: 0L
@@ -83,6 +87,12 @@ data class TransactionForm(
  * dirty-check de `hasUnsavedChanges()`, qui compare le formulaire complet.
  */
 enum class TransactionFormField { AMOUNT, CATEGORY, ACCOUNT, TAG_NAME }
+
+/**
+ * Avertissement de jour absent en attente de décision (CA-01 / CA-02 de LOP-88).
+ * [current] : choix enregistré de la série, présélectionné en FUTURE/ALL ; `null` à la création.
+ */
+data class MissingDayPrompt(val missingDay: MissingDay, val current: MissingDayBehavior?)
 
 /**
  * Unique mapper UI -> domaine. Préconditions garanties par save() : amount > 0, categoryId != null.
@@ -104,6 +114,7 @@ fun TransactionForm.toEdition(defaultTitle: String): TransactionEdition = Transa
     daysOfWeek = daysOfWeek,
     endDate = endDate,
     maxOccurrences = maxOccurrences,
+    missingDayBehavior = missingDayBehavior,
     linkedGoalId = linkedGoalId,
     linkedLoanId = linkedLoanId,
     tagIds = tagIds.toList(),
@@ -152,6 +163,11 @@ class TransactionEditViewModel @Inject constructor(
     fun dismissSaveError() {
         _saveError.value = null
     }
+
+    private val _missingDayPrompt = MutableStateFlow<MissingDayPrompt?>(null)
+
+    /** CA-01 / CA-02 de LOP-88 : avertissement en attente de décision, `null` hors décision. */
+    val missingDayPrompt: StateFlow<MissingDayPrompt?> = _missingDayPrompt.asStateFlow()
 
     /** Photo du formulaire après chargement — base du dirty-check (CA-06). */
     private var initialForm: TransactionForm? = null
@@ -302,6 +318,7 @@ class TransactionEditViewModel @Inject constructor(
                 daysOfWeek = series.daysOfWeek.toDaysOfWeekSet(),
                 endDate = series.endDate,
                 maxOccurrences = series.maxOccurrences,
+                missingDayBehavior = series.missingDayBehavior,
             )
             // CA-08 FUTURE : valeurs de l'occurrence + règle de récurrence de la série.
             editScope == EditScope.FUTURE && series != null -> occurrenceForm.copy(
@@ -310,6 +327,7 @@ class TransactionEditViewModel @Inject constructor(
                 daysOfWeek = series.daysOfWeek.toDaysOfWeekSet(),
                 endDate = series.endDate,
                 maxOccurrences = series.maxOccurrences,
+                missingDayBehavior = series.missingDayBehavior,
             )
             else -> occurrenceForm
         }
@@ -475,7 +493,7 @@ class TransactionEditViewModel @Inject constructor(
      *
      * Le drapeau est levé **synchroniquement**, avant tout `launch` : sans cela, deux appuis
      * rapides successifs lisent tous deux un `_isSaving` encore à `false` et produisent deux
-     * écritures. Le verrou appartient à l'appelant ([save]), qui le relâche
+     * écritures. Le verrou appartient à l'appelant ([submit]), qui le relâche
      * dans son `finally` ; [performSave] n'y touche pas.
      */
     private fun tryAcquireSaveLock(): Boolean =
@@ -497,7 +515,25 @@ class TransactionEditViewModel @Inject constructor(
         // transaction sans compte est valide et se persiste avec NO_ACCOUNT_ID.
     }
 
-    fun save(onDone: (Long) -> Unit) {
+    fun save(onDone: (Long) -> Unit) = submit(onDone, missingDayDecided = false)
+
+    /**
+     * CA-03 de LOP-88 : le choix confirmé poursuit **une** sauvegarde, avec ce choix, sans
+     * redemander — l'avertissement n'apparaît qu'une fois par tentative (CA-02).
+     */
+    fun confirmMissingDay(choice: MissingDayBehavior, onDone: (Long) -> Unit) {
+        if (_missingDayPrompt.value == null) return
+        _missingDayPrompt.value = null
+        update { it.copy(missingDayBehavior = choice) }
+        submit(onDone, missingDayDecided = true)
+    }
+
+    /** CA-03 de LOP-88 : annuler, fermer ou revenir ne touche ni au formulaire ni à la base. */
+    fun dismissMissingDay() {
+        _missingDayPrompt.value = null
+    }
+
+    private fun submit(onDone: (Long) -> Unit, missingDayDecided: Boolean) {
         val f = _form.value
         val errors = validate(f)
         _fieldErrors.value = errors
@@ -506,6 +542,13 @@ class TransactionEditViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
+                // CA-01 de LOP-88 : la décision précède l'écriture. Un avertissement publié
+                // arrête la tentative ici, avant toute sauvegarde.
+                val prompt = if (missingDayDecided) null else missingDayPrompt(f)
+                if (prompt != null) {
+                    _missingDayPrompt.value = prompt
+                    return@launch
+                }
                 // Aucune alerte « Impact sur le solde » (LOP-20, P-8) : la dernière correction de
                 // solde n'est plus une borne de calcul (P-3), toute transaction payée compte au solde
                 // quelle que soit sa date, et cette date n'est jamais saisie par l'utilisateur (I-4).
@@ -522,7 +565,32 @@ class TransactionEditViewModel @Inject constructor(
         }
     }
 
-    /** Le cycle de vie de `_isSaving` appartient à [save] (voir [tryAcquireSaveLock]). */
+    /**
+     * CA-01 de LOP-88 : la règle soumise rencontre-t-elle un jour absent ? La réponse vient du use
+     * case qui écrira la série — il sait quelle série il va écrire, et lui seul appelle le moteur.
+     *
+     * Sans récurrence au formulaire, aucune règle n'est écrite : on ne demande rien (CA-08). C'est
+     * aussi le cas de SINGLE sur une occurrence, dont la section récurrence est masquée (CA-06).
+     */
+    private suspend fun missingDayPrompt(f: TransactionForm): MissingDayPrompt? {
+        if (f.frequency == RecurrenceFrequency.NONE) return null
+        val edition = f.toEdition(context.getString(R.string.tx_default_title))
+        val missingDay = if (isEditing) {
+            editTransactionWithScopeUseCase.firstMissingDay(
+                editingId = editingTransactionId!!,
+                seriesId = f.seriesId,
+                seriesDate = seriesDate?.takeIf { it > 0L },
+                edition = edition,
+                scope = editScope,
+            )
+        } else {
+            createTransactionUseCase.firstMissingDay(edition)
+        } ?: return null
+        // CA-06 : le choix de la série est présélectionné en FUTURE/ALL, jamais à la création.
+        return MissingDayPrompt(missingDay, current = f.missingDayBehavior.takeIf { f.seriesId != null })
+    }
+
+    /** Le cycle de vie de `_isSaving` appartient à [submit] (voir [tryAcquireSaveLock]). */
     private suspend fun performSave(onDone: (Long) -> Unit) {
         val f = _form.value
         if (f.categoryId == null) return

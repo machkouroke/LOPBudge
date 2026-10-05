@@ -37,7 +37,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         DetectedTransactionProposalEntity::class,
         PaymentCardEntity::class,
     ],
-    version = 23,
+    version = 24,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -53,6 +53,24 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        /**
+         * LOP-88 — comportement pour jour absent et jour d'ancrage de la série.
+         *
+         * Deux colonnes ajoutées par `ALTER TABLE`, sans reconstruction : aucune ne porte de clé
+         * étrangère. `missingDayBehavior` arrive à `LAST_VALID_DAY` sur toute série existante,
+         * c'est-à-dire le calendrier qu'elle produisait déjà (I-3). `anchorDayOfMonth` arrive à
+         * nul : le jour de la date de début reste l'ancrage.
+         */
+        val MIGRATION_23_24 = object : androidx.room.migration.Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `recurring_series` ADD COLUMN `missingDayBehavior` TEXT NOT NULL " +
+                        "DEFAULT 'LAST_VALID_DAY'"
+                )
+                db.execSQL("ALTER TABLE `recurring_series` ADD COLUMN `anchorDayOfMonth` INTEGER")
+            }
+        }
 
         /**
          * Epic « Cartes enregistrées » — introduction de la carte de paiement.

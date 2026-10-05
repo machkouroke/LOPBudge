@@ -1,5 +1,6 @@
 package com.lop.budget.ui.screens.transaction
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,12 +48,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TagEntity
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.DefaultTagColor
+import com.lop.budget.ui.components.LopBottomSheet
 import com.lop.budget.ui.components.LopFieldShape
 import com.lop.budget.ui.components.PressScale
 import com.lop.budget.ui.components.TagColorPicker
 import com.lop.budget.ui.components.lopFieldColors
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -334,6 +342,120 @@ private fun TagChipFlow(
                     )
                 },
             )
+        }
+    }
+}
+
+/**
+ * Avertissement de jour absent (LOP-88, CA-01 à CA-03), affiché avant toute écriture.
+ *
+ * Toucher une option confirme ce choix et poursuit la sauvegarde. Annuler, le retour système ou un
+ * toucher hors de la feuille la ferment sans rien enregistrer ni modifier la date saisie. L'option
+ * déjà enregistrée sur la série porte la mention « Choix actuel » (CA-06).
+ *
+ * L'exemple vient de la règle elle-même : la première période sans le jour, et la date rabattue.
+ */
+@Composable
+fun MissingDaySheet(
+    prompt: MissingDayPrompt,
+    onChoose: (MissingDayBehavior) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val date = remember(prompt) {
+        Instant.ofEpochMilli(prompt.missingDay.date).atZone(ZoneId.systemDefault()).toLocalDate()
+    }
+    val period = date.format(MISSING_DAY_PERIOD)
+
+    LopBottomSheet(
+        onDismiss = onDismiss,
+        modifier = Modifier.testTag(TestTags.TX_EDIT_MISSING_DAY_SHEET),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                stringResource(R.string.tx_missing_day_title),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                stringResource(R.string.tx_missing_day_message, prompt.missingDay.anchorDay, period),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag(TestTags.TX_EDIT_MISSING_DAY_EXAMPLE),
+            )
+            MissingDayOption(
+                title = stringResource(R.string.tx_missing_day_skip),
+                example = stringResource(R.string.tx_missing_day_skip_example, period),
+                isCurrent = prompt.current == MissingDayBehavior.SKIP_PERIOD,
+                modifier = Modifier.testTag(TestTags.TX_EDIT_MISSING_DAY_SKIP),
+                onClick = { onChoose(MissingDayBehavior.SKIP_PERIOD) },
+            )
+            MissingDayOption(
+                title = stringResource(R.string.tx_missing_day_last),
+                example = stringResource(R.string.tx_missing_day_last_example, date.format(MISSING_DAY_DATE)),
+                isCurrent = prompt.current == MissingDayBehavior.LAST_VALID_DAY,
+                modifier = Modifier.testTag(TestTags.TX_EDIT_MISSING_DAY_LAST),
+                onClick = { onChoose(MissingDayBehavior.LAST_VALID_DAY) },
+            )
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .testTag(TestTags.TX_EDIT_MISSING_DAY_CANCEL),
+            ) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    }
+}
+
+/** « février 2026 » — en français quelle que soit la langue de l'appareil, comme le reste de l'écran. */
+private val MISSING_DAY_PERIOD = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.FRANCE)
+
+/** « 28 février 2026 ». */
+private val MISSING_DAY_DATE = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRANCE)
+
+@Composable
+private fun MissingDayOption(
+    title: String,
+    example: String,
+    isCurrent: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.medium,
+        border = BorderStroke(
+            1.dp,
+            if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        ),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    example,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (isCurrent) {
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    stringResource(R.string.tx_missing_day_current),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }

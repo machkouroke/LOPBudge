@@ -61,6 +61,7 @@ fun buildEdition(
     daysOfWeek = emptySet(),
     endDate = null,
     maxOccurrences = null,
+    missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
     linkedGoalId = null,
     linkedLoanId = null,
     tagIds = emptyList(),

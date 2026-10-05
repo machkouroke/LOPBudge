@@ -56,6 +56,26 @@ enum class TransactionStatus { PLANNED, PAID }
 /** Fréquence de base d'une règle de récurrence. */
 enum class RecurrenceFrequency { NONE, DAILY, WEEKLY, MONTHLY, YEARLY }
 
+/**
+ * Comportement pour jour absent (LOP-88) : ce que fait une série mensuelle ou annuelle quand une
+ * période ne possède pas son jour d'ancrage — le 31 en avril, le 29 février hors année bissextile.
+ *
+ * - [LAST_VALID_DAY] : l'occurrence tombe sur le dernier jour du mois (31 janvier → 28 février →
+ *   31 mars). Comportement de toute série antérieure à l'EVOL (I-3).
+ * - [SKIP_PERIOD] : la période ne produit aucune occurrence (31 janvier → 31 mars). Elle consomme
+ *   tout de même une unité de `maxOccurrences` (P-1 de LOP-88).
+ *
+ * Dans les deux cas l'ancrage ne bouge pas (I-1). Sans effet hors MONTHLY / YEARLY.
+ */
+enum class MissingDayBehavior { LAST_VALID_DAY, SKIP_PERIOD }
+
+/**
+ * Première période d'une règle qui ne possède pas son jour d'ancrage (CA-01 de LOP-88) : de quoi
+ * écrire l'exemple de l'avertissement (CA-02). Série au 31 depuis janvier 2026 : [anchorDay] = 31,
+ * [date] = 28 février 2026, la date rabattue.
+ */
+data class MissingDay(val anchorDay: Int, val date: Long)
+
 /** Type de compte. */
 enum class AccountType { CHECKING, CASH, SAVINGS, CARD, CRYPTO, INVESTMENT, OTHER }
 

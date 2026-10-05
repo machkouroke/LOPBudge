@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
 
@@ -51,5 +52,16 @@ data class RecurringSeriesEntity(
     val isCancelled: Boolean = false,
     val note: String? = null,
     val linkedGoalId: Long? = null,
-    val linkedLoanId: Long? = null
+    val linkedLoanId: Long? = null,
+    /**
+     * Comportement pour jour absent (LOP-88). Une série antérieure à l'EVOL reçoit
+     * [MissingDayBehavior.LAST_VALID_DAY] par `MIGRATION_23_24` : son calendrier ne change pas (I-3).
+     */
+    val missingDayBehavior: MissingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
+    /**
+     * Jour d'ancrage quand il diffère de celui de [startDate] (P-4 de LOP-88). Cas d'origine : une
+     * série « Cette occurrence et les suivantes » ouverte sur une occurrence rabattue démarre le
+     * 28 février mais garde le 31. `null` : le jour de [startDate] fait foi.
+     */
+    val anchorDayOfMonth: Int? = null,
 )

@@ -62,6 +62,7 @@ fun TransactionEditScreen(
     val currency by vm.currency.collectAsStateWithLifecycle()
     val fieldErrors by vm.fieldErrors.collectAsStateWithLifecycle()
     val saveError by vm.saveError.collectAsStateWithLifecycle()
+    val missingDayPrompt by vm.missingDayPrompt.collectAsStateWithLifecycle()
 
     // CA-04 : résolution des @StringRes au plus près de l'affichage ; le ViewModel ne
     // manipule que des identifiants de ressource, jamais de texte localisé.
@@ -288,5 +289,14 @@ fun TransactionEditScreen(
             )
         }
         null -> {}
+    }
+
+    // LOP-88 : décision demandée avant d'écrire une règle qui rencontre un jour absent.
+    missingDayPrompt?.let { prompt ->
+        MissingDaySheet(
+            prompt = prompt,
+            onChoose = { choice -> vm.confirmMissingDay(choice, onDone) },
+            onDismiss = vm::dismissMissingDay,
+        )
     }
 }

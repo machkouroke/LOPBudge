@@ -31,6 +31,7 @@ fun TransactionEdition.toSeriesEntity(): RecurringSeriesEntity = RecurringSeries
     note = note,
     linkedGoalId = linkedGoalId,
     linkedLoanId = linkedLoanId,
+    missingDayBehavior = missingDayBehavior,
 )
 
 /**

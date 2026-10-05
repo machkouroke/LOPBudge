@@ -2,6 +2,7 @@ package com.lop.budget.domain.usecase.transaction
 
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.RecurrenceEngine
+import com.lop.budget.domain.model.MissingDay
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
@@ -48,4 +49,12 @@ class CreateTransactionUseCase @Inject constructor(
             RecurrenceEngine.calculateVirtualId(newSeriesId, edition.date)
         }
     }
+
+    /**
+     * CA-01 de LOP-88 : première période sans le jour d'ancrage dans la série que [invoke]
+     * créerait, ou `null` (ponctuelle, quotidienne, hebdomadaire, ou règle sans jour absent).
+     * Lecture seule : c'est l'étape de décision qui précède la sauvegarde.
+     */
+    fun firstMissingDay(edition: TransactionEdition): MissingDay? =
+        RecurrenceEngine.firstMissingDay(edition.toSeriesEntity())
 }

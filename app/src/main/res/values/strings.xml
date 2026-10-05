@@ -76,6 +76,15 @@
     <string name="tx_repeat_ends_on">Le</string>
     <string name="tx_repeat_ends_after">Après</string>
     <string name="tx_repeat_occurrences_label">occurrences</string>
+
+    <!-- LOP-88 : avertissement de jour absent, avant enregistrement de la règle -->
+    <string name="tx_missing_day_title">Ce jour n\'existe pas à chaque fois</string>
+    <string name="tx_missing_day_message">Le %1$d n\'existe pas en %2$s. Que faire des périodes sans ce jour ?</string>
+    <string name="tx_missing_day_skip">Sauter les mois sans ce jour</string>
+    <string name="tx_missing_day_skip_example">Aucune occurrence en %1$s.</string>
+    <string name="tx_missing_day_last">Utiliser le dernier jour du mois</string>
+    <string name="tx_missing_day_last_example">Le %1$s à la place.</string>
+    <string name="tx_missing_day_current">Choix actuel</string>
     <string name="tx_tags_sheet_title">Étiquettes</string>
     <string name="tx_tags_sheet_subtitle">Sélectionnez jusqu\'à 3 étiquettes pour cette transaction</string>
     <string name="tx_error_tag_name_required">Indiquez un nom pour cette étiquette</string>

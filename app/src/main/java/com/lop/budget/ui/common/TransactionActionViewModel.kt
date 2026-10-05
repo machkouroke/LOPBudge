@@ -241,6 +241,9 @@ class TransactionActionViewModel @Inject constructor(
                     daysOfWeek = finalDow,
                     endDate = finalEnd,
                     maxOccurrences = finalMax,
+                    // LOP-88 : une action rapide ne modifie pas la règle, elle reconduit son choix.
+                    missingDayBehavior = series?.missingDayBehavior
+                        ?: com.lop.budget.domain.model.MissingDayBehavior.LAST_VALID_DAY,
                     linkedGoalId = tx.transaction.linkedGoalId,
                     linkedLoanId = tx.transaction.linkedLoanId,
                     tagIds = updatedTagIds
