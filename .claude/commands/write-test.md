@@ -27,19 +27,20 @@ faut pour annoncer le lot sans ouvrir une page de plus.
 
 Mélange autorisé : deux fiches et une US dans le même appel donnent une seule liste dédoublonnée.
 
-Une fois la liste établie, **annonce-la avant tout travail** : référence, titre, statut Notion,
-type de test annoncé, CA couverts, et si un fichier de test correspondant existe déjà dans le dépôt.
+Une fois la liste établie, elle devient le bloc « Le lot » de la première réponse (voir plus bas) :
+référence, titre, statut Notion, type de test annoncé, et si un fichier de test correspondant existe
+déjà dans le dépôt. Les CA couverts vont dans le plan détaillé.
 
 Les statuts sont `À écrire`, `À exécuter`, `En cours`, `OK`, `KO`. Une fiche en `OK`, ou déjà
-couverte par un fichier existant, ne se réimplémente pas d'office : dis-le et demande s'il faut la
-refaire, la relire ou l'ignorer.
+couverte par un fichier existant, ne se réimplémente pas d'office : c'est une décision du bloc
+« À décider » (la refaire, la relire ou l'ignorer).
 
 **Vérifie aussi que la référence est libre** avant de nommer un fichier ou un dossier de test : les
 `réf` sont attribuées par Notion et un numéro qui semble disponible peut déjà porter une autre
 fiche, parfois d'un niveau de test différent.
 
-Si la liste dépasse ce qui tient raisonnablement en une fois, propose un découpage en lots et
-laisse le choix. Ne réduis jamais le périmètre en silence.
+Si la liste dépasse ce qui tient raisonnablement en une fois, le découpage en lots est aussi une
+décision du bloc « À décider ». Ne réduis jamais le périmètre en silence.
 
 ## Pour chaque fiche de la liste
 
@@ -53,10 +54,11 @@ Applique rigoureusement la skill `spec-driven-tests`
    méthodes, entités et DAO. Signale immédiatement tout écart entre la spec Notion et le code.
 3. **Plan d'implémentation** — Voir ci-dessous. Rien n'est écrit avant validation.
 
-## Le plan : un seul, couvrant tout le lot
+## Le plan détaillé : un fichier, pas la réponse
 
-Ne demande **pas** une validation par fiche. Produis un plan unique, avec une section par fiche,
-plus deux sections transverses.
+Ne demande **pas** une validation par fiche. Produis un plan unique pour tout le lot et écris-le dans
+`build/plans/<réf de l'US ou de la fiche>.md` (dossier ignoré par git). Il n'est **pas** recopié dans
+la réponse : celle-ci le cite par un lien, et je l'ouvre si je veux le détail.
 
 Par fiche :
 
@@ -78,12 +80,52 @@ Transverse au lot :
   réellement réutilisable ; un paramètre qui conditionne une cardinalité reste déclaré localement
   dans chaque fiche, même si une autre fiche a aujourd'hui la même valeur.
 
-**Forme du plan — écris en langage simple.** Commence par expliquer en prose ce que tu vas faire et
-pourquoi, avant tout tableau. Définis chaque terme technique à sa première apparition (oracle, SUT,
-fixture discriminante, mutation de sensibilité). Chaque écart spec/code tient en une phrase : ce que
-le ticket dit, ce que le code fait, ce que ça change pour le test.
+Le fichier s'écrit en langage simple : prose avant tableau, jargon défini à sa première apparition,
+chaque écart spec/code en une phrase (ce que le ticket dit, ce que le code fait, ce que ça change).
 
-**Attends ma validation sur le plan avant d'écrire ou de modifier le moindre fichier de test.**
+## La première réponse : courte, centrée sur ce que j'ai à décider
+
+Je lis cette réponse pour donner mon feu vert. Elle doit tenir sur un écran, une trentaine de lignes
+hors tableau du lot, et je dois pouvoir y répondre en quelques mots. Quatre blocs, dans cet ordre,
+et rien d'autre :
+
+1. **Le lot** — un tableau, une ligne par fiche : réf, titre court, niveau, statut Notion, fichier
+   déjà présent ou non.
+2. **En bref** — trois phrases au plus : ce que tu vas faire, dans quel ordre, ce qui ne demande rien
+   de ma part. Lien vers le plan détaillé.
+3. **À décider** — uniquement ce qui bloque le travail ou change le résultat. Pour chaque décision :
+   - une question fermée, en une phrase ;
+   - deux ou trois options, la recommandée en premier ;
+   - **un exemple concret**, tiré du jeu de données ou de l'écran, qui montre ce que change chaque
+     option. Un exemple abstrait (« la couverture serait partielle ») ne compte pas.
+
+   Sans décision à prendre, écris « Rien à décider » et propose de démarrer. Si les décisions se
+   prêtent à des options fermées, pose-les **aussi** avec l'outil de question, une par décision.
+4. **À savoir** — trois points au plus : un écart spec/code ou une limite d'environnement qui change
+   ce que le test prouvera, une phrase chacun. Le reste attend la restitution.
+
+Ne mets **pas** dans la réponse : matrices, fixtures, listes de mutations, détails de montage, noms
+de classes internes, définitions de jargon. Ils sont dans le plan détaillé.
+
+Bonne décision :
+
+> **1. Police à 200 % : sur votre téléphone ?** La fiche demande un émulateur, vous voulez votre
+> téléphone.
+> - A (recommandé) : je règle le téléphone sur un écran de 360 dp et une police à 200 % pendant
+>   les tests, puis je remets la police à 1,15.
+> - B : je marque ces cas « non exécutés ».
+>
+> Exemple : avec B, on ne saura pas si « Prochaine échéance » se coupe sur un petit écran.
+
+Mauvaise décision, à ne pas reproduire :
+
+> Écart É-3 : l'oracle de U-05 dépend de `LocalDate.now()` non injectable ; la fixture
+> discriminante ne couvre pas le cas, d'où une couverture partielle de CA-08.
+
+Elle ne pose aucune question, n'offre aucun choix, ne donne aucun exemple : je ne sais pas quoi
+répondre.
+
+**Attends ma validation avant d'écrire ou de modifier le moindre fichier de test.**
 
 ## Implémentation et restitution
 
