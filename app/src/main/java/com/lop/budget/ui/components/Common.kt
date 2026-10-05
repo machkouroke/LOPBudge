@@ -69,13 +69,27 @@ import coil.compose.AsyncImage
 import com.lop.budget.R
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.util.IconMapper
-import java.util.TimeZone
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 
 /**
- * DatePicker robuste qui corrige le bug du décalage UTC (J-1).
- * Le DatePicker de Material3 travaille en UTC. Cette version applique automatiquement
- * l'offset local pour que la date affichée et la date sélectionnée correspondent
- * à ce que voit l'utilisateur.
+ * Le DatePicker de Material 3 désigne un jour par son minuit **UTC**. L'app, elle, stocke le
+ * minuit **local** du jour choisi. Les deux conversions ci-dessous passent par la date calendaire,
+ * jamais par un décalage : un décalage pris à une date et appliqué à une autre perd un jour dès que
+ * le changement d'heure les sépare (ANO du 5 octobre 2026 — choisir le 31 octobre depuis le
+ * 5 octobre enregistrait le 30).
+ */
+private fun Long.toPickerUtcDay(): Long =
+    Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).toLocalDate()
+        .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+private fun Long.toLocalStartOfDay(): Long =
+    Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
+        .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+/**
+ * DatePicker qui rend le jour vu par l'utilisateur, au minuit local (voir [toPickerUtcDay]).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,12 +98,8 @@ fun LopDatePicker(
     onDateSelected: (Long?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val localOffset = remember(initialDateMillis) {
-        TimeZone.getDefault().getOffset(initialDateMillis ?: System.currentTimeMillis()).toLong()
-    }
-    
     val dateState = rememberDatePickerState(
-        initialSelectedDateMillis = initialDateMillis?.let { it + localOffset }
+        initialSelectedDateMillis = initialDateMillis?.toPickerUtcDay()
     )
 
     // `semantics` avant `testTag` : le sélecteur de date est monté dans sa propre fenêtre de
@@ -103,8 +113,7 @@ fun LopDatePicker(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = {
-                // On retire l'offset pour repasser en "UTC pure" à minuit pour le stockage
-                onDateSelected(dateState.selectedDateMillis?.let { it - localOffset })
+                onDateSelected(dateState.selectedDateMillis?.toLocalStartOfDay())
                 onDismiss()
             }) { Text(stringResource(R.string.ok)) }
         },
@@ -117,7 +126,7 @@ fun LopDatePicker(
 }
 
 /**
- * Version Range du DatePicker corrigeant également le décalage UTC.
+ * Version plage du [LopDatePicker], mêmes conversions.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,13 +136,9 @@ fun LopDateRangePicker(
     onRangeSelected: (Long?, Long?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val localOffset = remember {
-        TimeZone.getDefault().getOffset(System.currentTimeMillis()).toLong()
-    }
-
     val datePickerState = rememberDateRangePickerState(
-        initialSelectedStartDateMillis = initialStartMillis?.let { it + localOffset },
-        initialSelectedEndDateMillis = initialEndMillis?.let { it + localOffset }
+        initialSelectedStartDateMillis = initialStartMillis?.toPickerUtcDay(),
+        initialSelectedEndDateMillis = initialEndMillis?.toPickerUtcDay()
     )
 
     DatePickerDialog(
@@ -141,8 +146,8 @@ fun LopDateRangePicker(
         confirmButton = {
             TextButton(onClick = {
                 onRangeSelected(
-                    datePickerState.selectedStartDateMillis?.let { it - localOffset },
-                    datePickerState.selectedEndDateMillis?.let { it - localOffset }
+                    datePickerState.selectedStartDateMillis?.toLocalStartOfDay(),
+                    datePickerState.selectedEndDateMillis?.toLocalStartOfDay()
                 )
                 onDismiss()
             }) { Text(stringResource(R.string.ok)) }
