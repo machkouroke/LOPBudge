@@ -48,6 +48,7 @@ import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.repository.SettingsRepository
+import com.lop.budget.di.TestClock
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.NO_CATEGORY_ID
@@ -75,6 +76,7 @@ import org.junit.runner.RunWith
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.YearMonth
 import java.time.ZoneId
 import java.util.Locale
 import java.util.TimeZone
@@ -98,14 +100,17 @@ import javax.inject.Inject
  * U-02  CA-02, CA-04, CA-05    SeriesCalendarScreen → SeriesCalendarViewModel.openOccurrence / selectDay
  * U-03  CA-03, CA-05, CA-06    LopNavHost (popUpTo du calendrier), MonthPickerBottomSheet, fermetures
  * U-04  CA-06, CA-07           LopScreenScaffold (état de liste), ActivityScenario.recreate, rotation
- * U-05  CA-08                  DayCell / OccurrenceRow / MonthHeader : annonces, actions, 48 dp, 200 %
- * U-06  I-1, P-6               OccurrenceRow : ni glissement ni aperçu rapide
+ * U-05  CA-08                  DayCell / OccurrenceRow / MonthHeader : annonces, actions, 48 dp, 200 % ;
+ *                              « aujourd'hui » à date fixe (U-05e) et au jour réel (U-05f)
+ * U-06  I-1, P-10              OccurrenceRow : glissements payer/supprimer et aperçu rapide de l'accueil
  * ```
  *
  * ## Observabilité
  * Identifiants de `TestTags.kt`. Une ligne se désigne par son étiquette **et** son libellé, jamais par
  * la première étiquette répétée. Les clics passent par l'action d'accessibilité `OnClick` du nœud :
- * aucun dépend de la géométrie de l'écran, sauf U-06 qui teste justement les gestes.
+ * aucun ne dépend de la géométrie de l'écran, sauf U-06 qui teste justement les gestes. Révision du
+ * 4 octobre 2026 (P-8 à P-10 de l'US) : les lignes n'écrivent plus type, statut ni catégorie (P-9,
+ * U-01a, U-02a, U-05) et offrent les actions de l'accueil (P-10, U-06).
  *
  * ## Appareil
  * Téléphone de l'utilisateur, jamais un émulateur (consigne). Installation par `adb install -r`
@@ -118,9 +123,9 @@ import javax.inject.Inject
  * ## Hypothèses levées
  * - Fuseau Paris forcé dans le processus. `Format` impose `Locale.FRANCE` : les textes attendus ne
  *   dépendent pas de la langue de l'appareil.
- * - « Aujourd'hui » : la grille lit `LocalDate.now()`, la date du téléphone ne peut pas être fixée
- *   (version de production, sans root). U-05-aujourd'hui est donc **ignoré** tant que LOP-189
- *   n'est pas corrigée — ni vert, ni rouge.
+ * - « Aujourd'hui » : l'horloge injectée (`TestClock`, heure réelle par défaut) est figée au
+ *   2 mars 2026 à midi pour U-05a–e. U-05f garde l'heure réelle du téléphone (réalisme), en
+ *   complément décidé le 4 octobre 2026 ; son attendu vient de la même horloge que l'écran.
  * - `ActivityScenario.recreate()` conserve les ViewModels : U-04 ne prouve pas la reconstruction
  *   après mort du processus (réserve de l'écart 1, décision de l'utilisateur).
  *
@@ -131,10 +136,11 @@ import javax.inject.Inject
  *
  * ## ANO connues
  * - LOP-189 « La grille du calendrier lit la date du jour sans horloge injectable »
- *   https://app.notion.com/p/3ef50f34a8c58116a042fbad83e5b0d4 — U-05e ignoré tant qu'elle est ouverte.
+ *   https://app.notion.com/p/3ef50f34a8c58116a042fbad83e5b0d4 — corrigée le 4 octobre 2026 :
+ *   U-05a–e rouges avant le correctif (« aujourd'hui » absent du 2 mars), verts après.
  *
  * ## Résultats et preuves de sensibilité (4 octobre 2026, SM-S938B, Android 16)
- * 24 cas verts, U-05e ignoré (LOP-189). Les rouges des premiers passages venaient tous du test
+ * 26 cas verts après correction de LOP-189. Les rouges des premiers passages venaient tous du test
  * (nœuds hors écran, ligne d'accueil sans `transaction.item`, mesure de troncature) ; aucun défaut
  * de l'application. Mutations de production, une à la fois, application d'origine réinstallée après :
  * ```
@@ -142,10 +148,14 @@ import javax.inject.Inject
  * Clic de ligne remplacé par la première ligne   → U-02c
  * popUpTo du calendrier retiré                   → U-03a, U-03b, U-03c
  * Restauration de liste désactivée               → U-04a
- * Ligne en lecture-écriture (glissement, aperçu) → U-06a, U-06b (le glissement a même payé E1)
+ * Ligne en lecture-écriture (glissement, aperçu) → U-06a, U-06b (avant P-10, quand U-06 exigeait la lecture seule)
  * Détail disparu jamais refermé                  → U-03g, U-04c
  * Annonce du jour retirée                        → U-05a, dès l'attente de l'annonce « 2 occurrences »
+ * « Aujourd'hui » décalé d'un jour                → U-05e, U-05f (attendu 2026-10-04, vu 2026-10-05)
+ * Annonce du type et du statut retirée (P-9)     → U-05a (« Dépense » absent de l'annonce)
  * ```
+ * Révision P-9 / P-10 : U-01a, U-02a, U-05a (type, statut, catégorie encore écrits) et U-06a/b
+ * (aucun glissement, aucun aperçu) rouges sur l'application d'avant la révision, verts après.
  * Extension de cible consignée (journal TC138) : à 360 dp, cases dessinées 39 × 44 dp, flèches
  * d'année 32 dp, commandes de mois 40 dp, toutes étendues à 48 × 48 dp par Compose.
  * Comportement non spécifié relevé : un glissement horizontal terminé sur une ligne vaut un toucher
@@ -180,6 +190,10 @@ class SeriesCalendarJourneyTest {
     @Inject
     lateinit var settings: SettingsRepository
 
+    /** Heure réelle par défaut ; figée seulement par les cas « aujourd'hui » à date fixe. */
+    @Inject
+    lateinit var clock: TestClock
+
     private var scenario: ActivityScenario<MainActivity>? = null
     private lateinit var defaultTimeZone: TimeZone
     private lateinit var defaultLocale: Locale
@@ -213,6 +227,7 @@ class SeriesCalendarJourneyTest {
     @After
     fun tearDown() {
         scenario?.close()
+        clock.fixedAt = null
         restoreTheme?.let { runBlocking { settings.setThemeMode(it) } }
         restoreDevice?.invoke()
         TimeZone.setDefault(defaultTimeZone)
@@ -233,6 +248,9 @@ class SeriesCalendarJourneyTest {
 
         assertRowTitles("U-01a / CA-01", TestTags.TRANSACTION_DETAIL_UPCOMING_ROW, listOf(E1_TITLE, E2_TITLE, BASE_TITLE))
         assertRowContains("U-01a / CA-01", TestTags.TRANSACTION_DETAIL_UPCOMING_ROW, BASE_TITLE, "Jeudi 30 avril 2026")
+        listOf(E1_TITLE, E2_TITLE, BASE_TITLE).forEach {
+            assertRowWritesNoTypeStatusCategory("U-01a", TestTags.TRANSACTION_DETAIL_UPCOMING_ROW, it)
+        }
         listOf(E1_TITLE, E2_TITLE, BASE_TITLE).forEach { title ->
             assertTrue(
                 "U-01a / CA-01 — la ligne $title est cliquable",
@@ -293,6 +311,7 @@ class SeriesCalendarJourneyTest {
 
         assertMonthShown("U-02a / CA-02", "Mars 2026")
         assertRowTitles("U-02a / CA-02", TestTags.SERIES_CALENDAR_ROW, listOf(E1_TITLE, E2_TITLE))
+        listOf(E1_TITLE, E2_TITLE).forEach { assertRowWritesNoTypeStatusCategory("U-02a", TestTags.SERIES_CALENDAR_ROW, it) }
         assertActiveScreen("U-02a / CA-04 — choix multiple : aucune ouverture automatique", TestTags.SCREEN_SERIES_CALENDAR)
 
         click(shownDay(LocalDate.of(2026, 3, 1)))
@@ -603,23 +622,61 @@ class SeriesCalendarJourneyTest {
         accessibility("U-05d", ThemeMode.DARK, fontScale = "2.0")
 
     /**
-     * U-05 « aujourd'hui » : la grille lit `LocalDate.now()` et la date du téléphone ne peut pas être
-     * fixée. Ignoré, ni vert ni rouge, tant que l'horloge n'est pas injectable (LOP-189).
+     * U-05e — aujourd'hui à **date fixe** (LOP-189) : l'horloge injectée est figée au 2 mars 2026 à
+     * midi, heure de Paris. Seul le 2 mars s'annonce aujourd'hui ; le 1er mars ne l'est pas.
      */
     @Test
-    fun u05e_given_aujourd_hui_le_2_mars_2026_when_calendrier_then_le_2_annonce_aujourd_hui() {
-        assumeTrue(
-            "U-05e — montage bloqué : la date du téléphone n'est pas le 2 mars 2026 et la grille lit " +
-                "LocalDate.now() directement (LOP-189, horloge non injectable)",
-            LocalDate.now(PARIS) == MAR_2,
-        )
+    fun u05e_given_aujourd_hui_le_2_mars_2026_when_calendrier_then_seul_le_2_annonce_aujourd_hui() {
+        clock.fixedAt = FIXED_TODAY
         seedNominal()
         openNominalCalendar("U-05e")
-        val description = contentDescription(day(MAR_2))
-        assertTrue("U-05e / CA-08 — le 2 mars s'annonce aujourd'hui : $description", "aujourd'hui" in description)
+
+        val description2 = contentDescription(shownDay(MAR_2))
+        val description1 = contentDescription(shownDay(LocalDate.of(2026, 3, 1)))
+
+        assertTrue("U-05e / CA-08 — le 2 mars s'annonce aujourd'hui : $description2", "aujourd'hui" in description2)
+        assertTrue("U-05e / CA-08 — le 1er mars ne s'annonce pas aujourd'hui : $description1", "aujourd'hui" !in description1)
+        assertEquals("U-05e / CA-08 — un seul jour aujourd'hui dans mars", listOf(MAR_2), daysAnnouncedToday())
     }
 
+    /**
+     * U-05f — aujourd'hui au **jour réel** du téléphone, sans horloge figée : vérification de réalisme,
+     * décidée le 4 octobre 2026 en complément de U-05e, qui reste la preuve de CA-08.
+     *
+     * Limite assumée : l'attendu vient de la même horloge que l'écran. Une erreur de fuseau commune au
+     * test et à l'application passerait ; et le jour éprouvé dépend de la date d'exécution. Si minuit
+     * passe pendant le cas, le constat est sans valeur : le cas est alors ignoré, pas jugé.
+     */
+    @Test
+    fun u05f_given_la_date_reelle_du_telephone_when_mois_courant_puis_autre_mois_then_seul_ce_jour_annonce_aujourd_hui() {
+        seedNominal()
+        val before = LocalDate.now(PARIS)
+        val other = YearMonth.from(before).plusMonths(6)
+        openNominalCalendar("U-05f")
+
+        pickMonth("U-05f", before.year, MONTH_CHIPS[before.monthValue - 1])
+        await("U-05f", "grille du mois courant") { runCatching { shownDay(before).fetchSemanticsNode() }.isSuccess }
+        val inCurrentMonth = daysAnnouncedToday()
+        pickMonth("U-05f", other.year, MONTH_CHIPS[other.monthValue - 1])
+        await("U-05f", "grille de $other") { runCatching { shownDay(other.atDay(1)).fetchSemanticsNode() }.isSuccess }
+        val inOtherMonth = daysAnnouncedToday()
+        val after = LocalDate.now(PARIS)
+
+        assumeTrue("U-05f — minuit franchi pendant le cas ($before → $after) : constat sans valeur", before == after)
+        assertEquals("U-05f / CA-08 — dans le mois courant, seul le jour réel s'annonce aujourd'hui", listOf(before), inCurrentMonth)
+        assertEquals("U-05f / CA-08 — dans $other, aucun jour ne s'annonce aujourd'hui", emptyList<LocalDate>(), inOtherMonth)
+    }
+
+    /** Jours de la grille affichée dont l'annonce contient « aujourd'hui ». */
+    private fun daysAnnouncedToday(): List<LocalDate> = composeRule.onAllNodes(
+        SemanticsMatcher("jour annoncé aujourd'hui") { n ->
+            n.config.getOrNull(SemanticsProperties.TestTag)?.startsWith(TestTags.SERIES_CALENDAR_DAY_PREFIX) == true &&
+                n.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().any { "aujourd'hui" in it }
+        },
+    ).fetchSemanticsNodes().map { LocalDate.parse(it.config[SemanticsProperties.TestTag].removePrefix(TestTags.SERIES_CALENDAR_DAY_PREFIX)) }
+
     private fun accessibility(label: String, theme: ThemeMode, fontScale: String) {
+        clock.fixedAt = FIXED_TODAY
         forceSmallScreen(fontScale)
         useTheme(theme)
         seedNominal()
@@ -630,7 +687,7 @@ class SeriesCalendarJourneyTest {
         // Annonces des jours : date complète, nombre, sélection — pas la couleur.
         val day2 = shownDay(MAR_2).fetchSemanticsNode()
         val description2 = contentDescription(day(MAR_2))
-        listOf("Lundi 2 mars 2026", "2 occurrences", "sélectionné").forEach {
+        listOf("Lundi 2 mars 2026", "2 occurrences", "sélectionné", "aujourd'hui").forEach {
             assertTrue("$label / CA-08 — le 2 mars annonce « $it » : $description2", it in description2)
         }
         assertEquals("$label / CA-08 — le 2 mars est sélectionné", true, day2.config.getOrNull(SemanticsProperties.Selected))
@@ -641,6 +698,7 @@ class SeriesCalendarJourneyTest {
             assertTrue("$label / CA-08 — le 1er mars annonce « $it » : $description1", it in description1)
         }
         assertTrue("$label / CA-08 — le 1er mars n'est pas annoncé sélectionné : $description1", "sélectionné" !in description1)
+        assertTrue("$label / CA-08 — le 1er mars n'est pas annoncé aujourd'hui : $description1", "aujourd'hui" !in description1)
         assertEquals("$label / CA-08 — le 1er mars n'est pas sélectionné", false, day1.config.getOrNull(SemanticsProperties.Selected))
 
         // Annonces des lignes : libellé, montant, type, statut propres.
@@ -653,6 +711,7 @@ class SeriesCalendarJourneyTest {
             (listOf(title) + fragments).forEach {
                 assertTrue("$label / CA-08 — la ligne $title annonce « $it » : $texts", it in texts)
             }
+            assertRowWritesNoTypeStatusCategory(label, TestTags.SERIES_CALENDAR_ROW, title)
         }
 
         // Commandes, jours et lignes : action accessible, affichés une fois atteints, 48 × 48 dp.
@@ -710,61 +769,60 @@ class SeriesCalendarJourneyTest {
     }
 
     // =============================================================================================
-    // U-06 — I-1, P-6 : lignes en lecture seule
+    // U-06 — P-10 : les lignes offrent les actions de l'accueil
     // =============================================================================================
 
+    /**
+     * U-06a — Glissement à droite sur E2 (planifiée) dans l'aperçu : E2 est enregistrée payée, et c'est
+     * la seule ligne qui change. Puis l'appui long ouvre l'aperçu rapide de cette occurrence.
+     */
     @Test
-    fun u06a_given_l_apercu_de_T0_when_glissements_et_appui_long_puis_clic_then_aucune_ecriture_et_detail_ouvert() {
+    fun u06a_given_l_apercu_de_T0_when_glissement_a_droite_puis_appui_long_sur_E2_then_E2_payee_seule_et_apercu_rapide() {
         seedNominal()
-        val reference = snapshot()
         openDetail("U-06a", startId, BASE_TITLE)
-        reveal(TestTags.SCREEN_DETAIL, hasTestTag(TestTags.TRANSACTION_DETAIL_OPEN_CALENDAR))
+        val before = snapshot()
 
-        readOnlyGestures("U-06a", TestTags.TRANSACTION_DETAIL_UPCOMING_ROW)
+        row(TestTags.TRANSACTION_DETAIL_UPCOMING_ROW, E2_TITLE).performTouchInput { swipeRight() }
 
-        assertNoWrite("U-06a", reference)
+        await("U-06a / P-10", "E2 enregistrée payée") { transactionStatus(e2Id) == TransactionStatus.PAID.name }
+        val after = snapshot()
+        assertEquals("U-06a / P-10 — seules les lignes de E2 changent", withoutRow(before, e2Id), withoutRow(after, e2Id))
+        assertTrue("U-06a / P-10 — date de paiement renseignée", transactionPaidAt(e2Id) != null)
+
+        row(TestTags.TRANSACTION_DETAIL_UPCOMING_ROW, E2_TITLE).performTouchInput { longClick() }
+        await("U-06a / P-10", "aperçu rapide de E2") {
+            (previewTx() as? com.lop.budget.data.local.entity.TransactionWithRelations)?.transaction?.id == e2Id
+        }
     }
 
+    /**
+     * U-06b — Glissement à gauche sur E1 dans la liste du jour : le choix de portée de suppression
+     * s'ouvre ; « Annuler » ne modifie rien en base et la ligne reste.
+     */
     @Test
-    fun u06b_given_la_liste_du_calendrier_when_glissements_et_appui_long_puis_clic_then_aucune_ecriture_et_detail_ouvert() {
+    fun u06b_given_la_liste_du_calendrier_when_glissement_a_gauche_sur_E1_puis_annuler_then_choix_de_portee_et_aucune_ecriture() {
         seedNominal()
         val reference = snapshot()
         openNominalCalendar("U-06b")
 
-        readOnlyGestures("U-06b", TestTags.SERIES_CALENDAR_ROW)
+        row(TestTags.SERIES_CALENDAR_ROW, E1_TITLE).performTouchInput { swipeLeft() }
 
-        assertNoWrite("U-06b", reference)
+        awaitTag("U-06b / P-10", TestTags.RECURRING_DELETE_SHEET, "choix de portée de suppression")
+        click(composeRule.onNode(hasTestTag(TestTags.RECURRING_DELETE_CANCEL)))
+        await("U-06b", "fermeture du choix de portée") { count(TestTags.RECURRING_DELETE_SHEET) == 0 }
+        assertNoWrite("U-06b / P-10 — annuler ne supprime rien", reference)
+        assertRowTitles("U-06b / P-10", TestTags.SERIES_CALENDAR_ROW, listOf(E1_TITLE, E2_TITLE))
     }
 
-    private fun readOnlyGestures(label: String, rowTag: String) {
-        val screen = activeScreenTag()
-        val windowsBefore = composeRule.onAllNodes(isRoot()).fetchSemanticsNodes().size
-        val commandsBefore = writeCommandCount()
-        // Un glissement qui se termine DANS la ligne vaut un toucher et ouvre le détail (comportement
-        // non spécifié, consigné). Terminé hors de la ligne, il éprouve seulement payer/supprimer.
-        row(rowTag, E1_TITLE).performTouchInput { swipeLeft(startX = right - 10f, endX = -width / 2f) }
-        composeRule.waitForIdle()
-        row(rowTag, E1_TITLE).performTouchInput { swipeRight(startX = left + 10f, endX = width * 1.5f) }
-        composeRule.waitForIdle()
-        row(rowTag, E1_TITLE).performTouchInput { longClick() }
-        composeRule.waitForIdle()
+    private fun transactionStatus(id: Long): String? =
+        db.query("SELECT status FROM transactions WHERE id = $id", null).use { if (it.moveToFirst()) it.getString(0) else null }
 
-        assertActiveScreen("$label / I-1 — aucun geste n'a déclenché d'action", screen)
-        assertNull("$label / P-6 — aucun aperçu rapide", previewTx())
-        assertEquals(
-            "$label / I-1 — aucune feuille ni boîte de confirmation ouverte",
-            windowsBefore,
-            composeRule.onAllNodes(isRoot()).fetchSemanticsNodes().size,
-        )
-        assertEquals("$label / I-1 — aucune commande payer/supprimer apparue", commandsBefore, writeCommandCount())
+    private fun transactionPaidAt(id: Long): Long? =
+        db.query("SELECT paidAt FROM transactions WHERE id = $id", null).use { if (it.moveToFirst() && !it.isNull(0)) it.getLong(0) else null }
 
-        click(row(rowTag, E1_TITLE))
-        awaitDetail("$label — le clic témoin ouvre la ligne vivante", E1_TITLE)
-        listOf(TestTags.TRANSACTION_DETAIL_EDIT, TestTags.TRANSACTION_DETAIL_DELETE, TestTags.TRANSACTION_DETAIL_TOGGLE_PAID).forEach {
-            runCatching { reveal(TestTags.SCREEN_DETAIL, hasTestTag(it)) }
-            assertEquals("$label — action préexistante du détail présente : $it", 1, count(it))
-        }
-    }
+    /** Snapshot sans la ligne [id] de `transactions` : tout le reste doit être identique. */
+    private fun withoutRow(snapshot: Map<String, List<String>>, id: Long): Map<String, List<String>> =
+        snapshot.mapValues { (table, rows) -> if (table == "transactions") rows.filterNot { it.startsWith("$id|") } else rows }
 
     // =============================================================================================
     // Jeu de données — valeurs de la fiche, IDs alloués par Room
@@ -1076,11 +1134,6 @@ class SeriesCalendarJourneyTest {
         shownDay(date).fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected) == true
     }
 
-    private fun writeCommandCount(): Int = composeRule.onAllNodes(
-        hasText("Supprimer", substring = true) or hasText("Marquer comme", substring = true),
-        useUnmergedTree = true,
-    ).fetchSemanticsNodes().size
-
     private fun previewTx(): Any? {
         var preview: Any? = null
         scenario!!.onActivity { preview = ViewModelProvider(it)[TransactionActionViewModel::class.java].previewTx.value }
@@ -1172,7 +1225,20 @@ class SeriesCalendarJourneyTest {
     private fun textsUnder(n: SemanticsNode): List<String> =
         n.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } +
             n.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() +
+            listOfNotNull(n.config.getOrNull(SemanticsProperties.StateDescription)) +
             n.children.flatMap { textsUnder(it) }
+
+    /** Texte réellement écrit à l'écran : ni description ni état, qui ne sont que lus. */
+    private fun visibleTextsUnder(n: SemanticsNode): List<String> =
+        n.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } + n.children.flatMap { visibleTextsUnder(it) }
+
+    /** P-9 : type, statut et catégorie ne sont plus écrits sur la ligne ; ils restent annoncés. */
+    private fun assertRowWritesNoTypeStatusCategory(label: String, rowTag: String, title: String) {
+        row(rowTag, title)
+        val visible = normalized(visibleTextsUnder(rowNode(rowTag, title).fetchSemanticsNode()))
+        val written = WORDS_REMOVED_BY_P9.filter { word -> visible.any { word in it } }
+        assertEquals("$label / P-9 — la ligne $title n'écrit ni type, ni statut, ni catégorie ; textes : $visible", emptyList<String>(), written)
+    }
 
     private fun contentDescription(interaction: SemanticsNodeInteraction): String =
         interaction.fetchSemanticsNode().config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().joinToString(", ")
@@ -1337,6 +1403,9 @@ class SeriesCalendarJourneyTest {
         const val D_TITLE = "ZZ_TC7_liste"
         const val UNAVAILABLE = "Cette occurrence n'est plus disponible"
 
+        /** Mots que P-9 retire du texte des lignes (type, statut, catégories du JDD). */
+        val WORDS_REMOVED_BY_P9 = listOf("Dépense", "Revenu", "Payé", "Planifié", "ZZ_TC7_logement", "ZZ_TC7_ajustement", "Sans catégorie")
+
         val SCREENS = listOf(TestTags.SCREEN_HOME, TestTags.SCREEN_DETAIL, TestTags.SCREEN_SERIES_CALENDAR)
 
         val SNAPSHOT_TABLES = listOf(
@@ -1362,6 +1431,12 @@ class SeriesCalendarJourneyTest {
         val FEB_28: LocalDate = LocalDate.of(2026, 2, 28)
         val MAR_2: LocalDate = LocalDate.of(2026, 3, 2)
         val FAR_DAY: LocalDate = LocalDate.of(2036, 2, 10)
+
+        /** « Aujourd'hui » de la fiche : 2 mars 2026 à midi, heure de Paris. */
+        val FIXED_TODAY: java.time.Instant = LocalDateTime.of(2026, 3, 2, 12, 0).atZone(PARIS).toInstant()
+
+        /** Textes abrégés des mois dans le sélecteur (chemin d'action, pas un attendu). */
+        val MONTH_CHIPS = listOf("Janv.", "Févr.", "Mars", "Avr.", "Mai", "Juin", "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc.")
 
         val E1_DETAIL = DetailExpectation(
             E1_TITLE, "910,00 €", "Lundi 2 mars 2026", "Dépense", "Marquer comme non payé",

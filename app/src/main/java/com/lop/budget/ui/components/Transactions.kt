@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -123,6 +125,8 @@ fun TransactionRow(
     isAdjustment: Boolean = false,
     allowedActions: Set<AccountRowAction> = AccountRowAction.entries.toSet(),
     supportingText: String? = null,
+    /** Lu par le lecteur d'écran, jamais affiché (P-9 de LOP-7 : type et statut annoncés, pas écrits). */
+    stateDescription: String? = null,
     actionVm: TransactionActionViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
 ) {
     val ext = LopTheme.extended
@@ -161,6 +165,10 @@ fun TransactionRow(
                         }
                     },
                     onLongClick = { if (canPreview) actionVm.showPreview(tx) }
+                )
+                .then(
+                    if (stateDescription != null) Modifier.semantics { this.stateDescription = stateDescription }
+                    else Modifier
                 )
                 .graphicsLayer {
                     alpha = if (isPaid && !isAdjustment) 0.5f else 1f

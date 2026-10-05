@@ -12,47 +12,41 @@ import com.lop.budget.R
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
-import com.lop.budget.domain.usecase.account.AccountRowAction
 import com.lop.budget.ui.common.TransactionActionViewModel
 import com.lop.budget.util.Format
 
 /**
- * Ligne d'une occurrence de série, dans l'aperçu du détail et la liste du calendrier (LOP-7, P-6).
+ * Ligne d'une occurrence de série, dans l'aperçu du détail et la liste du calendrier (LOP-7).
  *
- * C'est la ligne de transaction de l'accueil, en **lecture seule** : ouverture uniquement, ni
- * glissement payer/supprimer ni aperçu rapide (I-1). La ligne ajoutée écrit la date complète, le
- * type et le statut en toutes lettres (CA-01, CA-08) : l'opacité d'une ligne payée ne suffit pas, et
- * une échéance lointaine a besoin de son année.
+ * C'est la ligne de transaction de l'accueil, actions comprises : glissement payer/supprimer et
+ * aperçu rapide (P-10). Elle n'y ajoute que la date complète, car une échéance lointaine a besoin
+ * de son année. Le type se lit au montant, le statut à l'opacité, la catégorie à l'icône (P-9) ;
+ * type et statut restent annoncés au lecteur d'écran (CA-08).
  */
 @Composable
 fun OccurrenceRow(
     occurrence: TransactionWithRelations,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    /** CA-02 : la liste du calendrier nomme aussi la catégorie. */
-    showCategory: Boolean = false,
     actionVm: TransactionActionViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
 ) {
     val currency by actionVm.previewCurrency.collectAsStateWithLifecycle()
     val tx = occurrence.transaction
-    val category = occurrence.category?.name ?: stringResource(R.string.tx_detail_no_category)
-    // La date a sa propre ligne : collée au reste, elle se coupait au milieu d'un séparateur.
-    val summary = Format.fullDate(tx.date) + "\n" + listOfNotNull(
+    val announced = listOf(
         stringResource(if (tx.type == TransactionType.INCOME) R.string.tx_type_income else R.string.tx_type_expense),
         stringResource(
             if (tx.status == TransactionStatus.PAID) R.string.occurrence_status_paid
             else R.string.occurrence_status_planned
         ),
-        category.takeIf { showCategory },
-    ).joinToString(" · ")
+    ).joinToString(", ")
 
     TransactionRow(
         tx = occurrence,
         currency = currency,
         onOpenTransaction = { onClick() },
         modifier = modifier,
-        allowedActions = setOf(AccountRowAction.OPEN),
-        supportingText = summary,
+        supportingText = Format.fullDate(tx.date),
+        stateDescription = announced,
         actionVm = actionVm,
     )
 }

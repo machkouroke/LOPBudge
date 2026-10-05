@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
@@ -74,10 +75,20 @@ sealed interface CalendarEvent {
 class SeriesCalendarViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val occurrences: ObserveRecurringOccurrencesUseCase,
+    clock: Clock,
 ) : ViewModel() {
 
     private val startId: Long = checkNotNull(savedStateHandle[ARG_START_ID])
     private val zone: ZoneId = ZoneId.systemDefault()
+
+    /**
+     * CA-08 : le jour marqué « aujourd'hui » dans la grille, lu sur l'horloge injectée et non sur
+     * celle du téléphone, comme l'accueil et la recherche (LOP-189).
+     *
+     * ponytail: lu à l'ouverture de l'écran ; si minuit passe calendrier ouvert, le repère ne
+     * bascule qu'à la réouverture. Exposer un flux minuté si ce cas devient gênant.
+     */
+    val today: LocalDate = LocalDate.now(clock.withZone(zone))
 
     // CA-06 : le mois et le jour vivent dans le SavedStateHandle et survivent à une recréation.
     private val month = savedStateHandle.getStateFlow<String?>(KEY_MONTH, null)

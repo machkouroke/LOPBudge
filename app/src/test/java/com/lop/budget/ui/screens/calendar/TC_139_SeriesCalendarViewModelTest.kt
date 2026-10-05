@@ -49,6 +49,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.IOException
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
@@ -618,7 +620,7 @@ class SeriesCalendarViewModelTest {
     ): SeriesCalendarViewModel {
         val vm = ViewModelProvider(
             store,
-            viewModelFactory { initializer { SeriesCalendarViewModel(handle, useCase) } },
+            viewModelFactory { initializer { SeriesCalendarViewModel(handle, useCase, CLOCK) } },
         )[SeriesCalendarViewModel::class.java]
         // Les flux partagés du ViewModel ne démarrent qu'avec un abonné.
         collectors += backgroundScope.launch { vm.uiState.collect { history += it } }
@@ -761,6 +763,9 @@ class SeriesCalendarViewModelTest {
 
     private companion object {
         val PARIS: ZoneId = ZoneId.of("Europe/Paris")
+
+        /** Horloge figée : « aujourd'hui » n'est pas un oracle de cette fiche, mais ne dépend pas du jour d'exécution. */
+        val CLOCK: Clock = Clock.fixed(Instant.parse("2026-03-02T11:00:00Z"), PARIS)
 
         const val START_ID = 101L
         const val SERIES_A = 201L

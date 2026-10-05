@@ -20,8 +20,10 @@ d’écriture, les cardinalités et l’état exposé se prouvent au niveau Room
 - Une activité neuve par cas (`ActivityScenario.launch`), fermée dans le `@After`.
 - Fuseau et locale : les forcer dans le processus (`TimeZone.setDefault`, `Locale.setDefault`) et
   les restaurer. Ne jamais modifier les réglages de l’appareil.
-- L’horloge de `TestAppModule` est partagée par toute la suite : la figer change le comportement des
-  autres classes. Préférer des données dont la date diffère de toute date « présente ».
+- L’horloge de `TestAppModule` est un `TestClock` : l’heure réelle par défaut, figeable par un cas
+  (`@Inject lateinit var clock: TestClock` puis `clock.fixedAt = …`, remis à `null` au teardown).
+  Hilt la recrée pour chaque cas, donc la figer ne touche aucune autre classe. Un écran qui lit
+  `LocalDate.now()` ou `YearMonth.now()` directement échappe à cette horloge (cf. LOP-189).
 
 ## 3. Chemins d’action
 

@@ -19,6 +19,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.testing.TestInstallIn
 import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 import javax.inject.Singleton
 
 /**
@@ -45,10 +48,13 @@ object TestAppModule {
             .allowMainThreadQueries()
             .build()
 
-    /** Reconduit tel quel : aucun oracle de la suite instrumentée ne porte sur une date. */
     @Provides
     @Singleton
-    fun provideClock(): Clock = Clock.systemUTC()
+    fun provideTestClock(): TestClock = TestClock()
+
+    /** Même horloge que [AppModule] tant qu'un cas ne la fige pas : voir [TestClock]. */
+    @Provides
+    fun provideClock(clock: TestClock): Clock = clock
 
     @Provides
     @Singleton
@@ -66,4 +72,32 @@ object TestAppModule {
         db.recurringSeriesDao()
     @Provides fun provideDetectedProposalDao(db: LopDatabase): DetectedTransactionProposalDao =
         db.detectedTransactionProposalDao()
+}
+
+/**
+ * Horloge de la suite instrumentée : l'heure réelle, comme `Clock.systemUTC()`, tant qu'un cas ne
+ * la fige pas avec [fixedAt].
+ *
+ * Hilt crée un composant neuf pour chaque cas : une horloge figée ne déborde ni sur le cas suivant
+ * ni sur les autres classes, qui continuent de lire l'heure réelle. Le fuseau reste celui que
+ * l'appelant demande par `withZone`, comme en production.
+ */
+class TestClock : Clock() {
+    @Volatile
+    var fixedAt: Instant? = null
+
+    override fun instant(): Instant = fixedAt ?: Instant.now()
+
+    override fun getZone(): ZoneId = ZoneOffset.UTC
+
+    override fun withZone(zone: ZoneId): Clock = Zoned(zone)
+
+    /** Suit [fixedAt] même après `withZone` : figer l'horloge après coup reste visible. */
+    private inner class Zoned(private val zone: ZoneId) : Clock() {
+        override fun instant(): Instant = this@TestClock.instant()
+
+        override fun getZone(): ZoneId = zone
+
+        override fun withZone(zone: ZoneId): Clock = Zoned(zone)
+    }
 }
