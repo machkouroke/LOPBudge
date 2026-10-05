@@ -4,6 +4,7 @@ import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.RecurrenceEngine
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
@@ -79,6 +80,7 @@ class CreateAndSaveTransactionUseCaseTest {
         daysOfWeek = daysOfWeek,
         endDate = endDate,
         maxOccurrences = maxOccurrences,
+        missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
         linkedGoalId = linkedGoalId,
         linkedLoanId = linkedLoanId,
         tagIds = tagIds,

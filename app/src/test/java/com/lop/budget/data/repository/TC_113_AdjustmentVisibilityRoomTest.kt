@@ -11,6 +11,7 @@ import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.EditScope
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.NO_CATEGORY_ID
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
@@ -1128,6 +1129,7 @@ class AdjustmentVisibilityRoomTest {
         daysOfWeek = emptySet(),
         endDate = null,
         maxOccurrences = null,
+        missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
         linkedGoalId = null,
         linkedLoanId = null,
         tagIds = emptyList(),

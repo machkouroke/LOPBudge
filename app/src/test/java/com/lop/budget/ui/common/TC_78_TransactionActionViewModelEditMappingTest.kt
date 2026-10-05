@@ -7,6 +7,7 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
@@ -139,6 +140,7 @@ class TransactionActionViewModelEditMappingTest {
         daysOfWeek = daysOfWeek,
         endDate = endDate,
         maxOccurrences = maxOccurrences,
+        missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
         linkedGoalId = twr.transaction.linkedGoalId,
         linkedLoanId = twr.transaction.linkedLoanId,
         tagIds = twr.tags.map { it.id },

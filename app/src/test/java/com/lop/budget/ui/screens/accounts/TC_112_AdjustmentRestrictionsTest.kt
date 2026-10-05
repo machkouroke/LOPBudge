@@ -12,6 +12,7 @@ import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.EditScope
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.NO_CATEGORY_ID
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
@@ -762,6 +763,7 @@ class AdjustmentRestrictionsTest {
         daysOfWeek = setOf(1, 5),
         endDate = march20,
         maxOccurrences = 4,
+        missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
         linkedGoalId = 7L,
         linkedLoanId = 8L,
         tagIds = listOf(42L),

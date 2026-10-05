@@ -10,6 +10,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.EditScope
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
@@ -821,6 +822,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         daysOfWeek = emptySet(),
         endDate = endDate,
         maxOccurrences = null,
+        missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
         linkedGoalId = twr.transaction.linkedGoalId,
         linkedLoanId = twr.transaction.linkedLoanId,
         tagIds = tagIds

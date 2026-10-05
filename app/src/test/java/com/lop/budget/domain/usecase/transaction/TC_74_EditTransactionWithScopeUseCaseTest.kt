@@ -5,6 +5,7 @@ import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
@@ -90,7 +91,7 @@ class EditTransactionWithScopeUseCaseTest {
         accountId = accountId, categoryId = categoryId, note = note, status = status,
         frequency = frequency, interval = interval, daysOfWeek = daysOfWeek,
         endDate = endDate, maxOccurrences = maxOccurrences,
-        linkedGoalId = linkedGoalId, linkedLoanId = linkedLoanId, tagIds = tagIds,
+        missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,        linkedGoalId = linkedGoalId, linkedLoanId = linkedLoanId, tagIds = tagIds,
     )
 
     private fun rowEntity(

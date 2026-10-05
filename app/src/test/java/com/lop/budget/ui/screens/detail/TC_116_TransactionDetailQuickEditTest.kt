@@ -10,6 +10,7 @@ import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.model.EditScope
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
@@ -659,6 +660,7 @@ class TransactionDetailQuickEditTest {
         daysOfWeek = emptySet(),
         endDate = null,
         maxOccurrences = null,
+        missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
         linkedGoalId = source.transaction.linkedGoalId,
         linkedLoanId = source.transaction.linkedLoanId,
         tagIds = source.tags.map { it.id },

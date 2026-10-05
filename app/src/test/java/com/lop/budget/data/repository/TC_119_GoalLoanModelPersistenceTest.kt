@@ -13,6 +13,7 @@ import com.lop.budget.domain.model.DebtType
 import com.lop.budget.domain.model.ItemStatus
 import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.domain.model.LoanDirectionImmutableException
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
@@ -921,6 +922,7 @@ class GoalLoanModelPersistenceTest {
         daysOfWeek = emptySet(),
         endDate = null,
         maxOccurrences = null,
+        missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
         linkedGoalId = objectifId,
         linkedLoanId = pretId,
         tagIds = emptyList(),

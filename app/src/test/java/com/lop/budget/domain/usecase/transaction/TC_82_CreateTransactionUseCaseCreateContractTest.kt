@@ -4,6 +4,7 @@ import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.RecurrenceEngine
+import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
@@ -118,6 +119,7 @@ class TC_82_CreateTransactionUseCaseCreateContractTest {
         daysOfWeek = emptySet(),
         endDate = endDate,
         maxOccurrences = null,
+        missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
         linkedGoalId = null,
         linkedLoanId = null,
         tagIds = tagIds,
