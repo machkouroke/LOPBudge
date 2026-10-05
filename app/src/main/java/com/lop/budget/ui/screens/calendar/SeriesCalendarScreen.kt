@@ -288,7 +288,9 @@ private fun DayCell(
             .padding(2.dp)
             .clip(shape)
             .background(if (selected) colors.primary else Color.Transparent)
-            .then(if (isToday) Modifier.border(BorderStroke(2.dp, colors.primary), shape) else Modifier)
+            // LOP-190 : sur le fond plein d'un jour sélectionné, le contour d'aujourd'hui prend la couleur du
+            // texte sélectionné ; de la couleur du fond, il disparaissait.
+            .then(if (isToday) Modifier.border(BorderStroke(2.dp, if (selected) colors.onPrimary else colors.primary), shape) else Modifier)
             .selectable(selected = selected, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description }
             .testTag(TestTags.SERIES_CALENDAR_DAY_PREFIX + day)
