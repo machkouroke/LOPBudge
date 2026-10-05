@@ -14,7 +14,9 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
@@ -81,6 +83,7 @@ import java.time.ZoneId
 import java.util.Locale
 import java.util.TimeZone
 import javax.inject.Inject
+import kotlin.math.abs
 
 /**
  * TC-138 — Calendrier récurrent : parcours, fermeture et accessibilité (LOP-7).
@@ -101,7 +104,8 @@ import javax.inject.Inject
  * U-03  CA-03, CA-05, CA-06    LopNavHost (popUpTo du calendrier), MonthPickerBottomSheet, fermetures
  * U-04  CA-06, CA-07           LopScreenScaffold (état de liste), ActivityScenario.recreate, rotation
  * U-05  CA-08                  DayCell / OccurrenceRow / MonthHeader : annonces, actions, 48 dp, 200 % ;
- *                              « aujourd'hui » à date fixe (U-05e) et au jour réel (U-05f)
+ *                              « aujourd'hui » à date fixe (U-05e), au jour réel (U-05f), et visible
+ *                              sur un jour sélectionné (U-05g, LOP-190)
  * U-06  I-1, P-10              OccurrenceRow : glissements payer/supprimer et aperçu rapide de l'accueil
  * ```
  *
@@ -138,9 +142,12 @@ import javax.inject.Inject
  * - LOP-189 « La grille du calendrier lit la date du jour sans horloge injectable »
  *   https://app.notion.com/p/3ef50f34a8c58116a042fbad83e5b0d4 — corrigée le 4 octobre 2026 :
  *   U-05a–e rouges avant le correctif (« aujourd'hui » absent du 2 mars), verts après.
+ * - LOP-190 « Le repère aujourd'hui disparaît quand ce jour est sélectionné »
+ *   https://app.notion.com/p/3ef50f34a8c5810e9e30d1ba8ba4d163 — corrigée le 5 octobre 2026 : U-05g
+ *   rouge avant (bord et fond #8b4d52 identiques), vert après (contour couleur onPrimary).
  *
  * ## Résultats et preuves de sensibilité (4 octobre 2026, SM-S938B, Android 16)
- * 26 cas verts après correction de LOP-189. Les rouges des premiers passages venaient tous du test
+ * 27 cas verts après correction de LOP-189 et LOP-190. Les rouges des premiers passages venaient tous du test
  * (nœuds hors écran, ligne d'accueil sans `transaction.item`, mesure de troncature) ; aucun défaut
  * de l'application. Mutations de production, une à la fois, application d'origine réinstallée après :
  * ```
@@ -666,6 +673,39 @@ class SeriesCalendarJourneyTest {
         assertEquals("U-05f / CA-08 — dans le mois courant, seul le jour réel s'annonce aujourd'hui", listOf(before), inCurrentMonth)
         assertEquals("U-05f / CA-08 — dans $other, aucun jour ne s'annonce aujourd'hui", emptyList<LocalDate>(), inOtherMonth)
     }
+
+    /**
+     * U-05g — LOP-190 : un jour à la fois sélectionné et aujourd'hui garde un contour visible. Le bord
+     * de la case doit se distinguer de son fond plein ; avant correctif, le contour prenait la couleur
+     * du fond et disparaissait. Le 16 mars, vide, est choisi pour que rien ne se dessine au point de
+     * mesure du fond (à 15 % de la largeur, à mi-hauteur).
+     */
+    @Test
+    fun u05g_given_aujourd_hui_selectionne_when_calendrier_then_son_contour_reste_visible_sur_le_fond() {
+        clock.fixedAt = LocalDateTime.of(2026, 3, 16, 12, 0).atZone(PARIS).toInstant()
+        seedNominal()
+        openNominalCalendar("U-05g")
+
+        click(shownDay(MAR_16))
+        awaitDaySelected("U-05g", MAR_16)
+        val description = contentDescription(shownDay(MAR_16))
+        assertTrue("U-05g — le 16 mars est annoncé sélectionné et aujourd'hui : $description", "sélectionné" in description && "aujourd'hui" in description)
+        composeRule.waitForIdle()
+        val image = shownDay(MAR_16).captureToImage().asAndroidBitmap()
+        val edge = image.getPixel(1, image.height / 2)
+        val fill = image.getPixel((image.width * 0.15f).toInt(), image.height / 2)
+
+        assertTrue(
+            "U-05g / CA-08, LOP-190 — le bord (#${Integer.toHexString(edge)}) se distingue du fond (#${Integer.toHexString(fill)}) " +
+                "d'un jour sélectionné et aujourd'hui ; capture : ${capture("U-05g")}",
+            colorDistance(edge, fill) > MIN_COLOR_DISTANCE,
+        )
+    }
+
+    private fun colorDistance(a: Int, b: Int): Int =
+        abs(android.graphics.Color.red(a) - android.graphics.Color.red(b)) +
+            abs(android.graphics.Color.green(a) - android.graphics.Color.green(b)) +
+            abs(android.graphics.Color.blue(a) - android.graphics.Color.blue(b))
 
     /** Jours de la grille affichée dont l'annonce contient « aujourd'hui ». */
     private fun daysAnnouncedToday(): List<LocalDate> = composeRule.onAllNodes(
@@ -1431,6 +1471,10 @@ class SeriesCalendarJourneyTest {
         val FEB_28: LocalDate = LocalDate.of(2026, 2, 28)
         val MAR_2: LocalDate = LocalDate.of(2026, 3, 2)
         val FAR_DAY: LocalDate = LocalDate.of(2036, 2, 10)
+        val MAR_16: LocalDate = LocalDate.of(2026, 3, 16)
+
+        /** Écart minimal (somme des écarts R, G, B sur 0–765) pour juger deux couleurs distinctes à l'œil. */
+        const val MIN_COLOR_DISTANCE = 60
 
         /** « Aujourd'hui » de la fiche : 2 mars 2026 à midi, heure de Paris. */
         val FIXED_TODAY: java.time.Instant = LocalDateTime.of(2026, 3, 2, 12, 0).atZone(PARIS).toInstant()
