@@ -201,7 +201,11 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.12")
 
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    // 3.7.0 au lieu de 3.6.1 depuis le 6 octobre 2026 : 3.6.1 appelle par réflexion
+    // `InputManager.getInstance()`, retiré du SDK 37 ; toute synchronisation Compose échouait
+    // (NoSuchMethodException) sur le téléphone de test. 3.7.0 passe par `getSystemService`.
+    // `androidx.concurrent` est exclu des configurations androidTest (bloc en fin de fichier).
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
@@ -213,6 +217,13 @@ dependencies {
     // les tests unitaires, qui ne chargent aucune bibliothèque native.
     androidTestImplementation("com.google.dagger:hilt-android-testing:2.54")
     kspAndroidTest("com.google.dagger:hilt-android-compiler:2.54")
+}
+
+// Espresso 3.7.0 et androidx.test:core 1.7.0 demandent `androidx.concurrent` 1.2.0 ; l'application
+// embarque 1.1.0, et la résolution cohérente d'AGP impose à l'APK de test la version de l'APK testé.
+// Exclu côté test seulement : à l'exécution, la 1.1.0 de l'application est utilisée.
+configurations.matching { "AndroidTest" in it.name }.configureEach {
+    exclude(group = "androidx.concurrent")
 }
 
 tasks.withType<Test>().configureEach {
