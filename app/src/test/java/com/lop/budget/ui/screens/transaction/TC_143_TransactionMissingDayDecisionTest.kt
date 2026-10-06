@@ -92,6 +92,7 @@ import java.util.TimeZone
  * V-05  CA-06/08     SINGLE : aucune prélecture, une écriture Edit SINGLE
  * V-06  CA-08        NONE / DAILY / WEEKLY / MONTHLY sans jour absent : aucun prompt, une sauvegarde
  * V-07  CA-03        erreurs de prélecture et d'écriture, écriture suspendue et double save
+ * V-08  CA-12, P-6   confirmMissingDay : « sauter » refusé ignoré, « dernier jour » écrit (LOP-193)
  * ```
  *
  * ## Fixture discriminante
@@ -110,7 +111,8 @@ import java.util.TimeZone
  *   inventée. Même règle pour SINGLE (V-05), où le choix n'atteint jamais la série (TC-144 R-06).
  *
  * ## ANO connues
- * Aucune : les 15 cas sont verts au premier passage, le 6 octobre 2026.
+ * Aucune : les 15 cas sont verts au premier passage, le 6 octobre 2026. V-08 ajouté avec le
+ * correctif de LOP-193 (P-6, CA-12), vert ; 16/16.
  *
  * ## Preuves de sensibilité
  * Une mutation de `TransactionEditViewModel` à la fois, retirée aussitôt, puis 15/15 au rejeu.
@@ -123,6 +125,7 @@ import java.util.TimeZone
  * Prélecture Create appelée en édition             → V-03 édition, V-04 ×2
  * Garde « sans récurrence » retirée                → V-05, V-06 NONE
  * Confirmation qui oublie le choix                 → V-02 sauter, V-04 ×2
+ * Refus de « sauter » retiré (LOP-193)               → V-08
  * ```
  *
  * ## Hors périmètre
@@ -526,6 +529,44 @@ class TransactionMissingDayDecisionTest {
         }
 
     // =============================================================================================
+    // V-08 — P-6 / LOP-193 : « sauter » refusé quand aucune période n'a le jour
+    // =============================================================================================
+
+    @Test
+    fun `V-08 - given FUTURE intervalle 12 et sauter impossible, when confirmation sauter puis dernier jour, then sauter ignore et une ecriture dernier jour`() =
+        runTest {
+            val vm = editing(EditScope.FUTURE)
+            vm.setInterval(12)
+            val f = vm.form.value
+            val submitted = editionLoaded(EditScope.FUTURE, note = "note occurrence", behavior = SKIP_PERIOD).copy(interval = 12)
+            coEvery { edit.firstMissingDay(EDITING_ID, SERIES_ID, FEB28, submitted, EditScope.FUTURE) } returns P_NO_SKIP
+            vm.save(onDone)
+            advanceUntilIdle()
+            val prompt = MissingDayPrompt(P_NO_SKIP, current = SKIP_PERIOD)
+            assertEquals("V-08 — préparation : prompt sans « sauter » possible", prompt, vm.missingDayPrompt.value)
+
+            vm.confirmMissingDay(SKIP_PERIOD, onDone)
+            advanceUntilIdle()
+
+            assertEquals("V-08 / P-6 — « sauter » refusé : le prompt reste ouvert", prompt, vm.missingDayPrompt.value)
+            assertEquals("V-08 / P-6 — formulaire inchangé, choix compris", f, vm.form.value)
+            assertEquals("V-08 / P-6 — aucun callback", emptyList<Long>(), doneIds)
+            assertFalse("V-08 — verrou relâché", vm.isSaving.value)
+            coVerify(exactly = 0) { edit(any(), any(), any(), any(), any()) }
+
+            val confirmed = submitted.copy(missingDayBehavior = LAST_VALID_DAY)
+            coEvery { edit(EDITING_ID, SERIES_ID, FEB28, confirmed, EditScope.FUTURE) } returns EditOutcome.Applied(EDITING_ID)
+            vm.confirmMissingDay(LAST_VALID_DAY, onDone)
+            advanceUntilIdle()
+
+            assertNull("V-08 — prompt effacé après « dernier jour »", vm.missingDayPrompt.value)
+            coVerify(exactly = 1) { edit.firstMissingDay(EDITING_ID, SERIES_ID, FEB28, submitted, EditScope.FUTURE) }
+            coVerify(exactly = 1) { edit(EDITING_ID, SERIES_ID, FEB28, confirmed, EditScope.FUTURE) }
+            confirmVerified(create, edit)
+            assertEquals("V-08 — un callback", listOf(EDITING_ID), doneIds)
+        }
+
+    // =============================================================================================
     // Montage et jeu de données
     // =============================================================================================
 
@@ -693,6 +734,9 @@ class TransactionMissingDayDecisionTest {
         val P_CREATE = MissingDay(anchorDay = 31, date = FEB28)
         val P_ALL = MissingDay(anchorDay = 31, date = FEB28)
         val P_FUTURE = MissingDay(anchorDay = 31, date = APR30)
+
+        /** V-08 : nouvelle série au 31, tous les 12 mois depuis le 28 février — aucun 31 (LOP-193). */
+        val P_NO_SKIP = MissingDay(anchorDay = 31, date = at(2027, 2, 28), canSkip = false)
 
         /** S31 : début 31 janvier, choix SKIP_PERIOD, note différente de celle de l'occurrence. */
         val SERIES = RecurringSeriesEntity(

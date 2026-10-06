@@ -40,6 +40,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -387,10 +388,18 @@ fun MissingDaySheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.testTag(TestTags.TX_EDIT_MISSING_DAY_EXAMPLE),
             )
+            // P-6 : sans aucune période qui ait ce jour, « sauter » arrêterait la série ; l'option
+            // reste visible, désactivée, et dit pourquoi (LOP-193).
+            val canSkip = prompt.missingDay.canSkip
             MissingDayOption(
                 title = stringResource(R.string.tx_missing_day_skip),
-                example = stringResource(R.string.tx_missing_day_skip_example, period),
+                example = if (canSkip) {
+                    stringResource(R.string.tx_missing_day_skip_example, period)
+                } else {
+                    stringResource(R.string.tx_missing_day_skip_unavailable, prompt.missingDay.anchorDay)
+                },
                 isCurrent = prompt.current == MissingDayBehavior.SKIP_PERIOD,
+                enabled = canSkip,
                 modifier = Modifier.testTag(TestTags.TX_EDIT_MISSING_DAY_SKIP),
                 onClick = { onChoose(MissingDayBehavior.SKIP_PERIOD) },
             )
@@ -426,9 +435,11 @@ private fun MissingDayOption(
     isCurrent: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Surface(
         onClick = onClick,
+        enabled = enabled,
         shape = MaterialTheme.shapes.medium,
         border = BorderStroke(
             1.dp,
@@ -437,7 +448,9 @@ private fun MissingDayOption(
         modifier = modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .alpha(if (enabled) 1f else 0.6f),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {

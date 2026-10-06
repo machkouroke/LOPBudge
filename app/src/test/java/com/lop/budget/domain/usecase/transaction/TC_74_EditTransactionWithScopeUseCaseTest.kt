@@ -51,6 +51,8 @@ import java.time.Instant
  * S-14            editSingle (I-5)    lien série conservé, freq NONE, 0 écriture série
  * S-16/S-17/S-18  editFuture pivot    updateSeries(endDate = pivot - 1) capturé entier
  * S-19            editFuture nominal  ordre complet + migration diff + contrôle 999 intact
+ *                 (S-16 à S-19) nouvelle série écrite par saveSeriesWithTags avec les tags de
+ *                 l'édition depuis le correctif de LOP-192 (6 octobre 2026), au lieu de upsertSeries
  * S-20            editFuture          seriesId null -> lecture seule
  * S-21/S-22       editAll             updateSeries entier ; overlay consultée (I-1)
  * S-23/S-24       editAll             diff propagé / zéro upsert si édition == série
@@ -414,12 +416,13 @@ class EditTransactionWithScopeUseCaseTest {
         coEvery { transactionRepo.getSeriesById(100L) } returns oldSeries
         val truncated = slot<RecurringSeriesEntity>()
         coEvery { transactionRepo.updateSeries(capture(truncated)) } just Runs
+        val ed = edition(date = editionDate)
         val newSeries = slot<RecurringSeriesEntity>()
-        coEvery { transactionRepo.upsertSeries(capture(newSeries)) } returns 60L
+        // LOP-192 : la nouvelle série est écrite avec les tags de l'édition.
+        coEvery { transactionRepo.saveSeriesWithTags(capture(newSeries), ed.tagIds) } returns 60L
         coEvery { transactionRepo.getExceptionsBySeries(100L) } returns emptyList()
         val saved = slot<TransactionEntity>()
         coEvery { saveTransactionUseCase.saveSimple(capture(saved), emptyList()) } returns 20L
-        val ed = edition(date = editionDate)
 
         val result = sut(20L, 100L, slotFeb, ed, EditScope.FUTURE)
 
@@ -434,7 +437,7 @@ class EditTransactionWithScopeUseCaseTest {
         coVerify(exactly = 1) { transactionRepo.getById(20L) }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(100L) }
         coVerify(exactly = 1) { transactionRepo.updateSeries(truncated.captured) }
-        coVerify(exactly = 1) { transactionRepo.upsertSeries(newSeries.captured) }
+        coVerify(exactly = 1) { transactionRepo.saveSeriesWithTags(newSeries.captured, ed.tagIds) }
         coVerify(exactly = 1) { transactionRepo.getExceptionsBySeries(100L) }
         coVerify(exactly = 1) { saveTransactionUseCase.saveSimple(saved.captured, emptyList()) }
         confirmAll()
@@ -461,9 +464,11 @@ class EditTransactionWithScopeUseCaseTest {
         coEvery { transactionRepo.getById(20L) } returns twr(row)
         // Diff réel : la série AVANT édition porte amount = 10_000 (l'édition porte 8_000).
         val oldSeries = baseSeries(startDate = janStart).copy(amount = 10_000)
+        // Seul diff vs oldSeries : amount 100 -> 80. Tag 7 : la nouvelle série le porte (LOP-192).
+        val ed = edition(date = slotFeb, amount = 8_000, tagIds = listOf(7L))
         coEvery { transactionRepo.getSeriesById(100L) } returns oldSeries
         coEvery { transactionRepo.updateSeries(any()) } just Runs
-        coEvery { transactionRepo.upsertSeries(any()) } returns 60L
+        coEvery { transactionRepo.saveSeriesWithTags(expectedSeriesFrom(ed), listOf(7L)) } returns 60L
         // Exception après pivot avec personnalisation (title) ; contrôle 999 AVANT pivot.
         val migrating = rowEntity(id = 30L, seriesDate = marchDate, date = marchDate, title = "Custom")
         val control = rowEntity(id = 999L, seriesDate = janStart, date = janStart)
@@ -471,8 +476,7 @@ class EditTransactionWithScopeUseCaseTest {
         val migrated = slot<TransactionEntity>()
         coEvery { transactionRepo.upsert(capture(migrated)) } returns 30L
         val saved = slot<TransactionEntity>()
-        coEvery { saveTransactionUseCase.saveSimple(capture(saved), emptyList()) } returns 20L
-        val ed = edition(date = slotFeb, amount = 8_000) // seul diff vs oldSeries : amount 100 -> 80
+        coEvery { saveTransactionUseCase.saveSimple(capture(saved), listOf(7L)) } returns 20L
 
         val result = sut(20L, 100L, slotFeb, ed, EditScope.FUTURE)
 
@@ -485,13 +489,13 @@ class EditTransactionWithScopeUseCaseTest {
             transactionRepo.getById(20L)
             transactionRepo.getSeriesById(100L)
             transactionRepo.updateSeries(any())
-            transactionRepo.upsertSeries(any())
+            transactionRepo.saveSeriesWithTags(expectedSeriesFrom(ed), listOf(7L))
             transactionRepo.getExceptionsBySeries(100L)
             transactionRepo.upsert(migrated.captured)
-            saveTransactionUseCase.saveSimple(saved.captured, emptyList())
+            saveTransactionUseCase.saveSimple(saved.captured, listOf(7L))
         }
         coVerify(exactly = 1) { transactionRepo.updateSeries(oldSeries.copy(endDate = slotFeb - 1)) }
-        coVerify(exactly = 1) { transactionRepo.upsertSeries(expectedSeriesFrom(ed)) }
+        coVerify(exactly = 1) { transactionRepo.saveSeriesWithTags(expectedSeriesFrom(ed), listOf(7L)) }
         coVerify(exactly = 0) { transactionRepo.materializeOccurrence(any(), any()) } // S-07
         assertEquals(
             expectedSaved(ed, 20L, TransactionStatus.PLANNED, null, 60L, slotFeb, true),

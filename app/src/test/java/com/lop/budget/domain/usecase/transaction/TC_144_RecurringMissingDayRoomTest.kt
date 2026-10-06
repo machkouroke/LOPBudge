@@ -111,12 +111,14 @@ import kotlin.time.Duration.Companion.seconds
  * ## ANO connues
  * - **LOP-192** — https://app.notion.com/p/3f050f34a8c581898cc9e96a2fa27433
  *   « Cette occurrence et les suivantes » écrit la nouvelle série sans ses tags
- *   (`EditTransactionWithScopeUseCase.editFuture` → `upsertSeries`). R-03 ×2 et R-04 sont **rouges
- *   attendus** tant qu'elle n'est pas traitée : seul le champ `tags` du 2e élément diffère,
- *   dates, ordre et autres champs sont conformes. Cause antérieure à LOP-88 (découpage de LOP-52).
+ *   (`EditTransactionWithScopeUseCase.editFuture` → `upsertSeries`). Cause antérieure à LOP-88
+ *   (découpage de LOP-52). **Corrigée le 6 octobre 2026** : la nouvelle série est écrite par
+ *   `saveSeriesWithTags(…, edition.tagIds)`. R-03 ×2 et R-04 rouges avant le correctif (seul le champ
+ *   `tags` du 2e élément différait : `tags=[]` au lieu de `ZZ_L88_tag`), verts après.
  *
- * ## Résultats (5 octobre 2026)
- * 15 verts, 3 rouges attendus (LOP-192) sur 18.
+ * ## Résultats
+ * 5 octobre 2026 : 15 verts, 3 rouges attendus (LOP-192) sur 18. 6 octobre 2026, après correctif
+ * de LOP-192 : 18/18.
  *
  * ## Preuves de sensibilité
  * Une mutation de production à la fois, retirée aussitôt. Les rouges de R-03/R-04 déjà dus à

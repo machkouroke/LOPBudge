@@ -18,7 +18,10 @@ import java.time.temporal.ChronoUnit
  */
 object RecurrenceEngine {
 
-    /** Nombre de périodes examinées par [firstMissingDay] pour une règle sans fin. */
+    /**
+     * Longueur du cycle de la grille : périodes examinées par [firstMissingDay], et nombre de
+     * périodes sautées d'affilée au-delà duquel `validSlots` s'arrête (LOP-193).
+     */
     private const val MISSING_DAY_SCAN = 400
 
     /**
@@ -81,6 +84,7 @@ object RecurrenceEngine {
 
         val skip = series.missingDayBehavior == MissingDayBehavior.SKIP_PERIOD
         var count = 0
+        var skippedInARow = 0
         for (slot in slots(series, fromStep)) {
             if (series.endDate != null && slot > series.endDate) break
             if (series.maxOccurrences != null && count >= series.maxOccurrences) break
@@ -88,7 +92,14 @@ object RecurrenceEngine {
             // P-1 de LOP-88 : une période sautée consomme `maxOccurrences`, d'où le compteur
             // avancé avant le saut.
             count++
-            if (skip && lacksAnchorDay(series, slot)) continue
+            if (skip && lacksAnchorDay(series, slot)) {
+                // LOP-193 : le jour d'une période ne dépend que de son mois et, pour février, de
+                // l'année. La grille revient sur ses pas en au plus 12 mois ou 400 ans : autant de
+                // périodes sautées d'affilée prouvent qu'aucune ne sera plus jamais produite.
+                if (++skippedInARow >= MISSING_DAY_SCAN) break
+                continue
+            }
+            skippedInARow = 0
             yield(slot)
         }
     }
@@ -101,19 +112,28 @@ object RecurrenceEngine {
      * (intervalle, `endDate`, `maxOccurrences`) : ce sont les périodes **visées** par la règle,
      * quel que soit le comportement finalement retenu. La date rendue est la date rabattue, qui
      * sert d'exemple à l'avertissement.
+     *
+     * P-6 de LOP-88 : « sauter » n'est proposé que si au moins une période visée a le jour
+     * d'ancrage ([MissingDay.canSkip]). Le départ compte pour son propre jour : un 28 février ancré
+     * au 31 ne le possède pas.
      */
     fun firstMissingDay(series: RecurringSeriesEntity): MissingDay? {
         if (series.isCancelled) return null
         if (series.frequency != RecurrenceFrequency.MONTHLY && series.frequency != RecurrenceFrequency.YEARLY) {
             return null
         }
-        // ponytail: plafond de 400 périodes pour une règle sans fin. Il couvre le cycle grégorien
-        // d'un annuel au 29 février (2100 compris) ; le relever si un intervalle plus exotique
-        // devait être détecté au-delà.
-        return validSlots(series.copy(missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY))
+        // 400 périodes couvrent le cycle de la grille (12 mois, 400 ans grégoriens) : ce qui n'y
+        // apparaît pas n'apparaîtra jamais. Même borne que l'arrêt de `validSlots` (LOP-193).
+        val periods = validSlots(series.copy(missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY))
             .take(MISSING_DAY_SCAN)
-            .firstOrNull { lacksAnchorDay(series, it) }
-            ?.let { MissingDay(anchorDay = anchorDay(series), date = it) }
+            .toList()
+        val missing = periods.firstOrNull { lacksAnchorDay(series, it) } ?: return null
+        val anchor = anchorDay(series)
+        return MissingDay(
+            anchorDay = anchor,
+            date = missing,
+            canSkip = periods.any { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).dayOfMonth == anchor },
+        )
     }
 
     /** Jour d'ancrage de la série : [RecurringSeriesEntity.anchorDayOfMonth], sinon celui de sa date de début. */

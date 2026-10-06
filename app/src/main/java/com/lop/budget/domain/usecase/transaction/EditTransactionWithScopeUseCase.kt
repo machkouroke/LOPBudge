@@ -245,8 +245,11 @@ class EditTransactionWithScopeUseCase @Inject constructor(
             )
         }
 
-        // Cas nominal : nouvelle série ancrée sur la date du formulaire (CA-09 FUTURE).
-        val newSeriesId = transactionRepo.upsertSeries(futureSeries(oldSeries, edition, displayDate))
+        // Cas nominal : nouvelle série ancrée sur la date du formulaire (CA-09 FUTURE). Elle porte les
+        // tags du formulaire comme ses autres valeurs : les tags d'une récurrente appartiennent à la
+        // série (P-8 de LOP-3), sinon les occurrences suivantes les perdent (LOP-192).
+        val newSeriesId =
+            transactionRepo.saveSeriesWithTags(futureSeries(oldSeries, edition, displayDate), edition.tagIds)
 
         // CA-03 / CA-05 : les exceptions à partir du pivot migrent vers la nouvelle série et ne
         // reçoivent que les champs réellement modifiés ; `date` et `seriesDate` conservés (I-1).

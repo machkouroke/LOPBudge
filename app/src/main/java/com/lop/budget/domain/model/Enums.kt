@@ -73,8 +73,12 @@ enum class MissingDayBehavior { LAST_VALID_DAY, SKIP_PERIOD }
  * Première période d'une règle qui ne possède pas son jour d'ancrage (CA-01 de LOP-88) : de quoi
  * écrire l'exemple de l'avertissement (CA-02). Série au 31 depuis janvier 2026 : [anchorDay] = 31,
  * [date] = 28 février 2026, la date rabattue.
+ *
+ * [canSkip] est faux quand **aucune** période de la règle n'a le jour d'ancrage (P-6 de LOP-88) :
+ * mensuel ancré au 31 depuis un 28 février, tous les 12 mois. « Sauter » n'y laisserait aucune
+ * occurrence ; l'avertissement le refuse et dit pourquoi.
  */
-data class MissingDay(val anchorDay: Int, val date: Long)
+data class MissingDay(val anchorDay: Int, val date: Long, val canSkip: Boolean = true)
 
 /** Type de compte. */
 enum class AccountType { CHECKING, CASH, SAVINGS, CARD, CRYPTO, INVESTMENT, OTHER }

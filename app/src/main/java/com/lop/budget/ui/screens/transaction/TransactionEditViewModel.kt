@@ -522,7 +522,9 @@ class TransactionEditViewModel @Inject constructor(
      * redemander — l'avertissement n'apparaît qu'une fois par tentative (CA-02).
      */
     fun confirmMissingDay(choice: MissingDayBehavior, onDone: (Long) -> Unit) {
-        if (_missingDayPrompt.value == null) return
+        val prompt = _missingDayPrompt.value ?: return
+        // P-6 de LOP-88 : « sauter » est refusé quand aucune période n'a le jour (LOP-193).
+        if (choice == MissingDayBehavior.SKIP_PERIOD && !prompt.missingDay.canSkip) return
         _missingDayPrompt.value = null
         update { it.copy(missingDayBehavior = choice) }
         submit(onDone, missingDayDecided = true)

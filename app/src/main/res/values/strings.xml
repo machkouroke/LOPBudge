@@ -82,6 +82,7 @@
     <string name="tx_missing_day_message">Le %1$d n\'existe pas en %2$s. Que faire des périodes sans ce jour ?</string>
     <string name="tx_missing_day_skip">Sauter les mois sans ce jour</string>
     <string name="tx_missing_day_skip_example">Aucune occurrence en %1$s.</string>
+    <string name="tx_missing_day_skip_unavailable">Indisponible : aucune période de cette règle n\'a de %1$d, les occurrences s\'arrêteraient ici.</string>
     <string name="tx_missing_day_last">Utiliser le dernier jour du mois</string>
     <string name="tx_missing_day_last_example">Le %1$s à la place.</string>
     <string name="tx_missing_day_current">Choix actuel</string>

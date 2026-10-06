@@ -49,6 +49,7 @@ import java.util.TimeZone
  * G-08  CA-11, P-4   generateOccurrences + firstMissingDay  série ancrée au 31 depuis le 28 février
  * G-09  CA-11, P-4   carriedAnchorDay     report depuis une date rabattue ou non
  * G-10  CA-05/09     nextOccurrences      sauter, sans et avec limite
+ * G-11  CA-12, P-6   generateOccurrences, nextOccurrences, firstMissingDay  aucune période n'a le jour (LOP-193)
  * ```
  *
  * ## Oracles
@@ -71,8 +72,10 @@ import java.util.TimeZone
  * intervalle 12, SKIP_PERIOD → `firstMissingDay` rend (31, 28 février 2027), donc l'avertissement
  * s'affiche et « sauter » s'enregistre, puis la lecture de février 2026 → décembre 2027 ne rend
  * jamais la main. D'où le délai de 10 s par cas : un blocage devient un échec.
- * Ouvert en **LOP-193** — https://app.notion.com/p/3f150f34a8c581b88209c0e16c44508f — comportement
- * attendu à arbitrer par l'US ; aucun cas ajouté à cette matrice.
+ * Ouvert en **LOP-193** — https://app.notion.com/p/3f150f34a8c581b88209c0e16c44508f — tranché le
+ * 6 octobre 2026 (P-6, CA-12 de LOP-88 : « sauter » refusé et expliqué) et corrigé : le moteur
+ * s'arrête après 400 périodes sautées d'affilée, `MissingDay.canSkip` signale le refus. G-11 grille
+ * et prochaines rouges avant le correctif (délai dépassé : la boucle elle-même), verts après.
  *
  * ## Preuves de sensibilité (5 octobre 2026)
  * Une mutation de `RecurrenceEngine` à la fois, retirée aussitôt, puis 24/24 au rejeu.
@@ -88,6 +91,8 @@ import java.util.TimeZone
  * Statut virtuel PAID                                → les 10 cas de grille
  * take(count) avant le filtre « après »              → G-10 sans limite
  * Annuel jamais absent                               → G-03 sauter, G-07 Y100
+ * « Sauter » toujours possible (canSkip = true)       → G-11 détection
+ * Arrêt après 400 périodes sautées retiré            → G-11 grille, G-11 prochaines (délai dépassé)
  * ```
  * Limite connue : la garde `maxOccurrences == null` du raccourci de fenêtre n'est pas prouvée.
  * Avec les fenêtres de G-04 et G-10, le raccourci calcule de toute façon le pas 0.
@@ -411,6 +416,42 @@ class RecurrenceMissingDayTest {
     }
 
     // =============================================================================================
+    // G-11 — LOP-193 : aucune période de la règle n'a le jour d'ancrage
+    // =============================================================================================
+
+    @Test
+    fun `G-11 grille - given ancre 31 depuis le 28 fevrier, intervalle 12, sauter, when fenetre 2026 a 2027, then le depart seul et le calcul s'arrete`() {
+        val dead = carried31(behavior = SKIP_PERIOD).copy(interval = 12)
+        val from = at(2026, 2, 1)
+        val to = at(2027, 12, 31)
+
+        assertOccurrences(
+            "G-11 grille / LOP-193 — seuls des 28/29 février : rien après le départ, sans boucle infinie",
+            listOf(at(2026, 2, 28)),
+        ) { RecurrenceEngine.generateOccurrences(dead, from, to) }
+    }
+
+    @Test
+    fun `G-11 detection - given ancre 31 depuis le 28 fevrier, intervalle 12, when detection, then 28 fevrier 2027 et sauter refuse`() {
+        assertMissingDay(
+            "G-11 détection / LOP-193, P-6 — aucune période n'a de 31 : « sauter » n'est pas proposé",
+            MissingDay(anchorDay = 31, date = at(2027, 2, 28), canSkip = false),
+            carried31(behavior = LAST_VALID_DAY).copy(interval = 12),
+        )
+    }
+
+    @Test
+    fun `G-11 prochaines - given ancre 31 depuis le 28 fevrier, intervalle 12, sauter, when 2 prochaines, then aucune et le calcul s'arrete`() {
+        val dead = carried31(behavior = SKIP_PERIOD).copy(interval = 12)
+        val after = at(2026, 2, 28)
+
+        assertOccurrences(
+            "G-11 prochaines / LOP-193 — aucune échéance, vacuité explicite, sans boucle infinie",
+            emptyList(),
+        ) { RecurrenceEngine.nextOccurrences(dead, after, count = 2) }
+    }
+
+    // =============================================================================================
     // Jeu de données
     // =============================================================================================
 
@@ -537,7 +578,7 @@ class RecurrenceMissingDayTest {
     private fun describe(list: List<TransactionEntity>) = list.joinToString(prefix = "[", postfix = "]") { text(it.date) }
 
     private fun describe(missingDay: MissingDay?) =
-        missingDay?.let { "{ancrage=${it.anchorDay}, exemple=${text(it.date)}}" } ?: "null"
+        missingDay?.let { "{ancrage=${it.anchorDay}, exemple=${text(it.date)}, sauter possible=${it.canSkip}}" } ?: "null"
 
     private companion object {
         val PARIS: ZoneId = ZoneId.of("Europe/Paris")

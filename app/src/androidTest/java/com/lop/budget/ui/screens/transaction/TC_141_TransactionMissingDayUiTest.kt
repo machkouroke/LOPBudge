@@ -13,11 +13,14 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.isNotEnabled
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
 import androidx.lifecycle.SavedStateHandle
@@ -99,6 +102,7 @@ import javax.inject.Inject
  * U-02  CA-02         MissingDaySheet : textes de l'exemple et des options, date saisie inchangée
  * U-03  CA-10         MissingDayOption.isCurrent : « Choix actuel » sous l'option enregistrée seule
  * U-04  CA-03         MissingDaySheet onDismiss (Annuler, retour système, toucher hors feuille)
+ * U-05  P-6, LOP-193  MissingDaySheet : « sauter » désactivé et expliqué, « dernier jour » enregistre
  * ```
  *
  * ## Chemin d'action, déduit de la structure de l'écran (jamais un oracle)
@@ -128,7 +132,8 @@ import javax.inject.Inject
  * `SeriesCalendarJourneyTest#u01b` rouge avec 3.6.1, vert avec 3.7.0.
  *
  * ## ANO connues
- * Aucune : 9/9 verts, le 6 octobre 2026, SM-S938B (SDK 37). Le premier passage était rouge sur les
+ * Aucune : 9/9 verts, le 6 octobre 2026, SM-S938B (SDK 37) ; 10/10 avec U-05, ajouté par le
+ * correctif de LOP-193 (P-6, CA-12). Le premier passage était rouge sur les
  * 7 cas de création pour une cause **de montage** : la tuile de catégorie ne réunit texte et clic
  * que dans l'arbre fusionné. Sélecteur corrigé, aucun oracle touché.
  *
@@ -143,6 +148,8 @@ import javax.inject.Inject
  * Annuler confirme « dernier jour »                                     → U-04 Annuler (callback reçu)
  * Retour système ignoré par la feuille                                  → U-04 retour système
  * Voile de la feuille inerte                                            → U-04 hors feuille
+ * « Sauter » réactivé quand aucune période n'a le jour                 → U-05
+ * Raison du refus remplacée par l'exemple habituel                     → U-05
  * ```
  *
  * ## Hors périmètre
@@ -387,6 +394,62 @@ class TransactionMissingDayUiTest {
     }
 
     // =============================================================================================
+    // U-05 — P-6 / LOP-193 : « sauter » refusé et expliqué quand aucune période n'a le jour
+    // =============================================================================================
+
+    @Test
+    fun u05_given_FUTURE_sur_le_28_fevrier_intervalle_12_when_enregistrer_then_sauter_desactive_et_explique_dernier_jour_possible() {
+        val label = "U-05"
+        val seriesId = runBlocking {
+            db.recurringSeriesDao().upsertSeries(
+                RecurringSeriesEntity(
+                    title = "ZZ_L88_UI", amount = 12_345, type = TransactionType.EXPENSE,
+                    categoryId = categoryId, accountId = accountId, frequency = RecurrenceFrequency.MONTHLY,
+                    interval = 1, startDate = at(2026, 1, 31), missingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
+                ),
+            )
+        }
+        val february28 = at(2026, 2, 28)
+        val occurrenceId = runBlocking {
+            observeTransactions(at(2026, 2, 1), at(2026, 3, 1)).first()
+                .single { it.transaction.seriesId == seriesId && it.transaction.seriesDate == february28 }
+                .transaction.id
+        }
+        launch(label, mapOf("id" to occurrenceId, "scope" to EditScope.FUTURE.name, "date" to february28))
+        await(label, "formulaire chargé") { composeRule.runOnIdle { vm.isLoaded } && count(hasTestTag(TestTags.SCREEN_EDIT)) > 0 }
+        composeRule.runOnIdle { vm.setInterval(12) }
+        val before = composeRule.runOnIdle { vm.form.value }
+
+        submit(label)
+
+        assertEquals(
+            "$label / P-6 — explication de la règle ; arbre : ${dump(label)}",
+            1,
+            count(hasText("Le 31 n'existe pas en février 2027. Que faire des périodes sans ce jour ?") and hasTestTag(TestTags.TX_EDIT_MISSING_DAY_EXAMPLE)),
+        )
+        assertEquals("$label / P-6 — « sauter » présent mais désactivé ; arbre : ${dump(label)}", 1, count(hasTestTag(TestTags.TX_EDIT_MISSING_DAY_SKIP) and isNotEnabled()))
+        assertEquals("$label / P-6 — la raison est dite à l'utilisateur", 1, count(hasText(UNAVAILABLE_SKIP) and under(TestTags.TX_EDIT_MISSING_DAY_SKIP)))
+        assertEquals("$label / P-6 — pas d'exemple « sauter » trompeur", 0, count(hasText("Aucune occurrence en février 2027.")))
+        assertEquals("$label / P-6 — « dernier jour » reste proposé", 1, count(hasTestTag(TestTags.TX_EDIT_MISSING_DAY_LAST) and isEnabled()))
+
+        // Vrai toucher sur l'option désactivée : rien ne doit se passer.
+        composeRule.onNode(hasTestTag(TestTags.TX_EDIT_MISSING_DAY_SKIP), useUnmergedTree = true).performClick()
+        composeRule.waitForIdle()
+        assertEquals("$label / P-6 — toucher « sauter » ne ferme pas la feuille", 1, count(hasTestTag(TestTags.TX_EDIT_MISSING_DAY_SHEET)))
+        assertEquals("$label / P-6 — aucune sortie de l'écran", emptyList<Long>(), doneIds)
+        assertEquals("$label / P-6 — formulaire inchangé", before, composeRule.runOnIdle { vm.form.value })
+
+        composeRule.onNode(hasTestTag(TestTags.TX_EDIT_MISSING_DAY_LAST), useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.OnClick)
+        await(label, "enregistrement avec « dernier jour »") { doneIds.size == 1 }
+        assertEquals(
+            "$label / P-6 — le choix enregistré est « dernier jour »",
+            MissingDayBehavior.LAST_VALID_DAY,
+            composeRule.runOnIdle { vm.form.value.missingDayBehavior },
+        )
+    }
+
+    // =============================================================================================
     // Montage
     // =============================================================================================
 
@@ -534,6 +597,7 @@ class TransactionMissingDayUiTest {
         const val SKIP_LABEL = "Sauter les mois sans ce jour"
         const val LAST_LABEL = "Utiliser le dernier jour du mois"
         const val CURRENT_LABEL = "Choix actuel"
+        const val UNAVAILABLE_SKIP = "Indisponible : aucune période de cette règle n'a de 31, les occurrences s'arrêteraient ici."
 
         fun at(year: Int, month: Int, day: Int): Long =
             LocalDateTime.of(year, month, day, 9, 0).atZone(PARIS).toInstant().toEpochMilli()
