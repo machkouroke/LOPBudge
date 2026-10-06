@@ -218,6 +218,10 @@
     <!-- Accounts -->
     <string name="accounts_title">Comptes</string>
     <string name="accounts_total_balance">Solde total</string>
+    <!-- LOP-13 : écran Comptes & soldes actuels (CA-03, CA-05, CA-07). -->
+    <string name="accounts_excluded_from_total">Exclu du solde total</string>
+    <string name="accounts_empty_active">Aucun compte actif</string>
+    <string name="accounts_load_error">Impossible de charger les soldes</string>
     <!-- LOP-87 P-8 : libellé d'un ajustement de solde, résolu à l'affichage et jamais dans le domaine. -->
     <string name="account_balance_adjustment">Ajustement de solde</string>
 

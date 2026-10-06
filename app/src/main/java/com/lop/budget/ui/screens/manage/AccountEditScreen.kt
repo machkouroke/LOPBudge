@@ -424,7 +424,7 @@ fun AccountTypeBottomSheet(
     )
 }
 
-private fun AccountType.libelle(): String = when (this) {
+internal fun AccountType.libelle(): String = when (this) {
     AccountType.CHECKING -> "Bancaire / Courant"
     AccountType.CASH -> "Espèces / Cash"
     AccountType.SAVINGS -> "Épargne"

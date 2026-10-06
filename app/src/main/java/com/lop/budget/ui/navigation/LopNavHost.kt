@@ -96,7 +96,7 @@ fun LopNavHost() {
     var showAddActions by rememberSaveable { mutableStateOf(false) }
 
     val showBar =
-        (currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals" || currentRoute == "accounts")
+        (currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals")
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -222,7 +222,7 @@ fun LopNavHost() {
                         DebtEditScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composableAnimated(Routes.ACCOUNTS, NavAnimationType.ROOT) {
+                    composableAnimated(Routes.ACCOUNTS, NavAnimationType.MAIN) {
                         AccountsScreen(
                             onBack = { navController.popBackStack() },
                             onOpenDetail = { id -> navController.navigate(Routes.accountDetail(id)) }

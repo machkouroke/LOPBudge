@@ -12,7 +12,11 @@ object TestTags {
     const val SCREEN_DETAIL = "screen.transaction.detail"
     const val SCREEN_EDIT = "screen.transaction.edit"
     const val SCREEN_GOALS = "screen.goals"
+    /** Gestion des comptes (réglages). */
     const val SCREEN_ACCOUNTS = "screen.accounts"
+
+    /** Comptes & soldes actuels, ouvert depuis l'accueil (LOP-13) : distinct de la gestion (CA-01). */
+    const val SCREEN_ACCOUNT_BALANCES = "screen.account.balances"
     const val SCREEN_CATEGORIES = "screen.categories"
     const val SCREEN_TAGS = "screen.tags"
     const val SCREEN_AI = "screen.ai"
@@ -47,6 +51,15 @@ object TestTags {
     const val HOME_GO_TO_TODAY = "home.go.to.today"
     const val HOME_SEE_ALL_ACCOUNTS = "home.see.all.accounts"
     const val HOME_ACCOUNT_CARD = "home.account.card"
+
+    // Accounts & current balances (LOP-13)
+    const val ACCOUNTS_TOTAL = "accounts.total"
+    const val ACCOUNTS_LOADING = "accounts.loading"
+    const val ACCOUNTS_EMPTY = "accounts.empty"
+    const val ACCOUNTS_ERROR = "accounts.error"
+
+    /** Ligne d'un compte, suffixée par son id : `accounts.row_<id>`. */
+    const val ACCOUNTS_ROW = "accounts.row"
 
     // Transaction List & Items
     const val TRANSACTION_LIST = "transaction.list"

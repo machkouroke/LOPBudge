@@ -95,5 +95,5 @@ object Routes {
     }
 
     /** Routes affichant la bottom bar flottante. */
-    val rootRoutes = setOf(HOME, ANALYTICS, GOALS, ACCOUNTS)
+    val rootRoutes = setOf(HOME, ANALYTICS, GOALS)
 }

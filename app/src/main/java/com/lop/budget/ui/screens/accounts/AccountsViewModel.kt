@@ -8,15 +8,25 @@ import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
-data class AccountsUiState(
-    val currency: String = "EUR",
-    val totalBalance: Long = 0L,
-    val accounts: List<AccountBalance> = emptyList(),
-)
+sealed interface AccountsUiState {
+    /** CA-06 : aucun résultat encore, donc aucun montant à présenter, pas même 0 (I-2, P-5). */
+    data object Loading : AccountsUiState
+
+    /** CA-07 : distinct de l'état vide ; aucun solde n'est présenté comme disponible (I-2). */
+    data object Error : AccountsUiState
+
+    /** Un résultat du moteur ; [accounts] vide est l'état vide de CA-05. */
+    data class Loaded(
+        val currency: String,
+        val totalBalance: Long,
+        val accounts: List<AccountBalance>,
+    ) : AccountsUiState
+}
 
 @HiltViewModel
 class AccountsViewModel @Inject constructor(
@@ -34,6 +44,11 @@ class AccountsViewModel @Inject constructor(
             getAccountBalancesUseCase.observe(),
             settings.currency
         ) { balances, currency ->
-            AccountsUiState(currency, balances.total, balances.accounts)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountsUiState())
+            // P-1 : comptes actifs seulement. Le total n'est pas recalculé : le moteur exclut déjà
+            // les archivés (CA-12 du moteur).
+            val active = balances.accounts.filterNot { it.account.archived }
+            AccountsUiState.Loaded(currency, balances.total, active) as AccountsUiState
+        }
+            .catch { emit(AccountsUiState.Error) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountsUiState.Loading)
 }

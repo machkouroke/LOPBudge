@@ -37,7 +37,7 @@ object NavAnimations {
     private const val ROOT_DURATION = 500
     private val defaultEasing = FastOutSlowInEasing
     
-    private val screenOrder = listOf(Routes.HOME, Routes.ANALYTICS, Routes.GOALS, Routes.ACCOUNTS)
+    private val screenOrder = listOf(Routes.HOME, Routes.ANALYTICS, Routes.GOALS)
 
     private fun isRoot(route: String?): Boolean {
         val baseRoute = route?.substringBefore("/") ?: return false
