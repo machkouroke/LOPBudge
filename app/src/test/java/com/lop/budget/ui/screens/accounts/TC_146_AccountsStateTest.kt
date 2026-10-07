@@ -63,6 +63,16 @@ import org.junit.Test
  * ## ANO connues
  * Aucune.
  *
+ * ## Résultats — 7 octobre 2026, production de `14bc86e`
+ * 10 verts sur 10 du premier coup. Preuves de sensibilité, une mutation à la fois, retirée :
+ * ```
+ * M1  filtre archived retiré                       → V-01a/b, V-02 ×2, V-03, V-04b, V-05 rouges
+ * M2  solde de départ exposé à la place du reçu     → V-01a/b, V-02 ×2, V-03, V-05 rouges
+ * M3  catch retiré                                 → V-06a, V-06b rouges
+ * M4  valeur initiale Loaded("EUR", 0, [])         → V-01a, V-01b, V-05 rouges
+ * M5  première émission seulement (take(1))        → V-05, V-06b rouges
+ * ```
+ *
  * ## Hors périmètre
  * - Écritures réelles, réactivité de Room et I-1 : TC-148.
  * - Libellés, montants formatés, badge, navigation, absence de barre : TC-147. Conserver

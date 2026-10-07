@@ -109,6 +109,16 @@ import kotlin.time.Duration.Companion.seconds
  * ## ANO connues
  * Aucune.
  *
+ * ## Résultats — 7 octobre 2026, production de `14bc86e`
+ * 20 verts sur 20 du premier coup. Preuves de sensibilité, une mutation à la fois, retirée :
+ * ```
+ * M1  ViewModel figé après la première émission     → 19 rouges, tous sauf R-01
+ * M2  changements sans effet sur les montants ignorés → R-03 nom, type, banque ×2, icône, couleur
+ * M3  filtre archived retiré                        → 20 rouges (cohérence du total par émission)
+ * M4  écriture insérée puis effacée à la 1re lecture → 20 rouges, par le journal seul
+ * M5  ligne planifiée insérée à la 2e émission      → 19 rouges, par l'instantané ; R-01 vert
+ * ```
+ *
  * ## Hors périmètre
  * - Règles de calcul des soldes : campagne du moteur (TC-94, TC-95). CRUD des comptes et contenu
  *   des ajustements : leurs campagnes propres.

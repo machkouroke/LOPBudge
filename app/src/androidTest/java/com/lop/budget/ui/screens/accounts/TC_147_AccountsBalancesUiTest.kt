@@ -101,6 +101,20 @@ import javax.inject.Inject
  * ## ANO connues
  * Aucune.
  *
+ * ## Résultats — 7 octobre 2026, SM-S938B (Android 17), production de `14bc86e`
+ * 18 verts sur 18 du premier coup, en 23 s. Preuves de sensibilité en deux séries ; dans la
+ * première, chaque mutation vise des cas disjoints, et U-03a/b, U-05a, visés par aucune, restent
+ * verts. APK propre réinstallé ensuite : 18 sur 18.
+ * ```
+ * Série 1
+ * G1  barre rétablie sur la route des soldes        → U-01 ×8 rouges (CA-08, nav.bottom.bar)
+ * G3  total à zéro rendu pendant le chargement      → U-04a, U-04b rouges (aucun nœud de total)
+ * G4  badge « Exclu du solde total » jamais rendu   → U-02 ×3 rouges (textes de ligne)
+ * G5  rendu figé sur la première valeur chargée     → U-05b, U-06 rouges
+ * Série 2
+ * G2  « Voir tout » ouvre la gestion des comptes    → 18 rouges (CA-01, écran des soldes absent)
+ * ```
+ *
  * ## Hors périmètre
  * Calcul des soldes et déclencheurs Room exhaustifs (TC-148), transformation de l'état (TC-146),
  * contenu du widget hors « Voir tout », cartes vers le détail, CRUD, détail, historique, graphiques,
