@@ -50,6 +50,8 @@ import com.lop.budget.BuildConfig
  * @param itemEmoji pastille de gauche rendue telle quelle, pour les visuels que [itemIcon] ne sait
  *   pas produire (drapeaux). Purement décorative : elle est retirée de l'arbre d'accessibilité,
  *   [itemLabel] doit donc suffire à identifier la ligne.
+ * @param itemSupportingText seconde ligne sous le libellé, `null` pour n'en rien afficher : montant
+ *   et part d'une catégorie dans l'analyse (LOP-40, CA-09).
  */
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
@@ -68,6 +70,7 @@ fun <T> PickerBottomSheet(
     itemIcon: ((T) -> Any?)? = null,
     itemTint: ((T) -> Color?)? = null,
     itemEmoji: ((T) -> String?)? = null,
+    itemSupportingText: ((T) -> String?)? = null,
     searchQuery: String? = null,
     onSearchQueryChange: (String) -> Unit = {},
     searchPlaceholder: String? = null,
@@ -168,7 +171,8 @@ fun <T> PickerBottomSheet(
                         onClick = { onSelect(item) },
                         icon = itemIcon?.invoke(item),
                         tint = itemTint?.invoke(item),
-                        emoji = itemEmoji?.invoke(item)
+                        emoji = itemEmoji?.invoke(item),
+                        supportingText = itemSupportingText?.invoke(item),
                     )
                 }
             }
@@ -184,6 +188,7 @@ private fun ItemRow(
     icon: Any? = null,
     tint: Color? = null,
     emoji: String? = null,
+    supportingText: String? = null,
 ) {
     Surface(
         modifier = Modifier
@@ -220,13 +225,22 @@ private fun ItemRow(
                 )
                 Spacer(Modifier.width(12.dp))
             }
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            val labelColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = labelColor
+                )
+                if (supportingText != null) {
+                    Text(
+                        text = supportingText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = labelColor
+                    )
+                }
+            }
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Filled.Check,

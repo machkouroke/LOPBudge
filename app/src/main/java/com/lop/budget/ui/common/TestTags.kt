@@ -216,4 +216,29 @@ object TestTags {
 
     // AI
     const val AI_BTN_SEND = "ai.btn.send"
+
+    // Analyse Dépenses/Revenus (LOP-40)
+    const val ANALYSIS_PERIOD = "monthly.period"
+    const val ANALYSIS_PERIOD_SHEET = "monthly.period.sheet"
+    const val ANALYSIS_PERIOD_START = "monthly.period.start"
+    const val ANALYSIS_PERIOD_END = "monthly.period.end"
+    const val ANALYSIS_PERIOD_INVALID = "monthly.period.invalid"
+    const val ANALYSIS_PERIOD_APPLY = "monthly.period.apply"
+    const val ANALYSIS_PERIOD_CANCEL = "monthly.period.cancel"
+    const val ANALYSIS_TOTAL = "monthly.analysis.total"
+    const val ANALYSIS_DONUT = "monthly.analysis.donut"
+    const val ANALYSIS_SELECTED_NAME = "monthly.analysis.selected"
+    const val ANALYSIS_REFRESHING = "monthly.analysis.refreshing"
+    const val ANALYSIS_ERROR = "monthly.analysis.error"
+    const val ANALYSIS_RETRY = "monthly.analysis.retry"
+    const val ANALYSIS_EMPTY = "monthly.analysis.empty"
+    const val ANALYSIS_EMPTY_REMOVE_CATEGORY = "monthly.analysis.empty.remove_category"
+    const val ANALYSIS_EMPTY_EDIT_PERIOD = "monthly.analysis.empty.edit_period"
+
+    /** Capsule d'une catégorie, suivie de son id : `monthly.category.12`. */
+    const val ANALYSIS_CATEGORY_PREFIX = "monthly.category."
+    const val ANALYSIS_CATEGORIES_SEE_ALL = "monthly.categories.see_all"
+    const val ANALYSIS_CATEGORIES_CLEAR = "monthly.categories.clear"
+    const val ANALYSIS_CATEGORIES_SHEET = "monthly.categories.sheet"
+    const val ANALYSIS_OTHER_CATEGORIES_SHEET = "monthly.categories.others.sheet"
 }

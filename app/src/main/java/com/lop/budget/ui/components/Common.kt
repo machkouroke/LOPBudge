@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -201,6 +202,11 @@ fun LopScreenScaffold(
     navigationIcon: ImageVector = Icons.Default.Close,
     snackbarHost: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
+    /**
+     * Bloc fixé sous le titre, qui ne défile pas avec le contenu : les filtres d'une analyse
+     * restent visibles pendant la lecture de la liste (LOP-40, P-6). Vide par défaut.
+     */
+    header: @Composable ColumnScope.() -> Unit = {},
     content: LazyListScope.() -> Unit,
 ) {
     val listState = rememberLazyListState()
@@ -227,27 +233,30 @@ fun LopScreenScaffold(
                         )
                     )
             ) {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            title,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier.testTag(TestTags.BTN_BACK)
-                        ) {
-                            Icon(navigationIcon, contentDescription = stringResource(R.string.back))
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent
-                    ),
-                    windowInsets = WindowInsets(0.dp)
-                )
+                Column {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Text(
+                                title,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(
+                                onClick = onBack,
+                                modifier = Modifier.testTag(TestTags.BTN_BACK)
+                            ) {
+                                Icon(navigationIcon, contentDescription = stringResource(R.string.back))
+                            }
+                        },
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = Color.Transparent
+                        ),
+                        windowInsets = WindowInsets(0.dp)
+                    )
+                    header()
+                }
 
                 if (showTopBarDivider) {
                     Box(

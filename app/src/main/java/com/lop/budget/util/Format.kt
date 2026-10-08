@@ -70,6 +70,21 @@ object Format {
     }
 
     /**
+     * Part de [part] dans [whole], en pourcentage à une décimale, arrondi demi vers le haut
+     * (LOP-40, CA-03) : 4000 sur 10000 rend « 40,0 % », 1 sur 16 rend « 6,3 % ».
+     *
+     * Calculée sur les centimes et par [BigDecimal], jamais sur une proportion `Double` : l'arrondi
+     * porte ainsi sur la valeur exacte. Un tout nul rend « 0,0 % », jamais une division par zéro.
+     */
+    fun percent(part: Long, whole: Long): String {
+        val value = if (whole == 0L) BigDecimal.ZERO.setScale(1) else
+            BigDecimal.valueOf(part).movePointRight(2)
+                .divide(BigDecimal.valueOf(whole), 1, RoundingMode.HALF_UP)
+        // Espace insécable : le signe « % » ne passe jamais seul à la ligne.
+        return value.toPlainString().replace('.', ',') + "\u00A0%"
+    }
+
+    /**
      * Frontière UI : saisie en euros ("12,34" ou "12.34") -> centimes, arrondi half-up.
      * Passe par [BigDecimal] pour que 10,505 donne bien 1051 et non 1050.
      */
@@ -110,6 +125,11 @@ object Format {
         fullDate(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate())
 
     fun fullDate(date: LocalDate): String = date.format(full).replaceFirstChar { it.uppercase() }
+
+    private val dayMonthYear = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRANCE)
+
+    /** "1 octobre 2026" : bornes d'une période d'analyse (LOP-40, CA-01). */
+    fun dayMonthYear(date: LocalDate): String = date.format(dayMonthYear)
 
     /** Exécute : "juin 2026" → "Juin 2026" */
     fun monthYear(ym: YearMonth): String =

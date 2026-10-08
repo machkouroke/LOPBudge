@@ -1,6 +1,7 @@
 package com.lop.budget.domain
 
 import com.lop.budget.data.local.entity.TransactionWithRelations
+import com.lop.budget.domain.model.NO_CATEGORY_ID
 import com.lop.budget.domain.model.NO_CATEGORY_LABEL
 
 /**
@@ -16,6 +17,13 @@ data class CategoryBreakdown(
     val total: Long,
     /** Part du total, entre 0 et 1 — une proportion, pas un montant. */
     val share: Double,
+    /**
+     * Catégorie du groupe, `NO_CATEGORY_ID` pour « Sans catégorie » ; `null` pour un tag.
+     *
+     * Le nom ne suffit pas à désigner un groupe : deux sous-catégories de parents différents
+     * peuvent porter le même (LOP-40, CA-06).
+     */
+    val categoryId: Long? = null,
 )
 
 /**
@@ -34,7 +42,7 @@ data class CategoryBreakdown(
  */
 object BreakdownEngine {
 
-    private const val NO_CATEGORY_COLOR = 0xFF9E9E9E.toInt()
+    const val NO_CATEGORY_COLOR = 0xFF9E9E9E.toInt()
 
     fun byCategory(rows: List<TransactionWithRelations>): List<CategoryBreakdown> {
         val total = rows.sumOf { it.transaction.amount }
@@ -47,6 +55,7 @@ object BreakdownEngine {
                     colorArgb = category?.colorArgb ?: NO_CATEGORY_COLOR,
                     total = sum,
                     share = share(sum, total),
+                    categoryId = category?.id ?: NO_CATEGORY_ID,
                 )
             }
             .sortedByDescending { it.total }

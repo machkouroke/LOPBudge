@@ -154,6 +154,25 @@
     <string name="monthly_no_data">Aucune donnée</string>
     <string name="monthly_no_transactions">Aucune transaction pour ce filtre.</string>
     <string name="monthly_transactions_title">Transactions</string>
+    <!-- Analyse Dépenses/Revenus (LOP-40) -->
+    <string name="analysis_filter_planned">Non payé</string>
+    <string name="analysis_total_selection">Total de la sélection</string>
+    <string name="analysis_empty">Aucune transaction pour ces filtres</string>
+    <string name="analysis_refreshing">Actualisation…</string>
+    <string name="analysis_error">Impossible de charger l’analyse</string>
+    <string name="analysis_retry">Réessayer</string>
+    <string name="analysis_remove_category">Retirer la catégorie</string>
+    <string name="analysis_edit_period">Modifier la période</string>
+    <string name="analysis_categories">Catégories</string>
+    <string name="analysis_other_categories">Autres catégories</string>
+    <string name="analysis_see_all">Voir toutes</string>
+    <string name="analysis_all_categories">Toutes les catégories</string>
+    <string name="analysis_period_choose">Modifier la période, du %1$s au %2$s</string>
+    <string name="analysis_period_title">Choisir une période</string>
+    <string name="analysis_period_start">Début</string>
+    <string name="analysis_period_end">Fin</string>
+    <string name="analysis_period_apply">Appliquer</string>
+    <string name="analysis_period_invalid">La fin doit être égale ou postérieure au début</string>
 
     <!-- Settings Screen -->
     <string name="settings_title">Réglages</string>
