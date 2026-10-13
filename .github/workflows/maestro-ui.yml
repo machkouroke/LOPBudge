@@ -99,24 +99,14 @@ jobs:
           emulator-options: >
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
             -camera-back none -no-metrics -no-snapshot-save -memory 3072
-            -prop persist.sys.language=fr
-            -prop persist.sys.country=FR
-            -prop persist.sys.locale=fr-FR
+            -change-locale fr-FR
           disable-animations: true
           disable-spellchecker: true
           enable-hw-keyboard: true
+          # Emulateur en francais, comme l'app et ses tests (voir scripts/ci_wait_locale.sh).
           script: |
             adb wait-for-device
-            
-            adb shell cmd locale set-app-locales --user 0 com.android.systemui fr-FR || true
-            adb shell settings put system system_locales fr-FR || true
-            adb shell settings put global device_locale fr-FR || true
-            
-            adb shell getprop ro.product.locale || true
-            adb shell getprop persist.sys.locale || true
-            adb shell settings get system system_locales || true
-            
-            
+            bash scripts/ci_wait_locale.sh fr-FR
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             bash scripts/ci_run_maestro.sh ${{ matrix.shard }} 6
 
@@ -186,6 +176,7 @@ jobs:
           emulator-options: >
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
             -camera-back none -no-metrics -no-snapshot-save -memory 3072
+            -change-locale fr-FR
           # Indispensable : sans cela, `waitForIdle` de Compose peut ne jamais rendre la main
           # sur une animation. L'application en a plusieurs, dont son écran de démarrage.
           disable-animations: true
@@ -195,6 +186,7 @@ jobs:
           # réutilise donc pas l'artefact du job `build`, qui ne contient que le premier.
           script: |
             adb wait-for-device
+            bash scripts/ci_wait_locale.sh fr-FR
             ./gradlew :app:connectedDebugAndroidTest --no-daemon
 
       - name: Upload Instrumented Test Results
