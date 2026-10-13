@@ -25,6 +25,43 @@ enum class LoanDirection {
 enum class ItemStatus { ACTIVE, COMPLETED, ARCHIVED }
 
 /**
+ * Lecture d'un avancement (LOP-79) : restant et pourcentage viennent tous deux de [progressView],
+ * jamais d'un calcul propre à un écran (I-3, P-5).
+ *
+ * `null` signale un indicateur **non calculable** : cible ou montant initial nul ou négatif, que
+ * l'affichage rend « — » (CA-07). [reachedCents] garde sa valeur réelle, négative ou au-delà de la
+ * cible (CA-05, P-4).
+ */
+data class ProgressView(val reachedCents: Long, val remainingCents: Long?, val percent: Int?)
+
+/**
+ * CA-05 : restant = max(0, cible − avancement) ; pourcentage = entier inférieur de
+ * 100 × avancement / cible, borné de 0 à 100. Calcul en entiers : 29 € sur 100 € donnent 29 %,
+ * là où la virgule flottante donnait 28.
+ */
+fun progressView(reachedCents: Long, targetCents: Long): ProgressView =
+    if (targetCents <= 0) ProgressView(reachedCents, null, null)
+    else ProgressView(
+        reachedCents = reachedCents,
+        remainingCents = maxOf(0L, targetCents - reachedCents),
+        percent = Math.floorDiv(100 * reachedCents, targetCents).coerceIn(0L, 100L).toInt(),
+    )
+
+/**
+ * Statut après recalcul (CA-05, CA-06, CA-07).
+ *
+ * - Un archivé reste archivé : un recalcul ne retire jamais un archivage (I-2).
+ * - Cible nulle ou négative : statut existant conservé, jamais de terminé automatique (CA-07).
+ * - Sinon terminé dès que la cible est atteinte, actif en dessous — une diminution peut donc
+ *   remettre un terminé à actif (P-4).
+ */
+fun recalculatedStatus(current: ItemStatus, reachedCents: Long, targetCents: Long): ItemStatus = when {
+    current == ItemStatus.ARCHIVED || targetCents <= 0 -> current
+    reachedCents >= targetCents -> ItemStatus.COMPLETED
+    else -> ItemStatus.ACTIVE
+}
+
+/**
  * I-6 : la direction d'un prêt ne change jamais après sa création.
  *
  * Changer de sens est un autre engagement : on supprime et on recrée (P-7).

@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.local.entity.GoalEntity
+import com.lop.budget.domain.model.progressView
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
@@ -171,7 +172,8 @@ private fun EmptyState(text: String) {
 
 @Composable
 private fun GoalCard(goal: GoalEntity, currency: String, color: Color, onClick: () -> Unit) {
-    val progress = (goal.savedAmountCents.toDouble() / goal.targetAmountCents).coerceIn(0.0, 1.0)
+    // CA-09 / P-5 de LOP-79 : le pourcentage vient du calcul unique, jamais d'un calcul de carte.
+    val percent = progressView(goal.savedAmountCents, goal.targetAmountCents).percent
     FloatingCard(
         Modifier
             .fillMaxWidth()
@@ -187,17 +189,17 @@ private fun GoalCard(goal: GoalEntity, currency: String, color: Color, onClick: 
                     Text(goal.name, style = MaterialTheme.typography.titleMedium)
                     Text("${Format.money(goal.savedAmountCents, currency)} / ${Format.money(goal.targetAmountCents, currency)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("${(progress * 100).toInt()} %", style = MaterialTheme.typography.titleMedium, color = color, fontWeight = FontWeight.Bold)
+                Text(percentLabel(percent), style = MaterialTheme.typography.titleMedium, color = color, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(12.dp))
-            ProgressBar(progress.toFloat(), color)
+            ProgressBar((percent ?: 0) / 100f, color)
         }
     }
 }
 
 @Composable
 private fun DebtCard(debt: LoanEntity, currency: String, color: Color, onClick: () -> Unit) {
-    val progress = (debt.repaidAmountCents.toDouble() / debt.totalAmountCents).coerceIn(0.0, 1.0)
+    val percent = progressView(debt.repaidAmountCents, debt.totalAmountCents).percent
     FloatingCard(
         Modifier
             .fillMaxWidth()
@@ -213,13 +215,16 @@ private fun DebtCard(debt: LoanEntity, currency: String, color: Color, onClick: 
                     Text(debt.name, style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.debt_repaid_amount, Format.money(debt.repaidAmountCents, currency), Format.money(debt.totalAmountCents, currency)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("${(progress * 100).toInt()} %", style = MaterialTheme.typography.titleMedium, color = color, fontWeight = FontWeight.Bold)
+                Text(percentLabel(percent), style = MaterialTheme.typography.titleMedium, color = color, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(12.dp))
-            ProgressBar(progress.toFloat(), color)
+            ProgressBar((percent ?: 0) / 100f, color)
         }
     }
 }
+
+/** « — » quand le pourcentage n'est pas calculable : cible ou montant initial ≤ 0 (CA-07). */
+private fun percentLabel(percent: Int?): String = percent?.let { "$it %" } ?: "—"
 
 @Composable
 private fun ProgressBar(progress: Float, color: Color) {

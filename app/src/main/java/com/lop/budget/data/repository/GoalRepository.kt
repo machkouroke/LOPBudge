@@ -12,7 +12,7 @@ import javax.inject.Singleton
  *
  * Comme [LoanRepository], ce repository porte **I-2** : la progression enregistrée ne se saisit
  * jamais. À la création elle part du montant de départ, à la mise à jour elle est reprise depuis la
- * base, et seul [updateSavedAmountCents] — appelé par le moteur de calcul — la fait bouger.
+ * base, et seul [updateProgress] — appelé par le moteur de calcul — la fait bouger.
  *
  * Un objectif n'a pas de direction : il n'a donc rien d'équivalent à I-6.
  */
@@ -51,6 +51,6 @@ class GoalRepository @Inject constructor(
     override suspend fun delete(id: Long) = goalDao.delete(id)
 
     /** Unique voie d'écriture de la progression, réservée au moteur de calcul (I-2). */
-    override suspend fun updateSavedAmountCents(id: Long, cents: Long) =
-        goalDao.updateSavedAmountCents(id, cents)
+    override suspend fun updateProgress(id: Long, cents: Long, status: ItemStatus) =
+        goalDao.updateProgress(id, cents, status)
 }

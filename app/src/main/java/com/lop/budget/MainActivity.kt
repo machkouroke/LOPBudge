@@ -15,17 +15,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
+import com.lop.budget.domain.usecase.SyncProgressUseCase
 import com.lop.budget.ui.navigation.LopNavHost
 import com.lop.budget.ui.screens.settings.SettingsViewModel
 import com.lop.budget.ui.theme.LopBudgeTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var syncProgress: SyncProgressUseCase
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
 
         super.onCreate(savedInstanceState)
+        // CA-10 / P-6 de LOP-79 : reprise des suivis au lancement, pas à chaque recréation
+        // (rotation, thème) de l'activité. Un échec garde le dernier résultat persisté (CA-08) et
+        // ne doit pas empêcher l'app de s'ouvrir.
+        if (savedInstanceState == null) {
+            lifecycleScope.launch { runCatching { syncProgress.recalculateAll() } }
+        }
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)

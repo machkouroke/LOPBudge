@@ -32,7 +32,8 @@ interface LoanOperations {
 
     suspend fun archive(id: Long)
     suspend fun delete(id: Long)
-    suspend fun updateRepaidAmountCents(id: Long, cents: Long)
+    /** Avancement et statut d'un même recalcul, écrits ensemble (I-3 de LOP-79). */
+    suspend fun updateProgress(id: Long, cents: Long, status: ItemStatus)
 }
 
 @Dao
@@ -48,8 +49,15 @@ interface LoanDao {
 
     @Upsert suspend fun upsert(loan: LoanEntity): Long
 
-    @Query("UPDATE loans SET repaidAmountCents = :cents WHERE id = :id")
-    suspend fun updateRepaidAmountCents(id: Long, cents: Long)
+    /** Même contrat que `GoalDao.updateProgress` (I-2, I-3, CA-08 de LOP-79). */
+    @Query(
+        """
+        UPDATE loans SET repaidAmountCents = :cents,
+            status = CASE WHEN status = 'ARCHIVED' THEN status ELSE :status END
+        WHERE id = :id
+    """
+    )
+    suspend fun updateProgress(id: Long, cents: Long, status: ItemStatus)
 
     @Query("UPDATE loans SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: Long, status: ItemStatus)

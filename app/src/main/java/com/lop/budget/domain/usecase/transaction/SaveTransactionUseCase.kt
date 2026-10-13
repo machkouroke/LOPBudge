@@ -36,6 +36,8 @@ class SaveTransactionUseCase @Inject constructor(
 
         val txId = transactionRepo.saveWithTags(finalTx, tagIds)
 
+        // ÉCART LOP-212 (CA-06 de LOP-79), reconduit : seuls les liens écrits sont recalculés ;
+        // l'élément qu'un lien déplacé ou retiré quitte garde l'ancienne contribution.
         finalTx.linkedGoalId?.let { syncProgressUseCase.recalculateGoalProgress(it) }
         finalTx.linkedLoanId?.let { syncProgressUseCase.recalculateLoanProgress(it) }
         return txId

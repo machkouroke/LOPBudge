@@ -26,7 +26,8 @@ interface GoalOperations {
 
     suspend fun archive(id: Long)
     suspend fun delete(id: Long)
-    suspend fun updateSavedAmountCents(id: Long, cents: Long)
+    /** Avancement et statut d'un même recalcul, écrits ensemble (I-3 de LOP-79). */
+    suspend fun updateProgress(id: Long, cents: Long, status: ItemStatus)
 }
 
 @Dao
@@ -42,8 +43,18 @@ interface GoalDao {
 
     @Upsert suspend fun upsert(goal: GoalEntity): Long
 
-    @Query("UPDATE goals SET savedAmountCents = :cents WHERE id = :id")
-    suspend fun updateSavedAmountCents(id: Long, cents: Long)
+    /**
+     * Une seule requête : jamais un avancement neuf avec un ancien statut (I-3, CA-08 de LOP-79).
+     * Un archivage posé entre la lecture et l'écriture du recalcul est conservé (I-2).
+     */
+    @Query(
+        """
+        UPDATE goals SET savedAmountCents = :cents,
+            status = CASE WHEN status = 'ARCHIVED' THEN status ELSE :status END
+        WHERE id = :id
+    """
+    )
+    suspend fun updateProgress(id: Long, cents: Long, status: ItemStatus)
 
     @Query("UPDATE goals SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: Long, status: ItemStatus)

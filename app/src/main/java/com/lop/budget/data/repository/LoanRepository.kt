@@ -16,7 +16,7 @@ import javax.inject.Singleton
  * deux invariants de LOP-80 ne peuvent vivre nulle part ailleurs.
  *
  * - **I-2** — la progression enregistrée ne se saisit jamais. À la création elle part du montant de
- *   départ ; à la mise à jour elle est reprise depuis la base. Seul [updateRepaidAmountCents],
+ *   départ ; à la mise à jour elle est reprise depuis la base. Seul [updateProgress],
  *   appelé par le moteur de calcul, la fait bouger.
  * - **I-6** — la direction est fixée à la création. [update] relit la ligne avant d'écrire et
  *   refuse tout changement de sens, sans rien persister.
@@ -65,6 +65,6 @@ class LoanRepository @Inject constructor(
     override suspend fun delete(id: Long) = loanDao.delete(id)
 
     /** Unique voie d'écriture de la progression, réservée au moteur de calcul (I-2). */
-    override suspend fun updateRepaidAmountCents(id: Long, cents: Long) =
-        loanDao.updateRepaidAmountCents(id, cents)
+    override suspend fun updateProgress(id: Long, cents: Long, status: ItemStatus) =
+        loanDao.updateProgress(id, cents, status)
 }

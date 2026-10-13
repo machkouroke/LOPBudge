@@ -200,6 +200,8 @@ interface TransactionDao : TransactionOperations {
     )
     override suspend fun hardDelete(id: Long)
 
+    // ÉCART LOP-210 (CA-02, P-2 de LOP-79), reconduit : `type` n'est pas lu, une dépense liée
+    // s'ajoute au lieu de se soustraire.
     @Query(
         """
         SELECT COALESCE(SUM(amount), 0) FROM transactions 
@@ -208,6 +210,8 @@ interface TransactionDao : TransactionOperations {
     )
     override suspend fun getSumForGoal(goalId: Long): Long
 
+    // ÉCART LOP-211 (CA-03, P-3 de LOP-79), reconduit : ni `type` ni la direction du prêt ne sont
+    // lus, dettes et créances comptent tous les flux liés.
     @Query(
         """
         SELECT COALESCE(SUM(amount), 0) FROM transactions 
