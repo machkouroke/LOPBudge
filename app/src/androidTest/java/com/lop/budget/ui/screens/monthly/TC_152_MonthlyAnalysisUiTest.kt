@@ -70,6 +70,8 @@ import java.io.File
 import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.DecimalStyle
 import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.atomic.AtomicInteger
@@ -203,6 +205,12 @@ import org.junit.runner.RunWith
  * (course sans lecture retenue, corrigée) ; série 2, U-02f (exception Compose pendant le glissement,
  * synchronisation ajoutée) et étiquette « montage » de LOP-196 (rejouée en série 3) ; série 3, U-01d
  * (activité non affichée sur le téléphone, vert ensuite).
+ *
+ * **13 octobre 2026, premier passage en CI** (run 38460016256, émulateur API 36 en anglais) : U-02a–f,
+ * U-05b et U-05c rouges de montage dans `pickDate`. Les libellés du calendrier Material, case du jour
+ * et « mois suivant », y étaient écrits en français, alors qu'ils suivent la langue de l'appareil.
+ * Ils sont désormais relus dans cette langue. Revalidé : 8 verts sur Firebase (MediumPhone.arm, API 36,
+ * en_US). Aucun oracle modifié.
  *
  * ## Hors périmètre
  * Calcul métier et sélection SQL (TC-149, TC-151), I-1 (TC-151), grilles de récurrence, CRUD,
@@ -990,15 +998,29 @@ class MonthlyAnalysisUiTest {
         check(case, "CA-05", "ouvert sur la période affichée $start → $end, lu ${sheetFields()}", sheetFields() == listOf(start, end))
     }
 
-    /** Calendrier Material : case du jour visée par sa date complète, puis OK du calendrier. */
+    /**
+     * Calendrier Material : case du jour visée par sa date complète, puis OK du calendrier.
+     *
+     * Les libellés du calendrier viennent de Material et suivent la langue de l'appareil, pas
+     * `Locale.setDefault` : en français sur le téléphone, en anglais sur l'émulateur de la CI. Ils
+     * sont donc relus dans cette langue. Ce sont des chemins d'action, pas des oracles.
+     */
     private fun pickDate(case: String, fieldTag: String, date: LocalDate) {
         click(node(fieldTag))
         awaitTag(case, "montage", TestTags.PICKER_DATE)
         val inPicker = hasAnyAncestor(hasTestTag(TestTags.PICKER_DATE))
-        val day = hasText(" ${date.dayOfMonth} ${MONTHS_FR[date.monthValue - 1]} ${date.year}", substring = true) and hasClickAction() and inPicker
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val locale = context.resources.configuration.locales[0]
+        // Même construction que Material 1.4 pour le libellé d'une case : squelette yMMMMEEEEd.
+        val dayLabel = DateTimeFormatter
+            .ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "yMMMMEEEEd"), locale)
+            .withDecimalStyle(DecimalStyle.of(locale))
+            .format(date)
+        val nextMonth = context.getString(androidx.compose.material3.R.string.m3c_date_picker_switch_to_next_month)
+        val day = hasText(dayLabel, substring = true) and hasClickAction() and inPicker
         var steps = 0
         while (count(day, unmerged = false) == 0 && steps++ < 3) {
-            click(composeRule.onNode(hasContentDescription("Passer au mois suivant") and hasClickAction() and inPicker))
+            click(composeRule.onNode(hasContentDescription(nextMonth) and hasClickAction() and inPicker))
         }
         awaitCondition(case, "montage", "case du $date dans le calendrier") { count(day, unmerged = false) == 1 }
         click(composeRule.onNode(day))
