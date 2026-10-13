@@ -158,9 +158,8 @@ class MonthlyTransactionsViewModel @Inject constructor(
     private fun AnalysisPeriod.range(): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()
         return start.atStartOfDay(zone).toInstant().toEpochMilli() to
-            // LOP-40, CA-02 : la fin devrait être 23:59:59.999. Les 999 dernières millisecondes
-            // du dernier jour restent exclues ; défaut reconduit tel quel (LOP-197).
-            end.atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+            // LOP-40, CA-02 : fin incluse à 23:59:59.999 du dernier jour (LOP-197).
+            end.atTime(23, 59, 59, 999_000_000).atZone(zone).toInstant().toEpochMilli()
     }
 
     /**

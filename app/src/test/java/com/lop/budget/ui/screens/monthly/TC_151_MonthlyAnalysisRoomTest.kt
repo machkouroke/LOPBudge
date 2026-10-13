@@ -114,7 +114,7 @@ import org.robolectric.annotation.Config
  *   critères ; jamais recalculé par `RecurrenceEngine.calculateVirtualId`.
  *
  * ## ANO connues
- * - LOP-197 (Backlog) : fin de période à 23:59:59.000 → R-02 rouge attendu dans ses trois variantes
+ * - LOP-197 (corrigée le 10 octobre 2026) : fin de période à 23:59:59.000 → R-02 rouge avant le correctif dans ses trois variantes
  *   (DERNIERE, datée .999, absente). L'assertion de cardinalité est faite en dernier.
  *
  * ## Résultats — 9 octobre 2026, production de `0f7419f`
@@ -131,6 +131,8 @@ import org.robolectric.annotation.Config
  * M6  écriture persistante à la lecture               → les 5 cas, par la photographie
  * M7  virtuelle avant les persistées à date égale     → R-02 ×3, sur le tri (avant LOP-197)
  * ```
+ * **10 octobre 2026 : LOP-197 corrigée** (`AnalysisPeriod.range`, fin à 23:59:59.999) : R-02 MOIS,
+ * LIBRE et JOUR passent au vert, 5 verts sur 5. Leur rouge du 9 octobre est la preuve RED.
  *
  * ## Hors périmètre
  * Nouvelle grille de récurrence, exceptions déplacées, CRUD, paiement, filtres tag/compte/texte,

@@ -73,7 +73,8 @@ class AnalyticsViewModel @Inject constructor(
     private fun YearMonth.range(): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()
         return atDay(1).atStartOfDay(zone).toInstant().toEpochMilli() to
-            atEndOfMonth().atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+            // Dernière milliseconde du mois incluse (même cause que LOP-197).
+            atEndOfMonth().atTime(23, 59, 59, 999_000_000).atZone(zone).toInstant().toEpochMilli()
     }
 
     val uiState: StateFlow<AnalyticsUiState> =

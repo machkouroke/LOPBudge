@@ -91,7 +91,8 @@ class HomeViewModel @Inject constructor(
     private fun YearMonth.range(): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()
         val start = atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val end = atEndOfMonth().atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+        // Dernière milliseconde du mois incluse, comme l'analyse que les cartes ouvrent (LOP-197).
+        val end = atEndOfMonth().atTime(23, 59, 59, 999_000_000).atZone(zone).toInstant().toEpochMilli()
         return start to end
     }
 

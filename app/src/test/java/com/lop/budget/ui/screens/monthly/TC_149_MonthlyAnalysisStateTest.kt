@@ -112,7 +112,7 @@ import org.junit.Test
  *   la preuve).
  *
  * ## ANO connues
- * - LOP-197 (Backlog) : fin de période à 23:59:59.000 au lieu de .999 → M-01a–f rouges attendus, sur la
+ * - LOP-197 (corrigée le 10 octobre 2026) : fin de période à 23:59:59.000 au lieu de .999 → M-01a–f rouges avant le correctif, sur la
  *   seule assertion de fin (vérifiée en dernier).
  * - LOP-196 (Testing) : ancien résultat présenté sous de nouveaux filtres → preuve M-05.
  *
@@ -137,6 +137,9 @@ import org.junit.Test
  * ```
  * M5 confirme la décision D1 : seule la variante à ordre choisi (M-05b) attrape à coup sûr un
  * contrôle oublié côté choix.
+ *
+ * **10 octobre 2026 : LOP-197 corrigée** (`AnalysisPeriod.range`, fin à 23:59:59.999) : M-01a–f
+ * passent au vert, 24 verts sur 24. Leur rouge du 9 octobre est la preuve RED du correctif.
  *
  * ## Hors périmètre
  * Moteur de recherche et de récurrence, SQL, écritures réelles, navigation, rendu, textes localisés,
