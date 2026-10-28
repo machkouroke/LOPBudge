@@ -122,6 +122,7 @@ class RecurringEditionRepositoryTest : RepositoryTestInfrastructure {
         editTransactionWithScopeUseCase = EditTransactionWithScopeUseCase(
             transactionRepo,
             saveTransactionUseCase,
+            syncProgressUseCase,
         )
         observeTransactionsUseCase = newObserveTransactionsUseCase()
     }

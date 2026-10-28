@@ -3,6 +3,8 @@ package com.lop.budget.domain.usecase.transaction
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.SeriesCancelMode
 import com.lop.budget.domain.usecase.SyncProgressUseCase
+import com.lop.budget.domain.usecase.recalculateLinks
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,6 +24,9 @@ class CancelRecurringSeriesUseCase @Inject constructor(
         mode: SeriesCancelMode
     ) {
         val series = transactionRepo.getSeriesById(seriesId) ?: return
+        // CA-06 de LOP-79 (LOP-212) : lues avant la suppression, car une occurrence peut désigner
+        // un autre suivi que la série.
+        val rows = transactionRepo.observeSeriesRows(seriesId).first()
 
         when (mode) {
             is SeriesCancelMode.All -> {
@@ -35,8 +40,9 @@ class CancelRecurringSeriesUseCase @Inject constructor(
             }
         }
 
-        // Recalculate progress if linked to a goal or debt
-        series.linkedGoalId?.let { syncProgressUseCase.recalculateGoalProgress(it) }
-        series.linkedLoanId?.let { syncProgressUseCase.recalculateLoanProgress(it) }
+        syncProgressUseCase.recalculateLinks(
+            listOf(series.linkedGoalId) + rows.map { it.linkedGoalId },
+            listOf(series.linkedLoanId) + rows.map { it.linkedLoanId },
+        )
     }
 }

@@ -172,7 +172,7 @@ class TransactionDetailQuickEditPersistenceTest {
             cancelRecurringSeriesUseCase =
                 CancelRecurringSeriesUseCase(transactionRepo, syncProgress),
             editTransactionWithScopeUseCase =
-                EditTransactionWithScopeUseCase(transactionRepo, saveTransaction),
+                EditTransactionWithScopeUseCase(transactionRepo, saveTransaction, syncProgress),
             settings = settingsRepo,
         )
     }

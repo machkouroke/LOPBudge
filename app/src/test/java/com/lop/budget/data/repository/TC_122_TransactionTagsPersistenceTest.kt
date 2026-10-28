@@ -210,7 +210,7 @@ class TransactionTagsPersistenceTest {
         val syncProgress = SyncProgressUseCase(transactionRepo, goalRepo, loanRepo)
         val saveTransaction = SaveTransactionUseCase(transactionRepo, syncProgress)
         createTransaction = CreateTransactionUseCase(transactionRepo, saveTransaction)
-        editWithScope = EditTransactionWithScopeUseCase(transactionRepo, saveTransaction)
+        editWithScope = EditTransactionWithScopeUseCase(transactionRepo, saveTransaction, syncProgress)
         detailUseCase = ObserveTransactionDetailUseCase(transactionRepo, accountRepo, categoryRepo)
         listUseCase = ObserveTransactionsUseCase(transactionRepo, accountRepo, categoryRepo)
     }

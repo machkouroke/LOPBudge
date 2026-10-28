@@ -226,6 +226,7 @@ class AdjustmentVisibilityRoomTest {
         edit = EditTransactionWithScopeUseCase(
             transactionRepo,
             SaveTransactionUseCase(transactionRepo, syncProgress),
+            syncProgress,
         )
         softDelete = SoftDeleteTransactionOccurrenceUseCase(transactionRepo, syncProgress)
     }

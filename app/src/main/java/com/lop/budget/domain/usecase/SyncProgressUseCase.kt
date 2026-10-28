@@ -58,3 +58,13 @@ class SyncProgressUseCase @Inject constructor(
         loanRepo.observeActive().first().forEach { recalculateLoanProgress(it.id) }
     }
 }
+
+/**
+ * CA-06 de LOP-79 (LOP-212) : recalcule chaque suivi qu'une écriture touche — liens d'avant **et**
+ * d'après, pour que l'élément quitté par un lien déplacé ou retiré soit recalculé lui aussi.
+ * Chaque suivi une seule fois ; recalcul intégral depuis la base, jamais un delta rejoué.
+ */
+suspend fun SyncProgressUseCase.recalculateLinks(goalIds: Iterable<Long?>, loanIds: Iterable<Long?>) {
+    goalIds.filterNotNull().distinct().forEach { recalculateGoalProgress(it) }
+    loanIds.filterNotNull().distinct().forEach { recalculateLoanProgress(it) }
+}

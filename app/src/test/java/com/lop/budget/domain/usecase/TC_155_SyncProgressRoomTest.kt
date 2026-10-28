@@ -109,7 +109,7 @@ import java.util.TimeZone
  *   état métier valide. La catégorie n'entre dans aucune somme.
  * - **ADJ sans catégorie** (`NO_CATEGORY_ID`), comme tout ajustement réel (I-9 de LOP-87).
  *
- * ## ANO connues — rouges attendus tant qu'elles ne sont pas traitées
+ * ## ANO — rouges constatés le 28 octobre 2026, corrigées le même jour (statut Testing)
  * - LOP-210 : `getSumForGoal` ne lit pas `type`, une dépense liée s'ajoute. I-02 phase 1, I-04 OBJ,
  *   I-05 OBJ-N, I-06 étape 1.
  * - LOP-211 : `getSumForLoan` ne lit ni `type` ni la direction. I-03.
@@ -119,7 +119,9 @@ import java.util.TimeZone
  *   restera rouge à −17 000 après la seule correction de LOP-210. Non atteignable par l'app
  *   aujourd'hui : aucun chemin ne pose un lien sur un ajustement.
  *
- * ## Résultats — 28 octobre 2026, production de `3ded1c0`
+ * ## Résultats — 28 octobre 2026
+ *
+ * Après correctifs de LOP-210, 211, 212 et 214 : 9 verts sur 9. Avant, production de `3ded1c0` :
  * 9 cas : 4 verts (I-01, I-07, I-08, I-09), 5 rouges attendus portant 16 écarts, chacun relu :
  * ```
  * I-02 phase 1   OBJ  10 000 pour 6 000           LOP-210 (phase 2 verte : 10 000 par coïncidence)

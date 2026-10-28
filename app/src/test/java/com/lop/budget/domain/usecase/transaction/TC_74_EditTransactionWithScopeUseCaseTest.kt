@@ -11,6 +11,7 @@ import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.toDaysOfWeekCsv
+import com.lop.budget.domain.usecase.SyncProgressUseCase
 import io.mockk.Called
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -63,7 +64,9 @@ class EditTransactionWithScopeUseCaseTest {
     private val transactionRepo = mockk<TransactionRepository>(relaxed = false)
     private val saveTransactionUseCase = mockk<SaveTransactionUseCase>(relaxed = false)
 
-    private val sut = EditTransactionWithScopeUseCase(transactionRepo, saveTransactionUseCase)
+    private val syncProgressUseCase = mockk<SyncProgressUseCase>(relaxed = false)
+
+    private val sut = EditTransactionWithScopeUseCase(transactionRepo, saveTransactionUseCase, syncProgressUseCase)
 
     // --- Dates nommées ---
     private val janStart = Instant.parse("2025-01-01T10:00:00Z").toEpochMilli()
@@ -143,7 +146,7 @@ class EditTransactionWithScopeUseCaseTest {
         linkedGoalId = ed.linkedGoalId, linkedLoanId = ed.linkedLoanId,
     )
 
-    private fun confirmAll() = confirmVerified(transactionRepo, saveTransactionUseCase)
+    private fun confirmAll() = confirmVerified(transactionRepo, saveTransactionUseCase, syncProgressUseCase)
 
     // ================= Résolution de originalSeriesDate =================
 
@@ -600,6 +603,8 @@ class EditTransactionWithScopeUseCaseTest {
         coEvery { transactionRepo.upsert(capture(patched)) } returns 30L
         val saved = slot<TransactionEntity>()
         coEvery { saveTransactionUseCase.saveSimple(capture(saved), emptyList()) } returns 20L
+        // 30L réécrite gagne le prêt 8 : il est recalculé après sa réécriture (CA-06 de LOP-79, LOP-212).
+        coEvery { syncProgressUseCase.recalculateLoanProgress(8L) } returns Unit
         // Diff vs base : amount 100 -> 80, linkedLoanId null -> 8 (rattachement propagé, S-27 ALL).
         // La note ne fait PAS partie du diff (note édition == note base).
         val ed = edition(date = slotFeb, amount = 8_000, linkedLoanId = 8L)
@@ -609,6 +614,12 @@ class EditTransactionWithScopeUseCaseTest {
         // 30L : patch amount + linkedLoanId ; title "Custom" et note "Row note" conservés (I-7).
         assertEquals(custom.copy(amount = 8_000, linkedLoanId = 8L), patched.captured)
         coVerify(exactly = 1) { transactionRepo.upsert(any()) } // 40L jamais réécrite
+        coVerifyOrder {
+            transactionRepo.upsert(custom.copy(amount = 8_000, linkedLoanId = 8L))
+            syncProgressUseCase.recalculateLoanProgress(8L)
+        }
+        coVerify(exactly = 1) { syncProgressUseCase.recalculateLoanProgress(8L) }
+        coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
         // Consultée : même règle de diff + statut réappliqué ; date/seriesDate intacts (I-1).
         assertEquals(row.copy(amount = 8_000, linkedLoanId = 8L, status = TransactionStatus.PLANNED), saved.captured)
         coVerify(exactly = 1) { transactionRepo.getById(20L) }

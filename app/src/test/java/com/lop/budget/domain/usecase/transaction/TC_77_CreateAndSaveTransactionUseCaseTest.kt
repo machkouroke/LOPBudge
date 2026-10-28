@@ -2,6 +2,7 @@ package com.lop.budget.domain.usecase.transaction
 
 import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.local.entity.TransactionEntity
+import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.MissingDayBehavior
@@ -132,6 +133,13 @@ class CreateAndSaveTransactionUseCaseTest {
 
     private fun allMocks() = arrayOf(transactionRepo, saveTransactionUseCase, syncProgressUseCase)
 
+    /**
+     * La ligne 30 telle qu'elle est en base avant la sauvegarde : `saveSimple` la relit pour
+     * recalculer aussi un suivi que l'écriture quitterait (CA-06 de LOP-79, LOP-212). Mêmes liens
+     * que l'entrée : ces cas ne déplacent aucun lien, leurs recalculs attendus sont inchangés.
+     */
+    private fun stored(tx: TransactionEntity) = TransactionWithRelations(tx, category = null, account = null, tags = emptyList())
+
     // ------------------------- SUT 1 : CreateTransactionUseCase -------------------------
 
     @Test
@@ -240,6 +248,7 @@ class CreateAndSaveTransactionUseCaseTest {
         val tx = txEntity(status = TransactionStatus.PAID, paidAt = null)
         val entitySlot = slot<TransactionEntity>()
         coEvery { transactionRepo.saveWithTags(capture(entitySlot), emptyList()) } returns 30L
+        coEvery { transactionRepo.getById(30L) } returns stored(tx)
 
         val result = saveUseCase.saveSimple(tx)
 
@@ -254,6 +263,7 @@ class CreateAndSaveTransactionUseCaseTest {
         // Tout le reste de l'entité est inchangé (comparaison entière modulo paidAt).
         assertEquals(tx.copy(paidAt = tx.date), captured)
         coVerify(exactly = 1) { transactionRepo.saveWithTags(any(), any()) }
+        coVerify(exactly = 1) { transactionRepo.getById(30L) }
         confirmVerified(*allMocks())
     }
 
@@ -262,12 +272,14 @@ class CreateAndSaveTransactionUseCaseTest {
         val tx = txEntity(status = TransactionStatus.PLANNED, paidAt = somePaidAt)
         val entitySlot = slot<TransactionEntity>()
         coEvery { transactionRepo.saveWithTags(capture(entitySlot), emptyList()) } returns 30L
+        coEvery { transactionRepo.getById(30L) } returns stored(tx)
 
         saveUseCase.saveSimple(tx)
 
         // Comparaison entière : seul paidAt diffère (null).
         assertEquals(tx.copy(paidAt = null), entitySlot.captured)
         coVerify(exactly = 1) { transactionRepo.saveWithTags(any(), any()) }
+        coVerify(exactly = 1) { transactionRepo.getById(30L) }
         confirmVerified(*allMocks())
     }
 
@@ -277,11 +289,13 @@ class CreateAndSaveTransactionUseCaseTest {
         // est désormais interne au repository (@Transaction) et testée au niveau Room.
         val tx = txEntity()
         coEvery { transactionRepo.saveWithTags(tx, listOf(11L, 12L)) } returns 30L
+        coEvery { transactionRepo.getById(30L) } returns stored(tx)
 
         val result = saveUseCase.saveSimple(tx, listOf(11L, 12L))
 
         assertEquals(30L, result)
         coVerify(exactly = 1) { transactionRepo.saveWithTags(tx, listOf(11L, 12L)) }
+        coVerify(exactly = 1) { transactionRepo.getById(30L) }
         confirmVerified(*allMocks())
     }
 
@@ -289,10 +303,12 @@ class CreateAndSaveTransactionUseCaseTest {
     fun `W-06b - Sans tag - liste vide transmise, aucun autre appel`() = runTest {
         val tx = txEntity()
         coEvery { transactionRepo.saveWithTags(tx, emptyList()) } returns 30L
+        coEvery { transactionRepo.getById(30L) } returns stored(tx)
 
         saveUseCase.saveSimple(tx)
 
         coVerify(exactly = 1) { transactionRepo.saveWithTags(tx, emptyList()) }
+        coVerify(exactly = 1) { transactionRepo.getById(30L) }
         confirmVerified(*allMocks())
     }
 
@@ -304,13 +320,15 @@ class CreateAndSaveTransactionUseCaseTest {
     fun `W-07 - Liens objectif et pret - recalculs APRES l ecriture`() = runTest {
         val tx = txEntity(linkedGoalId = 7L, linkedLoanId = 8L)
         coEvery { transactionRepo.saveWithTags(tx, emptyList()) } returns 30L
+        coEvery { transactionRepo.getById(30L) } returns stored(tx)
         coEvery { syncProgressUseCase.recalculateGoalProgress(7L) } returns Unit
         coEvery { syncProgressUseCase.recalculateLoanProgress(8L) } returns Unit
 
         saveUseCase.saveSimple(tx)
 
-        // Ordre causal : écriture d'abord, recalculs ensuite.
+        // Ordre causal : lecture de la ligne d'avant, écriture, puis recalculs (LOP-212).
         coVerifyOrder {
+            transactionRepo.getById(30L)
             transactionRepo.saveWithTags(tx, emptyList())
             syncProgressUseCase.recalculateGoalProgress(7L)
             syncProgressUseCase.recalculateLoanProgress(8L)
@@ -322,12 +340,14 @@ class CreateAndSaveTransactionUseCaseTest {
     fun `W-07a - Lien objectif seul - recalcul APRES l ecriture`() = runTest {
         val tx = txEntity(linkedGoalId = 7L, linkedLoanId = null)
         coEvery { transactionRepo.saveWithTags(tx, emptyList()) } returns 30L
+        coEvery { transactionRepo.getById(30L) } returns stored(tx)
         coEvery { syncProgressUseCase.recalculateGoalProgress(7L) } returns Unit
 
         saveUseCase.saveSimple(tx)
 
-        // Ordre causal : écriture d'abord, recalcul ensuite.
+        // Ordre causal : lecture de la ligne d'avant, écriture, puis recalcul (LOP-212).
         coVerifyOrder {
+            transactionRepo.getById(30L)
             transactionRepo.saveWithTags(tx, emptyList())
             syncProgressUseCase.recalculateGoalProgress(7L)
         }
@@ -339,11 +359,13 @@ class CreateAndSaveTransactionUseCaseTest {
     fun `W-07c - Lien pret seul - recalcul APRES l ecriture`() = runTest {
         val tx = txEntity(linkedGoalId = null, linkedLoanId = 8L)
         coEvery { transactionRepo.saveWithTags(tx, emptyList()) } returns 30L
+        coEvery { transactionRepo.getById(30L) } returns stored(tx)
         coEvery { syncProgressUseCase.recalculateLoanProgress(8L) } returns Unit
 
         saveUseCase.saveSimple(tx)
 
         coVerifyOrder {
+            transactionRepo.getById(30L)
             transactionRepo.saveWithTags(tx, emptyList())
             syncProgressUseCase.recalculateLoanProgress(8L)
         }
@@ -355,12 +377,14 @@ class CreateAndSaveTransactionUseCaseTest {
     fun `W-07b - Sans lien - aucun recalcul`() = runTest {
         val tx = txEntity(linkedGoalId = null, linkedLoanId = null)
         coEvery { transactionRepo.saveWithTags(tx, emptyList()) } returns 30L
+        coEvery { transactionRepo.getById(30L) } returns stored(tx)
 
         saveUseCase.saveSimple(tx)
 
         coVerify(exactly = 0) { syncProgressUseCase.recalculateGoalProgress(any()) }
         coVerify(exactly = 0) { syncProgressUseCase.recalculateLoanProgress(any()) }
         coVerify(exactly = 1) { transactionRepo.saveWithTags(tx, emptyList()) }
+        coVerify(exactly = 1) { transactionRepo.getById(30L) }
         confirmVerified(*allMocks())
     }
 }

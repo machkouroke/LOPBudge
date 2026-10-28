@@ -783,7 +783,8 @@ class AdjustmentRestrictionsTest {
     fun `T-07 - given un appel direct au use case de modification sur un ajustement - when la portee varie - then le refus est type et rien n est ecrit`() =
         runTest {
             coEvery { guardTransactionRepo.getById(adjustment1Id) } returns adjustment1
-            val sut = EditTransactionWithScopeUseCase(guardTransactionRepo, saveTransactionUseCase)
+            val syncProgressUseCase = mockk<SyncProgressUseCase>(relaxed = false)
+            val sut = EditTransactionWithScopeUseCase(guardTransactionRepo, saveTransactionUseCase, syncProgressUseCase)
             val edition = rewritingEdition()
 
             EditScope.entries.forEach { scope ->
@@ -811,7 +812,8 @@ class AdjustmentRestrictionsTest {
             coVerify(exactly = 0) { guardTransactionRepo.materializeOccurrence(any(), any()) }
             coVerify(exactly = 0) { guardTransactionRepo.clearTags(any()) }
             coVerify(exactly = 0) { saveTransactionUseCase(any(), any()) }
-            confirmVerified(guardTransactionRepo, saveTransactionUseCase)
+            verify { syncProgressUseCase wasNot Called }
+            confirmVerified(guardTransactionRepo, saveTransactionUseCase, syncProgressUseCase)
         }
 
     /**

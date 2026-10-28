@@ -107,6 +107,14 @@ import java.util.TimeZone
  *   remplace** par le montant de départ, sans lever d'exception. Arbitrage de la fiche en faveur du
  *   code. A-02 assert donc les deux faces : aucune exception, et la valeur proposée introuvable.
  *
+ * - **Le sens des transactions est devenu déterminant le 28 octobre 2026** (LOP-79, P-2 et P-3,
+ *   correctifs LOP-210 et LOP-211). Un objectif ajoute les revenus et soustrait les dépenses ; une
+ *   créance ne compte que les revenus, une dette que les dépenses. La contribution et
+ *   l'encaissement d'Alex, jusque-là saisis en dépense par défaut, sont des **revenus** : c'est ce
+ *   que dit leur libellé, et c'est le seul sens qui fait avancer un objectif et une créance. Les
+ *   oracles de A-04 et C-01 (17 345, et les deux suivis avancés de 12 345) sont inchangés ; le type
+ *   est désormais un paramètre explicite de `edition`, jamais un défaut caché.
+ *
  * ## Anomalies connues
  *
  * Aucune. Le modèle a été livré le 17 septembre 2026 et ces cas sont attendus **verts** : un rouge
@@ -258,7 +266,7 @@ class GoalLoanModelPersistenceTest {
         categorieEpargne = db.categoryDao().upsert(
             CategoryEntity(
                 name = "Épargne",
-                type = TransactionType.EXPENSE,
+                type = TransactionType.INCOME,
                 colorArgb = 0xFF4CAF50.toInt(),
                 icon = "piggy",
             ),
@@ -297,7 +305,7 @@ class GoalLoanModelPersistenceTest {
         remb2 = creerTransaction(editionRemboursement("Échéance avril", montantRemb2, dateRemb2))
         remb3 = creerTransaction(editionRemboursement("Échéance mai", montantRemb3, dateRemb3))
         depenseLibre = creerTransaction(
-            edition("Essence", montantDepenseLibre, dateDepenseLibre, categorieRemboursement),
+            edition("Essence", TransactionType.EXPENSE, montantDepenseLibre, dateDepenseLibre, categorieRemboursement),
         )
     }
 
@@ -560,6 +568,7 @@ class GoalLoanModelPersistenceTest {
             val id = creerTransaction(
                 edition(
                     "Encaissement Alex reversé en épargne",
+                    TransactionType.INCOME,
                     montantContribution,
                     dateContribution,
                     categorieEpargne,
@@ -891,10 +900,11 @@ class GoalLoanModelPersistenceTest {
     )
 
     private fun editionRemboursement(titre: String, montant: Long, date: Long) =
-        edition(titre, montant, date, categorieRemboursement, pretId = detteBanque)
+        edition(titre, TransactionType.EXPENSE, montant, date, categorieRemboursement, pretId = detteBanque)
 
     private fun editionContribution() = edition(
         "Virement épargne",
+        TransactionType.INCOME,
         montantContribution,
         dateContribution,
         categorieEpargne,
@@ -903,6 +913,7 @@ class GoalLoanModelPersistenceTest {
 
     private fun edition(
         titre: String,
+        type: TransactionType,
         montant: Long,
         date: Long,
         categorieId: Long,
@@ -911,7 +922,7 @@ class GoalLoanModelPersistenceTest {
     ) = TransactionEdition(
         title = titre,
         amount = montant,
-        type = TransactionType.EXPENSE,
+        type = type,
         date = date,
         accountId = compteCourant,
         categoryId = categorieId,

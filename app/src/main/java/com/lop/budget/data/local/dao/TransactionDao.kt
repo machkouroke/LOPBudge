@@ -200,22 +200,26 @@ interface TransactionDao : TransactionOperations {
     )
     override suspend fun hardDelete(id: Long)
 
-    // ÉCART LOP-210 (CA-02, P-2 de LOP-79), reconduit : `type` n'est pas lu, une dépense liée
-    // s'ajoute au lieu de se soustraire.
+    // CA-02, P-2 de LOP-79 (LOP-210) : somme signée, revenu ajouté, dépense soustraite ; le
+    // résultat peut être négatif. CA-04 (LOP-214) : un ajustement de solde ne contribue jamais.
     @Query(
         """
-        SELECT COALESCE(SUM(amount), 0) FROM transactions 
-        WHERE linkedGoalId = :goalId AND deleted = 0 AND status = 'PAID'
+        SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount ELSE -amount END), 0)
+        FROM transactions
+        WHERE linkedGoalId = :goalId AND deleted = 0 AND status = 'PAID' AND kind = 'STANDARD'
     """
     )
     override suspend fun getSumForGoal(goalId: Long): Long
 
-    // ÉCART LOP-211 (CA-03, P-3 de LOP-79), reconduit : ni `type` ni la direction du prêt ne sont
-    // lus, dettes et créances comptent tous les flux liés.
+    // CA-03, P-3 de LOP-79 (LOP-211) : une dette ne compte que ses dépenses, une créance que ses
+    // revenus. CA-04 (LOP-214) : un ajustement de solde ne contribue jamais.
     @Query(
         """
-        SELECT COALESCE(SUM(amount), 0) FROM transactions 
-        WHERE linkedLoanId = :loanId AND deleted = 0 AND status = 'PAID'
+        SELECT COALESCE(SUM(t.amount), 0) FROM transactions t
+        JOIN loans l ON l.id = t.linkedLoanId
+        WHERE t.linkedLoanId = :loanId AND t.deleted = 0 AND t.status = 'PAID'
+            AND t.kind = 'STANDARD'
+            AND t.type = CASE l.direction WHEN 'BORROWED' THEN 'EXPENSE' ELSE 'INCOME' END
     """
     )
     override suspend fun getSumForLoan(loanId: Long): Long

@@ -12,6 +12,7 @@ import io.mockk.coVerifyOrder
 import io.mockk.confirmVerified
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert
 import org.junit.Before
@@ -68,6 +69,7 @@ class CancelRecurringSeriesUseCaseTest {
 
         // Then
         coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 0) { transactionRepo.observeSeriesRows(any()) }
         coVerify(exactly = 0) { transactionRepo.updateSeriesCancelled(any(), any()) }
         coVerify(exactly = 0) { transactionRepo.softDeleteTransactionsBySeries(any()) }
         coVerify(exactly = 0) { transactionRepo.upsertSeries(any()) }
@@ -87,6 +89,7 @@ class CancelRecurringSeriesUseCaseTest {
 
         // Then
         coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 0) { transactionRepo.observeSeriesRows(any()) }
         coVerify(exactly = 0) { transactionRepo.upsertSeries(any()) }
         coVerify(exactly = 0) { transactionRepo.softDeleteTransactionsBySeriesFrom(any(), any()) }
         coVerify(exactly = 0) { transactionRepo.updateSeriesCancelled(any(), any()) }
@@ -101,6 +104,8 @@ class CancelRecurringSeriesUseCaseTest {
         // Given
         val series = createSeries()
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
+        // Aucune occurrence matérialisée : seuls les liens de la série sont à recalculer (LOP-212).
+        coEvery { transactionRepo.observeSeriesRows(seriesId) } returns flowOf(emptyList())
         coEvery { transactionRepo.updateSeriesCancelled(seriesId, true) } returns Unit
         coEvery { transactionRepo.softDeleteTransactionsBySeries(seriesId) } returns Unit
 
@@ -110,10 +115,12 @@ class CancelRecurringSeriesUseCaseTest {
         // Then
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
+            transactionRepo.observeSeriesRows(seriesId)
             transactionRepo.updateSeriesCancelled(seriesId, true)
             transactionRepo.softDeleteTransactionsBySeries(seriesId)
         }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.observeSeriesRows(seriesId) }
         coVerify(exactly = 1) { transactionRepo.updateSeriesCancelled(seriesId, true) }
         coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeries(seriesId) }
 
@@ -130,6 +137,8 @@ class CancelRecurringSeriesUseCaseTest {
         val series = createSeries()
         val updatedSeries = series.copy(endDate = februarySlot - 1)
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
+        // Aucune occurrence matérialisée : seuls les liens de la série sont à recalculer (LOP-212).
+        coEvery { transactionRepo.observeSeriesRows(seriesId) } returns flowOf(emptyList())
         coEvery { transactionRepo.upsertSeries(updatedSeries) } returns seriesId
         coEvery { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) } returns Unit
 
@@ -139,10 +148,12 @@ class CancelRecurringSeriesUseCaseTest {
         // Then
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
+            transactionRepo.observeSeriesRows(seriesId)
             transactionRepo.upsertSeries(updatedSeries)
             transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot)
         }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.observeSeriesRows(seriesId) }
         coVerify(exactly = 1) { transactionRepo.upsertSeries(updatedSeries) }
         coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) }
 
@@ -162,6 +173,8 @@ class CancelRecurringSeriesUseCaseTest {
         val capturedSeries = slot<RecurringSeriesEntity>()
         
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
+        // Aucune occurrence matérialisée : seuls les liens de la série sont à recalculer (LOP-212).
+        coEvery { transactionRepo.observeSeriesRows(seriesId) } returns flowOf(emptyList())
         coEvery { transactionRepo.upsertSeries(capture(capturedSeries)) } returns seriesId
         coEvery { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) } returns Unit
         coEvery { syncProgressUseCase.recalculateGoalProgress(goalId) } returns Unit
@@ -174,11 +187,13 @@ class CancelRecurringSeriesUseCaseTest {
 
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
+            transactionRepo.observeSeriesRows(seriesId)
             transactionRepo.upsertSeries(expected)
             transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot)
             syncProgressUseCase.recalculateGoalProgress(goalId)
         }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.observeSeriesRows(seriesId) }
         coVerify(exactly = 1) { transactionRepo.upsertSeries(expected) }
         coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) }
         coVerify(exactly = 1) { syncProgressUseCase.recalculateGoalProgress(goalId) }
@@ -191,6 +206,8 @@ class CancelRecurringSeriesUseCaseTest {
         // Given
         val series = createSeries(linkedGoalId = null, linkedLoanId = null)
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
+        // Aucune occurrence matérialisée : seuls les liens de la série sont à recalculer (LOP-212).
+        coEvery { transactionRepo.observeSeriesRows(seriesId) } returns flowOf(emptyList())
         coEvery { transactionRepo.updateSeriesCancelled(seriesId, true) } returns Unit
         coEvery { transactionRepo.softDeleteTransactionsBySeries(seriesId) } returns Unit
 
@@ -200,10 +217,12 @@ class CancelRecurringSeriesUseCaseTest {
         // Then
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
+            transactionRepo.observeSeriesRows(seriesId)
             transactionRepo.updateSeriesCancelled(seriesId, true)
             transactionRepo.softDeleteTransactionsBySeries(seriesId)
         }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.observeSeriesRows(seriesId) }
         coVerify(exactly = 1) { transactionRepo.updateSeriesCancelled(seriesId, true) }
         coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeries(seriesId) }
 
@@ -218,6 +237,8 @@ class CancelRecurringSeriesUseCaseTest {
         val series = createSeries(linkedGoalId = null, linkedLoanId = null)
         val expected = series.copy(endDate = februarySlot - 1)
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
+        // Aucune occurrence matérialisée : seuls les liens de la série sont à recalculer (LOP-212).
+        coEvery { transactionRepo.observeSeriesRows(seriesId) } returns flowOf(emptyList())
         coEvery { transactionRepo.upsertSeries(expected) } returns seriesId
         coEvery { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) } returns Unit
 
@@ -227,10 +248,12 @@ class CancelRecurringSeriesUseCaseTest {
         // Then
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
+            transactionRepo.observeSeriesRows(seriesId)
             transactionRepo.upsertSeries(expected)
             transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot)
         }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.observeSeriesRows(seriesId) }
         coVerify(exactly = 1) { transactionRepo.upsertSeries(expected) }
         coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) }
 
@@ -245,6 +268,8 @@ class CancelRecurringSeriesUseCaseTest {
         val series = createSeries(linkedGoalId = goalId)
         val expected = series.copy(endDate = februarySlot - 1)
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
+        // Aucune occurrence matérialisée : seuls les liens de la série sont à recalculer (LOP-212).
+        coEvery { transactionRepo.observeSeriesRows(seriesId) } returns flowOf(emptyList())
         coEvery { transactionRepo.upsertSeries(expected) } returns seriesId
         coEvery { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) } returns Unit
         coEvery { syncProgressUseCase.recalculateGoalProgress(goalId) } returns Unit
@@ -255,11 +280,13 @@ class CancelRecurringSeriesUseCaseTest {
         // Then
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
+            transactionRepo.observeSeriesRows(seriesId)
             transactionRepo.upsertSeries(expected)
             transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot)
             syncProgressUseCase.recalculateGoalProgress(goalId)
         }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.observeSeriesRows(seriesId) }
         coVerify(exactly = 1) { transactionRepo.upsertSeries(expected) }
         coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeriesFrom(seriesId, februarySlot) }
         coVerify(exactly = 1) { syncProgressUseCase.recalculateGoalProgress(goalId) }
@@ -273,6 +300,8 @@ class CancelRecurringSeriesUseCaseTest {
         // Given
         val series = createSeries(linkedLoanId = loanId)
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
+        // Aucune occurrence matérialisée : seuls les liens de la série sont à recalculer (LOP-212).
+        coEvery { transactionRepo.observeSeriesRows(seriesId) } returns flowOf(emptyList())
         coEvery { transactionRepo.updateSeriesCancelled(seriesId, true) } returns Unit
         coEvery { transactionRepo.softDeleteTransactionsBySeries(seriesId) } returns Unit
         coEvery { syncProgressUseCase.recalculateLoanProgress(loanId) } returns Unit
@@ -283,11 +312,13 @@ class CancelRecurringSeriesUseCaseTest {
         // Then
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
+            transactionRepo.observeSeriesRows(seriesId)
             transactionRepo.updateSeriesCancelled(seriesId, true)
             transactionRepo.softDeleteTransactionsBySeries(seriesId)
             syncProgressUseCase.recalculateLoanProgress(loanId)
         }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.observeSeriesRows(seriesId) }
         coVerify(exactly = 1) { transactionRepo.updateSeriesCancelled(seriesId, true) }
         coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeries(seriesId) }
         coVerify(exactly = 1) { syncProgressUseCase.recalculateLoanProgress(loanId) }
@@ -301,6 +332,8 @@ class CancelRecurringSeriesUseCaseTest {
         // Given
         val series = createSeries(linkedGoalId = goalId, linkedLoanId = loanId)
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
+        // Aucune occurrence matérialisée : seuls les liens de la série sont à recalculer (LOP-212).
+        coEvery { transactionRepo.observeSeriesRows(seriesId) } returns flowOf(emptyList())
         coEvery { transactionRepo.updateSeriesCancelled(seriesId, true) } returns Unit
         coEvery { transactionRepo.softDeleteTransactionsBySeries(seriesId) } returns Unit
         coEvery { syncProgressUseCase.recalculateGoalProgress(goalId) } returns Unit
@@ -312,6 +345,10 @@ class CancelRecurringSeriesUseCaseTest {
         // Then
         // Decoupled causal chains: each sync must follow the last write
         coVerifyOrder {
+            transactionRepo.observeSeriesRows(seriesId)
+            transactionRepo.softDeleteTransactionsBySeries(seriesId)
+        }
+        coVerifyOrder {
             transactionRepo.softDeleteTransactionsBySeries(seriesId)
             syncProgressUseCase.recalculateGoalProgress(goalId)
         }
@@ -321,6 +358,7 @@ class CancelRecurringSeriesUseCaseTest {
         }
         
         coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.observeSeriesRows(seriesId) }
         coVerify(exactly = 1) { transactionRepo.updateSeriesCancelled(seriesId, true) }
         coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeries(seriesId) }
         coVerify(exactly = 1) { syncProgressUseCase.recalculateGoalProgress(goalId) }
@@ -334,6 +372,8 @@ class CancelRecurringSeriesUseCaseTest {
         // Given
         val series = createSeries(id = seriesId)
         coEvery { transactionRepo.getSeriesById(seriesId) } returns series
+        // Aucune occurrence matérialisée : seuls les liens de la série sont à recalculer (LOP-212).
+        coEvery { transactionRepo.observeSeriesRows(seriesId) } returns flowOf(emptyList())
         coEvery { transactionRepo.updateSeriesCancelled(seriesId, true) } returns Unit
         coEvery { transactionRepo.softDeleteTransactionsBySeries(seriesId) } returns Unit
 
@@ -343,10 +383,12 @@ class CancelRecurringSeriesUseCaseTest {
         // Then
         coVerifyOrder {
             transactionRepo.getSeriesById(seriesId)
+            transactionRepo.observeSeriesRows(seriesId)
             transactionRepo.updateSeriesCancelled(seriesId, true)
             transactionRepo.softDeleteTransactionsBySeries(seriesId)
         }
         coVerify(exactly = 1) { transactionRepo.getSeriesById(seriesId) }
+        coVerify(exactly = 1) { transactionRepo.observeSeriesRows(seriesId) }
         coVerify(exactly = 1) { transactionRepo.updateSeriesCancelled(seriesId, true) }
         coVerify(exactly = 1) { transactionRepo.softDeleteTransactionsBySeries(seriesId) }
 

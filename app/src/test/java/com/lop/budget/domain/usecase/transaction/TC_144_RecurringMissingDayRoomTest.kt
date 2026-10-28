@@ -198,12 +198,10 @@ class RecurringMissingDayRoomTest {
         transactionRepo = TransactionRepository(db.transactionDao(), db.recurringSeriesDao())
         val accountRepo = AccountRepository(db.accountDao())
         val categoryRepo = CategoryRepository(db.categoryDao())
-        val save = SaveTransactionUseCase(
-            transactionRepo,
-            SyncProgressUseCase(transactionRepo, GoalRepository(db.goalDao()), LoanRepository(db.loanDao())),
-        )
+        val sync = SyncProgressUseCase(transactionRepo, GoalRepository(db.goalDao()), LoanRepository(db.loanDao()))
+        val save = SaveTransactionUseCase(transactionRepo, sync)
         create = CreateTransactionUseCase(transactionRepo, save)
-        edit = EditTransactionWithScopeUseCase(transactionRepo, save)
+        edit = EditTransactionWithScopeUseCase(transactionRepo, save, sync)
         observe = ObserveTransactionsUseCase(transactionRepo, accountRepo, categoryRepo)
         detail = ObserveTransactionDetailUseCase(transactionRepo, accountRepo, categoryRepo)
     }

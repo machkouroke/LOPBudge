@@ -14,6 +14,8 @@ import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.toDaysOfWeekCsv
 import com.lop.budget.domain.model.toSeriesEntity
 import com.lop.budget.domain.model.toTransactionEntity
+import com.lop.budget.domain.usecase.SyncProgressUseCase
+import com.lop.budget.domain.usecase.recalculateLinks
 import javax.inject.Inject
 import kotlin.math.abs
 
@@ -34,6 +36,7 @@ sealed interface EditOutcome {
 class EditTransactionWithScopeUseCase @Inject constructor(
     private val transactionRepo: TransactionRepository,
     private val saveTransactionUseCase: SaveTransactionUseCase,
+    private val syncProgressUseCase: SyncProgressUseCase,
 ) {
     /**
      * Applique une édition à une transaction selon la portée choisie (US « Édition contextuelle »).
@@ -189,6 +192,10 @@ class EditTransactionWithScopeUseCase @Inject constructor(
         // Ponctuelle -> récurrente (CA-01 : pas de choix de portée pour une ponctuelle).
         else -> {
             transactionRepo.hardDelete(editingId)
+            syncProgressUseCase.recalculateLinks(
+                listOf(current?.transaction?.linkedGoalId),
+                listOf(current?.transaction?.linkedLoanId),
+            )
             val newSeriesId = transactionRepo.upsertSeries(edition.toSeriesEntity())
             val newTxId = transactionRepo.materializeOccurrence(newSeriesId, edition.date)
             applyStatusAndTags(newTxId, edition.tagIds, status, current?.transaction?.paidAt)
@@ -227,9 +234,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
             transactionRepo.getExceptionsBySeries(seriesId)
                 .filter { it.date >= pivot && it.id != consultedId }
                 .forEach {
-                    transactionRepo.upsert(
-                        overlay(it).copy(seriesId = null, seriesDate = null, isException = false)
-                    )
+                    rewrite(it, overlay(it).copy(seriesId = null, seriesDate = null, isException = false))
                 }
             return saveTransactionUseCase.saveSimple(
                 edition.toTransactionEntity(
@@ -255,7 +260,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
         // reçoivent que les champs réellement modifiés ; `date` et `seriesDate` conservés (I-1).
         transactionRepo.getExceptionsBySeries(seriesId)
             .filter { it.date >= pivot && it.id != consultedId }
-            .forEach { transactionRepo.upsert(overlay(it).copy(seriesId = newSeriesId)) }
+            .forEach { rewrite(it, overlay(it).copy(seriesId = newSeriesId)) }
 
         // Occurrence consultée : ancrage de la nouvelle série, elle porte tout le formulaire.
         return if (current != null && current.transaction.seriesId == seriesId) {
@@ -300,9 +305,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
             transactionRepo.getExceptionsBySeries(seriesId)
                 .filter { it.id != consultedId }
                 .forEach {
-                    transactionRepo.upsert(
-                        overlay(it).copy(seriesId = null, seriesDate = null, isException = false)
-                    )
+                    rewrite(it, overlay(it).copy(seriesId = null, seriesDate = null, isException = false))
                 }
             return if (current != null && current.transaction.seriesId == seriesId) {
                 saveTransactionUseCase.saveSimple(
@@ -327,7 +330,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
             .filter { it.id != consultedId }
             .forEach { exception ->
                 val patched = overlay(exception)
-                if (patched != exception) transactionRepo.upsert(patched)
+                if (patched != exception) rewrite(exception, patched)
             }
 
         return when {
@@ -428,6 +431,19 @@ class EditTransactionWithScopeUseCase @Inject constructor(
             if (edition.linkedLoanId != base.linkedLoanId) add { it.copy(linkedLoanId = edition.linkedLoanId) }
         }
         return { tx -> patches.fold(tx) { acc, patch -> patch(acc) } }
+    }
+
+    /**
+     * Réécrit une ligne hors `saveSimple` (propagation de série) et recalcule ses suivis d'avant et
+     * d'après : un montant, un type ou un lien propagé change l'avancement (CA-06 de LOP-79, LOP-212).
+     */
+    private suspend fun rewrite(before: TransactionEntity, after: TransactionEntity) {
+        // ponytail: un recalcul par ligne réécrite ; regrouper par suivi si une série longue devient lente.
+        transactionRepo.upsert(after)
+        syncProgressUseCase.recalculateLinks(
+            listOf(before.linkedGoalId, after.linkedGoalId),
+            listOf(before.linkedLoanId, after.linkedLoanId),
+        )
     }
 
     /** Applique statut + tags à une occurrence fraîchement matérialisée (paidAt normalisé par saveSimple). */

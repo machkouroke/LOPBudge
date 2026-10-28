@@ -4,6 +4,7 @@ import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.usecase.SyncProgressUseCase
+import com.lop.budget.domain.usecase.recalculateLinks
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,12 +35,14 @@ class SaveTransactionUseCase @Inject constructor(
             else if (tx.status == TransactionStatus.PLANNED && tx.paidAt != null) tx.copy(paidAt = null)
             else tx
 
+        // CA-06 de LOP-79 (LOP-212) : la ligne d'avant peut désigner un suivi que l'écriture quitte.
+        val before = if (finalTx.id > 0) transactionRepo.getById(finalTx.id)?.transaction else null
         val txId = transactionRepo.saveWithTags(finalTx, tagIds)
 
-        // ÉCART LOP-212 (CA-06 de LOP-79), reconduit : seuls les liens écrits sont recalculés ;
-        // l'élément qu'un lien déplacé ou retiré quitte garde l'ancienne contribution.
-        finalTx.linkedGoalId?.let { syncProgressUseCase.recalculateGoalProgress(it) }
-        finalTx.linkedLoanId?.let { syncProgressUseCase.recalculateLoanProgress(it) }
+        syncProgressUseCase.recalculateLinks(
+            listOf(before?.linkedGoalId, finalTx.linkedGoalId),
+            listOf(before?.linkedLoanId, finalTx.linkedLoanId),
+        )
         return txId
     }
 }
