@@ -47,10 +47,13 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -165,7 +168,13 @@ class RecurringMissingDayRoomTest {
 
     private lateinit var defaultTimeZone: TimeZone
     private lateinit var defaultLocale: Locale
-    private var fileDatabaseName: String? = null
+    /**
+     * Dossier court des bases fichier de R-01. Celui de Robolectric porte le nom du test : sous
+     * Windows, le chemin d'une base y dépasse 260 caractères dès que le dossier temporaire est un
+     * peu long, et SQLite refuse alors d'ouvrir le fichier (`SQLITE_CANTOPEN`, 28 octobre 2026).
+     */
+    @get:Rule
+    val shortDir = TemporaryFolder()
 
     // Parents, IDs alloués par Room.
     private lateinit var accA: AccountEntity
@@ -188,7 +197,6 @@ class RecurringMissingDayRoomTest {
     @After
     fun tearDown() {
         if (db.isOpen) db.close()
-        fileDatabaseName?.let { context.deleteDatabase(it) }
         TimeZone.setDefault(defaultTimeZone)
         Locale.setDefault(defaultLocale)
     }
@@ -207,7 +215,7 @@ class RecurringMissingDayRoomTest {
     }
 
     private fun fileDatabase(name: String): LopDatabase =
-        Room.databaseBuilder(context, LopDatabase::class.java, name)
+        Room.databaseBuilder(context, LopDatabase::class.java, File(shortDir.root, name).absolutePath)
             .allowMainThreadQueries()
             .build()
 
@@ -226,8 +234,6 @@ class RecurringMissingDayRoomTest {
     private suspend fun assertRuleCreatedAndReopened(label: String, choice: MissingDayBehavior) {
         db.close()
         val name = "tc144_r01_${choice.name.lowercase()}.db"
-        context.deleteDatabase(name)
-        fileDatabaseName = name
         wire(fileDatabase(name))
         seedParents()
 
