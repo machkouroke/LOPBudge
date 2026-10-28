@@ -1,0 +1,53 @@
+20:31:17.225 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Define variables RUNNING
+20:31:17.225 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Define variables COMPLETED
+20:31:17.227 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Apply configuration RUNNING
+20:31:17.228 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Apply configuration COMPLETED
+20:31:17.228 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run ../../.maestro/subflows/bootstrap_monthly.yaml RUNNING
+20:31:17.229 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Apply configuration RUNNING
+20:31:17.229 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Apply configuration COMPLETED
+20:31:17.230 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run ../../scripts/dates.js RUNNING
+20:31:17.292 [ INFO] maestro.orchestra.Orchestra.executeCommands$lambda$24$lambda$22: JsConsole: Maestro Dates Initialized: Prev=septembre / Sept. / 09 (2026)
+20:31:17.293 [ INFO] maestro.orchestra.Orchestra.executeCommands$lambda$24$lambda$22: JsConsole: Maestro Dates Initialized: Curr=octobre / Oct. / 10 (2026)
+20:31:17.294 [ INFO] maestro.orchestra.Orchestra.executeCommands$lambda$24$lambda$22: JsConsole: Maestro Dates Initialized: Next=novembre / Nov. / 11 (2026)
+20:31:17.295 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run ../../scripts/dates.js COMPLETED
+20:31:17.295 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Launch app "com.lop.budget" with clear state RUNNING
+20:31:17.296 [ INFO] maestro.Maestro.clearAppState$lambda$9: Clearing app state com.lop.budget
+20:31:20.158 [ INFO] maestro.Maestro.launchApp$lambda$6: Launching app com.lop.budget
+20:31:20.159 [ INFO] maestro.Maestro.launchApp$lambda$6: Stopping com.lop.budget app during launch
+20:31:20.393 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Launch app "com.lop.budget" with clear state COMPLETED
+20:31:20.393 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run open_monthly_history.yaml RUNNING
+20:31:20.394 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Apply configuration RUNNING
+20:31:20.394 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Apply configuration COMPLETED
+20:31:20.394 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Run flow when id: screen.monthly is not visible RUNNING
+20:31:21.542 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandStart: Scrolling DOWN until id: recent_transactions_see_all is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering enabled RUNNING
+20:31:22.293 [ WARN] maestro.orchestra.Orchestra.scrollUntilVisible: Error: maestro.MaestroException$ElementNotFound: Element not found: Id matching regex: recent_transactions_see_all
+20:31:22.354 [ INFO] maestro.Maestro.swipeFromCenter: Swiping UP from center
+20:31:26.796 [ WARN] maestro.orchestra.Orchestra.scrollUntilVisible: Error: maestro.MaestroException$ElementNotFound: Element not found: Id matching regex: recent_transactions_see_all
+20:31:26.825 [ INFO] maestro.Maestro.swipeFromCenter: Swiping UP from center
+20:31:29.339 [ WARN] maestro.orchestra.Orchestra.scrollUntilVisible: Error: maestro.MaestroException$ElementNotFound: Element not found: Id matching regex: recent_transactions_see_all
+20:31:29.389 [ INFO] maestro.Maestro.swipeFromCenter: Swiping UP from center
+20:31:31.134 [ WARN] maestro.orchestra.Orchestra.scrollUntilVisible: Error: maestro.MaestroException$ElementNotFound: Element not found: Id matching regex: recent_transactions_see_all
+20:31:31.207 [ INFO] maestro.Maestro.swipeFromCenter: Swiping UP from center
+20:31:32.981 [ WARN] maestro.orchestra.Orchestra.scrollUntilVisible: Error: maestro.MaestroException$ElementNotFound: Element not found: Id matching regex: recent_transactions_see_all
+20:31:32.992 [ INFO] maestro.Maestro.swipeFromCenter: Swiping UP from center
+20:31:34.776 [ WARN] maestro.orchestra.Orchestra.scrollUntilVisible: Error: maestro.MaestroException$ElementNotFound: Element not found: Id matching regex: recent_transactions_see_all
+20:31:34.826 [ INFO] maestro.Maestro.swipeFromCenter: Swiping UP from center
+20:31:37.011 [ WARN] maestro.orchestra.Orchestra.scrollUntilVisible: Error: maestro.MaestroException$ElementNotFound: Element not found: Id matching regex: recent_transactions_see_all
+20:31:37.035 [ INFO] maestro.Maestro.swipeFromCenter: Swiping UP from center
+20:31:39.152 [ WARN] maestro.orchestra.Orchestra.scrollUntilVisible: Error: maestro.MaestroException$ElementNotFound: Element not found: Id matching regex: recent_transactions_see_all
+20:31:39.158 [ INFO] maestro.Maestro.swipeFromCenter: Swiping UP from center
+20:31:41.603 [ WARN] maestro.orchestra.Orchestra.scrollUntilVisible: Error: maestro.MaestroException$ElementNotFound: Element not found: Id matching regex: recent_transactions_see_all
+20:31:41.634 [ INFO] maestro.Maestro.swipeFromCenter: Swiping UP from center
+20:31:43.805 [ INFO] maestro.Maestro.takeScreenshot: Taking screenshot
+20:31:43.806 [TRACE] maestro.utils.ScreenshotUtils.takeScreenshot: Taking screenshot to output sink
+20:31:44.379 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Scrolling DOWN until id: recent_transactions_see_all is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering enabled FAILED
+20:31:44.379 [ INFO] maestro.Maestro.takeScreenshot: Taking screenshot
+20:31:44.380 [TRACE] maestro.utils.ScreenshotUtils.takeScreenshot: Taking screenshot to output sink
+20:31:44.894 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run flow when id: screen.monthly is not visible FAILED
+20:31:44.895 [ INFO] maestro.Maestro.takeScreenshot: Taking screenshot
+20:31:44.896 [TRACE] maestro.utils.ScreenshotUtils.takeScreenshot: Taking screenshot to output sink
+20:31:45.391 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run open_monthly_history.yaml FAILED
+20:31:45.392 [ERROR] maestro.orchestra.Orchestra.executeCommands: [Command execution] CommandFailed: No visible element found: id: recent_transactions_see_all
+20:31:45.392 [ INFO] maestro.Maestro.takeScreenshot: Taking screenshot
+20:31:45.392 [TRACE] maestro.utils.ScreenshotUtils.takeScreenshot: Taking screenshot to output sink
+20:31:45.816 [ INFO] maestro.cli.runner.CliConsoleListener.onCommandFinished: Run ../../.maestro/subflows/bootstrap_monthly.yaml FAILED
