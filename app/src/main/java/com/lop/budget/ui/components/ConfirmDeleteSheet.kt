@@ -41,6 +41,10 @@ fun ConfirmDeleteSheet(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
+    dismissLabel: String = "Annuler",
+    confirmIcon: androidx.compose.ui.graphics.vector.ImageVector? = Icons.Filled.DeleteForever,
+    confirmTag: String = TestTags.DELETE_CONFIRM_SUBMIT,
+    dismissTag: String = TestTags.DELETE_CONFIRM_CANCEL,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val container = MaterialTheme.colorScheme.surface
@@ -93,21 +97,21 @@ fun ConfirmDeleteSheet(
             }
 
             ActionRow(
-                icon = Icons.Filled.DeleteForever,
+                icon = confirmIcon,
                 title = confirmLabel,
                 tone = ActionTone.Danger,
                 onClick = onConfirm,
-                modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_SUBMIT),
+                modifier = Modifier.testTag(confirmTag),
             )
 
             Spacer(Modifier.height(4.dp))
 
             ActionRow(
                 icon = null,
-                title = "Annuler",
+                title = dismissLabel,
                 tone = ActionTone.Neutral,
                 onClick = onDismiss,
-                modifier = Modifier.testTag(TestTags.DELETE_CONFIRM_CANCEL),
+                modifier = Modifier.testTag(dismissTag),
             )
 
             Spacer(Modifier.height(18.dp))

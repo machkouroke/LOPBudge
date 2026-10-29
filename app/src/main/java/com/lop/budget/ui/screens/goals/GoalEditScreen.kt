@@ -1,22 +1,12 @@
 package com.lop.budget.ui.screens.goals
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.Button
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.domain.model.FinancialItemKind
+import com.lop.budget.domain.usecase.financial.FinancialItemRefusal
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopDatePicker
@@ -37,31 +29,37 @@ import com.lop.budget.ui.components.LopTextField
 import com.lop.budget.ui.components.SelectorRow
 import com.lop.budget.util.Format
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoalEditScreen(
     onBack: () -> Unit,
+    /** Appelé une fois l'enregistrement réussi, avec le type enregistré (CA-05). */
+    onSaved: (FinancialItemKind) -> Unit = { onBack() },
     vm: GoalEditViewModel = hiltViewModel(),
 ) {
-    val form by vm.form.collectAsStateWithLifecycle()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val form = state.form
+    val refusals = state.refusals
+
+    LaunchedEffect(state.savedKind) { state.savedKind?.let(onSaved) }
+    val requestExit = rememberDraftExit(state.hasUnsavedChanges, onBack)
 
     LopScreenScaffold(
-        title = if (form.name.isEmpty()) stringResource(R.string.goal_new_title) else stringResource(R.string.goal_edit_title),
-        onBack = onBack,
+        // CA-01 : le titre suit le mode, jamais le contenu du nom.
+        title = stringResource(if (state.isEdit) R.string.goal_edit_title else R.string.goal_new_title),
+        onBack = requestExit,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
         modifier = Modifier.testTag(TestTags.SCREEN_EDIT)
     ) {
         item {
-            Box(Modifier.fillMaxWidth().padding(20.dp)) {
-                Button(
-                    onClick = { vm.save(onBack) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp).testTag(TestTags.BTN_SAVE),
-                    shape = MaterialTheme.shapes.medium,
-                    enabled = form.name.isNotBlank() && form.targetAmount > 0
-                ) {
-                    Text(stringResource(R.string.save))
-                }
-            }
+            SaveButton(
+                isSaving = state.isSaving,
+                saveFailed = state.saveFailed,
+                // Modification (LOP-205) : règle d'activation d'avant LOP-202, reconduite.
+                enabled = !state.isEdit ||
+                    (form.name.isNotBlank() && (Format.centsOrNull(form.targetInput) ?: 0L) > 0),
+                onClick = vm::save,
+                tagPrefix = "goal.edit",
+            )
         }
         item {
             FloatingCard {
@@ -71,6 +69,7 @@ fun GoalEditScreen(
                         value = form.name,
                         onValueChange = vm::updateName,
                         placeholder = "Ex: Vacances au Japon",
+                        errorMessage = refusalMessage(refusals, FinancialItemRefusal.BlankName),
                         modifier = Modifier.testTag("goal.edit.name")
                     )
                 }
@@ -82,19 +81,25 @@ fun GoalEditScreen(
                 Column {
                     LopTextField(
                         label = stringResource(R.string.goal_target_amount_label),
-                        value = if (form.targetAmount == 0.0) "" else form.targetAmount.toString(),
-                        onValueChange = { it.toDoubleOrNull()?.let { vm.updateTargetAmount(it) } ?: vm.updateTargetAmount(0.0) },
+                        value = form.targetInput,
+                        onValueChange = vm::updateTargetAmount,
                         keyboardType = KeyboardType.Decimal,
                         placeholder = "0.00",
+                        errorMessage = refusalMessage(refusals, FinancialItemRefusal.InvalidTarget),
                         modifier = Modifier.testTag("goal.edit.target")
                     )
 
                     LopTextField(
                         label = stringResource(R.string.starting_balance_label),
-                        value = if (form.startingBalance == 0.0) "" else form.startingBalance.toString(),
-                        onValueChange = { it.toDoubleOrNull()?.let { vm.updateStartingBalance(it) } ?: vm.updateStartingBalance(0.0) },
+                        value = form.startingInput,
+                        onValueChange = vm::updateStartingBalance,
                         keyboardType = KeyboardType.Decimal,
                         placeholder = "0.00",
+                        errorMessage = refusalMessage(
+                            refusals,
+                            FinancialItemRefusal.InvalidStarting,
+                            FinancialItemRefusal.StartingAboveTarget,
+                        ),
                         modifier = Modifier.padding(top = 16.dp).testTag("goal.edit.starting")
                     )
                 }
@@ -120,7 +125,22 @@ fun GoalEditScreen(
                 modifier = Modifier.testTag("goal.edit.date")
             )
         }
-        
-        // TODO: Icon & Color Picker Row
+
+        // Modification (LOP-205) : le formulaire reste celui d'avant LOP-202.
+        if (!state.isEdit) {
+            creationExtraFields(
+                tagPrefix = "goal.edit",
+                accounts = state.accounts,
+                accountId = form.accountId,
+                refusals = refusals,
+                onAccount = vm::updateAccount,
+                icon = form.icon,
+                onIcon = vm::updateIcon,
+                colorArgb = form.colorArgb,
+                onColor = vm::updateColor,
+                comment = form.comment,
+                onComment = vm::updateComment,
+            )
+        }
     }
 }

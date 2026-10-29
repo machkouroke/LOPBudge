@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.local.entity.GoalEntity
+import com.lop.budget.domain.model.FinancialItemKind
 import com.lop.budget.domain.model.progressView
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
@@ -56,11 +58,22 @@ fun GoalsScreen(
     onAddGoal: () -> Unit = {},
     onEditGoal: (Long) -> Unit = {},
     onAddDebt: () -> Unit = {},
-    onEditDebt: (Long) -> Unit = {}
+    onEditDebt: (Long) -> Unit = {},
+    /** Type d'une création qui vient de réussir : son onglet s'ouvre (CA-05 de LOP-202). */
+    createdKind: FinancialItemKind? = null,
+    onCreatedKindShown: () -> Unit = {},
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Goals, 1: Debts
+    // Une créance ouvre Dettes, seul onglet qui liste les prêts avant LOP-22 (P-4 de LOP-202).
+    val createdTab = createdKind?.let { if (it == FinancialItemKind.GOAL) 0 else 1 }
+    var selectedTab by remember { mutableIntStateOf(createdTab ?: 0) } // 0: Goals, 1: Debts
+    LaunchedEffect(createdTab) {
+        if (createdTab != null) {
+            selectedTab = createdTab
+            onCreatedKindShown()
+        }
+    }
 
     LopScreenScaffold(
         title = stringResource(R.string.nav_goals),

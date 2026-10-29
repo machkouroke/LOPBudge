@@ -1,5 +1,6 @@
 package com.lop.budget.ui.navigation
 
+import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.domain.model.TransactionType
 import java.time.YearMonth
 
@@ -54,9 +55,17 @@ object Routes {
     const val GOAL_EDIT = "goal/edit/{id}"
     fun goalEdit(id: Long) = "goal/edit/$id"
 
-    const val DEBT_ADD = "debt/add"
+    /** Création d'un prêt, dette ou créance selon son sens (LOP-202, CA-01, P-4). */
+    const val DEBT_ADD = "debt/add?direction={direction}"
+    fun debtAdd(direction: LoanDirection) = "debt/add?direction=${direction.name}"
     const val DEBT_EDIT = "debt/edit/{id}"
     fun debtEdit(id: Long) = "debt/edit/$id"
+
+    /**
+     * Clé posée sur l'entrée Suivi au retour d'une création réussie : le type créé, pour ouvrir
+     * son onglet (LOP-202, CA-05).
+     */
+    const val KEY_CREATED_KIND = "createdKind"
 
     // Notifications → propositions détectées
     const val DETECTED = "detected"

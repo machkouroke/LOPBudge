@@ -16,6 +16,12 @@ enum class LoanDirection {
 }
 
 /**
+ * Type d'élément financier, tel que l'utilisateur le choisit (CA-01 de LOP-202) : un objectif, ou
+ * un prêt de sens dette ([LoanDirection.BORROWED]) ou créance ([LoanDirection.LENT]).
+ */
+enum class FinancialItemKind { GOAL, DEBT, RECEIVABLE }
+
+/**
  * Statut commun aux objectifs et aux prêts (CA-03 de LOP-80).
  *
  * `ARCHIVED` ne supprime rien : c'est un statut, et les rattachements d'un élément archivé restent

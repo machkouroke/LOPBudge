@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -41,6 +42,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
+import com.lop.budget.domain.model.FinancialItemKind
+import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.AddActionSheet
 import com.lop.budget.ui.components.DeleteConfirmationDialog
@@ -59,6 +62,7 @@ import com.lop.budget.ui.screens.category.CategoryCreateScreen
 import com.lop.budget.ui.screens.detail.TransactionDetailScreen
 import com.lop.budget.ui.screens.detected.DetectedTransactionsScreen
 import com.lop.budget.ui.screens.goals.DebtEditScreen
+import com.lop.budget.ui.screens.goals.DebtEditViewModel
 import com.lop.budget.ui.screens.goals.GoalEditScreen
 import com.lop.budget.ui.screens.goals.GoalsScreen
 import com.lop.budget.ui.screens.home.HomeScreen
@@ -188,18 +192,26 @@ fun LopNavHost() {
                         AnalyticsScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composable(Routes.GOALS) {
+                    composable(Routes.GOALS) { entry ->
+                        val createdKind by entry.savedStateHandle
+                            .getStateFlow<String?>(Routes.KEY_CREATED_KIND, null)
+                            .collectAsStateWithLifecycle()
                         GoalsScreen(
                             onBack = { navController.popBackStack() },
                             onAddGoal = { navController.navigate(Routes.GOAL_ADD) },
                             onEditGoal = { id -> navController.navigate(Routes.goalEdit(id)) },
-                            onAddDebt = { navController.navigate(Routes.DEBT_ADD) },
-                            onEditDebt = { id -> navController.navigate(Routes.debtEdit(id)) }
+                            onAddDebt = { navController.navigate(Routes.debtAdd(LoanDirection.BORROWED)) },
+                            onEditDebt = { id -> navController.navigate(Routes.debtEdit(id)) },
+                            createdKind = createdKind?.let { runCatching { FinancialItemKind.valueOf(it) }.getOrNull() },
+                            onCreatedKindShown = { entry.savedStateHandle[Routes.KEY_CREATED_KIND] = null },
                         )
                     }
 
                     composableAnimated(Routes.GOAL_ADD, NavAnimationType.MAIN) {
-                        GoalEditScreen(onBack = { navController.popBackStack() })
+                        GoalEditScreen(
+                            onBack = { navController.popBackStack() },
+                            onSaved = { kind -> navController.closeCreation(kind) },
+                        )
                     }
 
                     composableAnimated(
@@ -210,8 +222,18 @@ fun LopNavHost() {
                         GoalEditScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composableAnimated(Routes.DEBT_ADD, NavAnimationType.MAIN) {
-                        DebtEditScreen(onBack = { navController.popBackStack() })
+                    composableAnimated(
+                        Routes.DEBT_ADD,
+                        NavAnimationType.MAIN,
+                        arguments = listOf(navArgument(DebtEditViewModel.ARG_DIRECTION) {
+                            type = NavType.StringType
+                            defaultValue = LoanDirection.BORROWED.name
+                        })
+                    ) {
+                        DebtEditScreen(
+                            onBack = { navController.popBackStack() },
+                            onSaved = { kind -> navController.closeCreation(kind) },
+                        )
                     }
 
                     composableAnimated(
@@ -619,4 +641,13 @@ fun LopNavHost() {
             }
         }
     }
+}
+
+/**
+ * CA-05 de LOP-202 : une création réussie se ferme vers Suivi, qui ouvre l'onglet du type créé.
+ * Une créance ouvre Dettes tant que LOP-22 n'a pas livré l'onglet Créances (P-4).
+ */
+private fun NavController.closeCreation(kind: FinancialItemKind) {
+    previousBackStackEntry?.savedStateHandle?.set(Routes.KEY_CREATED_KIND, kind.name)
+    popBackStack()
 }

@@ -403,6 +403,8 @@ fun LopTextField(
     minLines: Int = 1,
     placeholder: String? = null,
     readOnly: Boolean = false,
+    /** Message affiché sous le champ, qui passe alors en erreur. */
+    errorMessage: String? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -420,6 +422,8 @@ fun LopTextField(
             trailingIcon = trailing,
             minLines = minLines,
             readOnly = readOnly,
+            isError = errorMessage != null,
+            supportingText = errorMessage?.let { { Text(it) } },
             placeholder = placeholder?.let { { Text(it) } },
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             shape = RoundedCornerShape(16.dp),
