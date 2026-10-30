@@ -19,6 +19,9 @@ interface GoalOperations {
 
     suspend fun getById(id: Long): GoalEntity?
 
+    /** L'objectif, archivé compris, puis `null` s'il est supprimé (LOP-203, CA-02, CA-06). */
+    fun observeById(id: Long): Flow<GoalEntity?>
+
     /** Crée l'objectif et rend son identifiant. La progression fournie est ignorée (I-2). */
     suspend fun create(goal: GoalEntity): Long
 
@@ -37,6 +40,9 @@ interface GoalDao {
 
     @Query("SELECT * FROM goals WHERE id = :id")
     suspend fun getById(id: Long): GoalEntity?
+
+    @Query("SELECT * FROM goals WHERE id = :id")
+    fun observeById(id: Long): Flow<GoalEntity?>
 
     @Query("SELECT * FROM goals WHERE name = :name LIMIT 1")
     suspend fun getByName(name: String): GoalEntity?

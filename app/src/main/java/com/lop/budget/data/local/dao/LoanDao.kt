@@ -24,6 +24,9 @@ interface LoanOperations {
 
     suspend fun getById(id: Long): LoanEntity?
 
+    /** Le prêt, archivé compris, puis `null` s'il est supprimé (LOP-203, CA-02, CA-06). */
+    fun observeById(id: Long): Flow<LoanEntity?>
+
     /** Crée le prêt et rend son identifiant. La progression fournie est ignorée (I-2). */
     suspend fun create(loan: LoanEntity): Long
 
@@ -46,6 +49,9 @@ interface LoanDao {
 
     @Query("SELECT * FROM loans WHERE id = :id")
     suspend fun getById(id: Long): LoanEntity?
+
+    @Query("SELECT * FROM loans WHERE id = :id")
+    fun observeById(id: Long): Flow<LoanEntity?>
 
     @Upsert suspend fun upsert(loan: LoanEntity): Long
 

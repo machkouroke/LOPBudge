@@ -25,6 +25,8 @@ class GoalRepository @Inject constructor(
 
     override suspend fun getById(id: Long) = goalDao.getById(id)
 
+    override fun observeById(id: Long) = goalDao.observeById(id)
+
     /**
      * La progression proposée à la création n'est écrite nulle part : elle est remplacée par le
      * montant de départ, seule valeur qu'un utilisateur saisit légitimement (I-2, P-3).

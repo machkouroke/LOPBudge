@@ -23,6 +23,8 @@ interface TransactionOperations {
      * Le critère est la **désignation**, pas le règlement : une contribution planifiée appartient
      * déjà à l'objectif. C'est [getSumForGoal] qui restreint aux lignes `PAID`, parce que seule
      * une somme réellement payée fait avancer la progression enregistrée.
+     *
+     * Date décroissante, puis identifiant décroissant à date égale (LOP-203, CA-05).
      */
     fun observeByGoal(goalId: Long): Flow<List<TransactionWithRelations>>
 
@@ -104,7 +106,7 @@ interface TransactionDao : TransactionOperations {
         """
         SELECT * FROM transactions
         WHERE linkedGoalId = :goalId AND deleted = 0
-        ORDER BY date DESC
+        ORDER BY date DESC, id DESC
     """
     )
     override fun observeByGoal(goalId: Long): Flow<List<TransactionWithRelations>>
@@ -114,7 +116,7 @@ interface TransactionDao : TransactionOperations {
         """
         SELECT * FROM transactions
         WHERE linkedLoanId = :loanId AND deleted = 0
-        ORDER BY date DESC
+        ORDER BY date DESC, id DESC
     """
     )
     override fun observeByLoan(loanId: Long): Flow<List<TransactionWithRelations>>

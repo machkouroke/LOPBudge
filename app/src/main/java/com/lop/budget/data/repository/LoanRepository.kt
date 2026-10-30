@@ -33,6 +33,8 @@ class LoanRepository @Inject constructor(
 
     override suspend fun getById(id: Long) = loanDao.getById(id)
 
+    override fun observeById(id: Long) = loanDao.observeById(id)
+
     /**
      * La progression proposée à la création n'est écrite nulle part : elle est remplacée par le
      * montant de départ, seule valeur qu'un utilisateur saisit légitimement (I-2, P-3).
