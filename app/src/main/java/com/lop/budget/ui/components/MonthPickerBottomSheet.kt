@@ -58,6 +58,8 @@ data class MonthPickerConfig(
 @Composable
 fun MonthPickerBottomSheet(
     selected: YearMonth,
+    /** Cible du bouton « Aujourd'hui », lue par l'appelant sur l'horloge injectée. */
+    currentMonth: YearMonth,
     onSelect: (YearMonth) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -99,9 +101,8 @@ fun MonthPickerBottomSheet(
                 onPrev = { year -= 1 },
                 onNext = { year += 1 },
                 onToday = {
-                    val now = YearMonth.now()
-                    year = now.year
-                    onSelect(now)
+                    year = currentMonth.year
+                    onSelect(currentMonth)
                     onDismiss()
                 },
             )

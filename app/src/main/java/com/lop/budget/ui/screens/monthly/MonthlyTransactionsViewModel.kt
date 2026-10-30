@@ -17,6 +17,7 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
 import com.lop.budget.domain.usecase.transaction.SearchTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -66,7 +67,7 @@ fun legendSlots(choices: List<CategoryBreakdown>, selectedId: Long?): List<Categ
 }
 
 data class MonthlyTransactionsUiState(
-    val month: YearMonth = YearMonth.now(),
+    val month: YearMonth,
     /** Le mode historique la cale sur [month] ; seul le mode Analyses la change (CA-05). */
     val period: AnalysisPeriod = AnalysisPeriod.of(month),
     val type: TransactionType? = null, // null means BOTH income and expense
@@ -111,11 +112,12 @@ class MonthlyTransactionsViewModel @Inject constructor(
     observeCategories: ObserveCategoriesUseCase,
     private val searchTransactionsUseCase: SearchTransactionsUseCase,
     settings: SettingsRepository,
+    clock: Clock,
 ) : ViewModel() {
 
     private val initialType = savedStateHandle.get<String>("type")?.let { TransactionType.valueOf(it) }
     private val initialMonth = savedStateHandle.get<String>("ym")?.let { YearMonth.parse(it) }
-        ?: YearMonth.now()
+        ?: YearMonth.now(clock.withZone(ZoneId.systemDefault()))
     private val initialMode = savedStateHandle.get<String>("mode") ?: "HISTORY"
     private val analytics = initialMode == "ANALYTICS"
 

@@ -118,6 +118,7 @@ fun HomeScreen(
     if (isMonthPickerOpen) {
         MonthPickerBottomSheet(
             selected = state.month,
+            currentMonth = vm.currentMonth(),
             onSelect = vm::setMonth,
 
             onDismiss = { isMonthPickerOpen = false },

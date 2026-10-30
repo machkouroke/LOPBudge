@@ -39,6 +39,7 @@ import com.lop.budget.domain.usecase.transaction.SaveTransactionFromProposalUseC
 import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.Clock
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,7 +55,8 @@ data class TransactionForm(
     val type: TransactionType = TransactionType.EXPENSE,
     val amountInput: String = "",
     val title: String = "",
-    val date: Long = System.currentTimeMillis(),
+    /** Sans valeur par défaut : en création, « aujourd'hui » vient de l'horloge injectée du ViewModel. */
+    val date: Long,
     val categoryId: Long? = null,
     val accountId: Long? = null,
     val tagIds: Set<Long> = emptySet(),
@@ -138,9 +140,10 @@ class TransactionEditViewModel @Inject constructor(
     private val settings: SettingsRepository,
     savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context,
+    clock: Clock,
 ) : ViewModel() {
 
-    private val _form = MutableStateFlow(TransactionForm())
+    private val _form = MutableStateFlow(TransactionForm(date = clock.millis()))
     val form: StateFlow<TransactionForm> = _form.asStateFlow()
 
     private val _isSaving = MutableStateFlow(false)

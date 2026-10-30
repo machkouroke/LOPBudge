@@ -178,6 +178,7 @@ fun SeriesCalendarScreen(
     if (showMonthPicker && month != null) {
         MonthPickerBottomSheet(
             selected = month,
+            currentMonth = YearMonth.from(vm.today),
             onSelect = vm::pickMonth,
             onDismiss = { showMonthPicker = false },
         )

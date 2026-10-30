@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
+import java.time.Clock
 import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
@@ -31,7 +32,8 @@ import androidx.compose.runtime.Immutable
 
 @Immutable
 data class HomeUiState(
-    val month: YearMonth = YearMonth.now(),
+    /** Sans valeur par défaut : le mois courant vient de l'horloge injectée du ViewModel. */
+    val month: YearMonth,
     val isCurrentMonth: Boolean = true,
     /**
      * Même valeur initiale que le dépôt et que tous les autres états (I-3).
@@ -72,9 +74,13 @@ class HomeViewModel @Inject constructor(
     getAccountBalancesUseCase: GetAccountBalancesUseCase,
     detectionRepo: NotificationDetectionRepository,
     settings: SettingsRepository,
+    private val clock: Clock,
 ) : ViewModel() {
 
-    private val month = MutableStateFlow(YearMonth.now())
+    /** Mois courant lu sur l'horloge injectée ; le fuseau est relu à chaque appel, comme [ObserveHomeSummaryUseCase]. */
+    fun currentMonth(): YearMonth = YearMonth.now(clock.withZone(ZoneId.systemDefault()))
+
+    private val month = MutableStateFlow(currentMonth())
 
     // `map` et non `combine(..., flowOf(Unit))` : le second flux était constant.
     val detectedCount: StateFlow<Int> = detectionRepo.observePending()
@@ -84,7 +90,7 @@ class HomeViewModel @Inject constructor(
     fun setMonth(value: YearMonth) { month.value = value }
 
 
-    fun goToCurrentMonth() { month.value = YearMonth.now() }
+    fun goToCurrentMonth() { month.value = currentMonth() }
     fun nextMonth() { month.value = month.value.plusMonths(1) }
     fun prevMonth() { month.value = month.value.minusMonths(1) }
 
@@ -120,7 +126,7 @@ class HomeViewModel @Inject constructor(
 
             HomeUiState(
                 month = ym,
-                isCurrentMonth = ym == YearMonth.now(),
+                isCurrentMonth = ym == currentMonth(),
                 currency = currency,
                 monthIncome = data.income,
                 monthExpense = data.expense,
@@ -138,5 +144,5 @@ class HomeViewModel @Inject constructor(
             )
         }
             .flowOn(Dispatchers.Default)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState(month = month.value))
 }
