@@ -46,12 +46,14 @@ class FinancialItemDetailViewModel @Inject constructor(
     /** Type demandé par la route ; `null` s'il est inconnu, ce qui vaut introuvable (I-2). */
     val kind: FinancialItemKind? = savedStateHandle.get<String>(ARG_KIND)
         ?.let { name -> FinancialItemKind.entries.firstOrNull { it.name == name } }
-    private val id: Long = savedStateHandle.get<Long>(ARG_ID) ?: 0L
+    /** Identifiant demandé par la route ; `null` s'il manque, ce qui vaut introuvable sans lecture (I-2, LOP-221). */
+    private val id: Long? = savedStateHandle.get<Long>(ARG_ID)
 
     private val retries = MutableStateFlow(0)
 
     val uiState: StateFlow<FinancialItemDetailUiState> = retries.flatMapLatest {
         val kind = kind ?: return@flatMapLatest flowOf(FinancialItemDetailUiState.NotFound)
+        val id = id ?: return@flatMapLatest flowOf(FinancialItemDetailUiState.NotFound)
         combine(observeDetail(kind, id), settings.currency) { detail, currency ->
             detail?.let { FinancialItemDetailUiState.Loaded(it, currency) }
                 ?: FinancialItemDetailUiState.NotFound
