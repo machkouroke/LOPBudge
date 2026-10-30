@@ -207,7 +207,13 @@
     <!-- Goals & Debts -->
     <string name="goals_title">Objectifs</string>
     <string name="debts_title">Dettes</string>
-    <string name="debt_repaid_amount">Remboursé %1$s / %2$s</string>
+    <!-- LOP-22 : section Suivi. -->
+    <string name="receivables_title">Créances</string>
+    <string name="tracking_empty_goals">Aucun objectif</string>
+    <string name="tracking_empty_debts">Aucune dette</string>
+    <string name="tracking_empty_receivables">Aucune créance</string>
+    <string name="tracking_load_error">Impossible de charger cette liste</string>
+    <string name="tracking_retry">Réessayer</string>
     <string name="goal_edit_title">Modifier l\'objectif</string>
     <string name="goal_new_title">Créer un objectif</string>
     <string name="goal_name_label">Nom de l\'objectif</string>
@@ -340,7 +346,7 @@
     <!-- Bottom Bar -->
     <string name="nav_home">Accueil</string>
     <string name="nav_analytics">Analyse</string>
-    <string name="nav_goals">Objectif</string>
+    <string name="nav_goals">Suivi</string>
 
     <!-- Add actions -->
     <string name="add_action_title">Ajouter</string>

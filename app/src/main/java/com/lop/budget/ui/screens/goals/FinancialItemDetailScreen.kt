@@ -259,7 +259,7 @@ private fun kindLabel(kind: FinancialItemKind) = when (kind) {
 
 /** P-6 : libellés accordés au type ; terminé se lit Atteint, Remboursée ou Récupérée. */
 @StringRes
-private fun statusLabel(kind: FinancialItemKind, status: ItemStatus): Int {
+internal fun statusLabel(kind: FinancialItemKind, status: ItemStatus): Int {
     val goal = kind == FinancialItemKind.GOAL
     return when (status) {
         ItemStatus.ACTIVE -> if (goal) R.string.financial_status_active_goal else R.string.financial_status_active_loan
@@ -273,7 +273,7 @@ private fun statusLabel(kind: FinancialItemKind, status: ItemStatus): Int {
 }
 
 @StringRes
-private fun progressLabel(kind: FinancialItemKind) = when (kind) {
+internal fun progressLabel(kind: FinancialItemKind) = when (kind) {
     FinancialItemKind.GOAL -> R.string.financial_progress_goal
     FinancialItemKind.DEBT -> R.string.financial_progress_debt
     FinancialItemKind.RECEIVABLE -> R.string.financial_progress_receivable

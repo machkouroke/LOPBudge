@@ -40,13 +40,18 @@ import dev.chrisbanes.haze.hazeEffect
 /**
  * Barre de navigation type "Pill" flottante, inspirée du Galaxy Store.
  * 3 éléments avec indicateur de pilule sombre et bouton Ajouter séparé.
+ *
+ * Le bouton Ajouter ne choisit aucune opération : action, libellé accessible et repère de type
+ * viennent de l'appelant, selon l'écran visible (LOP-22, I-2). Sans repère, il affiche un `+` seul.
  */
 @Composable
 fun FloatingBottomBar(
     current: String,
     onSelect: (String) -> Unit,
     onAdd: () -> Unit,
+    addLabel: String,
     modifier: Modifier = Modifier,
+    addTypeIcon: ImageVector? = null,
     hazeState: HazeState? = null,
     settingsVm: SettingsViewModel = hiltViewModel()
 ) {
@@ -120,12 +125,33 @@ fun FloatingBottomBar(
             shadowElevation = 8.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = "Ajouter",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(28.dp)
-                )
+                if (addTypeIcon == null) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = addLabel,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                } else {
+                    // Repère de type, `+` en coin (P-3) : le sens ne repose pas sur l'icône seule.
+                    Box(Modifier.size(34.dp)) {
+                        Icon(
+                            imageVector = addTypeIcon,
+                            contentDescription = addLabel,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(26.dp).align(Alignment.Center)
+                        )
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier
+                                .size(15.dp)
+                                .align(Alignment.TopEnd)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        )
+                    }
+                }
             }
         }
     }

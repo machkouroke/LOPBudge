@@ -31,6 +31,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,6 +43,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
+import com.lop.budget.R
 import com.lop.budget.domain.model.FinancialItemKind
 import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.domain.model.TransactionType
@@ -67,6 +69,8 @@ import com.lop.budget.ui.screens.goals.DebtEditScreen
 import com.lop.budget.ui.screens.goals.DebtEditViewModel
 import com.lop.budget.ui.screens.goals.GoalEditScreen
 import com.lop.budget.ui.screens.goals.GoalsScreen
+import com.lop.budget.ui.screens.goals.creationIcon
+import com.lop.budget.ui.screens.goals.creationLabel
 import com.lop.budget.ui.screens.home.HomeScreen
 import com.lop.budget.ui.screens.manage.AccountEditScreen
 import com.lop.budget.ui.screens.manage.AccountsManageScreen
@@ -101,8 +105,19 @@ fun LopNavHost() {
 
     var showAddActions by rememberSaveable { mutableStateOf(false) }
 
+    // Onglet de Suivi, lu par l'écran et par le FAB : une seule source, ils ne divergent jamais
+    // (LOP-22, I-2). Tenu ici, il survit à la navigation vers une autre section (CA-01).
+    val trackingKind = rememberSaveable { mutableStateOf(FinancialItemKind.GOAL) }
+
     val showBar =
         (currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals")
+
+    // Sur Suivi, le FAB crée le type de l'onglet visible ; ailleurs, il garde le parcours de
+    // création de transaction (CA-04, CA-05). Action, icône et libellé dérivent du même état.
+    // Pendant sa sortie animée, la barre appartient encore à l'écran qu'elle quitte : sans cela,
+    // le FAB passait au « + » générique après un appui sur Suivi (I-2).
+    val barRoute = if (showBar) currentRoute else navController.previousBackStackEntry?.destination?.route
+    val addKind = trackingKind.value.takeIf { barRoute == Routes.GOALS }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -200,11 +215,10 @@ fun LopNavHost() {
                             .collectAsStateWithLifecycle()
                         GoalsScreen(
                             onBack = { navController.popBackStack() },
-                            onAddGoal = { navController.navigate(Routes.GOAL_ADD) },
                             onOpenItem = { kind, id -> navController.navigate(Routes.financialDetail(kind, id)) },
-                            onAddDebt = { navController.navigate(Routes.debtAdd(LoanDirection.BORROWED)) },
                             createdKind = createdKind?.let { runCatching { FinancialItemKind.valueOf(it) }.getOrNull() },
                             onCreatedKindShown = { entry.savedStateHandle[Routes.KEY_CREATED_KIND] = null },
+                            selectedKind = trackingKind,
                         )
                     }
 
@@ -567,7 +581,12 @@ fun LopNavHost() {
                                 restoreState = true
                             }
                         },
-                        onAdd = { showAddActions = true },
+                        onAdd = {
+                            if (addKind != null) navController.navigate(Routes.creation(addKind))
+                            else showAddActions = true
+                        },
+                        addLabel = stringResource(addKind?.let(::creationLabel) ?: R.string.add),
+                        addTypeIcon = addKind?.let(::creationIcon),
                         hazeState = hazeState,
                     )
                 }
@@ -665,8 +684,8 @@ fun LopNavHost() {
 }
 
 /**
- * CA-05 de LOP-202 : une création réussie se ferme vers Suivi, qui ouvre l'onglet du type créé.
- * Une créance ouvre Dettes tant que LOP-22 n'a pas livré l'onglet Créances (P-4).
+ * CA-05 de LOP-202, CA-07 de LOP-22 : une création réussie se ferme vers Suivi, qui ouvre l'onglet
+ * du type créé — Créances pour une créance.
  */
 private fun NavController.closeCreation(kind: FinancialItemKind) {
     previousBackStackEntry?.savedStateHandle?.set(Routes.KEY_CREATED_KIND, kind.name)

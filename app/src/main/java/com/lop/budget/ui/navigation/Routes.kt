@@ -59,6 +59,13 @@ object Routes {
     /** Création d'un prêt, dette ou créance selon son sens (LOP-202, CA-01, P-4). */
     const val DEBT_ADD = "debt/add?direction={direction}"
     fun debtAdd(direction: LoanDirection) = "debt/add?direction=${direction.name}"
+    /** Formulaire de création du type demandé, et d'aucun autre (LOP-22, I-2). */
+    fun creation(kind: FinancialItemKind) = when (kind) {
+        FinancialItemKind.GOAL -> GOAL_ADD
+        FinancialItemKind.DEBT -> debtAdd(LoanDirection.BORROWED)
+        FinancialItemKind.RECEIVABLE -> debtAdd(LoanDirection.LENT)
+    }
+
     const val DEBT_EDIT = "debt/edit/{id}"
     fun debtEdit(id: Long) = "debt/edit/$id"
 

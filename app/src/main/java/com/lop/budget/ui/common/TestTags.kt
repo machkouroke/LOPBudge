@@ -178,7 +178,17 @@ object TestTags {
     const val DEBT_CARD = "debt.card"
     const val GOAL_TAB_OBJECTIVES = "goal.tab.objectives"
     const val GOAL_TAB_DEBTS = "goal.tab.debts"
+
+    /** Plus posé depuis LOP-22 (CA-04) ; gardé tant que TC-158 le cite (P-5). */
     const val GOAL_BTN_ADD = "goal.btn.add"
+
+    // Section Suivi (LOP-22)
+    const val RECEIVABLE_CARD = "receivable.card"
+    const val GOAL_TAB_RECEIVABLES = "goal.tab.receivables"
+    const val GOAL_LIST_LOADING = "goal.list.loading"
+    const val GOAL_LIST_ERROR = "goal.list.error"
+    const val GOAL_LIST_RETRY = "goal.list.retry"
+    const val GOAL_LIST_EMPTY = "goal.list.empty"
 
     /** Détail d'un objectif, d'une dette ou d'une créance (LOP-203). */
     const val SCREEN_FINANCIAL_DETAIL = "screen.financial.detail"
