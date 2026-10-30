@@ -9,6 +9,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
@@ -32,13 +33,6 @@ fun OccurrenceRow(
 ) {
     val currency by actionVm.previewCurrency.collectAsStateWithLifecycle()
     val tx = occurrence.transaction
-    val announced = listOf(
-        stringResource(if (tx.type == TransactionType.INCOME) R.string.tx_type_income else R.string.tx_type_expense),
-        stringResource(
-            if (tx.status == TransactionStatus.PAID) R.string.occurrence_status_paid
-            else R.string.occurrence_status_planned
-        ),
-    ).joinToString(", ")
 
     TransactionRow(
         tx = occurrence,
@@ -46,7 +40,17 @@ fun OccurrenceRow(
         onOpenTransaction = { onClick() },
         modifier = modifier,
         supportingText = Format.fullDate(tx.date),
-        stateDescription = announced,
+        stateDescription = typeAndStatusAnnouncement(tx),
         actionVm = actionVm,
     )
 }
+
+/** Type et statut lus au lecteur d'écran, jamais écrits (P-9 de LOP-7) : « Revenu, Planifié ». */
+@Composable
+fun typeAndStatusAnnouncement(tx: TransactionEntity): String = listOf(
+    stringResource(if (tx.type == TransactionType.INCOME) R.string.tx_type_income else R.string.tx_type_expense),
+    stringResource(
+        if (tx.status == TransactionStatus.PAID) R.string.occurrence_status_paid
+        else R.string.occurrence_status_planned
+    ),
+).joinToString(", ")

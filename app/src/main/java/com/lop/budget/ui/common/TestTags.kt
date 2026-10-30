@@ -180,6 +180,25 @@ object TestTags {
     const val GOAL_TAB_DEBTS = "goal.tab.debts"
     const val GOAL_BTN_ADD = "goal.btn.add"
 
+    /** Détail d'un objectif, d'une dette ou d'une créance (LOP-203). */
+    const val SCREEN_FINANCIAL_DETAIL = "screen.financial.detail"
+    const val FINANCIAL_DETAIL_LOADING = "financial.detail.loading"
+    const val FINANCIAL_DETAIL_ERROR = "financial.detail.error"
+    const val FINANCIAL_DETAIL_RETRY = "financial.detail.retry"
+    const val FINANCIAL_DETAIL_NOT_FOUND = "financial.detail.notfound"
+    const val FINANCIAL_DETAIL_EDIT = "financial.detail.edit"
+
+    /**
+     * Préfixe d'un champ, suffixé `_<clé>` : name, kind, status, progress, remaining, percent,
+     * target, starting, counterparty, debttype, rate, due, account, comment. Un champ absent
+     * n'est pas composé (CA-03, CA-04).
+     */
+    const val FINANCIAL_DETAIL_FIELD = "financial.detail.field"
+    const val FINANCIAL_DETAIL_TX_EMPTY = "financial.detail.transactions.empty"
+
+    /** Préfixe d'une transaction liée, suffixé `_<id>`. */
+    const val FINANCIAL_DETAIL_TX_ROW = "financial.detail.transaction"
+
     // Categories
     const val CAT_BTN_ADD = "category.btn.add"
     const val CAT_BTN_DELETE = "category.btn.delete"

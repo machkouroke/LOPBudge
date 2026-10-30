@@ -1,5 +1,6 @@
 package com.lop.budget.ui.navigation
 
+import com.lop.budget.domain.model.FinancialItemKind
 import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.domain.model.TransactionType
 import java.time.YearMonth
@@ -60,6 +61,14 @@ object Routes {
     fun debtAdd(direction: LoanDirection) = "debt/add?direction=${direction.name}"
     const val DEBT_EDIT = "debt/edit/{id}"
     fun debtEdit(id: Long) = "debt/edit/$id"
+
+    /**
+     * Détail d'un élément financier : son type **et** son identifiant, un objectif et un prêt de
+     * même identifiant n'étant pas le même élément (LOP-203, CA-02, I-2). Hors `rootRoutes` :
+     * ni barre globale ni FAB (CA-01).
+     */
+    const val FINANCIAL_DETAIL = "financial/detail/{kind}/{id}"
+    fun financialDetail(kind: FinancialItemKind, id: Long) = "financial/detail/${kind.name}/$id"
 
     /**
      * Clé posée sur l'entrée Suivi au retour d'une création réussie : le type créé, pour ouvrir

@@ -48,6 +48,8 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.AddActionSheet
 import com.lop.budget.ui.components.DeleteConfirmationDialog
 import com.lop.budget.ui.components.FloatingBottomBar
+import com.lop.budget.ui.screens.goals.FinancialItemDetailScreen
+import com.lop.budget.ui.screens.goals.FinancialItemDetailViewModel
 import com.lop.budget.ui.components.RecurringDeleteSheet
 import com.lop.budget.ui.components.RecurringEditSheet
 import com.lop.budget.ui.components.TransactionPreviewPopup
@@ -199,11 +201,30 @@ fun LopNavHost() {
                         GoalsScreen(
                             onBack = { navController.popBackStack() },
                             onAddGoal = { navController.navigate(Routes.GOAL_ADD) },
-                            onEditGoal = { id -> navController.navigate(Routes.goalEdit(id)) },
+                            onOpenItem = { kind, id -> navController.navigate(Routes.financialDetail(kind, id)) },
                             onAddDebt = { navController.navigate(Routes.debtAdd(LoanDirection.BORROWED)) },
-                            onEditDebt = { id -> navController.navigate(Routes.debtEdit(id)) },
                             createdKind = createdKind?.let { runCatching { FinancialItemKind.valueOf(it) }.getOrNull() },
                             onCreatedKindShown = { entry.savedStateHandle[Routes.KEY_CREATED_KIND] = null },
+                        )
+                    }
+
+                    composableAnimated(
+                        Routes.FINANCIAL_DETAIL,
+                        NavAnimationType.MAIN,
+                        arguments = listOf(
+                            navArgument(FinancialItemDetailViewModel.ARG_KIND) { type = NavType.StringType },
+                            navArgument(FinancialItemDetailViewModel.ARG_ID) { type = NavType.LongType },
+                        )
+                    ) {
+                        FinancialItemDetailScreen(
+                            onBack = { navController.popBackStack() },
+                            // P-4 de LOP-203 : le formulaire existant, en attendant LOP-205.
+                            onEdit = { kind, id ->
+                                navController.navigate(
+                                    if (kind == FinancialItemKind.GOAL) Routes.goalEdit(id) else Routes.debtEdit(id)
+                                )
+                            },
+                            onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
                         )
                     }
 

@@ -26,7 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +42,7 @@ import com.lop.budget.R
 import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.domain.model.FinancialItemKind
+import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.domain.model.progressView
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
@@ -56,9 +57,9 @@ fun GoalsScreen(
     vm: GoalsViewModel = hiltViewModel(),
     onBack: () -> Unit = {},
     onAddGoal: () -> Unit = {},
-    onEditGoal: (Long) -> Unit = {},
+    /** Ouvre le détail du type et de l'identifiant de la carte, pas son édition (LOP-203, CA-01). */
+    onOpenItem: (FinancialItemKind, Long) -> Unit = { _, _ -> },
     onAddDebt: () -> Unit = {},
-    onEditDebt: (Long) -> Unit = {},
     /** Type d'une création qui vient de réussir : son onglet s'ouvre (CA-05 de LOP-202). */
     createdKind: FinancialItemKind? = null,
     onCreatedKindShown: () -> Unit = {},
@@ -67,7 +68,8 @@ fun GoalsScreen(
     val ext = LopTheme.extended
     // Une créance ouvre Dettes, seul onglet qui liste les prêts avant LOP-22 (P-4 de LOP-202).
     val createdTab = createdKind?.let { if (it == FinancialItemKind.GOAL) 0 else 1 }
-    var selectedTab by remember { mutableIntStateOf(createdTab ?: 0) } // 0: Goals, 1: Debts
+    // Sauvegardé : le retour d'un détail retrouve l'onglet d'origine (LOP-203, CA-01).
+    var selectedTab by rememberSaveable { mutableIntStateOf(createdTab ?: 0) } // 0: Goals, 1: Debts
     LaunchedEffect(createdTab) {
         if (createdTab != null) {
             selectedTab = createdTab
@@ -133,7 +135,7 @@ fun GoalsScreen(
                 }
             } else {
                 items(state.goals, key = { "g${it.id}" }) { goal ->
-                    GoalCard(goal, state.currency, ext.income, onClick = { onEditGoal(goal.id) })
+                    GoalCard(goal, state.currency, ext.income, onClick = { onOpenItem(FinancialItemKind.GOAL, goal.id) })
                 }
             }
         } else {
@@ -143,7 +145,9 @@ fun GoalsScreen(
                 }
             } else {
                 items(state.debts, key = { "d${it.id}" }) { debt ->
-                    DebtCard(debt, state.currency, ext.expense, onClick = { onEditDebt(debt.id) })
+                    // L'onglet Dettes liste aussi les créances tant que LOP-22 n'est pas livré.
+                    val kind = if (debt.direction == LoanDirection.LENT) FinancialItemKind.RECEIVABLE else FinancialItemKind.DEBT
+                    DebtCard(debt, state.currency, ext.expense, onClick = { onOpenItem(kind, debt.id) })
                 }
             }
         }
@@ -237,10 +241,10 @@ private fun DebtCard(debt: LoanEntity, currency: String, color: Color, onClick: 
 }
 
 /** « — » quand le pourcentage n'est pas calculable : cible ou montant initial ≤ 0 (CA-07). */
-private fun percentLabel(percent: Int?): String = percent?.let { "$it %" } ?: "—"
+internal fun percentLabel(percent: Int?): String = percent?.let { "$it %" } ?: "—"
 
 @Composable
-private fun ProgressBar(progress: Float, color: Color) {
+internal fun ProgressBar(progress: Float, color: Color) {
     Box(
         Modifier
             .fillMaxWidth()

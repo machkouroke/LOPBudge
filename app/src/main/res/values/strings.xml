@@ -247,6 +247,33 @@
     <string name="debt_type_personal">Personnel (Famille/Ami)</string>
     <string name="debt_type_other">Autre</string>
 
+    <!-- LOP-203 : détail d'un élément financier. -->
+    <string name="financial_kind_goal">Objectif</string>
+    <string name="financial_kind_debt">Dette</string>
+    <string name="financial_kind_receivable">Créance</string>
+    <!-- P-6 : libellés de statut accordés au type. -->
+    <string name="financial_status_active_goal">Actif</string>
+    <string name="financial_status_active_loan">Active</string>
+    <string name="financial_status_reached">Atteint</string>
+    <string name="financial_status_repaid">Remboursée</string>
+    <string name="financial_status_recovered">Récupérée</string>
+    <string name="financial_status_archived_goal">Archivé</string>
+    <string name="financial_status_archived_loan">Archivée</string>
+    <string name="financial_progress_goal">Épargné</string>
+    <string name="financial_progress_debt">Remboursé</string>
+    <string name="financial_progress_receivable">Récupéré</string>
+    <string name="financial_remaining">Restant</string>
+    <string name="financial_percent">Avancement</string>
+    <string name="financial_counterparty_debt">À rembourser à</string>
+    <string name="financial_counterparty_receivable">Doit rembourser</string>
+    <string name="financial_rate_label">Taux annuel</string>
+    <string name="financial_account_unavailable">Compte indisponible</string>
+    <string name="financial_detail_not_found">Élément introuvable</string>
+    <string name="financial_detail_load_error">Impossible de charger cet élément</string>
+    <string name="financial_detail_retry">Réessayer</string>
+    <string name="financial_linked_transactions">Transactions liées</string>
+    <string name="financial_no_linked_transactions">Aucune transaction liée</string>
+
     <string name="tx_linked_goal_label">Objectif lié</string>
     <string name="tx_linked_debt_label">Dette liée</string>
     <string name="tx_no_goal_linked">Aucun objectif lié</string>
