@@ -107,7 +107,7 @@ jobs:
           script: |
             adb wait-for-device
             bash scripts/ci_wait_locale.sh fr-FR
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            bash scripts/ci_install_apk.sh app/build/outputs/apk/debug/app-debug.apk
             bash scripts/ci_run_maestro.sh ${{ matrix.shard }} 6
 
       - name: Zip Maestro Results

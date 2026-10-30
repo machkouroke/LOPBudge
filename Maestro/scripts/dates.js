@@ -53,6 +53,15 @@ output.NEXT_MONTH_FULL_NAME = nextDate.monthFull;
 output.NEXT_MONTH_NUM = nextDate.monthNumber;
 output.NEXT_YEAR = nextDate.year;
 
+// Jour d'ancrage d'une série mensuelle créée par un flow.
+// - <= 28 : il existe tous les mois, sinon l'enregistrement ouvre la feuille
+//   « Ce jour n'existe pas à chaque fois » (LOP-88).
+// - jamais aujourd'hui : dans le calendrier Material, la case du jour porte le même libellé que
+//   le champ date du formulaire (« Jeudi 15 octobre 2026 »), un clic par texte serait ambigu.
+//   Un jour de marge couvre un fuseau de l'hôte, qui exécute ce script, différent de l'appareil.
+var today = new Date().getDate();
+output.SAFE_ANCHOR_DAY = (today >= 14 && today <= 16) ? 22 : 15;
+
 // Log pour la console Maestro
 console.log("Maestro Dates Initialized: Prev=" + output.PREV_MONTH_FULL_NAME + " / " + output.PREV_MONTH_NAME + " / " + output.PREV_MONTH_NUM + " (" + output.PREV_YEAR + ")");
 console.log("Maestro Dates Initialized: Curr=" + output.CURRENT_MONTH_FULL_NAME + " / " + output.CURRENT_MONTH_NAME + " / " + output.CURRENT_MONTH_NUM + " (" + output.CURRENT_YEAR + ")");

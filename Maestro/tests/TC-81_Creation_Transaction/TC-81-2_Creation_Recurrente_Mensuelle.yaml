@@ -27,12 +27,11 @@ tags:
 #     virtuelle n'a pas de ligne à afficher).
 #   - Le sélecteur de catégorie s'ouvre automatiquement en mode ajout.
 #
-# CAS LIMITE CONNU (dépendance à la date d'exécution) :
-#   Le scénario ancre la série sur AUJOURD'HUI. Exécuté un 29, 30 ou 31, l'occurrence
-#   du mois suivant est RABOTÉE au dernier jour de ce mois par Calendar.add(MONTH)
-#   (RecurrenceEngine.moveCalendar). La cardinalité « une fois par mois » testée ici
-#   reste vraie : c'est la DATE de l'occurrence qui glisse, et aucune assertion de ce
-#   flow ne porte sur la date.
+# Ancrage sur output.SAFE_ANCHOR_DAY du mois courant (15, ou 22 du 14 au 16), jamais
+#   sur aujourd'hui : un jour 29, 30 ou 31 absent d'un mois à venir ouvre, à
+#   l'enregistrement, la feuille « Ce jour n'existe pas à chaque fois » (LOP-88).
+#   Ancré sur aujourd'hui, ce flow échouait donc chaque 29, 30 et 31 (CI du
+#   29 octobre 2026). Cette feuille relève de TC-141, pas de ce flow.
 #
 # Hors périmètre (ne pas ajouter ici) :
 #   - Absence de matérialisation en base (0 ligne transaction) : porté par TC-83.
@@ -45,7 +44,7 @@ tags:
 - runFlow: ../../.maestro/subflows/go_to_home.yaml
 
 - evalScript: |
-    console.log("TC-81-2 : création d'une série mensuelle ancrée sur aujourd'hui")
+    console.log("TC-81-2 : création d'une série mensuelle ancrée le " + output.SAFE_ANCHOR_DAY + " " + output.CURRENT_MONTH_FULL_NAME)
 
 # When l'utilisateur ouvre l'ajout via + puis Dépense
 - tapOn: { id: "nav.add.button" }
@@ -75,7 +74,22 @@ tags:
 - inputText: "12.34"
 - hideKeyboard
 
-# And il choisit une récurrence Tous les mois (ancrage = date du formulaire = aujourd'hui)
+# And il fixe la date au jour d'ancrage du mois courant (voir l'en-tête)
+- scrollUntilVisible:
+    element:
+      id: "transaction.edit.field.date"
+    direction: DOWN
+- tapOn: { id: "transaction.edit.field.date" }
+- assertVisible: { id: "picker.date" }
+# Libellé d'une case du calendrier Material : « Jeudi 15 octobre 2026 ». Le mois affiché
+# est celui de la date du formulaire, aujourd'hui.
+- tapOn: ".* ${output.SAFE_ANCHOR_DAY} ${output.CURRENT_MONTH_FULL_NAME} ${output.CURRENT_YEAR}.*"
+- tapOn: "OK"
+- assertNotVisible: { id: "picker.date" }
+# Le champ affiche la date choisie : sans cela, l'ancrage resterait aujourd'hui.
+- assertVisible: ".* ${output.SAFE_ANCHOR_DAY} ${output.CURRENT_MONTH_FULL_NAME} ${output.CURRENT_YEAR}.*"
+
+# And il choisit une récurrence Tous les mois (ancrage = date du formulaire)
 - scrollUntilVisible:
     element:
       id: "transaction.edit.field.frequency"
