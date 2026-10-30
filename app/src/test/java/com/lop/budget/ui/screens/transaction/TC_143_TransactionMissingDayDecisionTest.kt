@@ -43,6 +43,9 @@ import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -570,11 +573,14 @@ class TransactionMissingDayDecisionTest {
     // Montage et jeu de données
     // =============================================================================================
 
+    /** « Aujourd'hui » injecté : fixe, pour que la date par défaut du formulaire ne dépende pas du jour d'exécution. */
+    private val clock: Clock = Clock.fixed(Instant.parse("2026-03-15T12:00:00Z"), ZoneOffset.UTC)
+
     private fun sut(state: Map<String, Any?>) = TransactionEditViewModel(
         accountRepo, ObserveCategoriesUseCase(categoryRepo), transactionRepo,
         observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
         create, edit, detail, proposals, saveFromProposal, settings,
-        SavedStateHandle(state), context,
+        SavedStateHandle(state), context, clock,
     )
 
     /** Création, puis saisie de F par les setters ; rend le ViewModel et la photo complète de F. */

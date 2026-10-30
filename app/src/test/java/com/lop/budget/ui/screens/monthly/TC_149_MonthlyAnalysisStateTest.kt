@@ -24,8 +24,10 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import java.io.IOException
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.CopyOnWriteArrayList
@@ -979,7 +981,7 @@ class MonthlyAnalysisStateTest {
     private fun newVm(type: String): MonthlyTransactionsViewModel {
         val handle = SavedStateHandle(mapOf("type" to type, "ym" to "2026-03", "mode" to "ANALYTICS"))
         val factory = viewModelFactory {
-            initializer { MonthlyTransactionsViewModel(handle, accountRepo, observeCategories, search, settings) }
+            initializer { MonthlyTransactionsViewModel(handle, accountRepo, observeCategories, search, settings, Clock.fixed(Instant.parse("2026-03-15T12:00:00Z"), ZoneOffset.UTC)) }
         }
         return ViewModelProvider(store, factory)["vm-${vmCount++}", MonthlyTransactionsViewModel::class.java]
     }

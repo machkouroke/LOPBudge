@@ -33,8 +33,8 @@ import io.mockk.every
 import io.mockk.excludeRecords
 import io.mockk.mockk
 import io.mockk.slot
+import java.time.Clock
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -164,8 +164,12 @@ class TransactionEditViewModelCreateTest {
     /** Distincte du défaut « EUR » de `SettingsRepository.currency` : l'oracle A-01 discrimine. */
     private val appCurrency = "USD"
 
-    /** Fuseau forcé : l'oracle « jour civil courant » ne doit pas dépendre du fuseau de la CI. */
+    /** Fuseau forcé de l'horloge injectée : l'oracle ne doit pas dépendre du fuseau de la CI. */
     private val zone: ZoneId = ZoneId.of("Europe/Paris")
+
+    /** « Aujourd'hui » injecté : le 15 mars 2026, 13 h à Paris. */
+    private val now: Instant = Instant.parse("2026-03-15T12:00:00Z")
+    private val clock: Clock = Clock.fixed(now, zone)
 
     private val defaultTitle = "Transaction"
     private val newTransactionId = 4242L
@@ -227,7 +231,7 @@ class TransactionEditViewModelCreateTest {
             observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
             observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase, settings,
-            SavedStateHandle(mapOf("type" to type.name)), context
+            SavedStateHandle(mapOf("type" to type.name)), context, clock
         )
 
     /** Aucun use case d'écriture n'a été sollicité. */
@@ -237,9 +241,6 @@ class TransactionEditViewModelCreateTest {
             editTransactionWithScopeUseCase(any(), any(), any(), any(), any())
         }
     }
-
-    private fun civilDayOf(epochMillis: Long): LocalDate =
-        Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate()
 
     /**
      * `TransactionEditViewModel.currency` est partagé en `SharingStarted.WhileSubscribed` :
@@ -261,11 +262,6 @@ class TransactionEditViewModelCreateTest {
     @Test
     fun `A-01 - Given handle type EXPENSE et comptes non vides - When init - Then defauts d'ouverture coherents (CA-01)`() =
         runTest(testDispatcher) {
-            // La fenêtre entre cette capture et la construction du VM est de l'ordre de la
-            // microseconde ; `TransactionForm.date` vaut `System.currentTimeMillis()` et le VM
-            // n'expose aucune horloge injectable (production intouchable sur ce ticket).
-            val expectedDay = LocalDate.now(zone)
-
             val sut = createSut(type = TransactionType.EXPENSE)
             advanceUntilIdle()
 
@@ -275,8 +271,8 @@ class TransactionEditViewModelCreateTest {
                 TransactionType.EXPENSE, form.type
             )
             assertEquals(
-                "CA-01 : form.date doit tomber sur le jour civil courant (fuseau $zone)",
-                expectedDay, civilDayOf(form.date)
+                "CA-01 : form.date doit être « aujourd'hui » lu sur l'horloge injectée (15 mars 2026, 13 h à Paris)",
+                now.toEpochMilli(), form.date
             )
             assertEquals(
                 "CA-01 : le premier compte de accountRepo.observeAll() doit être présélectionné",
@@ -307,8 +303,6 @@ class TransactionEditViewModelCreateTest {
     @Test
     fun `A-02 - Given handle type INCOME - When init - Then type INCOME et memes defauts qu'en A-01 (CA-01)`() =
         runTest(testDispatcher) {
-            val expectedDay = LocalDate.now(zone)
-
             val sut = createSut(type = TransactionType.INCOME)
             advanceUntilIdle()
 
@@ -318,8 +312,8 @@ class TransactionEditViewModelCreateTest {
                 TransactionType.INCOME, form.type
             )
             assertEquals(
-                "CA-01 : form.date doit tomber sur le jour civil courant (fuseau $zone)",
-                expectedDay, civilDayOf(form.date)
+                "CA-01 : form.date doit être « aujourd'hui » lu sur l'horloge injectée (15 mars 2026, 13 h à Paris)",
+                now.toEpochMilli(), form.date
             )
             assertEquals(
                 "CA-01 : le premier compte doit être présélectionné, quel que soit le type",

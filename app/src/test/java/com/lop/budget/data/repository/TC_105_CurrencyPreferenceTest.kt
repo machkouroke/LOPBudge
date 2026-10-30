@@ -27,6 +27,7 @@ import com.lop.budget.ui.screens.settings.SettingsUiState
 import com.lop.budget.ui.screens.settings.SettingsViewModel
 import io.mockk.every
 import io.mockk.mockk
+import java.time.YearMonth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -621,7 +622,7 @@ class CurrencyPreferenceTest {
                 "dur — sinon l'écran légende ses montants dans une devise que l'utilisateur n'a " +
                 "jamais choisie, le temps que le flux de préférences émette",
             CurrencyCatalog.default.code,
-            HomeUiState().currency,
+            HomeUiState(month = YearMonth.of(2026, 3)).currency,
         )
         assertEquals(
             "T-08 / I-3 : l'état des réglages doit partir de la même devise que le dépôt",

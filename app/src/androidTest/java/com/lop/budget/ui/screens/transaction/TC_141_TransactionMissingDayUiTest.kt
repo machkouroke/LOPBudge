@@ -60,6 +60,7 @@ import com.lop.budget.ui.theme.LopBudgeTheme
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
+import java.time.Clock
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -191,6 +192,7 @@ class TransactionMissingDayUiTest {
     @Inject lateinit var proposals: ProposalRepository
     @Inject lateinit var saveFromProposal: SaveTransactionFromProposalUseCase
     @Inject lateinit var settings: SettingsRepository
+    @Inject lateinit var clock: Clock
 
     private var scenario: ActivityScenario<ComponentActivity>? = null
     private lateinit var vm: TransactionEditViewModel
@@ -464,7 +466,7 @@ class TransactionMissingDayUiTest {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T = TransactionEditViewModel(
                             accountRepo, observeCategories, transactionRepo, observeTags, createTag, deleteTag,
                             goalRepo, loanRepo, createTransaction, editTransaction, observeDetail, proposals,
-                            saveFromProposal, settings, SavedStateHandle(state), appContext,
+                            saveFromProposal, settings, SavedStateHandle(state), appContext, clock,
                         ) as T
                     },
                 )[TransactionEditViewModel::class.java]

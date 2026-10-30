@@ -37,7 +37,9 @@ import io.mockk.every
 import io.mockk.excludeRecords
 import io.mockk.mockk
 import io.mockk.slot
+import java.time.Clock
 import java.time.Instant
+import java.time.ZoneOffset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -125,6 +127,9 @@ class TransactionEditViewModelTest {
         Dispatchers.resetMain()
     }
 
+    /** « Aujourd'hui » injecté : fixe, pour que la date par défaut du formulaire ne dépende pas du jour d'exécution. */
+    private val clock: Clock = Clock.fixed(Instant.parse("2026-03-15T12:00:00Z"), ZoneOffset.UTC)
+
     private fun createSut(id: Long? = null, scope: EditScope? = null, date: Long? = null, type: TransactionType? = null): TransactionEditViewModel {
         val map = mutableMapOf<String, Any>()
         if (id != null) map["id"] = id
@@ -137,7 +142,7 @@ class TransactionEditViewModelTest {
             observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
             createTransactionUseCase, editTransactionWithScopeUseCase,
             observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,
-            settings, SavedStateHandle(map), context
+            settings, SavedStateHandle(map), context, clock
         )
     }
 

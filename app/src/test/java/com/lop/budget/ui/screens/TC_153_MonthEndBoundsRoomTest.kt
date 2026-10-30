@@ -90,9 +90,11 @@ import org.robolectric.annotation.Config
  * temps réel de 10 s au plus, sans pause fixe ni réabonnement. Dérogation à `app/src/test/AGENTS.md`
  * §3, comme TC-151 : le collecteur d'états, et lui seul, tourne sur `UnconfinedTestDispatcher`, pour
  * qu'aucune émission ne se perde. Ces états n'ont pas d'indicateur de chargement : leur valeur
- * initiale porte le mois réel, donc le premier état de mars 2026 est le premier résultat lu. Il porte
- * l'oracle ; tout état de mars reçu ensuite doit lui être identique. L'accueil reçoit son mois
- * **avant** d'être observé : sinon un état transitoire peut associer mars au résumé du mois réel.
+ * initiale porte le mois courant de l'accueil, lu sur [HOME_OPENED] (octobre 2026, hors de mars),
+ * donc le premier état de mars 2026 est le premier résultat lu. Il porte l'oracle ; tout état de
+ * mars reçu ensuite doit lui être identique. L'accueil reçoit son mois **avant** d'être observé :
+ * sinon un état transitoire peut associer mars au résumé du mois d'ouverture. Jusqu'à l'injection de
+ * l'horloge dans `HomeViewModel` (30 octobre 2026), ce mois d'ouverture était le mois réel.
  * Fuseau Europe/Paris et `Locale.FRANCE` forcés puis restaurés. La devise n'est pas écrite
  * (DataStore sous Windows, voir TC-151) : EUR est vérifié en précondition.
  *
@@ -293,6 +295,7 @@ class MonthEndBoundsRoomTest {
                     GetAccountBalancesUseCase(accountRepo, transactionRepo),
                     NotificationDetectionRepository(db.detectedTransactionProposalDao()),
                     settings,
+                    HOME_OPENED,
                 )
             }
         }
@@ -379,6 +382,9 @@ class MonthEndBoundsRoomTest {
         fun ms(instant: String) = Instant.parse(instant).toEpochMilli()
 
         val CLOCK: Clock = Clock.fixed(Instant.parse("2026-03-15T12:00:00Z"), ZoneId.of(ZONE))
+
+        /** Jour d'ouverture de l'accueil, hors de mars : `setMonth(MARCH)` est une vraie navigation. */
+        val HOME_OPENED: Clock = Clock.fixed(Instant.parse("2026-10-13T10:00:00Z"), ZoneId.of(ZONE))
 
         val MARCH: YearMonth = YearMonth.of(2026, 3)
         val MARCH_1: LocalDate = LocalDate.parse("2026-03-01")

@@ -33,6 +33,9 @@ import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.excludeRecords
 import io.mockk.mockk
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.Locale
 import java.util.concurrent.Executor
 import kotlinx.coroutines.Dispatchers
@@ -660,12 +663,15 @@ class TransactionTagCreationTest {
         )
     }
 
+    /** « Aujourd'hui » injecté : fixe, pour que la date par défaut du formulaire ne dépende pas du jour d'exécution. */
+    private val clock: Clock = Clock.fixed(Instant.parse("2026-03-15T12:00:00Z"), ZoneOffset.UTC)
+
     private fun createSutInAdd(): TransactionEditViewModel = TransactionEditViewModel(
         accountRepo, ObserveCategoriesUseCase(categoryRepo), transactionRepo,
         observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
         createTransactionUseCase, editTransactionWithScopeUseCase,
         observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,
-        settings, SavedStateHandle(mapOf("type" to TransactionType.EXPENSE.name)), context,
+        settings, SavedStateHandle(mapOf("type" to TransactionType.EXPENSE.name)), context, clock,
     )
 
     /**

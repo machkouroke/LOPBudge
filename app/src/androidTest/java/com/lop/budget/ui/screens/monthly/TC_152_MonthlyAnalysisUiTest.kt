@@ -70,8 +70,8 @@ import java.io.File
 import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.DecimalStyle
+import java.time.ZoneOffset
+import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.atomic.AtomicInteger
@@ -211,6 +211,13 @@ import org.junit.runner.RunWith
  * et « mois suivant », y étaient écrits en français, alors qu'ils suivent la langue de l'appareil.
  * Ils sont désormais relus dans cette langue. Revalidé : 8 verts sur Firebase (MediumPhone.arm, API 36,
  * en_US). Aucun oracle modifié.
+ *
+ * **29 octobre 2026** : les mêmes 8 cas restaient rouges en CI, passée en fr-FR dix minutes après ce
+ * correctif. Le libellé était construit par `java.time` (« dimanche 15 mars 2026 ») ; Material 1.4 le
+ * construit par ICU avec la capitalisation « standalone » (« Dimanche 15 mars 2026 »). Aucune case
+ * trouvée, trois clics sur « mois suivant » : arbre de Firebase (MediumPhone.arm, API 36, fr_FR, code
+ * `37f5aa2e`) ouvert sur juin 2026. Le libellé est désormais construit comme Material. Revalidé :
+ * 8 verts sur le même appareil Firebase en fr_FR. Aucun oracle modifié.
  *
  * ## Hors périmètre
  * Calcul métier et sélection SQL (TC-149, TC-151), I-1 (TC-151), grilles de récurrence, CRUD,
@@ -898,7 +905,7 @@ class MonthlyAnalysisUiTest {
         )
         val handle = SavedStateHandle(mapOf("type" to "EXPENSE", "ym" to "2026-03", "mode" to "ANALYTICS"))
         val vm = ViewModelProvider(store, viewModelFactory {
-            initializer { MonthlyTransactionsViewModel(handle, accountRepo, ObserveCategoriesUseCase(categoryRepo), search, settings) }
+            initializer { MonthlyTransactionsViewModel(handle, accountRepo, ObserveCategoriesUseCase(categoryRepo), search, settings, clock) }
         })[MonthlyTransactionsViewModel::class.java]
 
         scenario = ActivityScenario.launch(MainActivity::class.java)
@@ -1002,8 +1009,8 @@ class MonthlyAnalysisUiTest {
      * Calendrier Material : case du jour visée par sa date complète, puis OK du calendrier.
      *
      * Les libellés du calendrier viennent de Material et suivent la langue de l'appareil, pas
-     * `Locale.setDefault` : en français sur le téléphone, en anglais sur l'émulateur de la CI. Ils
-     * sont donc relus dans cette langue. Ce sont des chemins d'action, pas des oracles.
+     * `Locale.setDefault` (fr-FR sur le téléphone et, depuis le 13 octobre, sur l'émulateur de la
+     * CI). Ils sont donc relus dans cette langue. Ce sont des chemins d'action, pas des oracles.
      */
     private fun pickDate(case: String, fieldTag: String, date: LocalDate) {
         click(node(fieldTag))
@@ -1011,11 +1018,13 @@ class MonthlyAnalysisUiTest {
         val inPicker = hasAnyAncestor(hasTestTag(TestTags.PICKER_DATE))
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val locale = context.resources.configuration.locales[0]
-        // Même construction que Material 1.4 pour le libellé d'une case : squelette yMMMMEEEEd.
-        val dayLabel = DateTimeFormatter
-            .ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, "yMMMMEEEEd"), locale)
-            .withDecimalStyle(DecimalStyle.of(locale))
-            .format(date)
+        // Même construction que Material 1.4 pour le libellé d'une case (`formatWithSkeleton`) :
+        // ICU, squelette yMMMMEEEEd, capitalisation « standalone », GMT. `java.time` donnait
+        // « dimanche 15 mars 2026 » là où Material affiche « Dimanche 15 mars 2026 ».
+        val dayLabel = android.icu.text.DateFormat.getInstanceForSkeleton("yMMMMEEEEd", locale).apply {
+            setContext(android.icu.text.DisplayContext.CAPITALIZATION_FOR_STANDALONE)
+            timeZone = android.icu.util.TimeZone.GMT_ZONE
+        }.format(Date(date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()))
         val nextMonth = context.getString(androidx.compose.material3.R.string.m3c_date_picker_switch_to_next_month)
         val day = hasText(dayLabel, substring = true) and hasClickAction() and inPicker
         var steps = 0

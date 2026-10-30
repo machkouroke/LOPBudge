@@ -595,7 +595,7 @@ class MonthlyAnalysisRoomTest {
         val handle = SavedStateHandle(mapOf("type" to type, "ym" to "2026-03", "mode" to "ANALYTICS"))
         val search = SearchTransactionsUseCase(ObserveTransactionsUseCase(transactionRepo, accountRepo, categoryRepo), CLOCK)
         val factory = viewModelFactory {
-            initializer { MonthlyTransactionsViewModel(handle, accountRepo, ObserveCategoriesUseCase(categoryRepo), search, settings) }
+            initializer { MonthlyTransactionsViewModel(handle, accountRepo, ObserveCategoriesUseCase(categoryRepo), search, settings, CLOCK) }
         }
         return ViewModelProvider(store, factory)[MonthlyTransactionsViewModel::class.java]
     }
