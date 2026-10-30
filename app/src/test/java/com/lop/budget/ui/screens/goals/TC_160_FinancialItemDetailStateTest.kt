@@ -83,10 +83,11 @@ import java.time.Instant
  * ## ANO connues
  * **LOP-221** — un identifiant absent est remplacé par 0 et lu (`FinancialItemDetailViewModel.kt`
  * l. 49) : `observeDetail(GOAL, 0)` est invoqué au lieu de conclure introuvable sans lecture (I-2).
- * V-03 « id absent » est **rouge attendu** tant que l'ANO n'est pas corrigée. Le cas n'est pas
- * joignable par la navigation (la route exige un id numérique) ; la fiche le maintient pour CA-02.
- * La trace reste à `Loading` parce que la doublure stricte n'a pas de réponse pour `(GOAL, 0)` :
- * l'oracle est la lecture tentée, pas l'état.
+ * V-03 « id absent » était **rouge** sur `cc89a660`. Le cas n'est pas joignable par la navigation
+ * (la route exige un id numérique) ; la fiche le maintient pour CA-02. La trace restait à `Loading`
+ * parce que la doublure stricte n'a pas de réponse pour `(GOAL, 0)` : l'oracle est la lecture
+ * tentée, pas l'état. **Corrigée le 30 octobre 2026** (identifiant nullable, introuvable sans
+ * lecture) : V-03 « id absent » vert, TC-160 10 sur 10, suite JVM 871 sur 871, TC-161 16 sur 16.
  *
  * ## Résultats — 30 octobre 2026, JVM, production de `cc89a660`
  * 9 verts, 1 rouge métier (V-03 id absent, LOP-221). Preuves de sensibilité des verts, séries à cas
