@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.filled.TrackChanges
@@ -61,7 +60,6 @@ import com.lop.budget.util.IconMapper
 @Composable
 fun GoalsScreen(
     vm: GoalsViewModel = hiltViewModel(),
-    onBack: () -> Unit = {},
     /** Ouvre le détail du type et de l'identifiant de la carte, pas son édition (LOP-203, CA-01). */
     onOpenItem: (FinancialItemKind, Long) -> Unit = { _, _ -> },
     /** Type d'une création qui vient de réussir : son onglet s'ouvre (CA-07, CA-05 de LOP-202). */
@@ -82,8 +80,7 @@ fun GoalsScreen(
 
     LopScreenScaffold(
         title = stringResource(R.string.nav_goals),
-        onBack = onBack,
-        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        onBack = null,
         modifier = Modifier.testTag(TestTags.SCREEN_GOALS)
     ) {
         item {
@@ -104,17 +101,6 @@ fun GoalsScreen(
                     ) { selected = kind }
                 }
             }
-        }
-
-        // Aucun bouton d'ajout ici : le seul est le FAB de la barre, contextualisé par l'onglet (CA-04).
-        item {
-            Text(
-                text = stringResource(sectionTitle(selected)),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp),
-            )
         }
 
         when (selected) {

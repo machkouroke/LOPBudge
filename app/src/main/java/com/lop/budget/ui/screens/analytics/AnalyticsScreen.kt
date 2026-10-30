@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AutoGraph
@@ -49,7 +48,6 @@ import com.lop.budget.util.Format
 @Composable
 fun AnalyticsScreen(
     vm: AnalyticsViewModel = hiltViewModel(),
-    onBack: () -> Unit = {}
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
@@ -70,8 +68,7 @@ fun AnalyticsScreen(
 
     LopScreenScaffold(
         title = title,
-        onBack = onBack,
-        navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+        onBack = null,
         modifier = Modifier.testTag(TestTags.SCREEN_ANALYTICS)
     ) {
         item {

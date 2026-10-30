@@ -206,7 +206,7 @@ fun LopNavHost() {
                             }
                         )
                     ) {
-                        AnalyticsScreen(onBack = { navController.popBackStack() })
+                        AnalyticsScreen()
                     }
 
                     composable(Routes.GOALS) { entry ->
@@ -214,7 +214,6 @@ fun LopNavHost() {
                             .getStateFlow<String?>(Routes.KEY_CREATED_KIND, null)
                             .collectAsStateWithLifecycle()
                         GoalsScreen(
-                            onBack = { navController.popBackStack() },
                             onOpenItem = { kind, id -> navController.navigate(Routes.financialDetail(kind, id)) },
                             createdKind = createdKind?.let { runCatching { FinancialItemKind.valueOf(it) }.getOrNull() },
                             onCreatedKindShown = { entry.savedStateHandle[Routes.KEY_CREATED_KIND] = null },

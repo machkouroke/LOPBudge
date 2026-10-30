@@ -197,7 +197,8 @@ fun LopSwitch(
 @Composable
 fun LopScreenScaffold(
     title: String,
-    onBack: () -> Unit,
+    /** `null` : section principale de la barre du bas, sans flèche de retour (P-9 de LOP-22). */
+    onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
     navigationIcon: ImageVector = Icons.Default.Close,
     snackbarHost: @Composable () -> Unit = {},
@@ -243,11 +244,13 @@ fun LopScreenScaffold(
                             )
                         },
                         navigationIcon = {
-                            IconButton(
-                                onClick = onBack,
-                                modifier = Modifier.testTag(TestTags.BTN_BACK)
-                            ) {
-                                Icon(navigationIcon, contentDescription = stringResource(R.string.back))
+                            if (onBack != null) {
+                                IconButton(
+                                    onClick = onBack,
+                                    modifier = Modifier.testTag(TestTags.BTN_BACK)
+                                ) {
+                                    Icon(navigationIcon, contentDescription = stringResource(R.string.back))
+                                }
                             }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
