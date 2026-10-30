@@ -218,7 +218,7 @@
     <string name="receivable_name_label">Nom de la créance</string>
     <string name="debt_name_label">Nom de la dette</string>
     <string name="debt_total_amount_label">Montant initial</string>
-    <string name="debt_interest_rate_label">Taux d\'intérêt (%%)</string>
+    <string name="debt_interest_rate_label">Taux d\'intérêt (%)</string>
     <string name="due_date_label">Date d\'échéance</string>
     <string name="select_icon">Choisir une icône</string>
     <string name="select_color">Choisir une couleur</string>
