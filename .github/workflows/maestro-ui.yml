@@ -32,6 +32,9 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
+  # Depuis le 30 octobre 2026, seul TC-109 (notification systeme via la passerelle adb) reste sous
+  # Maestro : les autres parcours sont des tests instrumentes (`app/src/androidTest/.../ui/journey`).
+  # Un seul flow, donc un seul shard.
   maestro:
     name: Shard ${{ matrix.shard }}
     needs: build
@@ -40,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5]
+        shard: [0]
     steps:
       - uses: actions/checkout@v4
 
@@ -108,7 +111,7 @@ jobs:
             adb wait-for-device
             bash scripts/ci_wait_locale.sh fr-FR
             bash scripts/ci_install_apk.sh app/build/outputs/apk/debug/app-debug.apk
-            bash scripts/ci_run_maestro.sh ${{ matrix.shard }} 6
+            bash scripts/ci_run_maestro.sh ${{ matrix.shard }} 1
 
       - name: Zip Maestro Results
         if: always()
@@ -128,12 +131,18 @@ jobs:
 
   # Tests instrumentés Compose (`app/src/androidTest`). Job distinct des shards Maestro :
   # même émulateur, signal différent. Un rouge Maestro dénonce un parcours cassé, un rouge
-  # instrumenté dénonce un écran. Pas de matrice — la suite ne compte que quelques classes ;
-  # ajouter un sharding avant d'en avoir besoin coûterait plus qu'il ne rapporte.
+  # instrumenté dénonce un écran. Trois shards depuis le 30 octobre 2026, quand les parcours
+  # Maestro y ont été portés : un job seul passait ~4,5 min à démarrer l'émulateur et compiler,
+  # puis ~9 min de tests (run du 29 octobre), et c'était le chemin critique du workflow. Le runner
+  # répartit les tests par nombre (`numShards` / `shardIndex`), pas par durée.
   instrumented-tests:
-    name: Instrumented Tests
+    name: Instrumented Tests ${{ matrix.shard }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
     steps:
       - uses: actions/checkout@v4
 
@@ -187,13 +196,13 @@ jobs:
           script: |
             adb wait-for-device
             bash scripts/ci_wait_locale.sh fr-FR
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon
+            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.numShards=3 -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard }}
 
       - name: Upload Instrumented Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: instrumented-test-results
+          name: instrumented-test-results-${{ matrix.shard }}
           path: |
             app/build/outputs/androidTest-results/connected/**/*.xml
             app/build/reports/androidTests/connected/**

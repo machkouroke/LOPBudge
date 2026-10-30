@@ -2,6 +2,12 @@
 
 Ces règles s’ajoutent au `AGENTS.md` racine et s’appliquent à tout `Maestro/**`.
 
+**Depuis le 30 octobre 2026, seul TC-109 reste sous Maestro.** Les autres parcours ont été portés
+en tests instrumentés (`app/src/androidTest/java/com/lop/budget/ui/journey/`, pilote commun
+`Journey`, jeu du seeder `SeederDataset`, horloge `TestClock`), avec les sous-flows et `dates.js`
+qu'ils utilisaient. Un nouveau parcours s’écrit en instrumenté ; Maestro ne sert qu’à ce que
+l’instrumenté ne peut pas faire (notification système, processus réel lancé par le lanceur).
+
 ## 1. Sources obligatoires
 
 Avant toute modification :
@@ -37,7 +43,7 @@ Chaque flow exécutable comporte au minimum `appId`, un nom descriptif, des tags
 - Chaque scénario critique démarre depuis un état connu, généralement via le subflow de bootstrap adapté avec `clearState: true`.
 - Aucun test ne dépend de l’état laissé par un autre test.
 - Le setup doit être minimal mais suffisant ; ne pas copier tout un scénario précédent.
-- Les dates sont calculées relativement avec `Maestro/scripts/dates.js`, jamais codées en dur si elles dépendent du mois courant.
+- Une date qui dépend du mois courant n’est jamais codée en dur. Un flow qui en dépend se porte en instrumenté, où `TestClock` fige « aujourd’hui » (`dates.js` a été retiré avec les flows qui l’utilisaient).
 
 ## 5. Sélecteurs
 

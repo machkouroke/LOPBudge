@@ -111,8 +111,9 @@ Un test ne sert pas juste à "cliquer partout", il doit prouver que l'exigence m
 
 Les tests ne doivent pas dépendre de la date du jour "en dur".
 
-- **Règle** : Utiliser le script `Maestro/scripts/dates.js` pour calculer les mois relatifs.
-- **Règle** : Gérer les changements d'année via une logique de détection dans les subflows.
+- **Règle** : Un parcours qui dépend de la date du jour se porte en test instrumenté, où `TestClock`
+  fige « aujourd'hui ». `Maestro/scripts/dates.js` et les subflows ont été retirés le 30 octobre 2026
+  avec les flows portés (voir `Maestro/AGENTS.md`).
 
 ## 10. Intégrité des Données (JDD)
 
