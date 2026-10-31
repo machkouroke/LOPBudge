@@ -51,6 +51,7 @@ import com.lop.budget.domain.model.ItemStatus
 import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.domain.usecase.SyncProgressUseCase
 import com.lop.budget.domain.usecase.financial.CreateFinancialItemUseCase
+import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
 import com.lop.budget.domain.usecase.transaction.AtomicWriter
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.journey.Journey
@@ -495,7 +496,7 @@ class FinancialItemCreationUiTest {
         )
 
         // Suivi monté avec le type reçu (P-4 : la vraie fermeture d'une créance n'est pas atteignable).
-        val goalsVm = provide("goals") { GoalsViewModel(goalRepo, loanRepo, settings) }
+        val goalsVm = provide("goals") { GoalsViewModel(ObserveFinancialItemListUseCase(goalRepo, loanRepo), settings) }
         show { GoalsScreen(vm = goalsVm, createdKind = savedKinds.single()) }
         j.await("Suivi monté") { j.count(TestTags.SCREEN_GOALS) == 1 }
         expectSection(DETTES, "${TestTags.DEBT_CARD}_$id")
