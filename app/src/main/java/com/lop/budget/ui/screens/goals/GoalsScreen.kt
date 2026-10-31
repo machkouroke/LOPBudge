@@ -47,8 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.domain.model.FinancialItemKind
-import com.lop.budget.domain.model.ItemStatus
-import com.lop.budget.domain.model.progressView
+import com.lop.budget.domain.usecase.financial.FinancialItemSummary
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
@@ -103,25 +102,14 @@ fun GoalsScreen(
             }
         }
 
-        when (selected) {
-            FinancialItemKind.GOAL -> listContent(state.goals, R.string.tracking_empty_goals, vm::retry, { "g${it.id}" }) { g ->
-                FinancialItemCard(
-                    FinancialItemKind.GOAL, g.id, g.name, g.icon, g.colorArgb, g.status,
-                    g.targetAmountCents, g.savedAmountCents, state.currency, ext.income,
-                ) { onOpenItem(FinancialItemKind.GOAL, g.id) }
-            }
-            FinancialItemKind.DEBT -> listContent(state.debts, R.string.tracking_empty_debts, vm::retry, { "d${it.id}" }) { l ->
-                FinancialItemCard(
-                    FinancialItemKind.DEBT, l.id, l.name, l.icon, l.colorArgb, l.status,
-                    l.totalAmountCents, l.repaidAmountCents, state.currency, ext.expense,
-                ) { onOpenItem(FinancialItemKind.DEBT, l.id) }
-            }
-            FinancialItemKind.RECEIVABLE -> listContent(state.receivables, R.string.tracking_empty_receivables, vm::retry, { "r${it.id}" }) { l ->
-                FinancialItemCard(
-                    FinancialItemKind.RECEIVABLE, l.id, l.name, l.icon, l.colorArgb, l.status,
-                    l.totalAmountCents, l.repaidAmountCents, state.currency, ext.income,
-                ) { onOpenItem(FinancialItemKind.RECEIVABLE, l.id) }
-            }
+        val (load, emptyText) = when (selected) {
+            FinancialItemKind.GOAL -> state.goals to R.string.tracking_empty_goals
+            FinancialItemKind.DEBT -> state.debts to R.string.tracking_empty_debts
+            FinancialItemKind.RECEIVABLE -> state.receivables to R.string.tracking_empty_receivables
+        }
+        listContent(load, emptyText, vm::retry) { item ->
+            val accent = if (item.kind == FinancialItemKind.DEBT) ext.expense else ext.income
+            FinancialItemCard(item, state.currency, accent) { onOpenItem(item.kind, item.id) }
         }
     }
 }
@@ -130,12 +118,11 @@ fun GoalsScreen(
  * CA-06, I-3 : chargement sans message d'absence ; vide réussi avec son texte ; échec avec
  * Réessayer, sans ligne ni montant de repli.
  */
-private fun <T> LazyListScope.listContent(
-    load: ListLoad<T>,
+private fun LazyListScope.listContent(
+    load: ListLoad<FinancialItemSummary>,
     @StringRes emptyText: Int,
     onRetry: () -> Unit,
-    key: (T) -> Any,
-    card: @Composable (T) -> Unit,
+    card: @Composable (FinancialItemSummary) -> Unit,
 ) {
     when (load) {
         ListLoad.Loading -> item {
@@ -157,7 +144,7 @@ private fun <T> LazyListScope.listContent(
         }
         is ListLoad.Loaded ->
             if (load.items.isEmpty()) item { EmptyState(stringResource(emptyText)) }
-            else items(load.items, key = key) { card(it) }
+            else items(load.items, key = { "${it.kind}_${it.id}" }) { card(it) }
     }
 }
 
@@ -224,46 +211,39 @@ private fun EmptyState(text: String) {
 }
 
 /**
- * CA-03 : une ligne = une seule ligne en base, lue d'un seul tenant (I-3). Restant et pourcentage
- * viennent du calcul unique de LOP-79 (`progressView`), jamais d'un calcul de carte : non
- * calculables, ils se lisent « — ». L'avancement garde sa valeur réelle, négative comprise.
+ * CA-03 : une carte = une ligne du use case de liste, lue d'un seul tenant (I-3). Restant et
+ * pourcentage y sont déjà calculés par LOP-79, jamais par la carte (P-10) : non calculables, ils se
+ * lisent « — ». L'avancement garde sa valeur réelle, négative comprise.
  */
 @Composable
 private fun FinancialItemCard(
-    kind: FinancialItemKind,
-    id: Long,
-    name: String,
-    icon: String,
-    colorArgb: Int,
-    status: ItemStatus,
-    targetCents: Long,
-    reachedCents: Long,
+    item: FinancialItemSummary,
     currency: String,
     accent: Color,
     onClick: () -> Unit,
 ) {
-    val progress = progressView(reachedCents, targetCents)
+    val progress = item.progress
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     FloatingCard(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
             .clickable { onClick() }
-            .testTag("${cardTag(kind)}_$id")
+            .testTag("${cardTag(item.kind)}_${item.id}")
     ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                CircleIcon(IconMapper.get(icon), Color(colorArgb), Color(colorArgb).copy(alpha = 0.18f))
+                CircleIcon(IconMapper.get(item.icon), Color(item.colorArgb), Color(item.colorArgb).copy(alpha = 0.18f))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(name, style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(statusLabel(kind, status)), style = MaterialTheme.typography.labelMedium, color = secondary)
+                    Text(item.name, style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(statusLabel(item.kind, item.status)), style = MaterialTheme.typography.labelMedium, color = secondary)
                 }
                 Text(percentLabel(progress.percent), style = MaterialTheme.typography.titleMedium, color = accent, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(12.dp))
             Text(
-                "${stringResource(progressLabel(kind))} ${Format.money(reachedCents, currency)} / ${Format.money(targetCents, currency)}",
+                "${stringResource(progressLabel(item.kind))} ${Format.money(progress.reachedCents, currency)} / ${Format.money(item.targetCents, currency)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = secondary,
             )

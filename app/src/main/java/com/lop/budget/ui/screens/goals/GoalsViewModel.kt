@@ -2,12 +2,10 @@ package com.lop.budget.ui.screens.goals
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lop.budget.data.local.entity.LoanEntity
-import com.lop.budget.data.local.entity.GoalEntity
-import com.lop.budget.data.repository.LoanRepository
-import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.SettingsRepository
-import com.lop.budget.domain.model.LoanDirection
+import com.lop.budget.domain.model.FinancialItemKind
+import com.lop.budget.domain.usecase.financial.FinancialItemSummary
+import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -37,17 +35,16 @@ sealed interface ListLoad<out T> {
  */
 data class GoalsUiState(
     val currency: String = "EUR",
-    val goals: ListLoad<GoalEntity> = ListLoad.Loading,
-    val debts: ListLoad<LoanEntity> = ListLoad.Loading,
-    val receivables: ListLoad<LoanEntity> = ListLoad.Loading,
+    val goals: ListLoad<FinancialItemSummary> = ListLoad.Loading,
+    val debts: ListLoad<FinancialItemSummary> = ListLoad.Loading,
+    val receivables: ListLoad<FinancialItemSummary> = ListLoad.Loading,
 )
 
-/** Section Suivi (LOP-22). Lectures seules (I-1). */
+/** Section Suivi (LOP-22). Lectures seules (I-1), par le use case de liste (P-10). */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GoalsViewModel @Inject constructor(
-    goalRepo: GoalRepository,
-    loanRepo: LoanRepository,
+    observeList: ObserveFinancialItemListUseCase,
     settings: SettingsRepository,
 ) : ViewModel() {
 
@@ -55,9 +52,9 @@ class GoalsViewModel @Inject constructor(
 
     val uiState: StateFlow<GoalsUiState> = retries.flatMapLatest {
         combine(
-            goalRepo.observeActive().asListLoad(),
-            loanRepo.observeActiveByDirection(LoanDirection.BORROWED).asListLoad(),
-            loanRepo.observeActiveByDirection(LoanDirection.LENT).asListLoad(),
+            observeList(FinancialItemKind.GOAL).asListLoad(),
+            observeList(FinancialItemKind.DEBT).asListLoad(),
+            observeList(FinancialItemKind.RECEIVABLE).asListLoad(),
             settings.currency,
         ) { goals, debts, receivables, currency -> GoalsUiState(currency, goals, debts, receivables) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GoalsUiState())
@@ -66,6 +63,9 @@ class GoalsViewModel @Inject constructor(
     fun retry() = retries.update { it + 1 }
 }
 
+// Reconduit tel quel par l'étape 0 de P-10 : `onStart` est rejoué à chaque reprise de collecte
+// (retour après plus de 5 s), ce qui peut contredire CA-01 (contexte de liste conservé au retour).
+// Jugé par TC-164 V-07 et TC-162 U-01 b2.
 private fun <T> Flow<List<T>>.asListLoad(): Flow<ListLoad<T>> =
     map<List<T>, ListLoad<T>> { ListLoad.Loaded(it) }
         .onStart { emit(ListLoad.Loading) }
