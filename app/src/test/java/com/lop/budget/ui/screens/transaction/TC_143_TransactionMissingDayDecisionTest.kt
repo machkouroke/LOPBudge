@@ -13,6 +13,8 @@ import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.LoanRepository
+import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
+import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
@@ -181,7 +183,8 @@ class TransactionMissingDayDecisionTest {
         every { accountRepo.observeAll() } returns flowOf(listOf(ACCOUNT))
         every { observeTagsUseCase() } returns flowOf(listOf(TAG))
         every { goalRepo.observeActive() } returns flowOf(emptyList())
-        every { loanRepo.observeActive() } returns flowOf(emptyList())
+        every { loanRepo.observeActiveByDirection(LoanDirection.BORROWED) } returns flowOf(emptyList())
+        every { loanRepo.observeActiveByDirection(LoanDirection.LENT) } returns flowOf(emptyList())
         every { settings.currency } returns flowOf("EUR")
     }
 
@@ -578,7 +581,7 @@ class TransactionMissingDayDecisionTest {
 
     private fun sut(state: Map<String, Any?>) = TransactionEditViewModel(
         accountRepo, ObserveCategoriesUseCase(categoryRepo), transactionRepo,
-        observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
+        observeTagsUseCase, createTagUseCase, deleteTagUseCase, ObserveFinancialItemListUseCase(goalRepo, loanRepo),
         create, edit, detail, proposals, saveFromProposal, settings,
         SavedStateHandle(state), context, clock,
     )

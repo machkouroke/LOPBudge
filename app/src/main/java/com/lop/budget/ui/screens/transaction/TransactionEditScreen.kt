@@ -30,9 +30,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.lop.budget.R
+import com.lop.budget.domain.model.FinancialItemKind
+import com.lop.budget.domain.model.ItemStatus
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.financial.LinkableItem
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.AccountBottomSheet
 import com.lop.budget.ui.components.CategoryBottomSheet
@@ -58,6 +61,16 @@ fun TransactionEditScreen(
     val tags by vm.tags.collectAsStateWithLifecycle()
     val goals by vm.goals.collectAsStateWithLifecycle()
     val debts by vm.debts.collectAsStateWithLifecycle()
+    val receivables by vm.receivables.collectAsStateWithLifecycle()
+    val linkedGoal by vm.linkedGoal.collectAsStateWithLifecycle()
+    val linkedLoan by vm.linkedLoan.collectAsStateWithLifecycle()
+    // CA-01 de LOP-5 : prêts groupés, dettes puis créances. CA-02 : un rattachement archivé n'est pas
+    // un nouveau choix, mais il reste en tête de son groupe, coché, pour pouvoir être conservé.
+    val goalChoices = withArchivedLink(goals, linkedGoal, FinancialItemKind.GOAL)
+    val loanChoices = withArchivedLink(debts, linkedLoan, FinancialItemKind.DEBT) +
+        withArchivedLink(receivables, linkedLoan, FinancialItemKind.RECEIVABLE)
+    val debtsTitle = stringResource(R.string.debts_title)
+    val receivablesTitle = stringResource(R.string.receivables_title)
     val isSaving by vm.isSaving.collectAsStateWithLifecycle()
     val currency by vm.currency.collectAsStateWithLifecycle()
     val fieldErrors by vm.fieldErrors.collectAsStateWithLifecycle()
@@ -69,6 +82,9 @@ fun TransactionEditScreen(
     val amountError = fieldErrors[TransactionFormField.AMOUNT]?.let { stringResource(it) }
     val categoryError = fieldErrors[TransactionFormField.CATEGORY]?.let { stringResource(it) }
     val accountError = fieldErrors[TransactionFormField.ACCOUNT]?.let { stringResource(it) }
+    // CA-05 de LOP-5 : choix devenu indisponible, signalé sous son champ.
+    val goalError = fieldErrors[TransactionFormField.GOAL]?.let { stringResource(it) }
+    val loanError = fieldErrors[TransactionFormField.LOAN]?.let { stringResource(it) }
     // CA-05 : message de refus de création d'un tag, affiché dans la feuille de sélection.
     val tagNameError = fieldErrors[TransactionFormField.TAG_NAME]?.let { stringResource(it) }
 
@@ -137,11 +153,13 @@ fun TransactionEditScreen(
                 form = form,
                 categories = categories,
                 accounts = accounts,
-                goals = goals,
-                debts = debts,
+                linkedGoal = linkedGoal,
+                linkedLoan = linkedLoan,
                 tags = tags,
                 categoryError = categoryError,
                 accountError = accountError,
+                goalError = goalError,
+                loanError = loanError,
                 onOpenCategory = { activeSheet = EditSheet.Category },
                 onOpenAccount = { activeSheet = EditSheet.Account },
                 onOpenGoal = { activeSheet = EditSheet.Goal },
@@ -222,35 +240,37 @@ fun TransactionEditScreen(
         EditSheet.Goal -> {
             PickerBottomSheet(
                 title = stringResource(R.string.tx_linked_goal_label),
-                items = goals,
-                isSelected = { it.id == form.linkedGoalId },
+                items = goalChoices,
+                isSelected = { it.summary.id == form.linkedGoalId },
                 onSelect = { goal ->
-                    vm.setGoal(goal?.id)
+                    vm.setGoal(goal?.summary?.id)
                     activeSheet = null
                 },
                 onDismiss = { activeSheet = null },
-                itemLabel = { it.name },
+                itemLabel = { linkLabel(it) },
                 allowNone = true,
-                noneLabel = stringResource(R.string.none),
-                itemIcon = { IconMapper.get(it.icon) },
-                itemTint = { Color(it.colorArgb) }
+                noneLabel = stringResource(R.string.tx_link_none),
+                itemIcon = { IconMapper.get(it.summary.icon) },
+                itemTint = { Color(it.summary.colorArgb) }
             )
         }
         EditSheet.Debt -> {
             PickerBottomSheet(
                 title = stringResource(R.string.tx_linked_debt_label),
-                items = debts,
-                isSelected = { it.id == form.linkedLoanId },
-                onSelect = { debt ->
-                    vm.setDebt(debt?.id)
+                items = loanChoices,
+                isSelected = { it.summary.id == form.linkedLoanId },
+                onSelect = { loan ->
+                    vm.setDebt(loan?.summary?.id)
                     activeSheet = null
                 },
                 onDismiss = { activeSheet = null },
-                itemLabel = { it.name },
+                itemLabel = { linkLabel(it) },
                 allowNone = true,
-                noneLabel = stringResource(R.string.none),
-                itemIcon = { IconMapper.get(it.icon) },
-                itemTint = { Color(it.colorArgb) }
+                noneLabel = stringResource(R.string.tx_link_none),
+                itemIcon = { IconMapper.get(it.summary.icon) },
+                itemTint = { Color(it.summary.colorArgb) },
+                itemSupportingText = { it.counterparty },
+                itemGroup = { if (it.summary.kind == FinancialItemKind.DEBT) debtsTitle else receivablesTitle },
             )
         }
         EditSheet.Frequency -> {
@@ -300,3 +320,9 @@ fun TransactionEditScreen(
         )
     }
 }
+
+/** Place [linked] en tête de [choices] s'il est archivé et de ce [kind] ; sinon [choices] tel quel. */
+private fun withArchivedLink(choices: List<LinkableItem>, linked: LinkableItem?, kind: FinancialItemKind) =
+    if (linked != null && linked.summary.kind == kind && linked.summary.status == ItemStatus.ARCHIVED) {
+        listOf(linked) + choices
+    } else choices

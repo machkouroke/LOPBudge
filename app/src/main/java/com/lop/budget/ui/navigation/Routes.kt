@@ -27,8 +27,18 @@ object Routes {
     fun analytics(type: TransactionType, ym: YearMonth) = "analytics?type=${type.name}&ym=$ym"
     const val GOALS = "goals"
     const val ACCOUNTS = "accounts"
-    const val ADD = "add?type={type}"
+    const val ADD = "add?type={type}&goalId={goalId}&loanId={loanId}"
     fun add(type: TransactionType) = "add?type=${type.name}"
+
+    /**
+     * LOP-5, CA-07 et P-3 : saisie ouverte depuis le détail d'un élément, lien et sens préremplis —
+     * contribution d'objectif et remboursement de créance en revenu, remboursement de dette en dépense.
+     */
+    fun addLinked(kind: FinancialItemKind, id: Long) = when (kind) {
+        FinancialItemKind.GOAL -> "add?type=${TransactionType.INCOME.name}&goalId=$id"
+        FinancialItemKind.DEBT -> "add?type=${TransactionType.EXPENSE.name}&loanId=$id"
+        FinancialItemKind.RECEIVABLE -> "add?type=${TransactionType.INCOME.name}&loanId=$id"
+    }
     const val AI = "ai"
     const val SETTINGS = "settings"
     const val SEARCH = "search"

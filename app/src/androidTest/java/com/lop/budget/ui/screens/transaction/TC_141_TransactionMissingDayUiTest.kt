@@ -38,6 +38,7 @@ import com.lop.budget.data.local.entity.RecurringSeriesEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.LoanRepository
+import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
@@ -465,7 +466,7 @@ class TransactionMissingDayUiTest {
                         @Suppress("UNCHECKED_CAST")
                         override fun <T : ViewModel> create(modelClass: Class<T>): T = TransactionEditViewModel(
                             accountRepo, observeCategories, transactionRepo, observeTags, createTag, deleteTag,
-                            goalRepo, loanRepo, createTransaction, editTransaction, observeDetail, proposals,
+                            ObserveFinancialItemListUseCase(goalRepo, loanRepo), createTransaction, editTransaction, observeDetail, proposals,
                             saveFromProposal, settings, SavedStateHandle(state), appContext, clock,
                         ) as T
                     },

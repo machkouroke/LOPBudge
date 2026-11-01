@@ -1,5 +1,7 @@
 package com.lop.budget.domain.usecase.financial
 
+import com.lop.budget.data.local.entity.GoalEntity
+import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.domain.model.FinancialItemKind
@@ -29,9 +31,19 @@ data class FinancialItemSummary(
     val targetCents: Long,
     /** `remainingCents` et `percent` nuls : non calculable, affiché « — » (CA-03, I-3). */
     val progress: ProgressView,
-    /** ACTIVE ou COMPLETED : un archivé n'est jamais rendu. */
+    /**
+     * ACTIVE ou COMPLETED dans une liste : un archivé n'y est jamais rendu. ARCHIVED n'apparaît que
+     * pour un rattachement relu par identifiant ([ObserveFinancialItemListUseCase.linkedGoal]).
+     */
     val status: ItemStatus,
 )
+
+/**
+ * Élément proposé au rattachement d'une transaction (LOP-5) : la ligne de Suivi et, pour un prêt, sa
+ * contrepartie, que le sélecteur affiche sous le nom (CA-01). Les listes de Suivi ne montrent pas la
+ * contrepartie : elle reste hors de [FinancialItemSummary].
+ */
+data class LinkableItem(val summary: FinancialItemSummary, val counterparty: String?)
 
 /** Listes de Suivi par type (LOP-22). Lectures seules : aucune écriture, aucun recalcul (I-1). */
 @Singleton
@@ -43,26 +55,39 @@ class ObserveFinancialItemListUseCase @Inject constructor(
      * Éléments non archivés de [kind], terminés compris. DEBT = prêts BORROWED, RECEIVABLE = prêts
      * LENT : jamais une créance parmi les dettes (CA-02).
      */
-    operator fun invoke(kind: FinancialItemKind): Flow<List<FinancialItemSummary>> = when (kind) {
-        FinancialItemKind.GOAL -> goalRepo.observeActive().map { goals ->
-            goals.map {
-                FinancialItemSummary(
-                    kind, it.id, it.name, it.icon, it.colorArgb, it.targetAmountCents,
-                    progressView(it.savedAmountCents, it.targetAmountCents), it.status,
-                )
-            }
-        }
-        FinancialItemKind.DEBT -> loans(kind, LoanDirection.BORROWED)
-        FinancialItemKind.RECEIVABLE -> loans(kind, LoanDirection.LENT)
+    operator fun invoke(kind: FinancialItemKind): Flow<List<FinancialItemSummary>> =
+        linkable(kind).map { items -> items.map { it.summary } }
+
+    /** Nouveaux choix de rattachement (LOP-5, CA-01, P-2) : les éléments de [invoke], contrepartie comprise. */
+    fun linkable(kind: FinancialItemKind): Flow<List<LinkableItem>> = when (kind) {
+        FinancialItemKind.GOAL -> goalRepo.observeActive().map { it.map(::linkable) }
+        FinancialItemKind.DEBT -> loanRepo.observeActiveByDirection(LoanDirection.BORROWED).map { it.map(::linkable) }
+        FinancialItemKind.RECEIVABLE -> loanRepo.observeActiveByDirection(LoanDirection.LENT).map { it.map(::linkable) }
     }
 
-    private fun loans(kind: FinancialItemKind, direction: LoanDirection) =
-        loanRepo.observeActiveByDirection(direction).map { loans ->
-            loans.map {
-                FinancialItemSummary(
-                    kind, it.id, it.name, it.icon, it.colorArgb, it.totalAmountCents,
-                    progressView(it.repaidAmountCents, it.totalAmountCents), it.status,
-                )
-            }
-        }
+    /**
+     * Objectif rattaché, archivé compris : un lien enregistré reste lisible (LOP-5, CA-02, P-2).
+     * `null` si l'objectif n'existe plus.
+     */
+    fun linkedGoal(id: Long): Flow<LinkableItem?> = goalRepo.observeById(id).map { it?.let(::linkable) }
+
+    /** Prêt rattaché, archivé compris ; son type suit sa direction. `null` s'il n'existe plus. */
+    fun linkedLoan(id: Long): Flow<LinkableItem?> = loanRepo.observeById(id).map { it?.let(::linkable) }
+
+    private fun linkable(goal: GoalEntity) = LinkableItem(
+        FinancialItemSummary(
+            FinancialItemKind.GOAL, goal.id, goal.name, goal.icon, goal.colorArgb, goal.targetAmountCents,
+            progressView(goal.savedAmountCents, goal.targetAmountCents), goal.status,
+        ),
+        counterparty = null,
+    )
+
+    private fun linkable(loan: LoanEntity) = LinkableItem(
+        FinancialItemSummary(
+            if (loan.direction == LoanDirection.BORROWED) FinancialItemKind.DEBT else FinancialItemKind.RECEIVABLE,
+            loan.id, loan.name, loan.icon, loan.colorArgb, loan.totalAmountCents,
+            progressView(loan.repaidAmountCents, loan.totalAmountCents), loan.status,
+        ),
+        counterparty = loan.counterpartyName?.takeIf(String::isNotBlank),
+    )
 }

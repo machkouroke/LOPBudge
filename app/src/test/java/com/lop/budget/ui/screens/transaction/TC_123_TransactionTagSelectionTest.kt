@@ -11,6 +11,8 @@ import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.LoanRepository
+import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
+import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
@@ -210,7 +212,8 @@ class TransactionTagSelectionTest {
         every { accountRepo.observeAll() } returns flowOf(listOf(primaryAccount, secondaryAccount))
         every { observeTagsUseCase() } returns flowOf(referentialTags)
         every { goalRepo.observeActive() } returns flowOf(emptyList())
-        every { loanRepo.observeActive() } returns flowOf(emptyList())
+        every { loanRepo.observeActiveByDirection(LoanDirection.BORROWED) } returns flowOf(emptyList())
+        every { loanRepo.observeActiveByDirection(LoanDirection.LENT) } returns flowOf(emptyList())
         every { settings.currency } returns flowOf("EUR")
 
         // Lectures d'initialisation, exclues du bilan de `confirmVerified`.
@@ -220,7 +223,8 @@ class TransactionTagSelectionTest {
             categoryRepo.observeByType(any())
             accountRepo.observeAll()
             goalRepo.observeActive()
-            loanRepo.observeActive()
+            loanRepo.observeActiveByDirection(LoanDirection.BORROWED)
+            loanRepo.observeActiveByDirection(LoanDirection.LENT)
             context.getString(any())
             settings.currency
         }
@@ -588,7 +592,7 @@ class TransactionTagSelectionTest {
     private fun createSut(savedState: Map<String, Any?>): TransactionEditViewModel =
         TransactionEditViewModel(
             accountRepo, ObserveCategoriesUseCase(categoryRepo), transactionRepo,
-            observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
+            observeTagsUseCase, createTagUseCase, deleteTagUseCase, ObserveFinancialItemListUseCase(goalRepo, loanRepo),
             createTransactionUseCase, editTransactionWithScopeUseCase,
             observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,
             settings, SavedStateHandle(savedState), context, clock,

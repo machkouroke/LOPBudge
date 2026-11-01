@@ -238,6 +238,7 @@ fun LopNavHost() {
                                 )
                             },
                             onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
+                            onAddTransaction = { kind, id -> navController.navigate(Routes.addLinked(kind, id)) },
                         )
                     }
 
@@ -416,16 +417,29 @@ fun LopNavHost() {
                                 type = NavType.StringType
                                 nullable = true
                                 defaultValue = TransactionType.EXPENSE.name
+                            },
+                            // LOP-5, CA-07 : lien prérempli depuis le détail d'un élément ; -1 = aucun.
+                            navArgument("goalId") {
+                                type = NavType.LongType
+                                defaultValue = -1L
+                            },
+                            navArgument("loanId") {
+                                type = NavType.LongType
+                                defaultValue = -1L
                             }
                         ),
                         // LOP-172 / CA-03 : saisie rapide depuis le widget ou un raccourci.
                         deepLinks = listOf(
                             navDeepLink { uriPattern = Routes.deepLinkPattern(Routes.ADD) }
                         )
-                    ) {
+                    ) { entry ->
+                        // LOP-5, CA-08 : ouverte depuis le détail d'un élément, la saisie y revient,
+                        // enregistrée ou annulée ; le détail relit la base et montre le calcul à jour.
+                        val fromItemDetail = (entry.arguments?.getLong("goalId") ?: -1L) > 0L ||
+                            (entry.arguments?.getLong("loanId") ?: -1L) > 0L
                         TransactionEditScreen(
                             onDone = { newId ->
-                                if (newId > 0) {
+                                if (newId > 0 && !fromItemDetail) {
                                     navController.navigate(Routes.detail(newId)) {
                                         popUpTo(Routes.HOME)
                                         launchSingleTop = true

@@ -7,15 +7,13 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
-import com.lop.budget.data.local.entity.GoalEntity
-import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.data.repository.AccountRepository
-import com.lop.budget.data.repository.GoalRepository
-import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.EditScope
+import com.lop.budget.domain.model.FinancialItemKind
+import com.lop.budget.domain.model.ItemStatus
 import com.lop.budget.domain.model.MissingDay
 import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
@@ -27,6 +25,8 @@ import com.lop.budget.domain.model.buildEdition
 import com.lop.budget.domain.model.toDaysOfWeekSet
 import com.lop.budget.domain.usecase.category.ObserveCategoriesUseCase
 import com.lop.budget.domain.usecase.detection.ProposalRepository
+import com.lop.budget.domain.usecase.financial.LinkableItem
+import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
 import com.lop.budget.domain.usecase.tag.CreateTagUseCase
 import com.lop.budget.domain.usecase.tag.DeleteTagUseCase
 import com.lop.budget.domain.usecase.tag.ObserveTagsUseCase
@@ -46,8 +46,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -88,7 +92,7 @@ data class TransactionForm(
  * L'erreur n'est pas un champ de [TransactionForm] : elle ne doit pas entrer dans le
  * dirty-check de `hasUnsavedChanges()`, qui compare le formulaire complet.
  */
-enum class TransactionFormField { AMOUNT, CATEGORY, ACCOUNT, TAG_NAME }
+enum class TransactionFormField { AMOUNT, CATEGORY, ACCOUNT, TAG_NAME, GOAL, LOAN }
 
 /**
  * Avertissement de jour absent en attente de décision (CA-01 / CA-02 de LOP-88).
@@ -130,8 +134,7 @@ class TransactionEditViewModel @Inject constructor(
     observeTagsUseCase: ObserveTagsUseCase,
     private val createTagUseCase: CreateTagUseCase,
     private val deleteTagUseCase: DeleteTagUseCase,
-    goalRepo: GoalRepository,
-    loanRepo: LoanRepository,
+    private val observeFinancialItems: ObserveFinancialItemListUseCase,
     private val createTransactionUseCase: CreateTransactionUseCase,
     private val editTransactionWithScopeUseCase: EditTransactionWithScopeUseCase,
     private val observeTransactionDetailUseCase: ObserveTransactionDetailUseCase,
@@ -194,6 +197,13 @@ class TransactionEditViewModel @Inject constructor(
             ?.let { raw -> runCatching { TransactionType.valueOf(raw) }.getOrNull() }
             ?: TransactionType.EXPENSE
 
+    /**
+     * CA-07 de LOP-5 : lien prérempli quand la saisie s'ouvre depuis le détail d'un élément, avec le
+     * type proposé par la route (P-3). Absent, ou ≤ 0, il ne préremplit rien.
+     */
+    private val initialGoalId: Long? = savedStateHandle.get<Long>("goalId")?.takeIf { it > 0L }
+    private val initialLoanId: Long? = savedStateHandle.get<Long>("loanId")?.takeIf { it > 0L }
+
     val isEditing: Boolean get() = editingTransactionId != null && editingTransactionId != 0L
 
     /**
@@ -227,7 +237,9 @@ class TransactionEditViewModel @Inject constructor(
                 isEditing -> loadTransaction(editingTransactionId!!)
                 editingProposalId != null -> loadProposal(editingProposalId)
                 else -> {
-                    update { f -> f.copy(type = initialType) }
+                    // Préremplissage avant markLoaded() : ouvrir puis quitter sans rien changer
+                    // n'est pas une saisie, et n'écrit rien (I-2, CA-07 de LOP-5).
+                    update { f -> f.copy(type = initialType, linkedGoalId = initialGoalId, linkedLoanId = initialLoanId) }
                     // Nouvelle transaction : présélectionner le premier compte disponible.
                     val accounts = accountRepo.observeAll().firstOrNull().orEmpty()
                     accounts.firstOrNull()?.let { update { f -> f.copy(accountId = it.id) } }
@@ -354,11 +366,28 @@ class TransactionEditViewModel @Inject constructor(
     val tags: StateFlow<List<TagEntity>> = observeTagsUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val goals: StateFlow<List<GoalEntity>> = goalRepo.observeActive()
+    // Nouveaux choix : non archivés, terminés compris (CA-01, P-2), lus par le use case des listes
+    // de Suivi plutôt que par les repositories.
+    val goals: StateFlow<List<LinkableItem>> = observeFinancialItems.linkable(FinancialItemKind.GOAL)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val debts: StateFlow<List<LoanEntity>> = loanRepo.observeActive()
+    val debts: StateFlow<List<LinkableItem>> = observeFinancialItems.linkable(FinancialItemKind.DEBT)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val receivables: StateFlow<List<LinkableItem>> = observeFinancialItems.linkable(FinancialItemKind.RECEIVABLE)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
+     * CA-02 de LOP-5 : l'élément rattaché tel qu'il est en base, archivé compris, pour l'afficher même
+     * hors des nouveaux choix. `null` sans lien, ou si l'élément n'existe plus.
+     */
+    val linkedGoal: StateFlow<LinkableItem?> = _form.map { it.linkedGoalId }.distinctUntilChanged()
+        .flatMapLatest { id -> id?.let(observeFinancialItems::linkedGoal) ?: flowOf(null) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val linkedLoan: StateFlow<LinkableItem?> = _form.map { it.linkedLoanId }.distinctUntilChanged()
+        .flatMapLatest { id -> id?.let(observeFinancialItems::linkedLoan) ?: flowOf(null) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     /**
      * CA-01 : devise de l'application, affichée par le champ montant. Donnée d'affichage
@@ -404,8 +433,14 @@ class TransactionEditViewModel @Inject constructor(
     // Choisir un objectif ne retire plus le prêt, ni l'inverse : les deux rattachements sont deux
     // suivis distincts et se cumulent (P-1 de LOP-80). Un encaissement peut diminuer une créance
     // et alimenter un objectif d'épargne — l'écran remettait à zéro l'un des deux à chaque choix.
-    fun setGoal(id: Long?) = update { it.copy(linkedGoalId = id) }
-    fun setDebt(id: Long?) = update { it.copy(linkedLoanId = id) }
+    fun setGoal(id: Long?) {
+        update { it.copy(linkedGoalId = id) }
+        clearFieldError(TransactionFormField.GOAL)
+    }
+    fun setDebt(id: Long?) {
+        update { it.copy(linkedLoanId = id) }
+        clearFieldError(TransactionFormField.LOAN)
+    }
     fun setInterval(interval: Int) = update { it.copy(interval = interval) }
     fun setEndDate(date: Long?) = update { it.copy(endDate = date, maxOccurrences = null) }
     fun setMaxOccurrences(count: Int?) = update { it.copy(maxOccurrences = count, endDate = null) }
@@ -547,6 +582,13 @@ class TransactionEditViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
+                // CA-05 de LOP-5 : un nouveau choix devenu indisponible arrête la tentative avant
+                // toute écriture ; le brouillon reste tel quel pour être corrigé.
+                val linkErrors = unavailableLinks(f)
+                if (linkErrors.isNotEmpty()) {
+                    _fieldErrors.value = linkErrors
+                    return@launch
+                }
                 // CA-01 de LOP-88 : la décision précède l'écriture. Un avertissement publié
                 // arrête la tentative ici, avant toute sauvegarde.
                 val prompt = if (missingDayDecided) null else missingDayPrompt(f)
@@ -569,6 +611,26 @@ class TransactionEditViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * CA-05 de LOP-5 : un **nouveau choix** — lien ajouté ou remplacé par rapport au lien enregistré —
+     * est refusé s'il n'existe plus ou s'il est archivé. Le lien enregistré est celui chargé en
+     * édition ; en création il n'y en a aucun, pas même celui prérempli depuis le détail. Un lien
+     * enregistré et inchangé n'est pas relu : archivé, il reste conservable (P-2).
+     */
+    private suspend fun unavailableLinks(f: TransactionForm): Map<TransactionFormField, Int> = buildMap {
+        val stored = initialForm.takeIf { isEditing }
+        val goalId = f.linkedGoalId
+        if (goalId != null && goalId != stored?.linkedGoalId &&
+            observeFinancialItems.linkedGoal(goalId).first().isUnavailable()
+        ) put(TransactionFormField.GOAL, R.string.tx_error_goal_unavailable)
+        val loanId = f.linkedLoanId
+        if (loanId != null && loanId != stored?.linkedLoanId &&
+            observeFinancialItems.linkedLoan(loanId).first().isUnavailable()
+        ) put(TransactionFormField.LOAN, R.string.tx_error_loan_unavailable)
+    }
+
+    private fun LinkableItem?.isUnavailable() = this == null || summary.status == ItemStatus.ARCHIVED
 
     /**
      * CA-01 de LOP-88 : la règle soumise rencontre-t-elle un jour absent ? La réponse vient du use

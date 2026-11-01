@@ -15,6 +15,8 @@ import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.LoanRepository
+import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
+import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TagRepository
 import com.lop.budget.data.repository.TransactionRepository
@@ -251,14 +253,16 @@ class TransactionTagCreationTest {
             flowOf(listOf(expenseCategory))
         every { accountRepo.observeAll() } returns flowOf(listOf(onlyAccount))
         every { goalRepo.observeActive() } returns flowOf(emptyList())
-        every { loanRepo.observeActive() } returns flowOf(emptyList())
+        every { loanRepo.observeActiveByDirection(LoanDirection.BORROWED) } returns flowOf(emptyList())
+        every { loanRepo.observeActiveByDirection(LoanDirection.LENT) } returns flowOf(emptyList())
         every { settings.currency } returns flowOf("EUR")
 
         excludeRecords {
             categoryRepo.observeByType(any())
             accountRepo.observeAll()
             goalRepo.observeActive()
-            loanRepo.observeActive()
+            loanRepo.observeActiveByDirection(LoanDirection.BORROWED)
+            loanRepo.observeActiveByDirection(LoanDirection.LENT)
             context.getString(any())
             settings.currency
         }
@@ -668,7 +672,7 @@ class TransactionTagCreationTest {
 
     private fun createSutInAdd(): TransactionEditViewModel = TransactionEditViewModel(
         accountRepo, ObserveCategoriesUseCase(categoryRepo), transactionRepo,
-        observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
+        observeTagsUseCase, createTagUseCase, deleteTagUseCase, ObserveFinancialItemListUseCase(goalRepo, loanRepo),
         createTransactionUseCase, editTransactionWithScopeUseCase,
         observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,
         settings, SavedStateHandle(mapOf("type" to TransactionType.EXPENSE.name)), context, clock,

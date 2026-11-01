@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringArrayResource
+import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -56,12 +57,12 @@ import com.lop.budget.BuildConfig
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
 import com.lop.budget.data.local.entity.CategoryEntity
-import com.lop.budget.data.local.entity.LoanEntity
-import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.domain.model.RecurrenceFrequency
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.model.ItemStatus
+import com.lop.budget.domain.usecase.financial.LinkableItem
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FilledField
@@ -166,16 +167,32 @@ fun MainSection(
     }
 }
 
+/** CA-02 de LOP-5 : nom de l'élément rattaché, suivi de « (archivé) » s'il l'est. */
+@Composable
+internal fun linkLabel(item: LinkableItem): String =
+    if (item.summary.status == ItemStatus.ARCHIVED) stringResource(R.string.tx_link_archived, item.summary.name)
+    else item.summary.name
+
+/** Sans lien : [none] ; lien vers un élément qui n'existe plus : « Élément indisponible » (CA-05). */
+@Composable
+private fun linkValue(id: Long?, item: LinkableItem?, @StringRes none: Int): String = when {
+    id == null -> stringResource(none)
+    item == null -> stringResource(R.string.tx_link_unavailable)
+    else -> linkLabel(item)
+}
+
 @Composable
 fun ClassificationSection(
     form: TransactionForm,
     categories: List<CategoryEntity>,
     accounts: List<AccountEntity>,
-    goals: List<GoalEntity>,
-    debts: List<LoanEntity>,
+    linkedGoal: LinkableItem?,
+    linkedLoan: LinkableItem?,
     tags: List<TagEntity>,
     categoryError: String? = null,
     accountError: String? = null,
+    goalError: String? = null,
+    loanError: String? = null,
     onOpenCategory: () -> Unit,
     onOpenAccount: () -> Unit,
     onOpenGoal: () -> Unit,
@@ -206,22 +223,28 @@ fun ClassificationSection(
                 modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_ACCOUNT)
             )
 
+            // CA-01 de LOP-5 violé, reconduit tel quel : les deux choix ne sont proposés que pour une
+            // dépense, alors qu'un revenu se rattache aussi (contribution d'objectif, remboursement de
+            // créance, P-3). Signalé en ANO présumée LOP-224 ; sa correction n'appartient pas à la
+            // mise en conformité.
             if (form.type == TransactionType.EXPENSE) {
-                val selectedGoal = goals.find { it.id == form.linkedGoalId }
+                // CA-02 de LOP-5 : le lien est relu par identifiant, archivé compris ; il n'est plus
+                // cherché parmi les nouveaux choix, qui excluent les archivés.
                 SelectorRow(
                     label = stringResource(R.string.tx_linked_goal_label),
-                    value = selectedGoal?.name ?: stringResource(R.string.tx_no_goal_linked),
-                    icon = selectedGoal?.let { IconMapper.get(it.icon) } ?: Icons.Default.Add,
+                    value = linkValue(form.linkedGoalId, linkedGoal, R.string.tx_no_goal_linked),
+                    icon = linkedGoal?.let { IconMapper.get(it.summary.icon) } ?: Icons.Default.Add,
                     onClick = onOpenGoal,
+                    errorMessage = goalError,
                     modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_GOAL)
                 )
 
-                val selectedDebt = debts.find { it.id == form.linkedLoanId }
                 SelectorRow(
                     label = stringResource(R.string.tx_linked_debt_label),
-                    value = selectedDebt?.name ?: stringResource(R.string.tx_no_debt_linked),
-                    icon = selectedDebt?.let { IconMapper.get(it.icon) } ?: Icons.Default.Add,
+                    value = linkValue(form.linkedLoanId, linkedLoan, R.string.tx_no_debt_linked),
+                    icon = linkedLoan?.let { IconMapper.get(it.summary.icon) } ?: Icons.Default.Add,
                     onClick = onOpenDebt,
+                    errorMessage = loanError,
                     modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_DEBT)
                 )
             }

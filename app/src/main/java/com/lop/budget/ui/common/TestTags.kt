@@ -119,6 +119,8 @@ object TestTags {
     const val PICKER_ACCOUNT_SHEET = "picker.account.sheet"
     const val PICKER_CATEGORY_SHEET = "picker.category.sheet"
     const val PICKER_CATEGORY_NONE = "picker.category.none"
+    /** En-tête de groupe d'un sélecteur, porté par son libellé (« Dettes », « Créances » : CA-01 de LOP-5). */
+    const val PICKER_GROUP_HEADER = "picker.group.header"
 
     // Transaction Edit
     const val TX_EDIT_FIELD_AMOUNT = "transaction.edit.field.amount"
@@ -197,6 +199,8 @@ object TestTags {
     const val FINANCIAL_DETAIL_RETRY = "financial.detail.retry"
     const val FINANCIAL_DETAIL_NOT_FOUND = "financial.detail.notfound"
     const val FINANCIAL_DETAIL_EDIT = "financial.detail.edit"
+    /** « Ajouter une contribution » ou « Enregistrer un remboursement » (CA-07 de LOP-5). */
+    const val FINANCIAL_DETAIL_ADD_TRANSACTION = "financial.detail.add_transaction"
 
     /**
      * Préfixe d'un champ, suffixé `_<clé>` : name, kind, status, progress, remaining, percent,

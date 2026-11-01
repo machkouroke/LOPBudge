@@ -9,8 +9,11 @@ import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
+import com.lop.budget.data.local.entity.GoalEntity
 import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.LoanRepository
+import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
+import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.model.AccountType
@@ -105,7 +108,8 @@ class TransactionEditViewModelTest {
         every { accountRepo.observeAll() } returns flowOf(emptyList())
         every { observeTagsUseCase() } returns flowOf(emptyList())
         every { goalRepo.observeActive() } returns flowOf(emptyList())
-        every { loanRepo.observeActive() } returns flowOf(emptyList())
+        every { loanRepo.observeActiveByDirection(LoanDirection.BORROWED) } returns flowOf(emptyList())
+        every { loanRepo.observeActiveByDirection(LoanDirection.LENT) } returns flowOf(emptyList())
         // CA-01 : le VM lit la devise applicative à l'init pour l'exposer au champ montant.
         // Hors périmètre de ce ticket (couvert par TC-80 A-01/A-02) : simple stub d'init.
         every { settings.currency } returns flowOf("EUR")
@@ -116,7 +120,8 @@ class TransactionEditViewModelTest {
             accountRepo.observeAll()
             observeTagsUseCase()
             goalRepo.observeActive()
-            loanRepo.observeActive()
+            loanRepo.observeActiveByDirection(LoanDirection.BORROWED)
+            loanRepo.observeActiveByDirection(LoanDirection.LENT)
             context.getString(any())
             settings.currency
         }
@@ -139,7 +144,7 @@ class TransactionEditViewModelTest {
         
         return TransactionEditViewModel(
             accountRepo, ObserveCategoriesUseCase(categoryRepo), transactionRepo,
-            observeTagsUseCase, createTagUseCase, deleteTagUseCase, goalRepo, loanRepo,
+            observeTagsUseCase, createTagUseCase, deleteTagUseCase, ObserveFinancialItemListUseCase(goalRepo, loanRepo),
             createTransactionUseCase, editTransactionWithScopeUseCase,
             observeTransactionDetailUseCase, proposals, saveTransactionFromProposalUseCase,
             settings, SavedStateHandle(map), context, clock
@@ -389,6 +394,12 @@ class TransactionEditViewModelTest {
         sut.setTitle("New")
         sut.setAmountRaw("123.45")
         sut.setCategory(99L)
+        // Donnée de départ (LOP-5, CA-05) : un nouveau choix désigne un objectif existant et non
+        // archivé ; sa relecture avant écriture n'est pas l'objet de ce cas.
+        every { goalRepo.observeById(8L) } returns flowOf(
+            GoalEntity(id = 8L, name = "Vacances", targetAmountCents = 150_000L, colorArgb = 0xFF2E7D32.toInt(), icon = "savings")
+        )
+        excludeRecords { goalRepo.observeById(8L) }
         sut.setGoal(8L)
 
         val editionSlot = slot<TransactionEdition>()

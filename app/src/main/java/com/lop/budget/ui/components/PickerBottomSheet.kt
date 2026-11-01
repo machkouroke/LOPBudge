@@ -29,13 +29,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lop.budget.BuildConfig
+import com.lop.budget.ui.common.TestTags
 
 /**
  * Feuille de sélection générique : une liste d'options dont une seule est retenue.
@@ -71,6 +74,8 @@ fun <T> PickerBottomSheet(
     itemTint: ((T) -> Color?)? = null,
     itemEmoji: ((T) -> String?)? = null,
     itemSupportingText: ((T) -> String?)? = null,
+    /** Libellé du groupe de chaque option ; un en-tête précède la première option de chaque groupe. */
+    itemGroup: ((T) -> String?)? = null,
     searchQuery: String? = null,
     onSearchQueryChange: (String) -> Unit = {},
     searchPlaceholder: String? = null,
@@ -164,16 +169,32 @@ fun <T> PickerBottomSheet(
                     val selected = isSelected(item)
                     val label = itemLabel(item)
                     val displayLabel = if (selected && BuildConfig.DEBUG) "$label ✅" else label
+                    val group = itemGroup?.invoke(item)
 
-                    ItemRow(
-                        label = displayLabel,
-                        isSelected = selected,
-                        onClick = { onSelect(item) },
-                        icon = itemIcon?.invoke(item),
-                        tint = itemTint?.invoke(item),
-                        emoji = itemEmoji?.invoke(item),
-                        supportingText = itemSupportingText?.invoke(item),
-                    )
+                    // L'en-tête est composé avec la première option de son groupe, dans la même
+                    // entrée de liste : les index restent ceux des options, dont dépend le
+                    // défilement initial vers la ligne sélectionnée.
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (group != null && (index == 0 || itemGroup(items[index - 1]) != group)) {
+                            Text(
+                                text = group,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .semantics { heading() }
+                                    .testTag(TestTags.PICKER_GROUP_HEADER),
+                            )
+                        }
+                        ItemRow(
+                            label = displayLabel,
+                            isSelected = selected,
+                            onClick = { onSelect(item) },
+                            icon = itemIcon?.invoke(item),
+                            tint = itemTint?.invoke(item),
+                            emoji = itemEmoji?.invoke(item),
+                            supportingText = itemSupportingText?.invoke(item),
+                        )
+                    }
                 }
             }
         }

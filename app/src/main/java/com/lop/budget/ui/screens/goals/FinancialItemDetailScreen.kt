@@ -15,11 +15,13 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,13 +55,15 @@ import java.util.Locale
 
 /**
  * Détail d'un objectif, d'une dette ou d'une créance (LOP-203). Consultation seule : aucun champ
- * n'est éditable (CA-03) ; « Modifier » ouvre le formulaire existant (P-4).
+ * n'est éditable (CA-03) ; « Modifier » ouvre le formulaire existant (P-4). LOP-5 y ajoute la saisie
+ * d'une contribution ou d'un remboursement (CA-07, CA-08).
  */
 @Composable
 fun FinancialItemDetailScreen(
     onBack: () -> Unit,
     onEdit: (FinancialItemKind, Long) -> Unit,
     onOpenTransaction: (Long) -> Unit,
+    onAddTransaction: (FinancialItemKind, Long) -> Unit,
     vm: FinancialItemDetailViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -102,7 +106,7 @@ fun FinancialItemDetailScreen(
                 )
             }
 
-            is FinancialItemDetailUiState.Loaded -> detailContent(s.detail, s.currency, onEdit, onOpenTransaction)
+            is FinancialItemDetailUiState.Loaded -> detailContent(s.detail, s.currency, onEdit, onOpenTransaction, onAddTransaction)
         }
     }
 }
@@ -112,6 +116,7 @@ private fun LazyListScope.detailContent(
     currency: String,
     onEdit: (FinancialItemKind, Long) -> Unit,
     onOpenTransaction: (Long) -> Unit,
+    onAddTransaction: (FinancialItemKind, Long) -> Unit,
 ) {
     val color = Color(d.colorArgb)
 
@@ -151,6 +156,24 @@ private fun LazyListScope.detailContent(
             Icon(Icons.Default.Edit, null)
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.edit))
+        }
+    }
+
+    // CA-07 / CA-08 de LOP-5 : ouvre la saisie normale, préremplie ; jamais sur un archivé.
+    if (d.status != ItemStatus.ARCHIVED) item {
+        OutlinedButton(
+            onClick = { onAddTransaction(d.kind, d.id) },
+            modifier = Modifier.fillMaxWidth().testTag(TestTags.FINANCIAL_DETAIL_ADD_TRANSACTION),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Icon(Icons.Default.Add, null)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                stringResource(
+                    if (d.kind == FinancialItemKind.GOAL) R.string.financial_detail_add_contribution
+                    else R.string.financial_detail_add_repayment
+                )
+            )
         }
     }
 

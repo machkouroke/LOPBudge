@@ -281,9 +281,17 @@
     <string name="financial_no_linked_transactions">Aucune transaction liée</string>
 
     <string name="tx_linked_goal_label">Objectif lié</string>
-    <string name="tx_linked_debt_label">Dette liée</string>
+    <string name="tx_linked_debt_label">Prêt lié</string>
     <string name="tx_no_goal_linked">Aucun objectif lié</string>
-    <string name="tx_no_debt_linked">Aucune dette liée</string>
+    <string name="tx_no_debt_linked">Aucun prêt lié</string>
+    <!-- LOP-5 : rattachement d'une transaction (CA-01, CA-02, CA-05, CA-07) -->
+    <string name="tx_link_none">Sans rattachement</string>
+    <string name="tx_link_archived">%1$s (archivé)</string>
+    <string name="tx_link_unavailable">Élément indisponible</string>
+    <string name="tx_error_goal_unavailable">Cet objectif n\'est plus disponible</string>
+    <string name="tx_error_loan_unavailable">Ce prêt n\'est plus disponible</string>
+    <string name="financial_detail_add_contribution">Ajouter une contribution</string>
+    <string name="financial_detail_add_repayment">Enregistrer un remboursement</string>
 
     <!-- Accounts -->
     <string name="accounts_title">Comptes</string>

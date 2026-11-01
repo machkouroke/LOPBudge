@@ -360,11 +360,14 @@ class TrackingSectionUiTest {
         j.expect("CA-08 : détail de R-F8, aucun formulaire", 0, j.count(TestTags.SCREEN_EDIT))
         val violations = mutableListOf<String>()
         if (stay) {
-            // Seule pause fixe de la classe : elle teste l'expiration de WhileSubscribed(5000).
-            val until = SystemClock.uptimeMillis() + 6_000
-            rule.waitUntil(8_000) { SystemClock.uptimeMillis() >= until }
+            // Horloge figée dès le séjour : waitUntil n'avance alors plus l'horloge à chaque tour
+            // (environ 600 images forcées en 6 s), ce qui figeait l'émulateur de la CI avant sa mort
+            // (runs 41211436928 et 41316185278). WhileSubscribed(5000) compte en temps réel.
             rule.mainClock.autoAdvance = false
             try {
+                // Seule pause fixe de la classe : elle teste l'expiration de WhileSubscribed(5000).
+                val until = SystemClock.uptimeMillis() + 6_000
+                rule.waitUntil(8_000) { SystemClock.uptimeMillis() >= until }
                 rule.onNode(hasTestTag(TestTags.BTN_BACK) and j.inside(TestTags.SCREEN_FINANCIAL_DETAIL))
                     .performSemanticsAction(SemanticsActions.OnClick)
                 var frame = 0
