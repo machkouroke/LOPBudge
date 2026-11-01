@@ -77,6 +77,8 @@ import org.junit.Test
  * V-07 est **rouge** tant que l'anomalie n'est pas corrigée ; l'oracle est conservé. Message réel :
  * `V-07 — CA-01 : chargement ou liste vide entre l'ancienne et la nouvelle liste. … but was:
  * <[{goals=Loading, debts=Loading, receivables=Loading}]>`. TC-162 U-01 b2 vise la même cause.
+ * **Corrigée le 31 octobre 2026** (la lecture qui redémarre part de la liste déjà chargée) : V-07
+ * rouge sur `c7e82123`, vert après correction ; TC-164 9 sur 9, suite JVM 898 sur 898.
  *
  * ## Résultats — 31 octobre 2026, JVM, production de `c7e82123`
  * 8 verts, 1 rouge métier (V-07, LOP-222). Preuves de sensibilité des verts : production copiée,

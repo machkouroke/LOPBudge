@@ -152,6 +152,8 @@ import javax.inject.Inject
  * ## ANO connues
  * LOP-222 — chargement rejoué au retour après plus de 5 s (TC-164 V-07) ; U-01 b2 vise la même cause.
  * LOP-223 — la dernière carte reste sous la barre du bas en fin de défilement ; U-03 P rouge.
+ * Toutes deux **corrigées le 31 octobre 2026** : U-03 P rouge sur `c7e82123`, vert après correction ;
+ * TC-162 53 sur 53 sur SM-S938B (un passage intermédiaire, téléphone verrouillé en cours, écarté).
  *
  * ## Résultats — 31 octobre 2026, SM-S938B (Android, API 37, fr-FR), production de `c7e82123`
  * Premier passage : 43 verts sur 52, 9 rouges **de test** : témoin d'ouverture du jeu P (U-01 b1/b2/b3),

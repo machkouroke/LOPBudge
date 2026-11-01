@@ -52,9 +52,9 @@ class GoalsViewModel @Inject constructor(
 
     val uiState: StateFlow<GoalsUiState> = retries.flatMapLatest {
         combine(
-            observeList(FinancialItemKind.GOAL).asListLoad(),
-            observeList(FinancialItemKind.DEBT).asListLoad(),
-            observeList(FinancialItemKind.RECEIVABLE).asListLoad(),
+            observeList(FinancialItemKind.GOAL).asListLoad { uiState.value.goals },
+            observeList(FinancialItemKind.DEBT).asListLoad { uiState.value.debts },
+            observeList(FinancialItemKind.RECEIVABLE).asListLoad { uiState.value.receivables },
             settings.currency,
         ) { goals, debts, receivables, currency -> GoalsUiState(currency, goals, debts, receivables) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GoalsUiState())
@@ -63,10 +63,11 @@ class GoalsViewModel @Inject constructor(
     fun retry() = retries.update { it + 1 }
 }
 
-// Reconduit tel quel par l'étape 0 de P-10 : `onStart` est rejoué à chaque reprise de collecte
-// (retour après plus de 5 s), ce qui peut contredire CA-01 (contexte de liste conservé au retour).
-// Jugé par TC-164 V-07 et TC-162 U-01 b2.
-private fun <T> Flow<List<T>>.asListLoad(): Flow<ListLoad<T>> =
+/**
+ * Une lecture qui redémarre (retour après plus de 5 s, Réessayer) part de la liste déjà chargée, qui
+ * reste affichée jusqu'au nouveau résultat (CA-01, LOP-222) ; sans liste chargée, du chargement (I-3).
+ */
+private fun <T> Flow<List<T>>.asListLoad(previous: () -> ListLoad<T>): Flow<ListLoad<T>> =
     map<List<T>, ListLoad<T>> { ListLoad.Loaded(it) }
-        .onStart { emit(ListLoad.Loading) }
+        .onStart { emit(previous().takeIf { it is ListLoad.Loaded } ?: ListLoad.Loading) }
         .catch { emit(ListLoad.Error) }

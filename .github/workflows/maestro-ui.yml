@@ -87,12 +87,19 @@ jobs:
           done
           exit 1
 
+      # Memoire et charge de l'hote toutes les 5 s, puis logcat de l'emulateur (scripts/ci_diag.sh) :
+      # de quoi comprendre une mort silencieuse de l'emulateur.
+      - name: Start emulator diagnostics
+        run: bash scripts/ci_diag.sh start
+
       - name: Run Maestro Tests
+        id: run
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
-        env:
+        env: &maestro-env
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "600000"
           MAESTRO_CLI_NO_ANALYTICS: "true"
-        with:
+        with: &maestro-emulator
           api-level: 36
           target: google_apis
           arch: x86_64
@@ -109,9 +116,40 @@ jobs:
           # Emulateur en francais, comme l'app et ses tests (voir scripts/ci_wait_locale.sh).
           script: |
             adb wait-for-device
+            bash scripts/ci_diag.sh logcat
             bash scripts/ci_wait_locale.sh fr-FR
             bash scripts/ci_install_apk.sh app/build/outputs/apk/debug/app-debug.apk
+            mkdir -p build && touch build/ci-tests-started
             bash scripts/ci_run_maestro.sh ${{ matrix.shard }} 1
+
+      # L'emulateur meurt parfois avant le premier flow, pendant le redemarrage du framework que
+      # declenche -change-locale (runs des 30 et 31 octobre 2026 : port 5554 ferme, aucun message).
+      # Un seul nouvel essai, sur un emulateur neuf, et seulement si aucun flow n'a commence :
+      # un echec de test n'est jamais rejoue.
+      - name: Run Maestro Tests (nouvel essai, emulateur mort avant les flows)
+        if: steps.run.outcome == 'failure' && hashFiles('build/ci-tests-started') == ''
+        uses: reactivecircus/android-emulator-runner@v2
+        env: *maestro-env
+        with: *maestro-emulator
+
+      - name: Report Maestro failure
+        if: steps.run.outcome == 'failure' && hashFiles('build/ci-tests-started') != ''
+        run: |
+          echo "::error::Flows Maestro en echec : voir l'etape « Run Maestro Tests »."
+          exit 1
+
+      - name: Collect emulator diagnostics
+        if: always() && (steps.run.outcome == 'failure' || failure())
+        run: bash scripts/ci_diag.sh collect
+
+      - name: Upload emulator diagnostics
+        if: always() && (steps.run.outcome == 'failure' || failure())
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-diagnostics-maestro-${{ matrix.shard }}
+          path: build/ci-diag
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Zip Maestro Results
         if: always()
@@ -173,9 +211,16 @@ jobs:
           done
           exit 1
 
+      # Memoire et charge de l'hote toutes les 5 s, puis logcat de l'emulateur (scripts/ci_diag.sh) :
+      # de quoi comprendre une mort silencieuse de l'emulateur.
+      - name: Start emulator diagnostics
+        run: bash scripts/ci_diag.sh start
+
       - name: Run Instrumented Tests
+        id: tests
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
-        with:
+        with: &instrumented-emulator
           api-level: 36
           target: google_apis
           arch: x86_64
@@ -195,8 +240,36 @@ jobs:
           # réutilise donc pas l'artefact du job `build`, qui ne contient que le premier.
           script: |
             adb wait-for-device
+            bash scripts/ci_diag.sh logcat
             bash scripts/ci_wait_locale.sh fr-FR
+            mkdir -p build && touch build/ci-tests-started
             ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.numShards=3 -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard }}
+
+      # Meme parade que le job Maestro : un seul nouvel essai si l'emulateur est mort avant le
+      # premier test (redemarrage de -change-locale), jamais apres. Un rouge de test reste rouge.
+      - name: Run Instrumented Tests (nouvel essai, emulateur mort avant les tests)
+        if: steps.tests.outcome == 'failure' && hashFiles('build/ci-tests-started') == ''
+        uses: reactivecircus/android-emulator-runner@v2
+        with: *instrumented-emulator
+
+      - name: Report Instrumented failure
+        if: steps.tests.outcome == 'failure' && hashFiles('build/ci-tests-started') != ''
+        run: |
+          echo "::error::Tests instrumentes en echec : voir l'etape « Run Instrumented Tests »."
+          exit 1
+
+      - name: Collect emulator diagnostics
+        if: always() && (steps.tests.outcome == 'failure' || failure())
+        run: bash scripts/ci_diag.sh collect
+
+      - name: Upload emulator diagnostics
+        if: always() && (steps.tests.outcome == 'failure' || failure())
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-diagnostics-instrumented-${{ matrix.shard }}
+          path: build/ci-diag
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Upload Instrumented Test Results
         if: always()

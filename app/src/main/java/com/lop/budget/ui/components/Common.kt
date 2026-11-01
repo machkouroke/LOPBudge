@@ -193,11 +193,20 @@ fun LopSwitch(
  * Un scaffold réutilisable pour les écrans de second niveau (Settings, Edit, etc.).
  * Propose un header OneUI-ish avec un gradient et un divider subtil au scroll.
  */
+/**
+ * Hauteur occupée par la barre de navigation flottante de `LopNavHost` au-dessus de la barre système :
+ * pilule de 64 dp et marge de 12 dp (`FloatingBottomBar`), plus 20 dp sous le tout (`LopNavHost`).
+ */
+private val FloatingNavBarClearance = 64.dp + 12.dp + 20.dp
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LopScreenScaffold(
     title: String,
-    /** `null` : section principale de la barre du bas, sans flèche de retour (P-9 de LOP-22). */
+    /**
+     * `null` : section principale de la barre du bas, sans flèche de retour (P-9 de LOP-22). La liste
+     * réserve alors en bas la place de la barre flottante, que sa fin ne passe jamais dessous (LOP-223).
+     */
     onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
     navigationIcon: ImageVector = Icons.Default.Close,
@@ -288,7 +297,7 @@ fun LopScreenScaffold(
                 start = padding.calculateStartPadding(layoutDirection) + 20.dp,
                 end = padding.calculateEndPadding(layoutDirection) + 20.dp,
                 top = padding.calculateTopPadding() + 20.dp,
-                bottom = padding.calculateBottomPadding() + 20.dp,
+                bottom = padding.calculateBottomPadding() + 20.dp + if (onBack == null) FloatingNavBarClearance else 0.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

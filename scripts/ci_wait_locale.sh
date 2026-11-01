@@ -18,7 +18,20 @@ set -u
 locale="${1:-fr-FR}"
 config="${locale%%-*}-r${locale#*-}" # fr-FR -> fr-rFR, forme de `am get-config`
 
+missing=0
 for _ in $(seq 90); do
+  # Emulateur disparu (port ferme, constate les 30 et 31 octobre 2026) : inutile d'attendre 3 min,
+  # le workflow relance l'etape sur un emulateur neuf. Trois absences de suite, pour ne pas
+  # confondre avec une coupure breve d'adb pendant le redemarrage du framework.
+  if adb get-state > /dev/null 2>&1; then
+    missing=0
+  else
+    missing=$((missing + 1))
+    if [ "$missing" -ge 3 ]; then
+      echo "::error::L'emulateur a disparu pendant le changement de langue."
+      exit 1
+    fi
+  fi
   if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] &&
     adb shell am get-config 2>/dev/null | grep -qE -- "[ -]$config[-,]" &&
     adb shell pm path android > /dev/null 2>&1; then
