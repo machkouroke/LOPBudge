@@ -2,7 +2,9 @@ package com.lop.budget.ui.screens.goals
 
 import android.database.Cursor
 import android.graphics.Bitmap
+import android.os.Build
 import android.os.SystemClock
+import android.util.Log
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -83,6 +85,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assume.assumeFalse
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -341,22 +344,40 @@ class TrackingSectionUiTest {
     @Test fun u01b1_given_creances_scrolled_to_rbas_when_detail_opened_and_back_then_same_tab_and_position() =
         u01b("U-01 b1", stay = false)
 
-    @Test fun u01b2_given_creances_scrolled_to_rbas_when_6s_on_detail_and_back_then_no_loading_nor_empty_frame() =
+    /**
+     * Sauté sur émulateur : trois runs sur trois (41211436928, 41316185278, 41523991814), l'émulateur
+     * de la CI se fige environ 7 s après le début de ce cas, pendant le séjour sur le détail, puis
+     * meurt ; les 52 tests suivants du shard ne tournent plus. Décision utilisateur du 2 novembre
+     * 2026. Le cas reste joué sur le téléphone. L'argument d'instrumentation `tc162ForceB2=true`
+     * (option `diag_u01b2` du workflow) le force sur émulateur pour le diagnostic.
+     */
+    @Test fun u01b2_given_creances_scrolled_to_rbas_when_6s_on_detail_and_back_then_no_loading_nor_empty_frame() {
+        val forced = InstrumentationRegistry.getArguments().getString("tc162ForceB2") == "true"
+        assumeFalse(
+            "U-01 b2 sauté sur émulateur : il fige l'émulateur de la CI (diagnostic : tc162ForceB2=true)",
+            !forced && (Build.HARDWARE == "ranchu" || Build.HARDWARE == "goldfish"),
+        )
         u01b("U-01 b2", stay = true)
+    }
 
     private fun u01b(case: String, stay: Boolean) {
         j.case = case
+        mark(case, "début")
         seedP()
         openSuivi(witness = setOf(card(GOAL, gP)))
+        mark(case, "Suivi ouvert")
         showTab(RECEIVABLE)
+        mark(case, "Créances affichées")
         // Cible R-F8 (décision du 31/10) : R-BAS reste sous la barre même en fin de défilement (LOP-223).
         val target = card(RECEIVABLE, rF8)
         j.expect("précondition de montage : R-F8 hors écran sans défilement", false, isDisplayed(target))
         j.scrollToEnd(TestTags.SCREEN_GOALS)
         j.expect("garde de toucher : centre de R-F8 hors de la barre, liste défilée jusqu'au bout", true, centerOutsideBar(target))
 
+        mark(case, "fin de liste atteinte")
         j.click(j.node(target))
         awaitDetail(N_RF8)
+        mark(case, "détail affiché")
         j.expect("CA-08 : détail de R-F8, aucun formulaire", 0, j.count(TestTags.SCREEN_EDIT))
         val violations = mutableListOf<String>()
         if (stay) {
@@ -367,7 +388,16 @@ class TrackingSectionUiTest {
             try {
                 // Seule pause fixe de la classe : elle teste l'expiration de WhileSubscribed(5000).
                 val until = SystemClock.uptimeMillis() + 6_000
-                rule.waitUntil(8_000) { SystemClock.uptimeMillis() >= until }
+                var lastSecond = -1L
+                rule.waitUntil(8_000) {
+                    val left = until - SystemClock.uptimeMillis()
+                    if (left / 1_000 != lastSecond) {
+                        lastSecond = left / 1_000
+                        mark(case, "séjour, reste ${left} ms")
+                    }
+                    left <= 0
+                }
+                mark(case, "retour")
                 rule.onNode(hasTestTag(TestTags.BTN_BACK) and j.inside(TestTags.SCREEN_FINANCIAL_DETAIL))
                     .performSemanticsAction(SemanticsActions.OnClick)
                 var frame = 0
@@ -385,6 +415,7 @@ class TrackingSectionUiTest {
             j.click(rule.onNode(hasTestTag(TestTags.BTN_BACK) and j.inside(TestTags.SCREEN_FINANCIAL_DETAIL)))
         }
         awaitSuivi()
+        mark(case, "Suivi retrouvé")
         if (stay) j.expect("CA-01 (LOP-222) : ni chargement ni message vide image par image au retour", emptyList<String>(), violations)
         j.expect("CA-01, CA-08 : R-F8 affichée sans défilement après le retour", true, isDisplayed(target))
         j.expect("CA-01 : R-F8 hors des bornes de la barre", true, centerOutsideBar(target))
@@ -929,6 +960,11 @@ class TrackingSectionUiTest {
     // ==============================================================================================
     // Parcours
     // ==============================================================================================
+
+    /** Repère horodaté dans logcat (balise TC162) : situe un blocage de l'émulateur dans le cas. */
+    private fun mark(case: String, step: String) {
+        Log.i("TC162", "$case — $step (uptime ${SystemClock.uptimeMillis()} ms)")
+    }
 
     private fun launch() {
         scenario = ActivityScenario.launch(MainActivity::class.java)

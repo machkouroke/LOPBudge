@@ -22,6 +22,8 @@ case "${1:-}" in
     nohup bash -c 'while true; do
         date -u +%T; uptime; free -m
         ps -eo pid,rss,pcpu,etime,comm --sort=-rss | head -6
+        q=$(pgrep -f qemu-system | head -1)
+        [ -n "$q" ] && ps -L -o tid,stat,pcpu,wchan:24,comm -p "$q" | sort -k3 -nr | head -12
         echo
         sleep 5
       done' > "$out/host.txt" 2>&1 < /dev/null &

@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      diag_u01b2:
+        description: "Diagnostic : forcer TC-162 U-01 b2 sur l'emulateur, avec le journal du noyau"
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -230,7 +235,7 @@ jobs:
           emulator-options: >
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
             -camera-back none -no-metrics -no-snapshot-save -memory 3072
-            -change-locale fr-FR
+            -change-locale fr-FR ${{ inputs.diag_u01b2 && '-show-kernel' || '' }}
           # Indispensable : sans cela, `waitForIdle` de Compose peut ne jamais rendre la main
           # sur une animation. L'application en a plusieurs, dont son écran de démarrage.
           disable-animations: true
@@ -243,7 +248,7 @@ jobs:
             bash scripts/ci_diag.sh logcat
             bash scripts/ci_wait_locale.sh fr-FR
             mkdir -p build && touch build/ci-tests-started
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.numShards=3 -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard }}
+            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.numShards=3 -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard }} -Pandroid.testInstrumentationRunnerArguments.tc162ForceB2=${{ inputs.diag_u01b2 && 'true' || 'false' }}
 
       # Meme parade que le job Maestro : un seul nouvel essai si l'emulateur est mort avant le
       # premier test (redemarrage de -change-locale), jamais apres. Un rouge de test reste rouge.
