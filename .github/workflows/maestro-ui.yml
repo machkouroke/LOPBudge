@@ -244,10 +244,16 @@ jobs:
           enable-hw-keyboard: true
           # Gradle construit et installe lui-même les deux APK (application et test) : on ne
           # réutilise donc pas l'artefact du job `build`, qui ne contient que le premier.
+          #
+          # Gboard désactivé avant les tests : runs 41701682688 et 41704416757, l'émulateur s'est
+          # figé ~5 min 40 après son démarrage, les deux fois juste après que Gboard, focalisé sur
+          # un champ, a programmé en boucle le téléchargement de son pack vocal fr-FR. Les tests
+          # saisissent par la sémantique Compose et n'ont pas besoin de clavier logiciel.
           script: |
             adb wait-for-device
             bash scripts/ci_diag.sh logcat
             bash scripts/ci_wait_locale.sh fr-FR
+            adb shell pm disable-user --user 0 com.google.android.inputmethod.latin || true
             mkdir -p build && touch build/ci-tests-started
             ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.numShards=3 -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard }} -Pandroid.testInstrumentationRunnerArguments.tc162ForceB2=${{ inputs.diag_u01b2 && 'true' || 'false' }}
 
