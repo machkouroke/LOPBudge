@@ -1,6 +1,8 @@
 package com.lop.budget.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.lop.budget.domain.model.DebtType
 import com.lop.budget.domain.model.ItemStatus
@@ -16,9 +18,22 @@ import com.lop.budget.domain.model.LoanDirection
  * n'est jamais saisie (I-2). Elle reste distincte de [startingBalanceCents], qui est une donnée de
  * création : l'une se recalcule, l'autre jamais (P-3).
  *
- * [accountId] est informatif et ne donne au compte aucun rôle dans le calcul (P-4).
+ * [accountId] est informatif et ne donne au compte aucun rôle dans le calcul (P-4). L'objectif
+ * porte lui-même le sort de ce lien : supprimer le compte le remet à nul, par la clé étrangère,
+ * quel que soit le chemin de suppression (LOP-205, CA-09, P-6).
  */
-@Entity(tableName = "goals")
+@Entity(
+    tableName = "goals",
+    foreignKeys = [
+        ForeignKey(
+            entity = AccountEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["accountId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
+    ],
+    indices = [Index("accountId")],
+)
 data class GoalEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
@@ -47,8 +62,21 @@ data class GoalEntity(
  * créance : contrepartie assumée de la fusion (décision du 17 septembre 2026).
  *
  * [repaidAmountCents] est la progression enregistrée : moteur seul, jamais saisie (I-2).
+ *
+ * Comme pour l'objectif, supprimer le compte associé remet [accountId] à nul (LOP-205, CA-09).
  */
-@Entity(tableName = "loans")
+@Entity(
+    tableName = "loans",
+    foreignKeys = [
+        ForeignKey(
+            entity = AccountEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["accountId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
+    ],
+    indices = [Index("accountId")],
+)
 data class LoanEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,

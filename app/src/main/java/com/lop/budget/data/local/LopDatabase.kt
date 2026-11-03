@@ -37,7 +37,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         DetectedTransactionProposalEntity::class,
         PaymentCardEntity::class,
     ],
-    version = 24,
+    version = 25,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -53,6 +53,102 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        /**
+         * LOP-205 (CA-09, P-6) — le compte associé d'un objectif ou d'un prêt reçoit une clé
+         * étrangère `ON DELETE SET NULL` : supprimer un compte remet ce lien à nul, sans que la
+         * suppression de compte ait à connaître les objets qui le désignent.
+         *
+         * SQLite ne sait pas ajouter une contrainte à une table existante : `goals` et `loans` sont
+         * reconstruites, **identifiants conservés**, ce qui garde intacts les rattachements des
+         * transactions et des séries. `PRAGMA foreign_keys` est laissé à Room, qui le désactive le
+         * temps de la migration (voir [MIGRATION_22_23]).
+         *
+         * Un lien qui désigne déjà un compte supprimé passe à nul pendant la copie : la v25 ne
+         * démarre pas en violation de sa propre clé, et c'est l'état que la règle aurait produit.
+         */
+        val MIGRATION_24_25 = object : androidx.room.migration.Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `goals_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `targetAmountCents` INTEGER NOT NULL,
+                        `startingBalanceCents` INTEGER NOT NULL,
+                        `savedAmountCents` INTEGER NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `dueDate` INTEGER,
+                        `accountId` INTEGER,
+                        `comment` TEXT,
+                        `colorArgb` INTEGER NOT NULL,
+                        `icon` TEXT NOT NULL,
+                        FOREIGN KEY(`accountId`) REFERENCES `accounts`(`id`)
+                            ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `goals_new` (
+                        id, name, targetAmountCents, startingBalanceCents, savedAmountCents, status,
+                        dueDate, accountId, comment, colorArgb, icon
+                    )
+                    SELECT
+                        id, name, targetAmountCents, startingBalanceCents, savedAmountCents, status,
+                        dueDate,
+                        CASE WHEN accountId IN (SELECT id FROM accounts) THEN accountId END,
+                        comment, colorArgb, icon
+                    FROM `goals`
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE `goals`")
+                db.execSQL("ALTER TABLE `goals_new` RENAME TO `goals`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_goals_accountId` ON `goals` (`accountId`)")
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `loans_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `counterpartyName` TEXT,
+                        `direction` TEXT NOT NULL,
+                        `debtType` TEXT NOT NULL,
+                        `totalAmountCents` INTEGER NOT NULL,
+                        `startingBalanceCents` INTEGER NOT NULL,
+                        `repaidAmountCents` INTEGER NOT NULL,
+                        `interestRate` REAL NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `dueDate` INTEGER,
+                        `accountId` INTEGER,
+                        `comment` TEXT,
+                        `colorArgb` INTEGER NOT NULL,
+                        `icon` TEXT NOT NULL,
+                        FOREIGN KEY(`accountId`) REFERENCES `accounts`(`id`)
+                            ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `loans_new` (
+                        id, name, counterpartyName, direction, debtType, totalAmountCents,
+                        startingBalanceCents, repaidAmountCents, interestRate, status, dueDate,
+                        accountId, comment, colorArgb, icon
+                    )
+                    SELECT
+                        id, name, counterpartyName, direction, debtType, totalAmountCents,
+                        startingBalanceCents, repaidAmountCents, interestRate, status, dueDate,
+                        CASE WHEN accountId IN (SELECT id FROM accounts) THEN accountId END,
+                        comment, colorArgb, icon
+                    FROM `loans`
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE `loans`")
+                db.execSQL("ALTER TABLE `loans_new` RENAME TO `loans`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_loans_accountId` ON `loans` (`accountId`)")
+            }
+        }
 
         /**
          * LOP-88 — comportement pour jour absent et jour d'ancrage de la série.

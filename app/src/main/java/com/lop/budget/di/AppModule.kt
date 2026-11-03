@@ -66,6 +66,7 @@ object AppModule {
                 LopDatabase.MIGRATION_21_22,
                 LopDatabase.MIGRATION_22_23,
                 LopDatabase.MIGRATION_23_24,
+                LopDatabase.MIGRATION_24_25,
             )
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
