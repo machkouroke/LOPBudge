@@ -181,7 +181,8 @@ jobs:
   instrumented-tests:
     name: Instrumented Tests ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 45 et non 30 : la place d'une seconde passe complète si l'émulateur meurt en cours de shard.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -250,15 +251,32 @@ jobs:
             mkdir -p build && touch build/ci-tests-started
             ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.numShards=3 -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard }} -Pandroid.testInstrumentationRunnerArguments.tc162ForceB2=${{ inputs.diag_u01b2 && 'true' || 'false' }}
 
-      # Meme parade que le job Maestro : un seul nouvel essai si l'emulateur est mort avant le
-      # premier test (redemarrage de -change-locale), jamais apres. Un rouge de test reste rouge.
-      - name: Run Instrumented Tests (nouvel essai, emulateur mort avant les tests)
-        if: steps.tests.outcome == 'failure' && hashFiles('build/ci-tests-started') == ''
+      # Emulateur mort en cours de shard (run 41701682688 : qemu disparu au 37e cas sur 72) :
+      # Gradle ecrit alors « Test run failed to complete » ET « device '…' not found ». Les deux
+      # marqueurs ensemble distinguent la perte de l'appareil d'un rouge de test (shard complet)
+      # et d'un plantage de l'application (appareil toujours present), jamais relances.
+      - name: Detect emulator lost during tests
+        id: lost
+        if: steps.tests.outcome == 'failure' && hashFiles('build/ci-tests-started') != ''
+        run: |
+          dir=app/build/outputs/androidTest-results/connected
+          if grep -rqs "Test run failed to complete" "$dir" && grep -rqsE "device '[^']+' not found" "$dir"; then
+            echo "::warning::Emulateur perdu en cours de shard : une seconde passe complete sur un emulateur neuf."
+            mkdir -p build/ci-diag/first-attempt
+            cp -r "$dir" build/ci-diag/first-attempt/
+            rm -rf "$dir"
+            echo "lost=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Un seul nouvel essai : emulateur mort avant le premier test (redemarrage de
+      # -change-locale), ou perdu en cours de shard. Un rouge de test reste rouge.
+      - name: Run Instrumented Tests (nouvel essai, emulateur mort)
+        if: steps.tests.outcome == 'failure' && (hashFiles('build/ci-tests-started') == '' || steps.lost.outputs.lost == 'true')
         uses: reactivecircus/android-emulator-runner@v2
         with: *instrumented-emulator
 
       - name: Report Instrumented failure
-        if: steps.tests.outcome == 'failure' && hashFiles('build/ci-tests-started') != ''
+        if: steps.tests.outcome == 'failure' && hashFiles('build/ci-tests-started') != '' && steps.lost.outputs.lost != 'true'
         run: |
           echo "::error::Tests instrumentes en echec : voir l'etape « Run Instrumented Tests »."
           exit 1
