@@ -40,6 +40,7 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.model.TransactionType.EXPENSE
 import com.lop.budget.domain.model.TransactionType.INCOME
 import com.lop.budget.domain.usecase.SyncProgressUseCase
+import com.lop.budget.domain.model.FinancialItemKind
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.journey.Journey
 import dagger.hilt.android.testing.BindValue
@@ -253,11 +254,12 @@ class FinancialItemDetailUiTest {
     @Test fun u01d_given_dettes_when_ldet_card_opened_and_system_back_then_debt_shown_and_dettes_restored() =
         u01("U-01d Dettes L-DET / système", Origin.L_DET, Back.SYSTEM)
 
-    @Test fun u01e_given_dettes_when_lcre_card_opened_and_header_back_then_receivable_shown_and_dettes_restored() =
-        u01("U-01e Dettes L-CRE / en-tête", Origin.L_CRE, Back.HEADER)
+    // LOP-22 a donné aux créances leur onglet : L-CRE n'est plus listée sous Dettes, mais sous Créances.
+    @Test fun u01e_given_creances_when_lcre_card_opened_and_header_back_then_receivable_shown_and_creances_restored() =
+        u01("U-01e Créances L-CRE / en-tête", Origin.L_CRE, Back.HEADER)
 
-    @Test fun u01f_given_dettes_when_lcre_card_opened_and_system_back_then_receivable_shown_and_dettes_restored() =
-        u01("U-01f Dettes L-CRE / système", Origin.L_CRE, Back.SYSTEM)
+    @Test fun u01f_given_creances_when_lcre_card_opened_and_system_back_then_receivable_shown_and_creances_restored() =
+        u01("U-01f Créances L-CRE / système", Origin.L_CRE, Back.SYSTEM)
 
     private enum class Origin { G_BAS, L_DET, L_CRE }
     private enum class Back { HEADER, SYSTEM }
@@ -265,13 +267,13 @@ class FinancialItemDetailUiTest {
     private fun u01(case: String, origin: Origin, back: Back) {
         j.case = case
         openSuivi()
-        val (cardTag, name, onDebts) = when (origin) {
-            Origin.G_BAS -> Triple(card(GOAL_CARD, gBas), "QA-203 Dernier objectif", false)
-            Origin.L_DET -> Triple(card(DEBT_CARD, lDet), "QA-203 Prêt auto", true)
-            Origin.L_CRE -> Triple(card(DEBT_CARD, lCre), "QA-203 Prêt à Sam", true)
+        val (cardTag, name, tab) = when (origin) {
+            Origin.G_BAS -> Triple(card(GOAL_CARD, gBas), "QA-203 Dernier objectif", FinancialItemKind.GOAL)
+            Origin.L_DET -> Triple(card(DEBT_CARD, lDet), "QA-203 Prêt auto", FinancialItemKind.DEBT)
+            Origin.L_CRE -> Triple(card(RECEIVABLE_CARD, lCre), "QA-203 Prêt à Sam", FinancialItemKind.RECEIVABLE)
         }
-        if (onDebts) {
-            showDebtsTab()
+        if (tab != FinancialItemKind.GOAL) {
+            showTab(tab)
         } else {
             j.expect("précondition de montage : G-BAS hors écran sans défilement", false, isDisplayed(cardTag))
             j.reveal(TestTags.SCREEN_GOALS, hasTestTag(cardTag))
@@ -287,7 +289,7 @@ class FinancialItemDetailUiTest {
             ALL_NAMES.filter { it != name && j.count(hasText(it) and j.inside(TestTags.SCREEN_FINANCIAL_DETAIL)) > 0 },
         )
         if (origin == Origin.L_CRE) {
-            // Listée sous Dettes, elle s'ouvre en créance : témoin composé, puis zone de dette absente.
+            // Ouverte depuis Créances, elle s'ouvre en créance : témoin composé, puis zone de dette absente.
             j.expect("CA-02 : créance (contrepartie présente)", 1, j.count(field("counterparty")))
             j.expect("CA-02, CA-04 : zone de type de dette absente pour une créance", 0, j.count(field("debttype")))
         }
@@ -310,12 +312,10 @@ class FinancialItemDetailUiTest {
             1 to 1,
             j.count(TestTags.NAV_BOTTOM_BAR) to j.count(TestTags.NAV_ADD_BUTTON),
         )
-        val goals = j.count(cardMatcher(GOAL_CARD))
-        val debts = j.count(cardMatcher(DEBT_CARD))
         j.expect(
-            "CA-01 : onglet d'origine restauré (lu par le contenu : cartes ${if (onDebts) "Dettes" else "Objectifs"} seules)",
-            true,
-            if (onDebts) debts > 0 && goals == 0 else goals > 0 && debts == 0,
+            "CA-01 : onglet d'origine restauré (lu par le contenu : cartes $tab seules)",
+            listOf(tab),
+            CARD_PREFIX.filter { (_, prefix) -> j.count(cardMatcher(prefix)) > 0 }.keys.toList(),
         )
         j.expect("CA-01 : carte d'origine affichée sans nouveau défilement", true, isDisplayed(cardTag))
         j.expect("I-1 : tables inchangées entre l'ouverture et le retour", reference, snapshot())
@@ -327,7 +327,7 @@ class FinancialItemDetailUiTest {
 
     @Test fun u02a_given_g1_complete_when_detail_opened_then_summary_due_account_comment_only() {
         j.case = "U-02 G1"
-        openFromSuivi(card(GOAL_CARD, g1), "QA-203 Vacances", debts = false)
+        openFromSuivi(card(GOAL_CARD, g1), "QA-203 Vacances", FinancialItemKind.GOAL)
         expectSummary("QA-203 Vacances", "1 000,00 €", "100,00 €", "300,00 €", "700,00 €", "30 %")
         expectZones(due = Present, account = Value("QA-203 Compte"), comment = Value("QA-203 Note vacances"))
         expectReadOnlyAndBack()
@@ -335,7 +335,7 @@ class FinancialItemDetailUiTest {
 
     @Test fun u02b_given_g2_without_optionals_when_detail_opened_then_summary_and_no_conditional_zone() {
         j.case = "U-02 G2"
-        openFromSuivi(card(GOAL_CARD, g2), "QA-203 Fonds", debts = false)
+        openFromSuivi(card(GOAL_CARD, g2), "QA-203 Fonds", FinancialItemKind.GOAL)
         expectSummary("QA-203 Fonds", "500,00 €", "0,00 €", "0,00 €", "500,00 €", "0 %")
         expectZones()
         expectReadOnlyAndBack()
@@ -343,7 +343,7 @@ class FinancialItemDetailUiTest {
 
     @Test fun u02c_given_ldet_when_detail_opened_then_no_account_counterparty_loan_type_and_rate() {
         j.case = "U-02 L-DET"
-        openFromSuivi(card(DEBT_CARD, lDet), "QA-203 Prêt auto", debts = true)
+        openFromSuivi(card(DEBT_CARD, lDet), "QA-203 Prêt auto", FinancialItemKind.DEBT)
         expectSummary("QA-203 Prêt auto", "2 000,00 €", "500,00 €", "600,00 €", "1 400,00 €", "30 %")
         // LOP-205 CA-09, LOP-203 P-8 : le compte supprimé remet le lien à vide, la zone Compte disparaît.
         expectZones(
@@ -357,14 +357,14 @@ class FinancialItemDetailUiTest {
 
     @Test fun u02d_given_lcre_when_detail_opened_then_counterparty_only_with_its_own_label() {
         j.case = "U-02 L-CRE"
-        openFromSuivi(card(DEBT_CARD, lCre), "QA-203 Prêt à Sam", debts = true)
+        openFromSuivi(card(RECEIVABLE_CARD, lCre), "QA-203 Prêt à Sam", FinancialItemKind.RECEIVABLE)
         expectSummary("QA-203 Prêt à Sam", "300,00 €", "0,00 €", "10,00 €", "290,00 €", "3 %")
         expectZones(counterparty = Value("QA-203 Sam"))
         val receivableLabel = label("counterparty")
         expectReadOnlyAndBack()
 
         // Une dette et une créance ne se lisent pas pareil : libellé de contrepartie comparé à celui de L-DET.
-        showDebtsTab()
+        showTab(FinancialItemKind.DEBT)
         j.click(j.node(card(DEBT_CARD, lDet)))
         awaitDetail("QA-203 Prêt auto")
         j.reveal(TestTags.SCREEN_FINANCIAL_DETAIL, hasTestTag(field("counterparty")))
@@ -374,7 +374,7 @@ class FinancialItemDetailUiTest {
 
     @Test fun u02e_given_ldet0_when_detail_opened_then_personal_type_and_zero_rate_shown() {
         j.case = "U-02 L-DET0"
-        openFromSuivi(card(DEBT_CARD, lDet0), "QA-203 Dette Léa", debts = true)
+        openFromSuivi(card(DEBT_CARD, lDet0), "QA-203 Dette Léa", FinancialItemKind.DEBT)
         expectSummary("QA-203 Dette Léa", "100,00 €", "0,00 €", "0,00 €", "100,00 €", "0 %")
         expectZones(debtType = Value(text(R.string.debt_type_personal)), rate = Contains("0"))
         expectReadOnlyAndBack()
@@ -386,7 +386,7 @@ class FinancialItemDetailUiTest {
 
     @Test fun u03_given_g1_with_linked_rows_when_read_and_tx2_touched_then_ordered_rows_tx_detail_and_back_then_g2_empty() {
         j.case = "U-03"
-        openFromSuivi(card(GOAL_CARD, g1), "QA-203 Vacances", debts = false)
+        openFromSuivi(card(GOAL_CARD, g1), "QA-203 Vacances", FinancialItemKind.GOAL)
         j.scrollToEnd(TestTags.SCREEN_FINANCIAL_DETAIL)
         j.expect(
             "CA-05 : lignes liées de G1, ordre compris (date puis id décroissants)",
@@ -511,14 +511,17 @@ class FinancialItemDetailUiTest {
         )
     }
 
-    private fun showDebtsTab() {
-        j.click(j.node(TestTags.GOAL_TAB_DEBTS))
-        j.await("onglet Dettes : cartes de prêts seules") { j.count(cardMatcher(DEBT_CARD)) > 0 && j.count(cardMatcher(GOAL_CARD)) == 0 }
+    /** Onglet [tab] ouvert : seules ses cartes sont composées. */
+    private fun showTab(tab: FinancialItemKind) {
+        j.click(j.node(if (tab == FinancialItemKind.DEBT) TestTags.GOAL_TAB_DEBTS else TestTags.GOAL_TAB_RECEIVABLES))
+        j.await("onglet $tab : ses cartes seules") {
+            CARD_PREFIX.filter { (_, prefix) -> j.count(cardMatcher(prefix)) > 0 }.keys.toList() == listOf(tab)
+        }
     }
 
-    private fun openFromSuivi(cardTag: String, name: String, debts: Boolean) {
+    private fun openFromSuivi(cardTag: String, name: String, tab: FinancialItemKind) {
         openSuivi()
-        if (debts) showDebtsTab()
+        if (tab != FinancialItemKind.GOAL) showTab(tab)
         j.click(j.node(cardTag))
         awaitDetail(name)
     }
@@ -751,6 +754,14 @@ class FinancialItemDetailUiTest {
         const val EUR = "EUR"
         const val GOAL_CARD = TestTags.GOAL_CARD
         const val DEBT_CARD = TestTags.DEBT_CARD
+        const val RECEIVABLE_CARD = TestTags.RECEIVABLE_CARD
+
+        /** Préfixe des cartes de Suivi par onglet (LOP-22 : un onglet par type). */
+        val CARD_PREFIX = mapOf(
+            FinancialItemKind.GOAL to GOAL_CARD,
+            FinancialItemKind.DEBT to DEBT_CARD,
+            FinancialItemKind.RECEIVABLE to RECEIVABLE_CARD,
+        )
 
         val D0: Long = Instant.parse("2026-02-10T10:00:00Z").toEpochMilli()
         val D1: Long = Instant.parse("2026-03-10T10:00:00Z").toEpochMilli()

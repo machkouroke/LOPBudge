@@ -120,8 +120,9 @@ import javax.inject.Inject
  *   présent.
  *
  * ## Reformulations assumées (observabilité)
- * 1. Les onglets de Suivi n'exposent pas d'état « sélectionné » : l'onglet ouvert se lit par le titre
- *    de section et par les cartes témoins présentes ou absentes.
+ * 1. L'onglet ouvert se lit par l'état « sélectionné » des onglets de Suivi, exposé depuis LOP-22
+ *    (`Role.Tab`, `Selected`), et par les cartes témoins présentes ou absentes. Le titre de section,
+ *    lu jusqu'ici, n'existe plus ; la création s'ouvre par le bouton global, plus par `goal.btn.add`.
  * 2. L'erreur du compte n'est pas dans le nœud du sélecteur : un message unique, placé sous lui
  *    d'après leurs bornes.
  * 3. Icône et couleur choisies sans état sémantique : vérifiées par la valeur enregistrée (U-04).
@@ -438,7 +439,7 @@ class FinancialItemCreationUiTest {
         fillSg()
         pressSave()
         val id = newRow("goals")
-        expectBackOnSuivi(OBJECTIFS, "${TestTags.GOAL_CARD}_$id")
+        expectBackOnSuivi(FinancialItemKind.GOAL, "${TestTags.GOAL_CARD}_$id")
         j.expect(
             "CA-03 : objectif écrit",
             mapOf(
@@ -465,7 +466,7 @@ class FinancialItemCreationUiTest {
         type("debt.edit.comment", "QA-202 dette UI")
         pressSave()
         val id = newRow("loans")
-        expectBackOnSuivi(DETTES, "${TestTags.DEBT_CARD}_$id")
+        expectBackOnSuivi(FinancialItemKind.DEBT, "${TestTags.DEBT_CARD}_$id")
         j.expect(
             "CA-03 : dette écrite",
             loanRow(
@@ -476,7 +477,7 @@ class FinancialItemCreationUiTest {
         )
     }
 
-    @Test fun u04c_given_receivable_input_when_saved_then_one_return_and_suivi_opens_debts() {
+    @Test fun u04c_given_receivable_input_when_saved_then_one_return_and_suivi_opens_receivables() {
         j.case = "U-04c"
         mountReceivable()
         type("debt.edit.name", "QA-202 Avance")
@@ -499,11 +500,12 @@ class FinancialItemCreationUiTest {
             written,
         )
 
-        // Suivi monté avec le type reçu (P-4 : la vraie fermeture d'une créance n'est pas atteignable).
+        // Suivi monté avec le type reçu. LOP-22 a livré l'onglet Créances : la condition « tant que »
+        // de P-4 (LOP-202) est tombée, la créance s'ouvre sur son propre onglet (CA-05).
         val goalsVm = provide("goals") { GoalsViewModel(ObserveFinancialItemListUseCase(goalRepo, loanRepo), settings) }
         show { GoalsScreen(vm = goalsVm, createdKind = savedKinds.single()) }
         j.await("Suivi monté") { j.count(TestTags.SCREEN_GOALS) == 1 }
-        expectSection(DETTES, "${TestTags.DEBT_CARD}_$id")
+        expectSection(FinancialItemKind.RECEIVABLE, "${TestTags.RECEIVABLE_CARD}_$id")
     }
 
     // ==============================================================================================
@@ -556,7 +558,7 @@ class FinancialItemCreationUiTest {
         sql.execSQL("DROP TRIGGER qa202_echec")
         pressSave()
         val id = newRow("goals")
-        expectBackOnSuivi(OBJECTIFS, "${TestTags.GOAL_CARD}_$id")
+        expectBackOnSuivi(FinancialItemKind.GOAL, "${TestTags.GOAL_CARD}_$id")
     }
 
     // ==============================================================================================
@@ -757,16 +759,16 @@ class FinancialItemCreationUiTest {
     private fun openGoalForm() {
         openSuivi()
         j.click(j.node(TestTags.GOAL_TAB_OBJECTIVES))
-        j.await("section Objectifs") { sectionTitles() == listOf(OBJECTIFS) }
-        j.click(j.node(TestTags.GOAL_BTN_ADD))
+        j.await("onglet Objectifs sélectionné") { selectedTabs() == listOf(FinancialItemKind.GOAL) }
+        j.click(j.node(TestTags.NAV_ADD_BUTTON))
         awaitForm(T_GOAL)
     }
 
     private fun openDebtForm() {
         openSuivi()
         j.click(j.node(TestTags.GOAL_TAB_DEBTS))
-        j.await("section Dettes") { sectionTitles() == listOf(DETTES) }
-        j.click(j.node(TestTags.GOAL_BTN_ADD))
+        j.await("onglet Dettes sélectionné") { selectedTabs() == listOf(FinancialItemKind.DEBT) }
+        j.click(j.node(TestTags.NAV_ADD_BUTTON))
         awaitForm(T_DEBT)
     }
 
@@ -779,7 +781,7 @@ class FinancialItemCreationUiTest {
     }
 
     /** Montage A : un seul retour, sur Suivi, onglet [section] ; l'élément créé y figure une fois. */
-    private fun expectBackOnSuivi(section: String, createdCard: String) {
+    private fun expectBackOnSuivi(section: FinancialItemKind, createdCard: String) {
         awaitSuivi()
         rule.waitForIdle()
         j.expect(
@@ -790,18 +792,29 @@ class FinancialItemCreationUiTest {
         expectSection(section, createdCard)
     }
 
-    /** Onglet ouvert lu par le titre de section et les cartes témoins (reformulation 1). */
-    private fun expectSection(section: String, createdCard: String) {
-        j.await("CA-05 : section $section") { sectionTitles() == listOf(section) }
+    /** Onglet ouvert lu par l'état « sélectionné » des onglets et les cartes témoins (reformulation 1). */
+    private fun expectSection(section: FinancialItemKind, createdCard: String) {
+        j.await("CA-05 : seul l'onglet $section sélectionné") { selectedTabs() == listOf(section) }
         val witnesses = j.count("${TestTags.GOAL_CARD}_$objT") to j.count("${TestTags.DEBT_CARD}_$detT")
-        j.expect("CA-05 : cartes témoins de l'onglet $section", if (section == OBJECTIFS) 1 to 0 else 0 to 1, witnesses)
+        val expected = when (section) {
+            FinancialItemKind.GOAL -> 1 to 0
+            FinancialItemKind.DEBT -> 0 to 1
+            FinancialItemKind.RECEIVABLE -> 0 to 0
+        }
+        j.expect("CA-05 : cartes témoins de l'onglet $section", expected, witnesses)
         j.expect("CA-05 : l'élément créé apparaît une fois", 1, j.count(createdCard))
     }
 
-    private fun sectionTitles(): List<String> = nodes(
-        (hasText(OBJECTIFS) or hasText(DETTES)) and j.inside(TestTags.SCREEN_GOALS) and
-            !j.inside(TestTags.GOAL_TAB_OBJECTIVES) and !j.inside(TestTags.GOAL_TAB_DEBTS)
-    ).map { textOf(it) }
+    /** Onglets de Suivi dont la sémantique porte `Selected = true`, dans l'ordre des types. */
+    private fun selectedTabs(): List<FinancialItemKind> = FinancialItemKind.entries.filter { kind ->
+        val tag = when (kind) {
+            FinancialItemKind.GOAL -> TestTags.GOAL_TAB_OBJECTIVES
+            FinancialItemKind.DEBT -> TestTags.GOAL_TAB_DEBTS
+            FinancialItemKind.RECEIVABLE -> TestTags.GOAL_TAB_RECEIVABLES
+        }
+        rule.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().singleOrNull()
+            ?.config?.getOrNull(SemanticsProperties.Selected) == true
+    }
 
     // ==============================================================================================
     // Montage B — écran seul, modèles de vue du test, porte
@@ -1085,8 +1098,6 @@ class FinancialItemCreationUiTest {
         const val LEAVE_STAY_LABEL = "Continuer la saisie"            // l.243
         const val L_DEBT_TYPE = "Type de dette"                       // l.244
         const val L_CREDIT_CARD = "Carte de crédit"                   // l.246
-        const val OBJECTIFS = "Objectifs"                             // l.208
-        const val DETTES = "Dettes"                                   // l.209
 
         val ERRORS = setOf(ERR_NAME, ERR_TARGET, ERR_STARTING, ERR_ABOVE, ERR_RATE, ERR_ACCOUNT)
 
