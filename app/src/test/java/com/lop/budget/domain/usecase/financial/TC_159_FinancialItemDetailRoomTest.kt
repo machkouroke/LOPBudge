@@ -82,7 +82,9 @@ import kotlin.time.Duration.Companion.seconds
  * ## Lecture des termes de la fiche (mise à jour du 30 octobre 2026)
  * Le code livré au commit `cc89a660` rend `Flow<FinancialItemDetail?>` : « Found » se lit détail
  * non nul, « NotFound » se lit `null`. Compte « Available » = `accountId` et `accountName`
- * renseignés ; « Unavailable » = `accountId` renseigné, `accountName` nul. Une ligne liée se lit
+ * renseignés ; « Unavailable » = `accountId` renseigné, `accountName` nul. Depuis la v25
+ * (LOP-205 CA-09, LOP-203 P-8), supprimer le compte de L-DET remet son lien à vide : L-DET se lit
+ * sans compte, et « Unavailable » ne peut plus être produit en base. Une ligne liée se lit
  * dans `TransactionWithRelations.transaction`.
  *
  * ## Oracles
@@ -237,7 +239,7 @@ class FinancialItemDetailRoomTest {
         runTest { assertFields("I-01 G-ARCH", GOAL, gArch, expectedGArch()) }
 
     @Test
-    fun `I-01 L-DET - given la dette au compte supprime when on observe DEBT L-DET then compte indisponible, type LOAN, taux 3,5 et zero ecriture`() =
+    fun `I-01 L-DET - given la dette au compte supprime when on observe DEBT L-DET then aucun compte, type LOAN, taux 3,5 et zero ecriture`() =
         runTest { assertFields("I-01 L-DET", DEBT, lDet, expectedLDet()) }
 
     @Test
@@ -725,7 +727,8 @@ class FinancialItemDetailRoomTest {
     private fun expectedLDet() = FinancialItemDetail(
         kind = DEBT, id = lDet, name = "QA-203 Prêt auto", icon = "car", colorArgb = ROUGE,
         targetCents = 200_000, startingCents = 50_000, progress = P_LDET, status = ACTIVE,
-        dueDate = null, accountId = accSuppr, accountName = null, comment = null,
+        // LOP-205 CA-09, LOP-203 P-8 : le compte supprimé remet le lien à vide (clé étrangère).
+        dueDate = null, accountId = null, accountName = null, comment = null,
         counterparty = "QA-203 Banque Crédit", debtType = DebtType.LOAN, interestRate = 3.5, transactions = emptyList(),
     )
 

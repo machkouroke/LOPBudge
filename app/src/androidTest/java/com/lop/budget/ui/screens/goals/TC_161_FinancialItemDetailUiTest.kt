@@ -341,12 +341,13 @@ class FinancialItemDetailUiTest {
         expectReadOnlyAndBack()
     }
 
-    @Test fun u02c_given_ldet_when_detail_opened_then_unavailable_account_counterparty_loan_type_and_rate() {
+    @Test fun u02c_given_ldet_when_detail_opened_then_no_account_counterparty_loan_type_and_rate() {
         j.case = "U-02 L-DET"
         openFromSuivi(card(DEBT_CARD, lDet), "QA-203 Prêt auto", debts = true)
         expectSummary("QA-203 Prêt auto", "2 000,00 €", "500,00 €", "600,00 €", "1 400,00 €", "30 %")
+        // LOP-205 CA-09, LOP-203 P-8 : le compte supprimé remet le lien à vide, la zone Compte disparaît.
         expectZones(
-            account = Value(text(R.string.financial_account_unavailable)),
+            account = Absent,
             counterparty = Value("QA-203 Banque Crédit"),
             debtType = Value(text(R.string.debt_type_loan)),
             rate = Contains("3,5"),
