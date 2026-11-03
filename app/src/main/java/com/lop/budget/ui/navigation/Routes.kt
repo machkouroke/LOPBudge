@@ -76,8 +76,15 @@ object Routes {
         FinancialItemKind.RECEIVABLE -> debtAdd(LoanDirection.LENT)
     }
 
-    const val DEBT_EDIT = "debt/edit/{id}"
-    fun debtEdit(id: Long) = "debt/edit/$id"
+    /** Modification d'un prêt : son sens voyage avec l'identifiant (LOP-205, CA-01, CA-06). */
+    const val DEBT_EDIT = "debt/edit/{id}?direction={direction}"
+    fun debtEdit(id: Long, direction: LoanDirection) = "debt/edit/$id?direction=${direction.name}"
+    /** Formulaire de modification du type de l'élément, et d'aucun autre (LOP-205, CA-01, CA-07). */
+    fun edition(kind: FinancialItemKind, id: Long) = when (kind) {
+        FinancialItemKind.GOAL -> goalEdit(id)
+        FinancialItemKind.DEBT -> debtEdit(id, LoanDirection.BORROWED)
+        FinancialItemKind.RECEIVABLE -> debtEdit(id, LoanDirection.LENT)
+    }
 
     /**
      * Détail d'un élément financier : son type **et** son identifiant, un objectif et un prêt de
@@ -88,8 +95,8 @@ object Routes {
     fun financialDetail(kind: FinancialItemKind, id: Long) = "financial/detail/${kind.name}/$id"
 
     /**
-     * Clé posée sur l'entrée Suivi au retour d'une création réussie : le type créé, pour ouvrir
-     * son onglet (LOP-202, CA-05).
+     * Clé posée sur l'entrée Suivi au retour d'une création réussie, ou d'une modification dont
+     * l'élément a disparu : le type, pour ouvrir son onglet (LOP-202/CA-05, LOP-205/CA-07).
      */
     const val KEY_CREATED_KIND = "createdKind"
 

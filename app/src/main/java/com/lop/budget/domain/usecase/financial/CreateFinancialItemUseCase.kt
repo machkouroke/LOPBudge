@@ -85,18 +85,14 @@ class CreateFinancialItemUseCase @Inject constructor(
     suspend operator fun invoke(draft: FinancialItemDraft): FinancialItemCreateResult =
         atomicWriter.atomically {
             val name = draft.name.trim()
-            val target = Format.centsOrNull(draft.targetInput)?.takeIf { it > 0 }
+            val target = targetCentsOrNull(draft.targetInput)
             // Départ et taux vides valent zéro (périmètre de l'US).
             val starting =
                 if (draft.startingInput.isBlank()) 0L
                 else Format.centsOrNull(draft.startingInput)?.takeIf { it >= 0 }
             val isDebt = draft.kind == FinancialItemKind.DEBT
-            val rate =
-                if (!isDebt || draft.rateInput.isBlank()) 0.0
-                else draft.rateInput.trim().replace(',', '.').toDoubleOrNull()
-                    ?.takeIf { it.isFinite() && it >= 0 }
-            val accountAvailable =
-                draft.accountId == null || accountRepo.getById(draft.accountId)?.archived == false
+            val rate = if (isDebt) rateOrNull(draft.rateInput) else 0.0
+            val accountAvailable = accountRepo.isAvailable(draft.accountId)
 
             val refusals = buildSet {
                 if (name.isEmpty()) add(FinancialItemRefusal.BlankName)
@@ -143,3 +139,18 @@ class CreateFinancialItemUseCase @Inject constructor(
             FinancialItemCreateResult.Created(id, draft.kind)
         }
 }
+
+// Règles de saisie communes à la création et à la modification (LOP-205, CA-04 : « les refus et
+// l'arrondi de LOP-202/CA-04 »).
+
+/** Cible ou montant initial, arrondi au centime ; `null` s'il est illisible, nul ou négatif. */
+internal fun targetCentsOrNull(input: String): Long? = Format.centsOrNull(input)?.takeIf { it > 0 }
+
+/** Taux annuel d'une dette ; vide vaut zéro, `null` s'il est illisible ou négatif. */
+internal fun rateOrNull(input: String): Double? =
+    if (input.isBlank()) 0.0
+    else input.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
+
+/** Aucun compte, ou un compte existant non archivé. */
+internal suspend fun AccountRepository.isAvailable(id: Long?): Boolean =
+    id == null || getById(id)?.archived == false

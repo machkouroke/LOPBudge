@@ -23,6 +23,8 @@ import com.lop.budget.domain.usecase.financial.FinancialItemRefusal.BlankName
 import com.lop.budget.domain.usecase.financial.FinancialItemRefusal.InvalidRate
 import com.lop.budget.domain.usecase.financial.FinancialItemRefusal.InvalidTarget
 import com.lop.budget.domain.usecase.financial.FinancialItemRefusal.StartingAboveTarget
+import com.lop.budget.domain.usecase.financial.ObserveFinancialItemDetailUseCase
+import com.lop.budget.domain.usecase.financial.UpdateFinancialItemUseCase
 import io.mockk.Called
 import io.mockk.coEvery
 import io.mockk.every
@@ -137,6 +139,8 @@ class FinancialItemCreationViewModelTest {
     private val goalRepo = mockk<GoalRepository>()
     private val loanRepo = mockk<LoanRepository>()
     private val syncProgress = mockk<SyncProgressUseCase>()
+    private val observeDetail = mockk<ObserveFinancialItemDetailUseCase>()
+    private val update = mockk<UpdateFinancialItemUseCase>()
 
     /** Chaque brouillon reçu par la création métier, dans l'ordre. */
     private val drafts = mutableListOf<FinancialItemDraft>()
@@ -533,8 +537,8 @@ class FinancialItemCreationViewModelTest {
     private fun DebtEditUiState.view() =
         View(form, kind, isEdit, accounts, refusals, isSaving, saveFailed, savedKind, hasUnsavedChanges)
 
-    private fun goalVm(handle: SavedStateHandle) = GoalEditViewModel(goalRepo, syncProgress, create, accountRepo, handle)
-    private fun debtVm(handle: SavedStateHandle) = DebtEditViewModel(loanRepo, syncProgress, create, accountRepo, handle)
+    private fun goalVm(handle: SavedStateHandle) = GoalEditViewModel(goalRepo, observeDetail, create, update, accountRepo, handle)
+    private fun debtVm(handle: SavedStateHandle) = DebtEditViewModel(loanRepo, observeDetail, create, update, accountRepo, handle)
     private fun goal(vm: GoalEditViewModel) = Subject(vm.uiState.map { it.view() }, { vm.uiState.value.view() }, vm::save)
     private fun debt(vm: DebtEditViewModel) = Subject(vm.uiState.map { it.view() }, { vm.uiState.value.view() }, vm::save)
     private fun goal(handle: SavedStateHandle) = goal(goalVm(handle))

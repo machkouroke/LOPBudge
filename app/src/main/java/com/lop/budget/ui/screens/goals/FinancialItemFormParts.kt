@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,6 +38,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.AccountEntity
@@ -98,7 +100,6 @@ internal fun refusalMessage(
 internal fun SaveButton(
     isSaving: Boolean,
     saveFailed: Boolean,
-    enabled: Boolean,
     onClick: () -> Unit,
     tagPrefix: String,
 ) {
@@ -107,7 +108,7 @@ internal fun SaveButton(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth().height(56.dp).testTag(TestTags.BTN_SAVE),
             shape = MaterialTheme.shapes.medium,
-            enabled = enabled && !isSaving,
+            enabled = !isSaving,
         ) {
             if (isSaving) {
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -156,11 +157,48 @@ internal fun rememberDraftExit(hasUnsavedChanges: Boolean, onBack: () -> Unit): 
     return { if (hasUnsavedChanges) confirming = true else onBack() }
 }
 
-/** Compte associé, apparence et commentaire (CA-02) : proposés à la création seulement. */
-internal fun LazyListScope.creationExtraFields(
+/** Modification : valeurs pas encore relues, aucun champ ni Enregistrer (CA-01 de LOP-205). */
+internal fun LazyListScope.editLoading(tagPrefix: String) = item {
+    Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(Modifier.testTag("$tagPrefix.loading"))
+    }
+}
+
+/**
+ * Modification d'un élément disparu (CA-07 de LOP-205) : plus de formulaire, seulement le constat
+ * et le retour à la liste de son type.
+ */
+internal fun LazyListScope.editNotFound(tagPrefix: String, onBackToList: () -> Unit) = item {
+    Column(
+        Modifier.fillMaxWidth().padding(48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            stringResource(R.string.financial_detail_not_found),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.testTag("$tagPrefix.notfound"),
+        )
+        OutlinedButton(onClick = onBackToList, modifier = Modifier.testTag("$tagPrefix.notfound.back")) {
+            Text(stringResource(R.string.financial_back_to_list))
+        }
+    }
+}
+
+/**
+ * Compte associé, apparence et commentaire (CA-02 de LOP-202, CA-01 de LOP-205).
+ *
+ * Le choix ne propose que les comptes non archivés ; en modification, le compte d'origine
+ * ([keptAccountId]) reste affiché tant qu'il est choisi, par son nom même archivé, ou « Compte
+ * indisponible » s'il n'existe plus (CA-04 de LOP-205).
+ */
+internal fun LazyListScope.extraFields(
     tagPrefix: String,
     accounts: List<AccountEntity>,
     accountId: Long?,
+    keptAccountId: Long?,
+    keptAccountName: String?,
     refusals: Set<FinancialItemRefusal>,
     onAccount: (Long?) -> Unit,
     icon: String,
@@ -184,7 +222,12 @@ internal fun LazyListScope.creationExtraFields(
         }
         SelectorRow(
             label = label,
-            value = accounts.firstOrNull { it.id == accountId }?.name ?: stringResource(R.string.tx_no_account),
+            value = accounts.firstOrNull { it.id == accountId }?.name
+                ?: if (accountId != null && accountId == keptAccountId) {
+                    keptAccountName ?: stringResource(R.string.financial_account_unavailable)
+                } else {
+                    stringResource(R.string.tx_no_account)
+                },
             icon = Icons.Default.AccountBalanceWallet,
             errorMessage = refusalMessage(refusals, FinancialItemRefusal.AccountUnavailable),
             onClick = { picking = true },

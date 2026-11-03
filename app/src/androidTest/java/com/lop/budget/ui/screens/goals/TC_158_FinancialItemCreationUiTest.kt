@@ -51,6 +51,8 @@ import com.lop.budget.domain.model.ItemStatus
 import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.domain.usecase.SyncProgressUseCase
 import com.lop.budget.domain.usecase.financial.CreateFinancialItemUseCase
+import com.lop.budget.domain.usecase.financial.ObserveFinancialItemDetailUseCase
+import com.lop.budget.domain.usecase.financial.UpdateFinancialItemUseCase
 import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
 import com.lop.budget.domain.usecase.transaction.AtomicWriter
 import com.lop.budget.ui.common.TestTags
@@ -198,6 +200,8 @@ class FinancialItemCreationUiTest {
     @Inject lateinit var loanRepo: LoanRepository
     @Inject lateinit var accountRepo: AccountRepository
     @Inject lateinit var syncProgress: SyncProgressUseCase
+    @Inject lateinit var observeDetail: ObserveFinancialItemDetailUseCase
+    @Inject lateinit var update: UpdateFinancialItemUseCase
     @Inject lateinit var atomicWriter: AtomicWriter
     @Inject lateinit var settings: SettingsRepository
 
@@ -819,7 +823,7 @@ class FinancialItemCreationUiTest {
 
     private fun mountGoal(gate: AtomicWriter = Gate()) {
         launch()
-        val vm = provide("goal") { GoalEditViewModel(goalRepo, syncProgress, creation(gate), accountRepo, SavedStateHandle()) }
+        val vm = provide("goal") { GoalEditViewModel(goalRepo, observeDetail, creation(gate), update, accountRepo, SavedStateHandle()) }
         show { GoalEditScreen(onBack = { backs.incrementAndGet() }, onSaved = { savedKinds += it }, vm = vm) }
         awaitForm(T_GOAL)
         reference = snapshot()
@@ -828,7 +832,7 @@ class FinancialItemCreationUiTest {
     private fun mountReceivable(gate: AtomicWriter = Gate()) {
         launch()
         val handle = SavedStateHandle(mapOf(DebtEditViewModel.ARG_DIRECTION to LoanDirection.LENT.name))
-        val vm = provide("receivable") { DebtEditViewModel(loanRepo, syncProgress, creation(gate), accountRepo, handle) }
+        val vm = provide("receivable") { DebtEditViewModel(loanRepo, observeDetail, creation(gate), update, accountRepo, handle) }
         show { DebtEditScreen(onBack = { backs.incrementAndGet() }, onSaved = { savedKinds += it }, vm = vm) }
         awaitForm(T_RECV)
         reference = snapshot()

@@ -1,5 +1,6 @@
 package com.lop.budget.ui.screens.goals
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -43,6 +44,8 @@ fun DebtEditScreen(
     onBack: () -> Unit,
     /** Appelé une fois l'enregistrement réussi, avec le type enregistré (CA-05). */
     onSaved: (FinancialItemKind) -> Unit = { onBack() },
+    /** Modification d'un élément disparu : retour à la liste de son type (CA-07 de LOP-205). */
+    onNotFound: (FinancialItemKind) -> Unit = { onBack() },
     vm: DebtEditViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -52,27 +55,29 @@ fun DebtEditScreen(
 
     LaunchedEffect(state.savedKind) { state.savedKind?.let(onSaved) }
     val requestExit = rememberDraftExit(state.hasUnsavedChanges, onBack)
+    val backToList = { onNotFound(state.kind) }
+    BackHandler(enabled = state.notFound, onBack = backToList)
 
     LopScreenScaffold(
         // CA-01 : le titre suit le mode et le sens, jamais le contenu du nom.
         title = stringResource(
             when {
-                state.isEdit -> R.string.debt_edit_title
+                state.isEdit && isDebt -> R.string.debt_edit_title
+                state.isEdit -> R.string.receivable_edit_title
                 isDebt -> R.string.debt_new_title
                 else -> R.string.receivable_new_title
             }
         ),
-        onBack = requestExit,
+        onBack = if (state.notFound) backToList else requestExit,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
         modifier = Modifier.testTag(TestTags.SCREEN_EDIT)
     ) {
+        if (state.isLoading) return@LopScreenScaffold editLoading("debt.edit")
+        if (state.notFound) return@LopScreenScaffold editNotFound("debt.edit", backToList)
         item {
             SaveButton(
                 isSaving = state.isSaving,
                 saveFailed = state.saveFailed,
-                // Modification (LOP-205) : règle d'activation d'avant LOP-202, reconduite.
-                enabled = !state.isEdit ||
-                    (form.name.isNotBlank() && (Format.centsOrNull(form.totalInput) ?: 0L) > 0),
                 onClick = vm::save,
                 tagPrefix = "debt.edit",
             )
@@ -148,12 +153,14 @@ fun DebtEditScreen(
                         modifier = Modifier.testTag("debt.edit.total")
                     )
 
+                    // CA-01 de LOP-205 : le départ est une donnée de création, lu seulement ici.
                     LopTextField(
                         label = stringResource(R.string.starting_balance_label),
                         value = form.startingInput,
                         onValueChange = vm::updateStartingBalance,
                         keyboardType = KeyboardType.Decimal,
                         placeholder = "0.00",
+                        readOnly = state.isEdit,
                         errorMessage = refusalMessage(
                             refusals,
                             FinancialItemRefusal.InvalidStarting,
@@ -197,21 +204,20 @@ fun DebtEditScreen(
             )
         }
 
-        // Modification (LOP-205) : le formulaire reste celui d'avant LOP-202.
-        if (!state.isEdit) {
-            creationExtraFields(
-                tagPrefix = "debt.edit",
-                accounts = state.accounts,
-                accountId = form.accountId,
-                refusals = refusals,
-                onAccount = vm::updateAccount,
-                icon = form.icon,
-                onIcon = vm::updateIcon,
-                colorArgb = form.colorArgb,
-                onColor = vm::updateColor,
-                comment = form.comment,
-                onComment = vm::updateComment,
-            )
-        }
+        extraFields(
+            tagPrefix = "debt.edit",
+            accounts = state.accounts,
+            accountId = form.accountId,
+            keptAccountId = state.keptAccountId,
+            keptAccountName = state.keptAccountName,
+            refusals = refusals,
+            onAccount = vm::updateAccount,
+            icon = form.icon,
+            onIcon = vm::updateIcon,
+            colorArgb = form.colorArgb,
+            onColor = vm::updateColor,
+            comment = form.comment,
+            onComment = vm::updateComment,
+        )
     }
 }

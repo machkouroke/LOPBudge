@@ -231,12 +231,7 @@ fun LopNavHost() {
                     ) {
                         FinancialItemDetailScreen(
                             onBack = { navController.popBackStack() },
-                            // P-4 de LOP-203 : le formulaire existant, en attendant LOP-205.
-                            onEdit = { kind, id ->
-                                navController.navigate(
-                                    if (kind == FinancialItemKind.GOAL) Routes.goalEdit(id) else Routes.debtEdit(id)
-                                )
-                            },
+                            onEdit = { kind, id -> navController.navigate(Routes.edition(kind, id)) },
                             onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
                             onAddTransaction = { kind, id -> navController.navigate(Routes.addLinked(kind, id)) },
                         )
@@ -254,7 +249,10 @@ fun LopNavHost() {
                         NavAnimationType.MAIN,
                         arguments = listOf(navArgument("id") { type = NavType.LongType })
                     ) {
-                        GoalEditScreen(onBack = { navController.popBackStack() })
+                        GoalEditScreen(
+                            onBack = { navController.popBackStack() },
+                            onNotFound = { kind -> navController.backToList(kind) },
+                        )
                     }
 
                     composableAnimated(
@@ -274,9 +272,18 @@ fun LopNavHost() {
                     composableAnimated(
                         Routes.DEBT_EDIT,
                         NavAnimationType.MAIN,
-                        arguments = listOf(navArgument("id") { type = NavType.LongType })
+                        arguments = listOf(
+                            navArgument("id") { type = NavType.LongType },
+                            navArgument(DebtEditViewModel.ARG_DIRECTION) {
+                                type = NavType.StringType
+                                defaultValue = LoanDirection.BORROWED.name
+                            },
+                        )
                     ) {
-                        DebtEditScreen(onBack = { navController.popBackStack() })
+                        DebtEditScreen(
+                            onBack = { navController.popBackStack() },
+                            onNotFound = { kind -> navController.backToList(kind) },
+                        )
                     }
 
                     composableAnimated(Routes.ACCOUNTS, NavAnimationType.MAIN) {
@@ -703,4 +710,16 @@ fun LopNavHost() {
 private fun NavController.closeCreation(kind: FinancialItemKind) {
     previousBackStackEntry?.savedStateHandle?.set(Routes.KEY_CREATED_KIND, kind.name)
     popBackStack()
+}
+
+/**
+ * CA-07 de LOP-205 : l'élément a disparu pendant sa modification. Retour à Suivi, sur l'onglet de
+ * son type, sans repasser par son détail devenu introuvable.
+ */
+private fun NavController.backToList(kind: FinancialItemKind) {
+    if (popBackStack(Routes.GOALS, inclusive = false)) {
+        currentBackStackEntry?.savedStateHandle?.set(Routes.KEY_CREATED_KIND, kind.name)
+    } else {
+        popBackStack()
+    }
 }

@@ -1,5 +1,6 @@
 package com.lop.budget.ui.screens.goals
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -34,6 +35,8 @@ fun GoalEditScreen(
     onBack: () -> Unit,
     /** Appelé une fois l'enregistrement réussi, avec le type enregistré (CA-05). */
     onSaved: (FinancialItemKind) -> Unit = { onBack() },
+    /** Modification d'un élément disparu : retour à la liste de son type (CA-07 de LOP-205). */
+    onNotFound: (FinancialItemKind) -> Unit = { onBack() },
     vm: GoalEditViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -42,21 +45,22 @@ fun GoalEditScreen(
 
     LaunchedEffect(state.savedKind) { state.savedKind?.let(onSaved) }
     val requestExit = rememberDraftExit(state.hasUnsavedChanges, onBack)
+    val backToList = { onNotFound(FinancialItemKind.GOAL) }
+    BackHandler(enabled = state.notFound, onBack = backToList)
 
     LopScreenScaffold(
         // CA-01 : le titre suit le mode, jamais le contenu du nom.
         title = stringResource(if (state.isEdit) R.string.goal_edit_title else R.string.goal_new_title),
-        onBack = requestExit,
+        onBack = if (state.notFound) backToList else requestExit,
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
         modifier = Modifier.testTag(TestTags.SCREEN_EDIT)
     ) {
+        if (state.isLoading) return@LopScreenScaffold editLoading("goal.edit")
+        if (state.notFound) return@LopScreenScaffold editNotFound("goal.edit", backToList)
         item {
             SaveButton(
                 isSaving = state.isSaving,
                 saveFailed = state.saveFailed,
-                // Modification (LOP-205) : règle d'activation d'avant LOP-202, reconduite.
-                enabled = !state.isEdit ||
-                    (form.name.isNotBlank() && (Format.centsOrNull(form.targetInput) ?: 0L) > 0),
                 onClick = vm::save,
                 tagPrefix = "goal.edit",
             )
@@ -89,12 +93,14 @@ fun GoalEditScreen(
                         modifier = Modifier.testTag("goal.edit.target")
                     )
 
+                    // CA-01 de LOP-205 : le départ est une donnée de création, lu seulement ici.
                     LopTextField(
                         label = stringResource(R.string.starting_balance_label),
                         value = form.startingInput,
                         onValueChange = vm::updateStartingBalance,
                         keyboardType = KeyboardType.Decimal,
                         placeholder = "0.00",
+                        readOnly = state.isEdit,
                         errorMessage = refusalMessage(
                             refusals,
                             FinancialItemRefusal.InvalidStarting,
@@ -126,21 +132,20 @@ fun GoalEditScreen(
             )
         }
 
-        // Modification (LOP-205) : le formulaire reste celui d'avant LOP-202.
-        if (!state.isEdit) {
-            creationExtraFields(
-                tagPrefix = "goal.edit",
-                accounts = state.accounts,
-                accountId = form.accountId,
-                refusals = refusals,
-                onAccount = vm::updateAccount,
-                icon = form.icon,
-                onIcon = vm::updateIcon,
-                colorArgb = form.colorArgb,
-                onColor = vm::updateColor,
-                comment = form.comment,
-                onComment = vm::updateComment,
-            )
-        }
+        extraFields(
+            tagPrefix = "goal.edit",
+            accounts = state.accounts,
+            accountId = form.accountId,
+            keptAccountId = state.keptAccountId,
+            keptAccountName = state.keptAccountName,
+            refusals = refusals,
+            onAccount = vm::updateAccount,
+            icon = form.icon,
+            onIcon = vm::updateIcon,
+            colorArgb = form.colorArgb,
+            onColor = vm::updateColor,
+            comment = form.comment,
+            onComment = vm::updateComment,
+        )
     }
 }

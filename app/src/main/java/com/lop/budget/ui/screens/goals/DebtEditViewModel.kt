@@ -4,25 +4,26 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.local.entity.AccountEntity
-import com.lop.budget.data.local.entity.LoanEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.LoanRepository
 import com.lop.budget.domain.model.DebtType
 import com.lop.budget.domain.model.FinancialItemKind
 import com.lop.budget.domain.model.LoanDirection
-import com.lop.budget.domain.usecase.SyncProgressUseCase
 import com.lop.budget.domain.usecase.financial.CreateFinancialItemUseCase
 import com.lop.budget.domain.usecase.financial.FinancialItemCreateResult
 import com.lop.budget.domain.usecase.financial.FinancialItemDraft
 import com.lop.budget.domain.usecase.financial.FinancialItemRefusal
-import com.lop.budget.util.Format
+import com.lop.budget.domain.usecase.financial.FinancialItemUpdate
+import com.lop.budget.domain.usecase.financial.FinancialItemUpdateResult
+import com.lop.budget.domain.usecase.financial.ObserveFinancialItemDetailUseCase
+import com.lop.budget.domain.usecase.financial.UpdateFinancialItemUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -56,29 +57,47 @@ data class DebtEditUiState(
     val kind: FinancialItemKind = FinancialItemKind.DEBT,
     val form: DebtForm = DebtForm(),
     val isEdit: Boolean = false,
+    /** Modification : valeurs pas encore relues ; rien n'est saisissable ni enregistrable. */
+    val isLoading: Boolean = false,
+    /** Modification : élément introuvable, à l'ouverture ou à la validation (CA-07 de LOP-205). */
+    val notFound: Boolean = false,
     /** Comptes non archivés, seuls proposés au choix (CA-04). */
     val accounts: List<AccountEntity> = emptyList(),
+    /**
+     * Modification : compte associé à l'ouverture, affiché tant qu'il reste choisi même s'il n'est
+     * plus proposé ; nom `null` s'il est introuvable (CA-04 de LOP-205).
+     */
+    val keptAccountId: Long? = null,
+    val keptAccountName: String? = null,
     val refusals: Set<FinancialItemRefusal> = emptySet(),
     val isSaving: Boolean = false,
     val saveFailed: Boolean = false,
     /** Posé après un enregistrement réussi : l'écran se ferme (CA-05). */
     val savedKind: FinancialItemKind? = null,
-    /** CA-06 : en création, la saisie diffère des valeurs proposées à l'ouverture. */
+    /** CA-06 : la saisie diffère des valeurs proposées (création) ou relues (modification). */
     val hasUnsavedChanges: Boolean = false,
 )
 
-/** Brouillon et refus encore affichés, conservés dans le `SavedStateHandle` (CA-07). */
+/**
+ * Brouillon et refus encore affichés, conservés dans le `SavedStateHandle` (CA-07 de LOP-202) ;
+ * en modification, aussi les valeurs relues, pour qu'une recréation ne relise pas la base
+ * par-dessus le brouillon (CA-06 de LOP-205).
+ */
 @Serializable
 private data class DebtDraft(
     val form: DebtForm,
     val refusals: Set<FinancialItemRefusal> = emptySet(),
+    val original: DebtForm? = null,
+    val keptAccountName: String? = null,
+    val notFound: Boolean = false,
 )
 
 @HiltViewModel
 class DebtEditViewModel @Inject constructor(
     private val loanRepo: LoanRepository,
-    private val syncProgressUseCase: SyncProgressUseCase,
+    observeDetail: ObserveFinancialItemDetailUseCase,
     private val createFinancialItem: CreateFinancialItemUseCase,
+    private val updateFinancialItem: UpdateFinancialItemUseCase,
     accountRepo: AccountRepository,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -87,8 +106,8 @@ class DebtEditViewModel @Inject constructor(
     private val isEdit = loanId != null
 
     /**
-     * Sens reçu à l'ouverture (CA-01, P-4) ; dette à défaut. La route de modification n'en porte
-     * pas : une modification reste traitée en dette, comme avant LOP-202 (LOP-205).
+     * Sens reçu à l'ouverture, en création (CA-01, P-4 de LOP-202) comme en modification (CA-01,
+     * CA-06 de LOP-205) ; dette à défaut. Un prêt relu dans l'autre sens est introuvable (CA-07).
      */
     private val kind: FinancialItemKind =
         if (savedStateHandle.get<String>(ARG_DIRECTION) == LoanDirection.LENT.name) FinancialItemKind.RECEIVABLE
@@ -105,9 +124,7 @@ class DebtEditViewModel @Inject constructor(
     private val saveFailed = MutableStateFlow(false)
     private val savedKind = MutableStateFlow<FinancialItemKind?>(null)
 
-    private val accounts =
-        if (isEdit) flowOf(emptyList())
-        else accountRepo.observeAll().map { all -> all.filterNot { it.archived } }
+    private val accounts = accountRepo.observeAll().map { all -> all.filterNot { it.archived } }
 
     val uiState: StateFlow<DebtEditUiState> =
         combine(draft, accounts, isSaving, saveFailed, savedKind) { d, accs, saving, failed, saved ->
@@ -115,46 +132,69 @@ class DebtEditViewModel @Inject constructor(
                 kind = kind,
                 form = d.form,
                 isEdit = isEdit,
+                isLoading = isLoading(d),
+                notFound = d.notFound,
                 accounts = accs,
+                keptAccountId = d.original?.accountId,
+                keptAccountName = d.keptAccountName,
                 refusals = d.refusals,
                 isSaving = saving,
                 saveFailed = failed,
                 savedKind = saved,
-                hasUnsavedChanges = !isEdit && d.form != proposedForm,
+                hasUnsavedChanges =
+                    if (isEdit) d.original != null && !d.notFound && d.form != d.original
+                    else d.form != proposedForm,
             )
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            DebtEditUiState(kind = kind, form = draft.value.form, isEdit = isEdit, refusals = draft.value.refusals),
+            DebtEditUiState(
+                kind = kind,
+                form = draft.value.form,
+                isEdit = isEdit,
+                isLoading = isLoading(draft.value),
+                refusals = draft.value.refusals,
+            ),
         )
 
     init {
-        loanId?.let { id ->
+        // CA-01 de LOP-205 : préremplissage complet, une seule fois ; un brouillon restauré n'est
+        // jamais écrasé par la base (CA-06).
+        if (loanId != null && draft.value.original == null && !draft.value.notFound) {
             viewModelScope.launch {
-                loanRepo.getById(id)?.let { loan ->
-                    edit({
-                        it.copy(
-                            name = loan.name,
-                            creditorName = loan.counterpartyName ?: "",
-                            debtType = loan.debtType,
-                            totalInput = inputOf(loan.totalAmountCents),
-                            startingInput = inputOf(loan.startingBalanceCents),
-                            rateInput = if (loan.interestRate == 0.0) "" else loan.interestRate.toString(),
-                            dueDate = loan.dueDate,
-                            colorArgb = loan.colorArgb,
-                            icon = loan.icon,
-                        )
-                    })
+                val item = observeDetail(kind, loanId).first()
+                if (item == null) {
+                    change { it.copy(notFound = true) }
+                } else {
+                    val form = DebtForm(
+                        name = item.name,
+                        creditorName = item.counterparty.orEmpty(),
+                        debtType = item.debtType ?: DebtType.OTHER,
+                        totalInput = inputOf(item.targetCents),
+                        startingInput = inputOf(item.startingCents),
+                        rateInput = item.interestRate?.takeIf { it != 0.0 }?.toString().orEmpty(),
+                        dueDate = item.dueDate,
+                        accountId = item.accountId,
+                        colorArgb = item.colorArgb,
+                        icon = item.icon,
+                        comment = item.comment.orEmpty(),
+                    )
+                    change { DebtDraft(form, original = form, keptAccountName = item.accountName) }
                 }
             }
         }
     }
 
-    /** Applique une saisie et efface les refus qu'elle rend caducs (CA-07 : « encore pertinentes »). */
-    private fun edit(change: (DebtForm) -> DebtForm, clears: Set<FinancialItemRefusal> = emptySet()) {
-        draft.update { DebtDraft(change(it.form), it.refusals - clears) }
+    private fun isLoading(d: DebtDraft) = isEdit && d.original == null && !d.notFound
+
+    private fun change(transform: (DebtDraft) -> DebtDraft) {
+        draft.update(transform)
         savedStateHandle[KEY_DRAFT] = Json.encodeToString(draft.value)
     }
+
+    /** Applique une saisie et efface les refus qu'elle rend caducs (CA-07 : « encore pertinentes »). */
+    private fun edit(update: (DebtForm) -> DebtForm, clears: Set<FinancialItemRefusal> = emptySet()) =
+        change { it.copy(form = update(it.form), refusals = it.refusals - clears) }
 
     fun updateName(v: String) = edit({ it.copy(name = v) }, setOf(FinancialItemRefusal.BlankName))
     fun updateCreditor(v: String) = edit({ it.copy(creditorName = v) })
@@ -175,14 +215,15 @@ class DebtEditViewModel @Inject constructor(
     fun updateComment(v: String) = edit({ it.copy(comment = v) })
 
     /**
-     * Création (LOP-202) : un seul enregistrement à la fois (CA-05, I-3). Le verrou reste posé
-     * après un succès, jusqu'à la fermeture ; un refus ou un échec le lève pour réessayer (CA-08).
+     * Un seul enregistrement à la fois (CA-05, I-3 de LOP-202 ; CA-05 de LOP-205). Le verrou reste
+     * posé après un succès, jusqu'à la fermeture ; un refus ou un échec le lève pour réessayer
+     * (CA-08). En modification, rien ne part avant le préremplissage ni après un « introuvable ».
      */
     fun save() {
-        if (isEdit) return saveEdit()
-        if (isSaving.value) return
+        if (isSaving.value || isLoading(draft.value) || draft.value.notFound) return
         isSaving.value = true
         saveFailed.value = false
+        if (isEdit) return saveEdit()
         viewModelScope.launch {
             val f = draft.value.form
             val result = try {
@@ -223,35 +264,50 @@ class DebtEditViewModel @Inject constructor(
     }
 
     /**
-     * Modification : chemin d'avant LOP-202, reconduit tel quel, hors périmètre (LOP-205). Ni
-     * verrou, ni validation, ni trim ; compte et commentaire ne sont pas transmis, donc effacés.
+     * Modification (LOP-205) : le sens est celui de l'ouverture, le montant de départ n'est pas
+     * transmis (CA-01 à CA-03 ; LOP-220). Introuvable : rien n'est écrit, le formulaire le dit
+     * (CA-07). Échec : le brouillon reste, Réessayer vise le même identifiant (CA-08).
      */
     private fun saveEdit() {
         viewModelScope.launch {
-            // Montants convertis en centimes à la frontière (I-3 de LOP-80), et progression non
-            // transmise : elle ne se saisit jamais (I-2). Le repository la reprend de la base et
-            // le moteur la recalcule juste après.
-            //
-            // ponytail: direction figée à BORROWED en modification — modifier une créance lève
-            // `LoanDirectionImmutableException`. Relève de LOP-205 ; aucun bouton ne mène à la
-            // modification d'une créance tant que LOP-22 n'a pas livré son onglet (P-4).
             val f = draft.value.form
-            val loan = LoanEntity(
-                id = loanId!!,
-                name = f.name,
-                counterpartyName = f.creditorName.takeIf { it.isNotBlank() },
-                direction = LoanDirection.BORROWED,
-                debtType = f.debtType,
-                totalAmountCents = Format.centsOrNull(f.totalInput) ?: 0L,
-                startingBalanceCents = Format.centsOrNull(f.startingInput) ?: 0L,
-                interestRate = f.rateInput.replace(',', '.').toDoubleOrNull() ?: 0.0,
-                colorArgb = f.colorArgb,
-                icon = f.icon,
-                dueDate = f.dueDate,
-            )
-            loanRepo.update(loan)
-            syncProgressUseCase.recalculateLoanProgress(loanId)
-            savedKind.value = FinancialItemKind.DEBT
+            val result = try {
+                updateFinancialItem(
+                    FinancialItemUpdate(
+                        kind = kind,
+                        id = loanId!!,
+                        name = f.name,
+                        targetInput = f.totalInput,
+                        dueDate = f.dueDate,
+                        accountId = f.accountId,
+                        icon = f.icon,
+                        colorArgb = f.colorArgb,
+                        comment = f.comment,
+                        counterparty = f.creditorName,
+                        debtType = f.debtType,
+                        rateInput = f.rateInput,
+                    )
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            when (result) {
+                FinancialItemUpdateResult.Updated -> savedKind.value = kind
+                is FinancialItemUpdateResult.Refused -> {
+                    change { it.copy(refusals = result.refusals) }
+                    isSaving.value = false
+                }
+                FinancialItemUpdateResult.NotFound -> {
+                    change { it.copy(notFound = true) }
+                    isSaving.value = false
+                }
+                null -> {
+                    saveFailed.value = true
+                    isSaving.value = false
+                }
+            }
         }
     }
 
@@ -265,7 +321,7 @@ class DebtEditViewModel @Inject constructor(
     }
 
     companion object {
-        /** Argument de la route de création : nom d'un [LoanDirection]. */
+        /** Argument des routes de création et de modification : nom d'un [LoanDirection]. */
         const val ARG_DIRECTION = "direction"
         private const val KEY_DRAFT = "debt.draft"
     }
