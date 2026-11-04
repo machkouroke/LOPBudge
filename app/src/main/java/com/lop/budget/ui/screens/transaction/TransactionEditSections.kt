@@ -223,31 +223,27 @@ fun ClassificationSection(
                 modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_ACCOUNT)
             )
 
-            // CA-01 de LOP-5 violé, reconduit tel quel : les deux choix ne sont proposés que pour une
-            // dépense, alors qu'un revenu se rattache aussi (contribution d'objectif, remboursement de
-            // créance, P-3). Signalé en ANO présumée LOP-224 ; sa correction n'appartient pas à la
-            // mise en conformité.
-            if (form.type == TransactionType.EXPENSE) {
-                // CA-02 de LOP-5 : le lien est relu par identifiant, archivé compris ; il n'est plus
-                // cherché parmi les nouveaux choix, qui excluent les archivés.
-                SelectorRow(
-                    label = stringResource(R.string.tx_linked_goal_label),
-                    value = linkValue(form.linkedGoalId, linkedGoal, R.string.tx_no_goal_linked),
-                    icon = linkedGoal?.let { IconMapper.get(it.summary.icon) } ?: Icons.Default.Add,
-                    onClick = onOpenGoal,
-                    errorMessage = goalError,
-                    modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_GOAL)
-                )
+            // CA-01 de LOP-5 : les deux choix sont proposés quel que soit le type. Une contribution
+            // d'objectif ou le remboursement d'une créance est un revenu (P-3) ; LOP-224 les masquait.
+            // CA-02 : le lien est relu par identifiant, archivé compris ; il n'est plus cherché parmi
+            // les nouveaux choix, qui excluent les archivés.
+            SelectorRow(
+                label = stringResource(R.string.tx_linked_goal_label),
+                value = linkValue(form.linkedGoalId, linkedGoal, R.string.tx_no_goal_linked),
+                icon = linkedGoal?.let { IconMapper.get(it.summary.icon) } ?: Icons.Default.Add,
+                onClick = onOpenGoal,
+                errorMessage = goalError,
+                modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_GOAL)
+            )
 
-                SelectorRow(
-                    label = stringResource(R.string.tx_linked_debt_label),
-                    value = linkValue(form.linkedLoanId, linkedLoan, R.string.tx_no_debt_linked),
-                    icon = linkedLoan?.let { IconMapper.get(it.summary.icon) } ?: Icons.Default.Add,
-                    onClick = onOpenDebt,
-                    errorMessage = loanError,
-                    modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_DEBT)
-                )
-            }
+            SelectorRow(
+                label = stringResource(R.string.tx_linked_debt_label),
+                value = linkValue(form.linkedLoanId, linkedLoan, R.string.tx_no_debt_linked),
+                icon = linkedLoan?.let { IconMapper.get(it.summary.icon) } ?: Icons.Default.Add,
+                onClick = onOpenDebt,
+                errorMessage = loanError,
+                modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_DEBT)
+            )
 
             val selectedTags = tags.filter { it.id in form.tagIds }
             Surface(

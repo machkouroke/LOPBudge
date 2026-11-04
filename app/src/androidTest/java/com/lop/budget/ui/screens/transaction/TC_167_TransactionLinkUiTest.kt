@@ -78,8 +78,9 @@ import javax.inject.Inject
  *   antérieure à LOP-5). U-05 vérifie que le montant affiché est conservé tel quel.
  *
  * ## Anomalies connues
- * - LOP-224 : « Objectif lié » et « Prêt lié » ne sont composés qu'en Dépense
- *   (`TransactionEditSections.kt` l.230). Rouges attendus : U-01 b, c, d.
+ * - LOP-224 : « Objectif lié » et « Prêt lié » n'étaient composés qu'en Dépense
+ *   (`TransactionEditSections.kt` l.230). U-01 b, c, d rouges le 4 novembre 2026 ; corrigée le même
+ *   jour, les trois cas doivent être verts.
  *
  * ## Hors périmètre
  * Liens transmis, refus et brouillon au niveau état : TC-166. Lignes, propagation, recalcul des
@@ -390,7 +391,7 @@ class TransactionLinkUiTest {
             rows.map { it.drop(1) },
         )
         val rowTag = "${TestTags.FINANCIAL_DETAIL_TX_ROW}_${rows.single().first()}"
-        j.reveal(TestTags.SCREEN_FINANCIAL_DETAIL, hasTestTag(rowTag))
+        awaitInDetail("CA-08 — la nouvelle transaction figure dans la liste du détail", rowTag)
         j.expect("CA-08 — la nouvelle transaction figure une fois dans la liste du détail", 1, j.count(rowTag))
     }
 
@@ -409,7 +410,7 @@ class TransactionLinkUiTest {
 
         awaitDetail(G_ACTIF)
         j.expect("CA-08 — progression inchangée", "100,00 €", progress())
-        j.reveal(TestTags.SCREEN_FINANCIAL_DETAIL, hasTestTag(TestTags.FINANCIAL_DETAIL_TX_EMPTY))
+        awaitInDetail("I-2 — message « liste vide » présent", TestTags.FINANCIAL_DETAIL_TX_EMPTY)
         j.expect(
             "I-2 — liste vide : message présent, aucune ligne",
             1 to 0,
@@ -478,6 +479,12 @@ class TransactionLinkUiTest {
         j.await("carte de « $name »") { j.count(card) == 1 }
         j.click(j.node(card))
         awaitDetail(name)
+    }
+
+    /** Nœud de la liste paresseuse du détail : défilé jusqu'à lui, attendu borné ; son absence est l'échec. */
+    private fun awaitInDetail(what: String, tag: String) = j.await(what) {
+        runCatching { j.reveal(TestTags.SCREEN_FINANCIAL_DETAIL, hasTestTag(tag)) }
+        j.count(tag) >= 1
     }
 
     private fun awaitDetail(name: String) = j.await("détail « $name » seul affiché") {
