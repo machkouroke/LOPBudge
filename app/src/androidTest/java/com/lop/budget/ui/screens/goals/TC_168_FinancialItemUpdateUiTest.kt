@@ -18,6 +18,7 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextReplacement
 import androidx.lifecycle.lifecycleScope
 import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lop.budget.MainActivity
 import com.lop.budget.data.local.LopDatabase
@@ -234,7 +235,7 @@ class FinancialItemUpdateUiTest {
         j.expect(
             "CA-01 : aucun contrôle de type d'élément, direction, progression, restant ou statut",
             emptyList<String>(),
-            tags.filter { t -> FORBIDDEN.any { it in t.lowercase() } },
+            tags.filter { t -> t.lowercase().split('.').any { it in FORBIDDEN } },
         )
         val debtControls = tags.filter { it == "debt.edit.type" || it == "debt.edit.rate" }.toSet()
         j.expect(
@@ -344,6 +345,9 @@ class FinancialItemUpdateUiTest {
         j.expect("CA-06 : Continuer garde le brouillon", NEW_NAME, input("goal.edit.name"))
         j.expect("CA-06 : toujours sur le formulaire", 1, j.count(TestTags.SCREEN_EDIT))
 
+        // Le champ a repris le focus : un premier retour système ne ferait que fermer le clavier
+        // (comportement d'Android, constaté par diagnostic). On le ferme, comme ce premier retour.
+        j.act("fermeture du clavier") { Espresso.closeSoftKeyboard() }
         j.pressBack()
         awaitSheet()
         j.click(j.node("form.leave.quit"))
@@ -691,7 +695,10 @@ class FinancialItemUpdateUiTest {
 
         val TX_DATE: Long = Instant.parse("2026-03-10T10:00:00Z").toEpochMilli()
 
-        /** Mots qui trahiraient un contrôle interdit par CA-01 dans un repère du formulaire. */
+        /**
+         * Segments de repère (entre points) qui trahiraient un contrôle interdit par CA-01. Comparés
+         * segment par segment : l'icône `directions_car` n'est pas un contrôle de direction.
+         */
         val FORBIDDEN = listOf("direction", "kind", "progress", "remaining", "status")
 
         val CARD_PREFIX = mapOf(
