@@ -811,6 +811,7 @@ private class GateGoalDao : GoalDao {
     }
 
     override fun observeActive(): Flow<List<GoalEntity>> = real.observeActive()
+    override fun observeArchived(): Flow<List<GoalEntity>> = real.observeArchived()
     override suspend fun getById(id: Long): GoalEntity? = real.getById(id)
     override suspend fun getByName(name: String): GoalEntity? = real.getByName(name)
     override suspend fun upsert(goal: GoalEntity): Long = real.upsert(goal)

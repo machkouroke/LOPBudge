@@ -214,6 +214,12 @@
     <string name="tracking_empty_receivables">Aucune créance</string>
     <string name="tracking_load_error">Impossible de charger cette liste</string>
     <string name="tracking_retry">Réessayer</string>
+    <!-- LOP-206 : filtres Liste normale / Archives (CA-03). -->
+    <string name="tracking_filter_normal">Liste normale</string>
+    <string name="tracking_filter_archives">Archives</string>
+    <string name="tracking_empty_archived_goals">Aucun objectif archivé</string>
+    <string name="tracking_empty_archived_debts">Aucune dette archivée</string>
+    <string name="tracking_empty_archived_receivables">Aucune créance archivée</string>
     <string name="goal_edit_title">Modifier l\'objectif</string>
     <string name="goal_new_title">Créer un objectif</string>
     <string name="goal_name_label">Nom de l\'objectif</string>
@@ -294,6 +300,10 @@
     <string name="tx_error_loan_unavailable">Ce prêt n\'est plus disponible</string>
     <string name="financial_detail_add_contribution">Ajouter une contribution</string>
     <string name="financial_detail_add_repayment">Enregistrer un remboursement</string>
+    <!-- LOP-206 : archiver, restaurer (CA-01, CA-05). -->
+    <string name="financial_detail_archive">Archiver</string>
+    <string name="financial_detail_restore">Restaurer</string>
+    <string name="financial_detail_status_change_error">L\'opération a échoué. Réessayez.</string>
 
     <!-- Accounts -->
     <string name="accounts_title">Comptes</string>

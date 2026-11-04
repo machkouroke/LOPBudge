@@ -32,8 +32,9 @@ data class FinancialItemSummary(
     /** `remainingCents` et `percent` nuls : non calculable, affiché « — » (CA-03, I-3). */
     val progress: ProgressView,
     /**
-     * ACTIVE ou COMPLETED dans une liste : un archivé n'y est jamais rendu. ARCHIVED n'apparaît que
-     * pour un rattachement relu par identifiant ([ObserveFinancialItemListUseCase.linkedGoal]).
+     * ACTIVE ou COMPLETED dans une liste normale. ARCHIVED n'apparaît que dans les archives
+     * ([ObserveFinancialItemListUseCase.archived]) et pour un rattachement relu par identifiant
+     * ([ObserveFinancialItemListUseCase.linkedGoal]).
      */
     val status: ItemStatus,
 )
@@ -57,6 +58,16 @@ class ObserveFinancialItemListUseCase @Inject constructor(
      */
     operator fun invoke(kind: FinancialItemKind): Flow<List<FinancialItemSummary>> =
         linkable(kind).map { items -> items.map { it.summary } }
+
+    /**
+     * Archives de [kind] : exactement ses éléments archivés, une ligne chacun, jamais ceux d'un autre
+     * type (LOP-206, CA-03). Jamais proposés au rattachement : [linkable] ne les lit pas.
+     */
+    fun archived(kind: FinancialItemKind): Flow<List<FinancialItemSummary>> = when (kind) {
+        FinancialItemKind.GOAL -> goalRepo.observeArchived().map { it.map(::linkable) }
+        FinancialItemKind.DEBT -> loanRepo.observeArchivedByDirection(LoanDirection.BORROWED).map { it.map(::linkable) }
+        FinancialItemKind.RECEIVABLE -> loanRepo.observeArchivedByDirection(LoanDirection.LENT).map { it.map(::linkable) }
+    }.map { items -> items.map { it.summary } }
 
     /** Nouveaux choix de rattachement (LOP-5, CA-01, P-2) : les éléments de [invoke], contrepartie comprise. */
     fun linkable(kind: FinancialItemKind): Flow<List<LinkableItem>> = when (kind) {

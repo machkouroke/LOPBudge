@@ -3,6 +3,7 @@ package com.lop.budget.ui.screens.goals
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -66,13 +68,20 @@ fun GoalsScreen(
     onCreatedKindShown: () -> Unit = {},
     /** Onglet visible. Sauvegardé : le retour d'un détail ou d'une section le retrouve (CA-01). */
     selectedKind: MutableState<FinancialItemKind> = rememberSaveable { mutableStateOf(FinancialItemKind.GOAL) },
+    /** Filtre Archives, commun aux trois onglets et gardé comme l'onglet (LOP-206, CA-03, P-5). */
+    showArchives: MutableState<Boolean> = rememberSaveable { mutableStateOf(false) },
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
     var selected by selectedKind
+    var archivesShown by showArchives
+    // Collectées seulement filtre Archives affiché : la liste normale n'en déclenche pas la lecture.
+    val archives = if (archivesShown) vm.archives.collectAsStateWithLifecycle().value else null
     LaunchedEffect(createdKind) {
         if (createdKind != null) {
+            // CA-07 de LOP-22 : une création réussie s'affiche dans la liste normale de son type.
             selected = createdKind
+            archivesShown = false
             onCreatedKindShown()
         }
     }
@@ -102,14 +111,36 @@ fun GoalsScreen(
             }
         }
 
-        val (load, emptyText) = when (selected) {
-            FinancialItemKind.GOAL -> state.goals to R.string.tracking_empty_goals
-            FinancialItemKind.DEBT -> state.debts to R.string.tracking_empty_debts
-            FinancialItemKind.RECEIVABLE -> state.receivables to R.string.tracking_empty_receivables
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = !archivesShown,
+                    onClick = { archivesShown = false },
+                    label = { Text(stringResource(R.string.tracking_filter_normal)) },
+                    modifier = Modifier.testTag(TestTags.GOAL_FILTER_NORMAL),
+                )
+                FilterChip(
+                    selected = archivesShown,
+                    onClick = { archivesShown = true },
+                    label = { Text(stringResource(R.string.tracking_filter_archives)) },
+                    modifier = Modifier.testTag(TestTags.GOAL_FILTER_ARCHIVES),
+                )
+            }
         }
+
+        val lists = archives ?: state
+        val (load, emptyText) = when (selected) {
+            FinancialItemKind.GOAL -> lists.goals to
+                if (archives != null) R.string.tracking_empty_archived_goals else R.string.tracking_empty_goals
+            FinancialItemKind.DEBT -> lists.debts to
+                if (archives != null) R.string.tracking_empty_archived_debts else R.string.tracking_empty_debts
+            FinancialItemKind.RECEIVABLE -> lists.receivables to
+                if (archives != null) R.string.tracking_empty_archived_receivables else R.string.tracking_empty_receivables
+        }
+        // Une archive ouvre le même détail que la liste normale (CA-03).
         listContent(load, emptyText, vm::retry) { item ->
             val accent = if (item.kind == FinancialItemKind.DEBT) ext.expense else ext.income
-            FinancialItemCard(item, state.currency, accent) { onOpenItem(item.kind, item.id) }
+            FinancialItemCard(item, lists.currency, accent) { onOpenItem(item.kind, item.id) }
         }
     }
 }

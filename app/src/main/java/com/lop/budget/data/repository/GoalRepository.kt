@@ -23,6 +23,8 @@ class GoalRepository @Inject constructor(
 
     override fun observeActive() = goalDao.observeActive()
 
+    override fun observeArchived() = goalDao.observeArchived()
+
     override suspend fun getById(id: Long) = goalDao.getById(id)
 
     override fun observeById(id: Long) = goalDao.observeById(id)
@@ -45,6 +47,8 @@ class GoalRepository @Inject constructor(
 
     /** Archiver ne supprime rien et ne touche à aucun rattachement (I-4). */
     override suspend fun archive(id: Long) = goalDao.updateStatus(id, ItemStatus.ARCHIVED)
+
+    override suspend fun restore(id: Long) = goalDao.updateStatus(id, ItemStatus.ACTIVE)
 
     /**
      * Supprimer l'objectif ne supprime aucune transaction : les rattachements passent à `NULL` par

@@ -16,7 +16,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -31,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,7 +60,7 @@ import java.util.Locale
 /**
  * Détail d'un objectif, d'une dette ou d'une créance (LOP-203). Consultation seule : aucun champ
  * n'est éditable (CA-03) ; « Modifier » ouvre le formulaire existant (P-4). LOP-5 y ajoute la saisie
- * d'une contribution ou d'un remboursement (CA-07, CA-08).
+ * d'une contribution ou d'un remboursement (CA-07, CA-08), LOP-206 Archiver et Restaurer (CA-01).
  */
 @Composable
 fun FinancialItemDetailScreen(
@@ -67,6 +71,7 @@ fun FinancialItemDetailScreen(
     vm: FinancialItemDetailViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val statusChange by vm.statusChange.collectAsStateWithLifecycle()
     val loaded = state as? FinancialItemDetailUiState.Loaded
 
     LopScreenScaffold(
@@ -106,7 +111,10 @@ fun FinancialItemDetailScreen(
                 )
             }
 
-            is FinancialItemDetailUiState.Loaded -> detailContent(s.detail, s.currency, onEdit, onOpenTransaction, onAddTransaction)
+            is FinancialItemDetailUiState.Loaded -> detailContent(
+                s.detail, s.currency, onEdit, onOpenTransaction, onAddTransaction,
+                statusChange, onArchive = vm::archive, onRestore = vm::restore,
+            )
         }
     }
 }
@@ -117,6 +125,9 @@ private fun LazyListScope.detailContent(
     onEdit: (FinancialItemKind, Long) -> Unit,
     onOpenTransaction: (Long) -> Unit,
     onAddTransaction: (FinancialItemKind, Long) -> Unit,
+    statusChange: StatusChange,
+    onArchive: () -> Unit,
+    onRestore: () -> Unit,
 ) {
     val color = Color(d.colorArgb)
 
@@ -174,6 +185,36 @@ private fun LazyListScope.detailContent(
                     else R.string.financial_detail_add_repayment
                 )
             )
+        }
+    }
+
+    // LOP-206, CA-01, P-4 : Archiver ou Restaurer selon le statut lu en base, jamais les deux ; sans
+    // confirmation, l'action étant réversible (P-3). Désactivé pendant l'écriture : pas de double appui.
+    item {
+        val archived = d.status == ItemStatus.ARCHIVED
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = if (archived) onRestore else onArchive,
+                enabled = statusChange != StatusChange.Running,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(if (archived) TestTags.FINANCIAL_DETAIL_RESTORE else TestTags.FINANCIAL_DETAIL_ARCHIVE),
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Icon(if (archived) Icons.Default.Unarchive else Icons.Default.Archive, null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(if (archived) R.string.financial_detail_restore else R.string.financial_detail_archive))
+            }
+            // CA-05 : l'échec s'affiche et s'annonce ; le même bouton relance l'opération.
+            if (statusChange == StatusChange.Failed) {
+                Text(
+                    stringResource(R.string.financial_detail_status_change_error),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .semantics { liveRegion = LiveRegionMode.Polite }
+                        .testTag(TestTags.FINANCIAL_DETAIL_STATUS_ERROR),
+                )
+            }
         }
     }
 

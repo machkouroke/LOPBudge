@@ -192,6 +192,10 @@ object TestTags {
     const val GOAL_LIST_RETRY = "goal.list.retry"
     const val GOAL_LIST_EMPTY = "goal.list.empty"
 
+    /** Filtres de Suivi, communs aux trois onglets (LOP-206, CA-03, P-5). */
+    const val GOAL_FILTER_NORMAL = "goal.filter.normal"
+    const val GOAL_FILTER_ARCHIVES = "goal.filter.archives"
+
     /** Détail d'un objectif, d'une dette ou d'une créance (LOP-203). */
     const val SCREEN_FINANCIAL_DETAIL = "screen.financial.detail"
     const val FINANCIAL_DETAIL_LOADING = "financial.detail.loading"
@@ -201,6 +205,12 @@ object TestTags {
     const val FINANCIAL_DETAIL_EDIT = "financial.detail.edit"
     /** « Ajouter une contribution » ou « Enregistrer un remboursement » (CA-07 de LOP-5). */
     const val FINANCIAL_DETAIL_ADD_TRANSACTION = "financial.detail.add_transaction"
+
+    /** Archiver, sur un élément non archivé ; Restaurer, sur un archivé — jamais les deux (LOP-206, CA-01). */
+    const val FINANCIAL_DETAIL_ARCHIVE = "financial.detail.archive"
+    const val FINANCIAL_DETAIL_RESTORE = "financial.detail.restore"
+    /** Échec d'archivage ou de restauration ; le bouton reste disponible pour réessayer (CA-05). */
+    const val FINANCIAL_DETAIL_STATUS_ERROR = "financial.detail.status_error"
 
     /**
      * Préfixe d'un champ, suffixé `_<clé>` : name, kind, status, progress, remaining, percent,

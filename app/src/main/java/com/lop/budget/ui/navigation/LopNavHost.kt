@@ -108,6 +108,8 @@ fun LopNavHost() {
     // Onglet de Suivi, lu par l'écran et par le FAB : une seule source, ils ne divergent jamais
     // (LOP-22, I-2). Tenu ici, il survit à la navigation vers une autre section (CA-01).
     val trackingKind = rememberSaveable { mutableStateOf(FinancialItemKind.GOAL) }
+    // Filtre Archives de Suivi, gardé de la même façon (LOP-206, P-5).
+    val trackingArchives = rememberSaveable { mutableStateOf(false) }
 
     val showBar =
         (currentRoute in Routes.rootRoutes || currentRoute == "home" || currentRoute == "analytics" || currentRoute == "goals")
@@ -218,6 +220,7 @@ fun LopNavHost() {
                             createdKind = createdKind?.let { runCatching { FinancialItemKind.valueOf(it) }.getOrNull() },
                             onCreatedKindShown = { entry.savedStateHandle[Routes.KEY_CREATED_KIND] = null },
                             selectedKind = trackingKind,
+                            showArchives = trackingArchives,
                         )
                     }
 

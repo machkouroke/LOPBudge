@@ -560,9 +560,12 @@ class TrackingSectionUiTest {
         for (kind in FinancialItemKind.entries) {
             showTab(kind)
             j.expect("CA-04 : libellé accessible du bouton sur $kind", listOf(CREATE_LABELS.getValue(kind)), fabLabels())
+            // Filtres Liste normale / Archives : exigés par LOP-206 (CA-03, P-7), ce ne sont pas des
+            // boutons d'ajout.
             val expected = setOf(
                 TestTags.NAV_HOME, TestTags.NAV_ANALYTICS, TestTags.NAV_GOALS, TestTags.NAV_ADD_BUTTON,
                 TestTags.GOAL_TAB_OBJECTIVES, TestTags.GOAL_TAB_DEBTS, TestTags.GOAL_TAB_RECEIVABLES,
+                TestTags.GOAL_FILTER_NORMAL, TestTags.GOAL_FILTER_ARCHIVES,
             ) + cardTags()
             j.expect(
                 "CA-04, P-9 : éléments cliquables de Suivi sur $kind (un seul bouton d'ajout, aucune flèche)",
@@ -1444,6 +1447,7 @@ private class TrackingGoalDao(private val gate: TrackingListGate) : GoalDao {
     private val real: GoalDao get() = checkNotNull(delegate) { "TrackingGoalDao : délégué non résolu avant usage" }
 
     override fun observeActive(): Flow<List<GoalEntity>> = gate.wrap(GOAL) { real.observeActive() }
+    override fun observeArchived(): Flow<List<GoalEntity>> = real.observeArchived()
     override suspend fun getById(id: Long): GoalEntity? = real.getById(id)
     override fun observeById(id: Long): Flow<GoalEntity?> = real.observeById(id)
     override suspend fun getByName(name: String): GoalEntity? = real.getByName(name)
@@ -1462,6 +1466,8 @@ private class TrackingLoanDao(private val gate: TrackingListGate) : LoanDao {
     override fun observeActive(): Flow<List<LoanEntity>> = real.observeActive()
     override fun observeActiveByDirection(direction: LoanDirection): Flow<List<LoanEntity>> =
         gate.wrap(if (direction == BORROWED) DEBT else RECEIVABLE) { real.observeActiveByDirection(direction) }
+    override fun observeArchivedByDirection(direction: LoanDirection): Flow<List<LoanEntity>> =
+        real.observeArchivedByDirection(direction)
     override suspend fun getById(id: Long): LoanEntity? = real.getById(id)
     override fun observeById(id: Long): Flow<LoanEntity?> = real.observeById(id)
     override suspend fun upsert(loan: LoanEntity): Long = real.upsert(loan)

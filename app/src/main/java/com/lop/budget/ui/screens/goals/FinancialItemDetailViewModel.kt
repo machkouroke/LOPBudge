@@ -5,13 +5,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.FinancialItemKind
+import com.lop.budget.domain.usecase.financial.ArchiveFinancialItemUseCase
 import com.lop.budget.domain.usecase.financial.FinancialItemDetail
 import com.lop.budget.domain.usecase.financial.ObserveFinancialItemDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -19,6 +22,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed interface FinancialItemDetailUiState {
@@ -34,13 +38,23 @@ sealed interface FinancialItemDetailUiState {
     data class Loaded(val detail: FinancialItemDetail, val currency: String) : FinancialItemDetailUiState
 }
 
-/** Consultation d'un élément financier (LOP-203). Aucune écriture : lecture seule (I-1). */
+/**
+ * Archivage ou restauration demandé depuis le détail (LOP-206). Le statut affiché, lui, vient
+ * toujours de la base : rien n'est présenté comme fait avant l'écriture (CA-05).
+ */
+enum class StatusChange { Idle, Running, Failed }
+
+/**
+ * Consultation d'un élément financier (LOP-203). La lecture n'écrit rien (I-1) ; seuls Archiver et
+ * Restaurer écrivent, par leur use case (LOP-206).
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class FinancialItemDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     observeDetail: ObserveFinancialItemDetailUseCase,
     settings: SettingsRepository,
+    private val archiveItem: ArchiveFinancialItemUseCase,
 ) : ViewModel() {
 
     /** Type demandé par la route ; `null` s'il est inconnu, ce qui vaut introuvable (I-2). */
@@ -64,6 +78,31 @@ class FinancialItemDetailViewModel @Inject constructor(
 
     /** Relance la lecture, jamais un enregistrement (CA-07, I-1). */
     fun retry() = retries.update { it + 1 }
+
+    private val _statusChange = MutableStateFlow(StatusChange.Idle)
+    val statusChange: StateFlow<StatusChange> = _statusChange.asStateFlow()
+
+    fun archive() = changeStatus(archiveItem::archive)
+
+    fun restore() = changeStatus(archiveItem::restore)
+
+    /** Un changement à la fois ; un échec se signale et se réessaie par le même bouton (CA-05). */
+    private fun changeStatus(change: suspend (FinancialItemKind, Long) -> Unit) {
+        val kind = kind ?: return
+        val id = id ?: return
+        if (_statusChange.value == StatusChange.Running) return
+        _statusChange.value = StatusChange.Running
+        viewModelScope.launch {
+            _statusChange.value = try {
+                change(kind, id)
+                StatusChange.Idle
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                StatusChange.Failed
+            }
+        }
+    }
 
     companion object {
         const val ARG_KIND = "kind"

@@ -31,6 +31,9 @@ class LoanRepository @Inject constructor(
     override fun observeActiveByDirection(direction: LoanDirection) =
         loanDao.observeActiveByDirection(direction)
 
+    override fun observeArchivedByDirection(direction: LoanDirection) =
+        loanDao.observeArchivedByDirection(direction)
+
     override suspend fun getById(id: Long) = loanDao.getById(id)
 
     override fun observeById(id: Long) = loanDao.observeById(id)
@@ -58,6 +61,8 @@ class LoanRepository @Inject constructor(
 
     /** Archiver ne supprime rien et ne touche à aucun rattachement (I-4). */
     override suspend fun archive(id: Long) = loanDao.updateStatus(id, ItemStatus.ARCHIVED)
+
+    override suspend fun restore(id: Long) = loanDao.updateStatus(id, ItemStatus.ACTIVE)
 
     /**
      * Supprimer le prêt ne supprime aucune transaction : les rattachements passent à `NULL` par la

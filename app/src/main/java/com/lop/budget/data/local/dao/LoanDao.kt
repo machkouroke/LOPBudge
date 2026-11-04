@@ -12,7 +12,8 @@ import kotlinx.coroutines.flow.Flow
  * Opérations sur les prêts, dettes et créances confondues.
  *
  * Il n'existe pas de lecture « tout compris » : archiver retire l'élément des listes sans rien
- * supprimer (I-4), donc la lecture de référence est [observeActive]. Une inspection exhaustive
+ * supprimer (I-4), donc la lecture de référence est [observeActive]. Les archivés se lisent à
+ * part, par direction ([observeArchivedByDirection], LOP-206). Une inspection exhaustive
  * appartient au test, en SQL, pas à une API de production.
  */
 interface LoanOperations {
@@ -21,6 +22,9 @@ interface LoanOperations {
 
     /** Les prêts non archivés d'une seule direction (CA-12). */
     fun observeActiveByDirection(direction: LoanDirection): Flow<List<LoanEntity>>
+
+    /** Les seuls prêts archivés d'une direction : filtre Archives de Suivi (LOP-206, CA-03). */
+    fun observeArchivedByDirection(direction: LoanDirection): Flow<List<LoanEntity>>
 
     suspend fun getById(id: Long): LoanEntity?
 
@@ -34,6 +38,9 @@ interface LoanOperations {
     suspend fun update(loan: LoanEntity)
 
     suspend fun archive(id: Long)
+
+    /** Même contrat que `GoalOperations.restore` : le recalcul qui suit fixe le statut (CA-04). */
+    suspend fun restore(id: Long)
     suspend fun delete(id: Long)
     /** Avancement et statut d'un même recalcul, écrits ensemble (I-3 de LOP-79). */
     suspend fun updateProgress(id: Long, cents: Long, status: ItemStatus)
@@ -46,6 +53,9 @@ interface LoanDao {
 
     @Query("SELECT * FROM loans WHERE status != 'ARCHIVED' AND direction = :direction ORDER BY id")
     fun observeActiveByDirection(direction: LoanDirection): Flow<List<LoanEntity>>
+
+    @Query("SELECT * FROM loans WHERE status = 'ARCHIVED' AND direction = :direction ORDER BY id")
+    fun observeArchivedByDirection(direction: LoanDirection): Flow<List<LoanEntity>>
 
     @Query("SELECT * FROM loans WHERE id = :id")
     suspend fun getById(id: Long): LoanEntity?

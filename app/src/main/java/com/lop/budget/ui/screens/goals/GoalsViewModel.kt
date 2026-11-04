@@ -29,8 +29,8 @@ sealed interface ListLoad<out T> {
 }
 
 /**
- * Les trois listes excluent les éléments archivés (CA-03 de LOP-80) : archiver retire de l'écran
- * sans rien supprimer. Un élément terminé, lui, reste affiché (CA-02). Chaque liste a son propre
+ * Les trois listes d'un filtre de Suivi. Liste normale : les non archivés, terminés compris (CA-02,
+ * CA-03 de LOP-80). Archives : exactement les archivés (LOP-206, CA-03). Chaque liste a son propre
  * état : un échec ne touche que son onglet (P-4).
  */
 data class GoalsUiState(
@@ -45,22 +45,34 @@ data class GoalsUiState(
 @HiltViewModel
 class GoalsViewModel @Inject constructor(
     observeList: ObserveFinancialItemListUseCase,
-    settings: SettingsRepository,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
 
     private val retries = MutableStateFlow(0)
 
-    val uiState: StateFlow<GoalsUiState> = retries.flatMapLatest {
-        combine(
-            observeList(FinancialItemKind.GOAL).asListLoad { uiState.value.goals },
-            observeList(FinancialItemKind.DEBT).asListLoad { uiState.value.debts },
-            observeList(FinancialItemKind.RECEIVABLE).asListLoad { uiState.value.receivables },
-            settings.currency,
-        ) { goals, debts, receivables, currency -> GoalsUiState(currency, goals, debts, receivables) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GoalsUiState())
+    /** Liste normale. */
+    val uiState: StateFlow<GoalsUiState> = lists({ observeList(it) }) { uiState.value }
+
+    /**
+     * Filtre Archives (LOP-206, CA-03). Lu seulement tant que l'écran le collecte, donc filtre
+     * Archives affiché : la liste normale seule ne déclenche aucune lecture d'archives.
+     */
+    val archives: StateFlow<GoalsUiState> = lists(observeList::archived) { archives.value }
 
     /** Relance les lectures, jamais une écriture (CA-06, I-1). */
     fun retry() = retries.update { it + 1 }
+
+    private fun lists(
+        read: (FinancialItemKind) -> Flow<List<FinancialItemSummary>>,
+        previous: () -> GoalsUiState,
+    ): StateFlow<GoalsUiState> = retries.flatMapLatest {
+        combine(
+            read(FinancialItemKind.GOAL).asListLoad { previous().goals },
+            read(FinancialItemKind.DEBT).asListLoad { previous().debts },
+            read(FinancialItemKind.RECEIVABLE).asListLoad { previous().receivables },
+            settings.currency,
+        ) { goals, debts, receivables, currency -> GoalsUiState(currency, goals, debts, receivables) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GoalsUiState())
 }
 
 /**

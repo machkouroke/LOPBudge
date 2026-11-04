@@ -11,11 +11,15 @@ import kotlinx.coroutines.flow.Flow
  * Opérations sur les objectifs d'épargne.
  *
  * Comme pour les prêts, il n'existe pas de lecture « tout compris » : archiver retire l'objectif
- * des listes sans rien supprimer (I-4), donc la lecture de référence est [observeActive].
+ * des listes sans rien supprimer (I-4), donc la lecture de référence est [observeActive]. Les
+ * archivés se lisent à part, par [observeArchived] (LOP-206).
  */
 interface GoalOperations {
     /** Tous les objectifs non archivés, `COMPLETED` inclus (CA-03). */
     fun observeActive(): Flow<List<GoalEntity>>
+
+    /** Les seuls objectifs archivés : filtre Archives de Suivi (LOP-206, CA-03). */
+    fun observeArchived(): Flow<List<GoalEntity>>
 
     suspend fun getById(id: Long): GoalEntity?
 
@@ -28,6 +32,12 @@ interface GoalOperations {
     suspend fun update(goal: GoalEntity)
 
     suspend fun archive(id: Long)
+
+    /**
+     * Retire l'archivage en posant `ACTIVE`. Le statut définitif — actif ou terminé — vient du
+     * recalcul LOP-79 que l'appelant enchaîne dans la même transaction (LOP-206, CA-04).
+     */
+    suspend fun restore(id: Long)
     suspend fun delete(id: Long)
     /** Avancement et statut d'un même recalcul, écrits ensemble (I-3 de LOP-79). */
     suspend fun updateProgress(id: Long, cents: Long, status: ItemStatus)
@@ -37,6 +47,9 @@ interface GoalOperations {
 interface GoalDao {
     @Query("SELECT * FROM goals WHERE status != 'ARCHIVED' ORDER BY id")
     fun observeActive(): Flow<List<GoalEntity>>
+
+    @Query("SELECT * FROM goals WHERE status = 'ARCHIVED' ORDER BY id")
+    fun observeArchived(): Flow<List<GoalEntity>>
 
     @Query("SELECT * FROM goals WHERE id = :id")
     suspend fun getById(id: Long): GoalEntity?
