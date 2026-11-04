@@ -67,7 +67,12 @@ object TestAppModule {
     @Provides fun provideAccountDao(db: LopDatabase): AccountDao = db.accountDao()
     @Provides fun provideCategoryDao(db: LopDatabase): CategoryDao = db.categoryDao()
     @Provides fun provideTagDao(db: LopDatabase): TagDao = db.tagDao()
-    @Provides fun provideGoalDao(db: LopDatabase): GoalDao = db.goalDao()
+    @Provides
+    @Singleton
+    fun provideTrappedGoalDao(db: LopDatabase): TrappedGoalDao = TrappedGoalDao(db.goalDao())
+
+    /** Le vrai `db.goalDao()`, derrière un piège désarmé par défaut : voir [TrappedGoalDao]. */
+    @Provides fun provideGoalDao(dao: TrappedGoalDao): GoalDao = dao
     @Provides fun provideLoanDao(db: LopDatabase): LoanDao = db.loanDao()
     @Provides fun provideRecurringSeriesDao(db: LopDatabase): RecurringSeriesDao =
         db.recurringSeriesDao()
