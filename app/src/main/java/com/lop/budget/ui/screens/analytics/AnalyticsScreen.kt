@@ -104,7 +104,6 @@ fun AnalyticsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("analytics.breakdown.${item.name}"),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                         contentPadding = PaddingValues(12.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -246,7 +245,6 @@ fun AnalyticsScreen(
                 // Carte Budget
                 FloatingCard(
                     modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
                 ) {
                     Column {
@@ -277,7 +275,6 @@ fun AnalyticsScreen(
                 // Carte Forecast
                 FloatingCard(
                     modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
                 ) {
                     Column {
@@ -306,7 +303,6 @@ fun AnalyticsScreen(
         item {
             FloatingCard(
                 modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

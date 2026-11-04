@@ -173,7 +173,6 @@ fun TransactionRow(
                 .graphicsLayer {
                     alpha = if (isPaid && !isAdjustment) 0.5f else 1f
                 },
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
             contentPadding = PaddingValues(14.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {

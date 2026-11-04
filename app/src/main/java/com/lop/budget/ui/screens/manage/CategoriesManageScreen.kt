@@ -217,7 +217,7 @@ fun CategoryExpandableRow(
 private fun CategoryBlock(
     category: CategoryEntity,
     onClick: () -> Unit,
-    borderColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+    borderColor: Color = Color.Unspecified,
     compact: Boolean = false,
     subtitle: String? = null,
     actions: @Composable RowScope.() -> Unit,

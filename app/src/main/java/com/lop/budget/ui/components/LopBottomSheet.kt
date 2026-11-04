@@ -167,6 +167,7 @@ fun LopBottomSheet(
                     .fillMaxWidth()
                     .offset { IntOffset(0, offsetY.value.roundToInt()) }
                     .heightIn(max = maxHeight)
+                    .surfaceRelief(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                     .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                     .background(MaterialTheme.colorScheme.surface)
                     // Empêche le clic header / zones vides d’atteindre le scrim.

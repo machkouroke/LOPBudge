@@ -28,11 +28,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Today
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -46,7 +46,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -61,9 +65,11 @@ import com.lop.budget.R
 import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.theme.lopBackgroundBrush
 import com.lop.budget.ui.components.BalanceDashboardWidget
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.surfaceRelief
 import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.TransactionsDashboardWidget
 import com.lop.budget.ui.components.clickableNoRipple
@@ -221,7 +227,6 @@ fun HomeContent(
                 val accounts = state.accounts
                 FloatingCard(
                     modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Column {
@@ -292,7 +297,6 @@ fun HomeContent(
                     )
                     FloatingCard(
                         modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
                         contentPadding = PaddingValues(16.dp)
                     ) {
                         Row(
@@ -367,7 +371,6 @@ fun AccountWidgetCard(
             .width(160.dp)
             .clickableNoRipple(onClick)
             .testTag("${TestTags.HOME_ACCOUNT_CARD}_${balance.account.id}"),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         contentPadding = PaddingValues(12.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -412,19 +415,27 @@ fun HomeOverlay(
     // Optimization: Read monthYear once
     val monthLabel = remember(state.month) { Format.monthYear(state.month) }
     
+    // Voile sous l'en-tête : le dégradé du fond lui-même (LOP-229, CA-01), effacé vers le bas comme
+    // avant. Le masque DstIn n'atténue que le voile ; l'en-tête est dessiné après, intact.
+    val background = lopBackgroundBrush(WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
     Box(
         modifier = modifier
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
-                        MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
-                        MaterialTheme.colorScheme.background.copy(alpha = 0f)
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .drawBehind {
+                drawRect(background)
+                drawRect(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.95f),
+                            Color.Black.copy(alpha = 0.8f),
+                            Color.Transparent
+                        ),
+                        startY = 0f,
+                        endY = 300f
                     ),
-                    startY = 0f,
-                    endY = 300f
+                    blendMode = BlendMode.DstIn
                 )
-            )
+            }
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Row(
@@ -437,8 +448,9 @@ fun HomeOverlay(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
+                    .surfaceRelief(androidx.compose.foundation.shape.RoundedCornerShape(50))
                     .background(
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                        MaterialTheme.colorScheme.surfaceContainerHigh,
                         androidx.compose.foundation.shape.RoundedCornerShape(50)
                     )
                     .clickableNoRipple { onMonthClick() }
@@ -460,20 +472,20 @@ fun HomeOverlay(
             ) {
                 if (!isCurrentMonth) {
                     IconButton(
-                        icon = Icons.Filled.Today, 
+                        icon = Icons.Outlined.Today, 
                         onClick = onTodayClick,
                         modifier = Modifier.testTag(TestTags.HOME_GO_TO_TODAY)
                     )
                 }
                 IconButton(
-                    icon = Icons.Default.Search, 
+                    icon = Icons.Outlined.Search, 
                     onClick = onSearchClick, 
                     contentDescription = "Rechercher",
                     modifier = Modifier.testTag(TestTags.NAV_SEARCH_BUTTON)
                 )
                 DetectedIcon(state.detectedCount, onDetectedClick)
                 IconButton(
-                    icon = Icons.Filled.Settings, 
+                    icon = Icons.Outlined.Settings, 
                     onClick = onSettingsClick,
                     contentDescription = "Réglages",
                     modifier = Modifier.testTag(TestTags.NAV_SETTINGS_BUTTON)
@@ -493,8 +505,9 @@ fun IconButton(
     Box(
 
         modifier = modifier
-            .size(40.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+            .size(44.dp)
+            .surfaceRelief(androidx.compose.foundation.shape.CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, androidx.compose.foundation.shape.CircleShape)
             .clickableNoRipple { onClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -504,8 +517,8 @@ fun IconButton(
 
 @Composable
 fun DetectedIcon(count: Int, onClick: () -> Unit) {
-    Box(modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).clickableNoRipple { onClick() }.testTag(TestTags.NAV_DETECTED_BUTTON), contentAlignment = Alignment.Center) {
-        Icon(Icons.Filled.NotificationsActive, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
+    Box(modifier = Modifier.size(44.dp).surfaceRelief(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh, androidx.compose.foundation.shape.CircleShape).clickableNoRipple { onClick() }.testTag(TestTags.NAV_DETECTED_BUTTON), contentAlignment = Alignment.Center) {
+        Icon(Icons.Outlined.NotificationsActive, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
         if (count > 0) {
             Surface(color = MaterialTheme.colorScheme.error, shape = androidx.compose.foundation.shape.CircleShape, modifier = Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp).size(16.dp)) {
                 Box(contentAlignment = Alignment.Center) {

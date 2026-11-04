@@ -96,7 +96,7 @@ fun <T> PickerBottomSheet(
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
         scrimColor = Color.Black.copy(alpha = 0.55f),
-        dragHandle = { BottomSheetDefaults.DragHandle() },
+        dragHandle = { LopSheetDragHandle() },
         // Une feuille modale est montée dans sa **propre fenêtre**, donc une racine de
         // composition distincte : elle n'hérite pas du `testTagsAsResourceId` posé sur
         // l'activité, et les `testTag` de son contenu restent invisibles à l'automatisation.

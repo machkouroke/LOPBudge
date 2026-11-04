@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -32,13 +33,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
@@ -46,14 +47,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.lop.budget.R
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.theme.lopRimBrush
 import com.lop.budget.ui.motion.MotionSpec
-import com.lop.budget.ui.screens.settings.SettingsViewModel
 import com.lop.budget.ui.theme.LopTheme
-import com.lop.budget.ui.theme.ThemeMode
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
@@ -74,10 +73,9 @@ fun AddActionSheet(
     onSelect: (TransactionType) -> Unit,
     hazeState: HazeState?,
     modifier: Modifier = Modifier,
-    settingsVm: SettingsViewModel = hiltViewModel(),
 ) {
-    val settings by settingsVm.uiState.collectAsState()
-    val isDark = settings.themeMode == ThemeMode.DARK
+    // Thème réellement appliqué, mode Système compris (LOP-229) : `themeMode == DARK` s'y trompait.
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
     if (visible) {
         BackHandler(onBack = onDismiss)
@@ -88,8 +86,7 @@ fun AddActionSheet(
     val hazeBackground = MaterialTheme.colorScheme.background
     // La carte est opaque : rien du contenu sous-jacent ne doit transparaître.
     val sheetColor = MaterialTheme.colorScheme.surface
-    val sheetBorder =
-        if (isDark) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.07f)
+    val sheetBorder = lopRimBrush()
 
     val density = LocalDensity.current
     val contentProgress by animateFloatAsState(
@@ -169,7 +166,7 @@ fun AddActionSheet(
                             // `shadow` au-dessus ouvre une nouvelle couche graphique et
                             // le contenu réapparaissait net.
                             .background(sheetColor)
-                            .border(1.dp, sheetBorder, sheetShape)
+                            .border(BorderStroke(1.dp, sheetBorder), sheetShape)
                             .clickableNoRipple { /* bloque le dismiss du scrim */ }
                             .testTag(TestTags.ADD_ACTION_SHEET),
                     ) {

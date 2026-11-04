@@ -1,6 +1,7 @@
 package com.lop.budget.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -12,15 +13,18 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.outlined.Assessment
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
@@ -28,13 +32,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.lop.budget.R
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.navigation.Routes
-import com.lop.budget.ui.screens.settings.SettingsViewModel
-import com.lop.budget.ui.theme.ThemeMode
+import com.lop.budget.ui.theme.lopRimBrush
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 
 /**
@@ -53,11 +56,10 @@ fun FloatingBottomBar(
     modifier: Modifier = Modifier,
     addTypeIcon: ImageVector? = null,
     hazeState: HazeState? = null,
-    settingsVm: SettingsViewModel = hiltViewModel()
 ) {
-    val settings by settingsVm.uiState.collectAsState()
-    val isAppInDarkDirectory = settings.themeMode == ThemeMode.DARK
     val pillShape = RoundedCornerShape(32.dp)
+    // Contrôle en relief (P-6) : plus clair que les cartes en sombre, blanc en clair.
+    val pillColor = MaterialTheme.colorScheme.surfaceContainerHigh
 
 
     Row(
@@ -71,41 +73,47 @@ fun FloatingBottomBar(
         horizontalArrangement = Arrangement.Center
     ) {
         // --- Pilule principale de navigation ---
+        // Surface en relief, liseré éclairé, ombre douce (LOP-229, CA-04, P-6).
         Surface(
             shape = pillShape,
             color = Color.Transparent,
+            border = BorderStroke(1.dp, lopRimBrush()),
             modifier = Modifier
                 .weight(1f)
                 .height(64.dp)
-                .shadow(elevation = 4.dp, shape = CircleShape)
+                .softShadow(CircleShape)
         ) {
             Row(
                 modifier = Modifier
-                    .background(
-                        MaterialTheme.colorScheme.background
-                    )
-                    .hazeEffect(state = hazeState)
+                    .background(pillColor)
+                    .hazeEffect(state = hazeState) {
+                        backgroundColor = pillColor
+                        tints = listOf(HazeTint(pillColor.copy(alpha = 0.85f)))
+                    }
                     .padding(horizontal = 8.dp)
                     .fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 GalaxyNavItem(
-                    icon = Icons.Filled.Home,
+                    icon = Icons.Outlined.Home,
+                    selectedIcon = Icons.Filled.Home,
                     label = stringResource(R.string.nav_home),
                     selected = current == Routes.HOME,
                     onClick = { onSelect(Routes.HOME) },
                     modifier = Modifier.testTag(TestTags.NAV_HOME)
                 )
                 GalaxyNavItem(
-                    icon = Icons.Filled.Assessment,
+                    icon = Icons.Outlined.Assessment,
+                    selectedIcon = Icons.Filled.Assessment,
                     label = stringResource(R.string.nav_analytics),
                     selected = current == Routes.ANALYTICS,
                     onClick = { onSelect(Routes.ANALYTICS) },
                     modifier = Modifier.testTag(TestTags.NAV_ANALYTICS)
                 )
                 GalaxyNavItem(
-                    icon = Icons.Filled.Flag,
+                    icon = Icons.Outlined.Flag,
+                    selectedIcon = Icons.Filled.Flag,
                     label = stringResource(R.string.nav_goals),
                     selected = current == Routes.GOALS,
                     onClick = { onSelect(Routes.GOALS) },
@@ -121,6 +129,11 @@ fun FloatingBottomBar(
             onClick = onAdd,
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primary,
+            // Accent conservé (P-7), avec le reflet de bord des contrôles en relief (P-6).
+            border = BorderStroke(
+                1.dp,
+                Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.35f), Color.Transparent)),
+            ),
             modifier = Modifier.size(56.dp).testTag(TestTags.NAV_ADD_BUTTON),
             shadowElevation = 8.dp
         ) {
@@ -160,6 +173,7 @@ fun FloatingBottomBar(
 @Composable
 private fun GalaxyNavItem(
     icon: ImageVector,
+    selectedIcon: ImageVector,
     label: String,
     selected: Boolean,
     modifier: Modifier = Modifier,
@@ -167,10 +181,11 @@ private fun GalaxyNavItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
-    // Animation des couleurs pour coller au style Galaxy Store
+    // Onglet sélectionné à l'accent actif (LOP-229, CA-02). Sans la couleur, il se distingue par
+    // le creux, l'icône pleine (contour ailleurs) et le gras (CA-04, P-6).
     val tintColor by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.onSurface
-        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        targetValue = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
         label = "tint"
     )
 
@@ -184,16 +199,16 @@ private fun GalaxyNavItem(
                 onClick = onClick
             )
             .clip(RoundedCornerShape(32.dp))
-            .background(if (selected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f) else Color.Transparent),
+            .background(if (selected) MaterialTheme.colorScheme.surfaceDim else Color.Transparent),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
 
         Icon(
-            imageVector = icon,
+            imageVector = if (selected) selectedIcon else icon,
             contentDescription = label,
             tint = tintColor,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(24.dp)
         )
         Spacer(Modifier.height(4.dp))
 
@@ -201,8 +216,8 @@ private fun GalaxyNavItem(
             text = label,
             color = tintColor,
             style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 11.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                fontSize = 12.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold
             ),
             maxLines = 1
         )

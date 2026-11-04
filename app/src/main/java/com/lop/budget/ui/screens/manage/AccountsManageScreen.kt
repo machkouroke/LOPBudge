@@ -160,8 +160,7 @@ fun AccountManageRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickableNoRipple(onEdit)
-            .testTag("${TestTags.ACC_ROW}_${account.id}"),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isArchived) 0.2f else 0.4f)
+            .testTag("${TestTags.ACC_ROW}_${account.id}")
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CircleIcon(

@@ -19,6 +19,11 @@ data class LopExtendedColors(
     val onExpense: Color,
     val expenseContainer: Color,
     val warning: Color,
+    /** Liseré des surfaces, éclairé par le haut (LOP-229, P-6) : haut, puis bas. */
+    val rimTop: Color,
+    val rimBottom: Color,
+    /** Reflet discret en haut des cartes (P-6). */
+    val sheen: Color,
 )
 
 val LocalLopExtendedColors = staticCompositionLocalOf {
@@ -30,5 +35,8 @@ val LocalLopExtendedColors = staticCompositionLocalOf {
         onExpense = Color.Black,
         expenseContainer = ExpenseCoralContainer,
         warning = WarningAmber,
+        rimTop = DarkRimTop,
+        rimBottom = DarkRimBottom,
+        sheen = DarkSheen,
     )
 }

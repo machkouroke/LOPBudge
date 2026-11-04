@@ -52,6 +52,7 @@ fun RecurringEditSheet(
         containerColor = container,
         scrimColor = Color.Black.copy(alpha = 0.55f),
         modifier = modifier.testTag(TestTags.RECURRING_EDIT_SHEET),
+        dragHandle = { LopSheetDragHandle() },
     ) {
         Column(
             modifier = Modifier

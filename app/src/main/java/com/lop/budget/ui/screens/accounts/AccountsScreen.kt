@@ -119,8 +119,7 @@ fun AccountsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("${TestTags.ACCOUNTS_ROW}_${account.id}")
-                            .clickableNoRipple { onOpenDetail(account.id) },
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            .clickableNoRipple { onOpenDetail(account.id) }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             CircleIcon(

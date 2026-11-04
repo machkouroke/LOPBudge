@@ -77,6 +77,7 @@ fun MonthPickerBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         modifier = modifier,
+        dragHandle = { LopSheetDragHandle() },
         containerColor = sheetContainer,
         scrimColor = scrim,
     ) {

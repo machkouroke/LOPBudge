@@ -50,6 +50,7 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.AddActionSheet
 import com.lop.budget.ui.components.DeleteConfirmationDialog
 import com.lop.budget.ui.components.FloatingBottomBar
+import com.lop.budget.ui.theme.lopBackgroundBrush
 import com.lop.budget.ui.screens.goals.FinancialItemDetailScreen
 import com.lop.budget.ui.screens.goals.FinancialItemDetailViewModel
 import com.lop.budget.ui.components.RecurringDeleteSheet
@@ -130,6 +131,8 @@ fun LopNavHost() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                // Fond de l'accueil et de la bande de barre d'état (LOP-229, CA-01).
+                .background(lopBackgroundBrush())
         ) {
             Box(
                 modifier = Modifier

@@ -28,8 +28,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,14 +42,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lop.budget.R
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
-import com.lop.budget.ui.screens.settings.SettingsViewModel
+import com.lop.budget.ui.theme.lopRimBrush
 import com.lop.budget.ui.theme.LopTheme
-import com.lop.budget.ui.theme.ThemeMode
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
 import dev.chrisbanes.haze.HazeState
@@ -63,14 +61,11 @@ fun TransactionPreviewPopup(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onTogglePaid: () -> Unit,
-    settingsVm: SettingsViewModel = hiltViewModel(),
     hazeState: HazeState? = null,
 ) {
     val transaction = tx.transaction
     val isIncome = transaction.type == TransactionType.INCOME
     val status = transaction.status
-    val settings by settingsVm.uiState.collectAsState()
-    val isAppInDarkDirectory = settings.themeMode == ThemeMode.DARK
     val color = tx.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
 
     // Animation state
@@ -89,10 +84,8 @@ fun TransactionPreviewPopup(
         modifier = Modifier
             .fillMaxSize()
             // Increased blur radius and added a stronger dark tint for better legibility
-            .background(
-                if (!isAppInDarkDirectory) Color.White
-                else Color.Black
-            )
+            // Fond du thème appliqué, mode Système compris (LOP-229).
+            .background(MaterialTheme.colorScheme.background)
             .hazeEffect(state = hazeState)
             .clickableNoRipple(onDismiss),
         contentAlignment = Alignment.Center
@@ -105,8 +98,9 @@ fun TransactionPreviewPopup(
                 .scale(scale)
                 .clickableNoRipple { /* stop propagation */ },
             shape = popupShape,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 8.dp
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            border = BorderStroke(1.dp, lopRimBrush()),
+            shadowElevation = 8.dp
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),

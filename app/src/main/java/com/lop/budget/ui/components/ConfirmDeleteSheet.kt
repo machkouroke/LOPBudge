@@ -78,6 +78,7 @@ fun ConfirmDeleteSheet(
         containerColor = container,
         scrimColor = Color.Black.copy(alpha = 0.55f),
         modifier = modifier,
+        dragHandle = { LopSheetDragHandle() },
     ) {
         Column(
             modifier = Modifier

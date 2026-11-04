@@ -24,7 +24,6 @@ fun TransactionsDashboardWidget(
 ) {
     FloatingCard(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         contentPadding = PaddingValues(0.dp) // Header handle padding internally
     ) {
         Column {

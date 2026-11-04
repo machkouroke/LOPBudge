@@ -31,6 +31,7 @@ import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.usecase.account.AccountRefusal
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.LopSheetDragHandle
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.ConfirmDeleteSheet
 import com.lop.budget.ui.components.FloatingCard
@@ -441,7 +442,11 @@ fun BankSelectorBottomSheet(
     onSelect: (IconSearchRepository.BankInfo?) -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { LopSheetDragHandle() },
+    ) {
         LazyColumn(modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 32.dp)) {
@@ -491,7 +496,8 @@ fun IconSelectorBottomSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        dragHandle = { BottomSheetDefaults.DragHandle() },
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { LopSheetDragHandle() },
     ) {
         Column(
             modifier = Modifier

@@ -46,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.LopSheetDragHandle
 import com.lop.budget.ui.components.ConfirmDeleteSheet
 import com.lop.budget.ui.components.DefaultTagColor
 import com.lop.budget.ui.components.FloatingCard
@@ -205,6 +206,8 @@ private fun TagEditSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { LopSheetDragHandle() },
     ) {
         Column(
             modifier = Modifier

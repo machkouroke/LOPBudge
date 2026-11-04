@@ -194,7 +194,7 @@ private fun Indicator(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
 
 @Composable
 private fun StatCard(label: String, amount: Long, currency: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier = Modifier) {
-    FloatingCard(modifier = modifier, color = MaterialTheme.colorScheme.surfaceVariant, contentPadding = PaddingValues(16.dp)) {
+    FloatingCard(modifier = modifier, contentPadding = PaddingValues(16.dp)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
             CircleIcon(icon = icon, tint = color, background = color.copy(alpha = 0.15f), size = 40.dp)
             Spacer(Modifier.height(12.dp))

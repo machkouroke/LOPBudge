@@ -418,7 +418,7 @@ fun TransactionDetailScreen(
                 if (DetailAction.MARK_AS_PAID in state.availableActions || isPaid) {
                     item {
                         val buttonColor =
-                            if (isPaid) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                            if (isPaid) Color.Unspecified
                             else ext.incomeContainer.copy(alpha = 0.4f)
                         val tintColor =
                             if (isPaid) MaterialTheme.colorScheme.onSurfaceVariant else ext.income
