@@ -19,15 +19,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -64,22 +59,8 @@ fun ConfirmDeleteSheet(
     error: String? = null,
     errorTag: String = "",
 ) {
-    val busyNow by rememberUpdatedState(busy)
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
-        // Même instance à chaque composition : une nouvelle clé recréerait l'état de la feuille.
-        confirmValueChange = remember { { value: SheetValue -> value != SheetValue.Hidden || !busyNow } },
-    )
-    val container = MaterialTheme.colorScheme.surface
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = container,
-        scrimColor = Color.Black.copy(alpha = 0.55f),
-        modifier = modifier,
-        dragHandle = { LopSheetDragHandle() },
-    ) {
+    // Feuille maison, pour son ombre (LOP-229, CA-04, P-13) ; `dismissible` garde le contrat `busy`.
+    LopBottomSheet(onDismiss = onDismiss, modifier = modifier, dismissible = !busy) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

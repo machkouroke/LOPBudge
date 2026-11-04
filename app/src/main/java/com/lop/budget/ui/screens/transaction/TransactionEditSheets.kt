@@ -50,7 +50,6 @@ import com.lop.budget.R
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.ui.common.TestTags
-import com.lop.budget.ui.components.LopSheetDragHandle
 import com.lop.budget.ui.components.DefaultTagColor
 import com.lop.budget.ui.components.LopBottomSheet
 import com.lop.budget.ui.components.LopFieldShape
@@ -85,11 +84,7 @@ fun TagsBottomSheet(
     var tagPendingDeleteId by rememberSaveable { mutableStateOf<Long?>(null) }
     val tagPendingDelete = tags.firstOrNull { it.id == tagPendingDeleteId }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = { LopSheetDragHandle() },
-    ) {
+    LopBottomSheet(onDismiss = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

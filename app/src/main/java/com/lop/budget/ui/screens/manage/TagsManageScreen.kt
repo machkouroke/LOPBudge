@@ -23,10 +23,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,7 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.data.local.entity.TagEntity
 import com.lop.budget.ui.common.TestTags
-import com.lop.budget.ui.components.LopSheetDragHandle
+import com.lop.budget.ui.components.LopBottomSheet
 import com.lop.budget.ui.components.ConfirmDeleteSheet
 import com.lop.budget.ui.components.DefaultTagColor
 import com.lop.budget.ui.components.FloatingCard
@@ -201,14 +199,8 @@ private fun TagEditSheet(
     var selectedColor by remember {
         mutableStateOf(tag?.let { Color(it.colorArgb) } ?: DefaultTagColor)
     }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = { LopSheetDragHandle() },
-    ) {
+    LopBottomSheet(onDismiss = onDismiss) {
         Column(
             modifier = Modifier
                 .padding(horizontal = 24.dp, vertical = 8.dp)

@@ -24,10 +24,8 @@ import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -38,7 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,22 +62,12 @@ fun MonthPickerBottomSheet(
     modifier: Modifier = Modifier,
     config: MonthPickerConfig = MonthPickerConfig(),
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var year by remember(selected) { mutableStateOf(selected.year) }
 
     // IMPORTANT: on ne peut pas laisser le bottom sheet transparent, sinon sur un fond sombre
     // (et avec blur) le contenu derrière "mange" la lisibilité.
-    val sheetContainer = MaterialTheme.colorScheme.surface
-    val scrim = Color.Black.copy(alpha = 0.55f)
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        modifier = modifier,
-        dragHandle = { LopSheetDragHandle() },
-        containerColor = sheetContainer,
-        scrimColor = scrim,
-    ) {
+    LopBottomSheet(onDismiss = onDismiss, modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

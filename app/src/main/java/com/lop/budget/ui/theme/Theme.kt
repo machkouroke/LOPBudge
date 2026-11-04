@@ -107,14 +107,13 @@ fun lopBackgroundBrush(fromWindowTop: Dp = 0.dp): Brush {
 }
 
 /**
- * Liseré des surfaces (LOP-229, CA-04, P-6), éclairé par le haut. Il s'étend sur la hauteur de
- * l'élément, ou sur [height] pour une forme plus haute que ce qu'on en voit (feuilles modales).
+ * Liseré des surfaces (LOP-229, CA-04, P-6, P-15) : reflet du bord haut, éteint à mi-hauteur. Il
+ * dessine le bord sans faire de cadre ; transparent en clair, où l'ombre fait le relief (P-11).
  */
 @Composable
-fun lopRimBrush(height: Dp = Dp.Infinity): Brush {
+fun lopRimBrush(): Brush {
     val colors = LocalLopExtendedColors.current
-    val endY = if (height == Dp.Infinity) Float.POSITIVE_INFINITY else with(LocalDensity.current) { height.toPx() }
-    return Brush.verticalGradient(listOf(colors.rimTop, colors.rimBottom), endY = endY)
+    return Brush.verticalGradient(0f to colors.rimTop, 0.5f to colors.rimBottom, 1f to colors.rimBottom)
 }
 
 /** Reflet discret en haut d'une carte (P-6), estompé sur ses 80 premiers dp. */

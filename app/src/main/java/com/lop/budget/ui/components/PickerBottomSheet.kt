@@ -15,15 +15,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,7 +77,6 @@ fun <T> PickerBottomSheet(
     onSearchQueryChange: (String) -> Unit = {},
     searchPlaceholder: String? = null,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // La ligne sélectionnée doit être visible sans défilement manuel : sur un catalogue de
     // ~150 entrées elle est le plus souvent hors écran à l'ouverture. L'index n'est lu qu'à la
@@ -91,18 +87,9 @@ fun <T> PickerBottomSheet(
         initialFirstVisibleItemIndex = if (allowNone) selectedIndex + 1 else selectedIndex
     )
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        scrimColor = Color.Black.copy(alpha = 0.55f),
-        dragHandle = { LopSheetDragHandle() },
-        // Une feuille modale est montée dans sa **propre fenêtre**, donc une racine de
-        // composition distincte : elle n'hérite pas du `testTagsAsResourceId` posé sur
-        // l'activité, et les `testTag` de son contenu restent invisibles à l'automatisation.
-        // Constaté le 16 septembre 2026 sur le sélecteur de comptes.
-        modifier = modifier.semantics { testTagsAsResourceId = true }
-    ) {
+    // `LopBottomSheet` repose `testTagsAsResourceId` à la racine de sa fenêtre (constat du
+    // 16 septembre 2026 sur le sélecteur de comptes).
+    LopBottomSheet(onDismiss = onDismiss, modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

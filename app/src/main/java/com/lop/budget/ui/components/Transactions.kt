@@ -174,6 +174,7 @@ fun TransactionRow(
                     alpha = if (isPaid && !isAdjustment) 0.5f else 1f
                 },
             contentPadding = PaddingValues(14.dp),
+            tint = if (isAdjustment) MaterialTheme.colorScheme.secondary else catColor,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CircleIcon(

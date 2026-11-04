@@ -20,16 +20,13 @@ import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,19 +46,10 @@ fun RecurringDeleteSheet(
     modifier: Modifier = Modifier,
     showFutureOnly: Boolean = true,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Opaque + premium (évite l'illisibilité sur fond sombre)
-    val container = MaterialTheme.colorScheme.surface
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = container,
-        scrimColor = Color.Black.copy(alpha = 0.55f),
-        modifier = modifier.testTag(TestTags.RECURRING_DELETE_SHEET),
-        dragHandle = { LopSheetDragHandle() },
-    ) {
+    LopBottomSheet(onDismiss = onDismiss, modifier = modifier.testTag(TestTags.RECURRING_DELETE_SHEET)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

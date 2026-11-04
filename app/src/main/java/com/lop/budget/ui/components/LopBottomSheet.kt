@@ -31,6 +31,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,8 +62,14 @@ fun LopBottomSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     maxHeightFraction: Float = 0.75f,
+    /**
+     * `false` : ni le voile, ni le retour, ni le glissement ne ferment la feuille ; un glissement la
+     * ramène en place. Sert aux écritures en cours (P-4 de LOP-204).
+     */
+    dismissible: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val canDismiss by rememberUpdatedState(dismissible)
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val maxHeight = configuration.screenHeightDp.dp * maxHeightFraction
@@ -76,7 +83,7 @@ fun LopBottomSheet(
     var closing by remember { mutableStateOf(false) }
 
     fun animateClose() {
-        if (closing) return
+        if (closing || !canDismiss) return
         closing = true
         scope.launch {
             launch {
@@ -188,7 +195,7 @@ fun LopBottomSheet(
                                     scope.launch { offsetY.snapTo(next) }
                                 },
                                 onDragEnd = {
-                                    if (offsetY.value > dismissPx) animateClose()
+                                    if (offsetY.value > dismissPx && canDismiss) animateClose()
                                     else {
                                         scope.launch {
                                             offsetY.animateTo(

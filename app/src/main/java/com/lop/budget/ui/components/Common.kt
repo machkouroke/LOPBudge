@@ -31,7 +31,6 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,24 +47,23 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawOutline
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
@@ -320,7 +318,10 @@ fun LopScreenScaffold(
 
 /**
  * Card flottante pour les sections d'écran (LOP-229, CA-04, P-6) : surface opaque avec un reflet
- * discret en haut, liseré éclairé par le haut, ombre diffuse (P-9).
+ * discret en haut, liseré éclairé par le haut, ombre diffuse (P-11).
+ *
+ * Posée dans une autre carte, elle devient une **tuile** (P-14) : ni ombre ni contour, fond teinté de
+ * [tint] (couleur de son compte ou de sa catégorie), ou à défaut de [color], ou l'aplat du thème.
  */
 @Composable
 fun FloatingCard(
@@ -329,19 +330,41 @@ fun FloatingCard(
     color: Color = Color.Unspecified,
     cornerRadius: Dp = 28.dp,
     contentPadding: PaddingValues = PaddingValues(18.dp),
+    /** Teinte du fond quand la carte est une tuile, posée dans une autre carte (P-14). */
+    tint: Color = Color.Unspecified,
     content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(cornerRadius)
+    val colors = MaterialTheme.colorScheme
+    if (LocalInsideCard.current) {
+        val tileTint = if (tint.isSpecified) tint else color
+        val fill = if (tileTint.isSpecified) {
+            // Opaque : la teinte est composée sur la carte parente, rien ne transparaît dessous.
+            val alpha = if (colors.background.luminance() < 0.5f) 0.16f else 0.08f
+            tileTint.copy(alpha = alpha).compositeOver(colors.surfaceContainerLow)
+        } else {
+            colors.surfaceVariant
+        }
+        Surface(modifier = modifier, color = fill, shape = shape) {
+            Box(Modifier.padding(contentPadding)) { content() }
+        }
+        return
+    }
     Surface(
         modifier = modifier.softShadow(shape),
         // Rôle « carte » (P-11) : blanc en clair ; `surfaceVariant` reste l'aplat posé dessus.
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = colors.surfaceContainerLow,
         border = if (color.isSpecified) BorderStroke(1.dp, color.copy(alpha = 0.5f)) else BorderStroke(1.dp, lopRimBrush()),
         shape = shape,
     ) {
-        Box(Modifier.background(lopSheenBrush()).padding(contentPadding)) { content() }
+        CompositionLocalProvider(LocalInsideCard provides true) {
+            Box(Modifier.background(lopSheenBrush()).padding(contentPadding)) { content() }
+        }
     }
 }
+
+/** Vrai dans le contenu d'une [FloatingCard] : une carte posée là devient une tuile (P-14). */
+private val LocalInsideCard = staticCompositionLocalOf { false }
 
 /**
  * Relief des surfaces qui ne passent pas par une [Surface] Material — feuilles, boutons d'en-tête
@@ -359,39 +382,6 @@ fun Modifier.surfaceRelief(shape: Shape): Modifier =
  */
 fun Modifier.softShadow(shape: Shape, elevation: Dp = 16.dp): Modifier =
     shadow(elevation, shape, clip = false, spotColor = Color.Black.copy(alpha = 0.25f))
-
-/** Hauteur du contour tracé par [LopSheetDragHandle] : démesurée, la feuille en rogne le bas. */
-private val SheetOutlineHeight = 4000.dp
-
-/**
- * Poignée des feuilles modales, qui trace aussi leur contour fin (LOP-229, CA-04).
- *
- * Le `modifier` de `ModalBottomSheet` (M3 1.3) est posé avant le décalage de la feuille : un contour
- * passé par lui se dessine en haut de l'écran, pas autour de la feuille. La poignée est dans la
- * feuille, à son sommet : elle trace le contour de toute la surface, et la feuille rogne ce qui
- * dépasse en bas. Pas d'ombre : la feuille rogne aussi ce qui sort de sa forme.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun LopSheetDragHandle() {
-    // Liseré éclairé : il s'éteint sur les 160 premiers dp, comme sur une carte.
-    val rim = lopRimBrush(160.dp)
-    val shape = BottomSheetDefaults.ExpandedShape
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .drawBehind {
-                val stroke = 1.dp.toPx()
-                val outline = shape.createOutline(
-                    Size(size.width - stroke, SheetOutlineHeight.toPx()), layoutDirection, this
-                )
-                translate(stroke / 2, stroke / 2) { drawOutline(outline, rim, style = Stroke(stroke)) }
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        BottomSheetDefaults.DragHandle()
-    }
-}
 
 /** Pastille ronde colorée contenant une icône de catégorie/compte. */
 @Composable

@@ -20,25 +20,26 @@ val LavenderSecondaryContainer = Color(0xFF4A4458)
 val LavenderOnSecondaryContainer = Color(0xFFE8DEF8)
 
 // --- Neutres sombres (LOP-229) : jamais teintés par l'accent, même dynamique (I-1) ---
-// Fond noir bleuté (P-10), cartes et contrôles noirs (P-12) : sous le ciel ils se découpent, plus
-// bas le liseré éclairé dessine leurs bords ; l'ombre y reste invisible.
-val DarkBackground = Color(0xFF080B11) // Fond principal noir bleuté (CA-01, P-10)
-val DarkSurface = Color(0xFF121722) // Feuilles, popups
-val DarkSurfaceVariant = Color(0xFF232A36) // Aplats (pastilles, puces), plus clairs que les cartes
+// Fond noir neutre, sans teinte (P-16) : le ciel de tout accent s'y fond sans virer au vert.
+// Cartes et contrôles noirs (P-12) : sous le ciel ils se découpent ; plus bas, le reflet de leur
+// bord haut les dessine (P-15). L'ombre y reste invisible.
+val DarkBackground = Color(0xFF0A0A0A) // Fond principal noir neutre (CA-01, P-16)
+val DarkSurface = Color(0xFF141414) // Feuilles, popups
+val DarkSurfaceVariant = Color(0xFF262626) // Aplats (pastilles, puces), plus clairs que les cartes
 val DarkOnSurface = Color(0xFFF5F6F8)
-val DarkOnSurfaceVariant = Color(0xFF9EA3AD) // ≥ 4,5:1 sur cartes, contrôles et haut du ciel (CA-05)
-val DarkOutline = Color(0xFF8D919A) // Contours d'interaction, ≥ 3:1 sur le fond
-val DarkOutlineVariant = Color(0xFF262C38)
-val DarkSurfaceDim = Color(0xFF1A1E26) // Onglet sélectionné : pastille ardoise sur la barre noire (P-12)
-val DarkSurfaceContainerLowest = Color(0xFF06080D)
+val DarkOnSurfaceVariant = Color(0xFFA1A1A6) // ≥ 4,5:1 sur cartes, contrôles et haut du ciel (CA-05)
+val DarkOutline = Color(0xFF8E8E93) // Contours d'interaction, ≥ 3:1 sur le fond
+val DarkOutlineVariant = Color(0xFF2A2A2A)
+val DarkSurfaceDim = Color(0xFF1C1C1E) // Onglet sélectionné : pastille grise sur la barre noire (P-12, P-16)
+val DarkSurfaceContainerLowest = Color(0xFF050505)
 val DarkSurfaceContainerLow = Color(0xFF000000) // Cartes noires, pendant des cartes blanches du clair (P-12)
-val DarkSurfaceContainer = Color(0xFF161B24)
+val DarkSurfaceContainer = Color(0xFF161616)
 val DarkSurfaceContainerHigh = Color(0xFF000000) // Contrôles : boutons ronds, barre du bas, noirs (P-12)
-val DarkSurfaceContainerHighest = Color(0xFF2E3644)
+val DarkSurfaceContainerHighest = Color(0xFF2E2E2E)
 
-// Liseré éclairé par le haut et reflet des cartes (P-6) : blanc translucide, propres au sombre.
-val DarkRimTop = Color(0x1FFFFFFF) // 12 %
-val DarkRimBottom = Color(0x0DFFFFFF) // 5 %
+// Reflet du bord haut (P-6, P-15) : blanc translucide, propre au sombre.
+val DarkRimTop = Color(0x1AFFFFFF) // 10 % : reflet du bord haut (P-15)
+val DarkRimBottom = Color(0x00FFFFFF) // éteint dès la mi-hauteur : pas de cadre (P-15)
 val DarkSheen = Color(0x00FFFFFF) // Pas de reflet : cartes noires pures (P-12)
 
 // --- Neutres clairs (P-11) : cartes et contrôles blancs sans contour, détachés par l'ombre ---

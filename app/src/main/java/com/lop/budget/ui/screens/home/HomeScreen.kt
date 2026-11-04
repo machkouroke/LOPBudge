@@ -371,7 +371,8 @@ fun AccountWidgetCard(
             .width(160.dp)
             .clickableNoRipple(onClick)
             .testTag("${TestTags.HOME_ACCOUNT_CARD}_${balance.account.id}"),
-        contentPadding = PaddingValues(12.dp)
+        contentPadding = PaddingValues(12.dp),
+        tint = color
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
