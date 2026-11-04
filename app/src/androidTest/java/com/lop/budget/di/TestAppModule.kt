@@ -2,7 +2,6 @@ package com.lop.budget.di
 
 import android.content.Context
 import androidx.room.Room
-import androidx.room.withTransaction
 import com.lop.budget.data.local.LopDatabase
 import com.lop.budget.data.local.dao.AccountDao
 import com.lop.budget.data.local.dao.CategoryDao
@@ -58,9 +57,11 @@ object TestAppModule {
 
     @Provides
     @Singleton
-    fun provideAtomicWriter(db: LopDatabase): AtomicWriter = object : AtomicWriter {
-        override suspend fun <T> atomically(block: suspend () -> T): T = db.withTransaction(block)
-    }
+    fun provideGatedAtomicWriter(db: LopDatabase): GatedAtomicWriter = GatedAtomicWriter(db)
+
+    /** `db.withTransaction`, comme [AppModule], derrière une porte ouverte par défaut : voir [GatedAtomicWriter]. */
+    @Provides
+    fun provideAtomicWriter(writer: GatedAtomicWriter): AtomicWriter = writer
 
     @Provides fun provideTransactionDao(db: LopDatabase): TransactionDao = db.transactionDao()
     @Provides fun provideAccountDao(db: LopDatabase): AccountDao = db.accountDao()
