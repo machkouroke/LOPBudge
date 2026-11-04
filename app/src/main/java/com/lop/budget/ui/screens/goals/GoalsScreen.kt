@@ -54,6 +54,7 @@ import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
+import com.lop.budget.ui.components.SwipeableTransactionRow
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
@@ -72,6 +73,7 @@ fun GoalsScreen(
     showArchives: MutableState<Boolean> = rememberSaveable { mutableStateOf(false) },
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val deleteRequest by vm.deleteRequest.collectAsStateWithLifecycle()
     val ext = LopTheme.extended
     var selected by selectedKind
     var archivesShown by showArchives
@@ -85,6 +87,8 @@ fun GoalsScreen(
             onCreatedKindShown()
         }
     }
+
+    deleteRequest?.let { FinancialItemDeleteSheet(it, onConfirm = vm::confirmDelete, onDismiss = vm::dismissDelete) }
 
     LopScreenScaffold(
         title = stringResource(R.string.nav_goals),
@@ -137,10 +141,19 @@ fun GoalsScreen(
             FinancialItemKind.RECEIVABLE -> lists.receivables to
                 if (archives != null) R.string.tracking_empty_archived_receivables else R.string.tracking_empty_receivables
         }
-        // Une archive ouvre le même détail que la liste normale (CA-03).
+        // Une archive ouvre le même détail que la liste normale (CA-03). Le swipe de fin vers début
+        // ouvre la confirmation de suppression, dans les deux filtres (LOP-204, CA-01) ; la carte
+        // revient à sa place et ne part qu'après le succès (CA-07). Pas d'action vers la droite.
         listContent(load, emptyText, vm::retry) { item ->
             val accent = if (item.kind == FinancialItemKind.DEBT) ext.expense else ext.income
-            FinancialItemCard(item, lists.currency, accent) { onOpenItem(item.kind, item.id) }
+            SwipeableTransactionRow(
+                isPaid = false,
+                onTogglePaid = null,
+                onDelete = { vm.askDelete(item) },
+                enabled = deleteRequest == null,
+            ) {
+                FinancialItemCard(item, lists.currency, accent) { onOpenItem(item.kind, item.id) }
+            }
         }
     }
 }

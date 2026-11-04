@@ -18,6 +18,7 @@ import com.lop.budget.domain.model.ProgressView
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.financial.ArchiveFinancialItemUseCase
+import com.lop.budget.domain.usecase.financial.DeleteFinancialItemUseCase
 import com.lop.budget.domain.usecase.financial.FinancialItemDetail
 import com.lop.budget.domain.usecase.financial.ObserveFinancialItemDetailUseCase
 import com.lop.budget.ui.screens.goals.FinancialItemDetailUiState.Error
@@ -124,6 +125,9 @@ class FinancialItemDetailStateTest {
 
     /** LOP-206 : argument du constructeur ; double strict, aucun cas de cette classe n'archive. */
     private val archiveItem: ArchiveFinancialItemUseCase = mockk()
+
+    /** LOP-204 : argument du constructeur ; double strict, aucun cas de cette classe ne supprime. */
+    private val deleteItem: DeleteFinancialItemUseCase = mockk()
     private lateinit var vm: FinancialItemDetailViewModel
 
     /** Un canal par invocation du use case, dans l'ordre des invocations. */
@@ -352,7 +356,7 @@ class FinancialItemDetailStateTest {
         }
         vm = ViewModelProvider(
             store,
-            viewModelFactory { initializer { FinancialItemDetailViewModel(SavedStateHandle(args), observeDetail, settings, archiveItem) } },
+            viewModelFactory { initializer { FinancialItemDetailViewModel(SavedStateHandle(args), observeDetail, settings, archiveItem, deleteItem) } },
         )[FinancialItemDetailViewModel::class.java]
         val trace = mutableListOf<FinancialItemDetailUiState>()
         backgroundScope.launch { vm.uiState.collect { trace += it } }

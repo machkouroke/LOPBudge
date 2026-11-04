@@ -304,6 +304,14 @@
     <string name="financial_detail_archive">Archiver</string>
     <string name="financial_detail_restore">Restaurer</string>
     <string name="financial_detail_status_change_error">L\'opération a échoué. Réessayez.</string>
+    <!-- LOP-204 : supprimer un objectif, une dette ou une créance (CA-01, CA-07, P-4). -->
+    <string name="financial_delete">Supprimer</string>
+    <string name="financial_delete_cancel">Annuler</string>
+    <string name="financial_delete_title_goal">Supprimer l\'objectif « %1$s » ?</string>
+    <string name="financial_delete_title_debt">Supprimer la dette « %1$s » ?</string>
+    <string name="financial_delete_title_receivable">Supprimer la créance « %1$s » ?</string>
+    <string name="financial_delete_message">Cet élément sera définitivement supprimé. Les transactions associées seront conservées et détachées de cet élément.</string>
+    <string name="financial_delete_error">La suppression a échoué. Réessayez.</string>
 
     <!-- Accounts -->
     <string name="accounts_title">Comptes</string>

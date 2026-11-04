@@ -53,6 +53,7 @@ import com.lop.budget.domain.usecase.SyncProgressUseCase
 import com.lop.budget.domain.usecase.financial.CreateFinancialItemUseCase
 import com.lop.budget.domain.usecase.financial.ObserveFinancialItemDetailUseCase
 import com.lop.budget.domain.usecase.financial.UpdateFinancialItemUseCase
+import com.lop.budget.domain.usecase.financial.DeleteFinancialItemUseCase
 import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
 import com.lop.budget.domain.usecase.transaction.AtomicWriter
 import com.lop.budget.ui.common.TestTags
@@ -502,7 +503,7 @@ class FinancialItemCreationUiTest {
 
         // Suivi monté avec le type reçu. LOP-22 a livré l'onglet Créances : la condition « tant que »
         // de P-4 (LOP-202) est tombée, la créance s'ouvre sur son propre onglet (CA-05).
-        val goalsVm = provide("goals") { GoalsViewModel(ObserveFinancialItemListUseCase(goalRepo, loanRepo), settings) }
+        val goalsVm = provide("goals") { GoalsViewModel(ObserveFinancialItemListUseCase(goalRepo, loanRepo), settings, DeleteFinancialItemUseCase(goalRepo, loanRepo)) }
         show { GoalsScreen(vm = goalsVm, createdKind = savedKinds.single()) }
         j.await("Suivi monté") { j.count(TestTags.SCREEN_GOALS) == 1 }
         expectSection(FinancialItemKind.RECEIVABLE, "${TestTags.RECEIVABLE_CARD}_$id")

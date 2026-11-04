@@ -1,6 +1,7 @@
 package com.lop.budget.ui.screens.goals
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,9 +18,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +30,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,7 +64,8 @@ import java.util.Locale
 /**
  * Détail d'un objectif, d'une dette ou d'une créance (LOP-203). Consultation seule : aucun champ
  * n'est éditable (CA-03) ; « Modifier » ouvre le formulaire existant (P-4). LOP-5 y ajoute la saisie
- * d'une contribution ou d'un remboursement (CA-07, CA-08), LOP-206 Archiver et Restaurer (CA-01).
+ * d'une contribution ou d'un remboursement (CA-07, CA-08), LOP-206 Archiver et Restaurer (CA-01),
+ * LOP-204 Supprimer, après confirmation (CA-01, P-5).
  */
 @Composable
 fun FinancialItemDetailScreen(
@@ -68,11 +73,18 @@ fun FinancialItemDetailScreen(
     onEdit: (FinancialItemKind, Long) -> Unit,
     onOpenTransaction: (Long) -> Unit,
     onAddTransaction: (FinancialItemKind, Long) -> Unit,
+    /** Suppression réussie : retour à la liste du même type et du même filtre (LOP-204, CA-05). */
+    onDeleted: () -> Unit = onBack,
     vm: FinancialItemDetailViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val statusChange by vm.statusChange.collectAsStateWithLifecycle()
+    val deleteRequest by vm.deleteRequest.collectAsStateWithLifecycle()
+    val deleted by vm.deleted.collectAsStateWithLifecycle()
     val loaded = state as? FinancialItemDetailUiState.Loaded
+
+    LaunchedEffect(deleted) { if (deleted) onDeleted() }
+    deleteRequest?.let { FinancialItemDeleteSheet(it, onConfirm = vm::confirmDelete, onDismiss = vm::dismissDelete) }
 
     LopScreenScaffold(
         // Jamais le nom d'un élément qui n'est plus affiché (CA-02).
@@ -113,7 +125,7 @@ fun FinancialItemDetailScreen(
 
             is FinancialItemDetailUiState.Loaded -> detailContent(
                 s.detail, s.currency, onEdit, onOpenTransaction, onAddTransaction,
-                statusChange, onArchive = vm::archive, onRestore = vm::restore,
+                statusChange, onArchive = vm::archive, onRestore = vm::restore, onDelete = vm::askDelete,
             )
         }
     }
@@ -128,6 +140,7 @@ private fun LazyListScope.detailContent(
     statusChange: StatusChange,
     onArchive: () -> Unit,
     onRestore: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val color = Color(d.colorArgb)
 
@@ -215,6 +228,21 @@ private fun LazyListScope.detailContent(
                         .testTag(TestTags.FINANCIAL_DETAIL_STATUS_ERROR),
                 )
             }
+        }
+    }
+
+    // LOP-204, CA-01, P-5 : sous Archiver ou Restaurer ; ouvre la confirmation, ne supprime rien.
+    item {
+        OutlinedButton(
+            onClick = onDelete,
+            modifier = Modifier.fillMaxWidth().testTag(TestTags.FINANCIAL_DETAIL_DELETE),
+            shape = MaterialTheme.shapes.medium,
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+        ) {
+            Icon(Icons.Default.Delete, null)
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.financial_delete))
         }
     }
 

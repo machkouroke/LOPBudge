@@ -15,19 +15,29 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lop.budget.ui.common.TestTags
@@ -45,8 +55,21 @@ fun ConfirmDeleteSheet(
     confirmIcon: androidx.compose.ui.graphics.vector.ImageVector? = Icons.Filled.DeleteForever,
     confirmTag: String = TestTags.DELETE_CONFIRM_SUBMIT,
     dismissTag: String = TestTags.DELETE_CONFIRM_CANCEL,
+    /**
+     * Écriture en cours : les deux actions sont inactives et ni le voile, ni le glissement, ni le
+     * retour ne ferment la feuille (P-4 de LOP-204).
+     */
+    busy: Boolean = false,
+    /** Échec de l'écriture, affiché et annoncé sous le message ; la confirmation relance (CA-07 de LOP-204). */
+    error: String? = null,
+    errorTag: String = "",
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val busyNow by rememberUpdatedState(busy)
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        // Même instance à chaque composition : une nouvelle clé recréerait l'état de la feuille.
+        confirmValueChange = remember { { value: SheetValue -> value != SheetValue.Hidden || !busyNow } },
+    )
     val container = MaterialTheme.colorScheme.surface
 
     ModalBottomSheet(
@@ -96,12 +119,25 @@ fun ConfirmDeleteSheet(
                 }
             }
 
+            if (error != null) {
+                Text(
+                    error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .semantics { liveRegion = LiveRegionMode.Polite }
+                        .testTag(errorTag),
+                )
+            }
+
             ActionRow(
                 icon = confirmIcon,
                 title = confirmLabel,
                 tone = ActionTone.Danger,
                 onClick = onConfirm,
                 modifier = Modifier.testTag(confirmTag),
+                enabled = !busy,
+                busy = busy,
             )
 
             Spacer(Modifier.height(4.dp))
@@ -112,6 +148,7 @@ fun ConfirmDeleteSheet(
                 tone = ActionTone.Neutral,
                 onClick = onDismiss,
                 modifier = Modifier.testTag(dismissTag),
+                enabled = !busy,
             )
 
             Spacer(Modifier.height(18.dp))
@@ -159,6 +196,9 @@ private fun ActionRow(
     tone: ActionTone,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    /** Écriture en cours : un indicateur remplace l'icône. */
+    busy: Boolean = false,
 ) {
     val shape = RoundedCornerShape(22.dp)
     val border = when (tone) {
@@ -177,10 +217,16 @@ private fun ActionRow(
             .background(
                 color = if (tone == ActionTone.Danger) Color.Red else MaterialTheme.colorScheme.surface
             )
-            .pressScaleClickable(
-                intent = if (tone == ActionTone.Danger) HapticIntent.Confirm else HapticIntent.Tap,
-                pressedScale = 0.98f,
-                onClick = onClick,
+            .then(
+                if (enabled) {
+                    Modifier.pressScaleClickable(
+                        intent = if (tone == ActionTone.Danger) HapticIntent.Confirm else HapticIntent.Tap,
+                        pressedScale = 0.98f,
+                        onClick = onClick,
+                    )
+                } else {
+                    Modifier.alpha(0.5f).semantics { disabled() }
+                }
             ),
     ) {
         Row(
@@ -188,7 +234,13 @@ private fun ActionRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (icon != null) {
+            if (busy) {
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp),
+                )
+            } else if (icon != null) {
                 Icon(
                     icon,
                     contentDescription = null,

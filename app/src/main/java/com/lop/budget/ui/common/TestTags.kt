@@ -212,6 +212,19 @@ object TestTags {
     /** Échec d'archivage ou de restauration ; le bouton reste disponible pour réessayer (CA-05). */
     const val FINANCIAL_DETAIL_STATUS_ERROR = "financial.detail.status_error"
 
+    /** Supprimer, sous Archiver ou Restaurer, sur un élément chargé (LOP-204, CA-01, P-5). */
+    const val FINANCIAL_DETAIL_DELETE = "financial.detail.delete"
+
+    /**
+     * Confirmation de suppression, commune au swipe d'une carte de Suivi et au détail (LOP-204,
+     * CA-01). Feuille modale : `testTagsAsResourceId` y est reposé.
+     */
+    const val FINANCIAL_DELETE_SHEET = "financial.delete.sheet"
+    const val FINANCIAL_DELETE_CONFIRM = "financial.delete.confirm"
+    const val FINANCIAL_DELETE_CANCEL = "financial.delete.cancel"
+    /** Échec de la suppression, dans la feuille restée ouverte (CA-07, P-4). */
+    const val FINANCIAL_DELETE_ERROR = "financial.delete.error"
+
     /**
      * Préfixe d'un champ, suffixé `_<clé>` : name, kind, status, progress, remaining, percent,
      * target, starting, counterparty, debttype, rate, due, account, comment. Un champ absent

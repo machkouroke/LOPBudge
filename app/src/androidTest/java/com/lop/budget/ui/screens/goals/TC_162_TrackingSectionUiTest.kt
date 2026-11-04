@@ -70,6 +70,7 @@ import com.lop.budget.domain.model.NO_CATEGORY_ID
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.SyncProgressUseCase
+import com.lop.budget.domain.usecase.financial.DeleteFinancialItemUseCase
 import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.journey.Journey
@@ -949,7 +950,7 @@ class TrackingSectionUiTest {
         j.case = "U-09 $start → créé $created"
         seedS()
         launch()
-        val vm = provide("goals") { GoalsViewModel(ObserveFinancialItemListUseCase(goalRepository, loanRepository), settings) }
+        val vm = provide("goals") { GoalsViewModel(ObserveFinancialItemListUseCase(goalRepository, loanRepository), settings, DeleteFinancialItemUseCase(goalRepository, loanRepository)) }
         val selected: MutableState<FinancialItemKind> = mutableStateOf(start)
         val shown = AtomicInteger()
         show { GoalsScreen(vm = vm, createdKind = created, onCreatedKindShown = { shown.incrementAndGet() }, selectedKind = selected) }

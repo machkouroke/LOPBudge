@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.FinancialItemKind
+import com.lop.budget.domain.usecase.financial.DeleteFinancialItemUseCase
 import com.lop.budget.domain.usecase.financial.FinancialItemSummary
 import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -40,12 +41,16 @@ data class GoalsUiState(
     val receivables: ListLoad<FinancialItemSummary> = ListLoad.Loading,
 )
 
-/** Section Suivi (LOP-22). Lectures seules (I-1), par le use case de liste (P-10). */
+/**
+ * Section Suivi (LOP-22). Lectures par le use case de liste (P-10) ; seule écriture, la suppression
+ * confirmée d'une carte (LOP-204).
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GoalsViewModel @Inject constructor(
     observeList: ObserveFinancialItemListUseCase,
     private val settings: SettingsRepository,
+    deleteItem: DeleteFinancialItemUseCase,
 ) : ViewModel() {
 
     private val retries = MutableStateFlow(0)
@@ -61,6 +66,19 @@ class GoalsViewModel @Inject constructor(
 
     /** Relance les lectures, jamais une écriture (CA-06, I-1). */
     fun retry() = retries.update { it + 1 }
+
+    private val deletion = DeleteConfirmation(viewModelScope, deleteItem)
+
+    /** Confirmation ouverte par le swipe d'une carte, ou `null` (LOP-204, CA-01). */
+    val deleteRequest: StateFlow<DeleteRequest?> = deletion.request
+
+    /** Le swipe ouvre la confirmation, il ne supprime rien (I-1). */
+    fun askDelete(item: FinancialItemSummary) = deletion.ask(item.kind, item.id, item.name)
+
+    fun dismissDelete() = deletion.dismiss()
+
+    /** Succès : la confirmation se ferme, la ligne part avec la lecture suivante de la base (CA-05). */
+    fun confirmDelete() = deletion.confirm()
 
     private fun lists(
         read: (FinancialItemKind) -> Flow<List<FinancialItemSummary>>,

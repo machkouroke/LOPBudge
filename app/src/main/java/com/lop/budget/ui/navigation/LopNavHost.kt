@@ -237,6 +237,9 @@ fun LopNavHost() {
                             onEdit = { kind, id -> navController.navigate(Routes.edition(kind, id)) },
                             onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
                             onAddTransaction = { kind, id -> navController.navigate(Routes.addLinked(kind, id)) },
+                            // LOP-204, CA-05 : retour à Suivi, onglet et filtre intacts. Retirer le
+                            // détail par sa route, jamais une seconde entrée si l'effet se rejoue.
+                            onDeleted = { navController.popBackStack(Routes.FINANCIAL_DETAIL, inclusive = true) },
                         )
                     }
 

@@ -12,6 +12,7 @@ import com.lop.budget.domain.model.FinancialItemKind.RECEIVABLE
 import com.lop.budget.domain.model.ItemStatus.ACTIVE
 import com.lop.budget.domain.model.ProgressView
 import com.lop.budget.domain.usecase.financial.FinancialItemSummary
+import com.lop.budget.domain.usecase.financial.DeleteFinancialItemUseCase
 import com.lop.budget.domain.usecase.financial.ObserveFinancialItemListUseCase
 import com.lop.budget.ui.screens.goals.ListLoad.Error
 import com.lop.budget.ui.screens.goals.ListLoad.Loaded
@@ -110,6 +111,9 @@ class TrackingSectionStateTest {
 
     private val observeList: ObserveFinancialItemListUseCase = mockk()
     private val settings: SettingsRepository = mockk()
+
+    /** LOP-204 : argument du constructeur ; double strict, aucun cas de cette classe ne supprime. */
+    private val deleteItem: DeleteFinancialItemUseCase = mockk()
     private lateinit var vm: GoalsViewModel
 
     /** Un canal par invocation du use case, par type, dans l'ordre des invocations. */
@@ -326,7 +330,7 @@ class TrackingSectionStateTest {
 
     private fun newViewModel(): GoalsViewModel = ViewModelProvider(
         store,
-        viewModelFactory { initializer { GoalsViewModel(observeList, settings) } },
+        viewModelFactory { initializer { GoalsViewModel(observeList, settings, deleteItem) } },
     )[GoalsViewModel::class.java]
 
     private fun TestScope.open(): MutableList<GoalsUiState> {

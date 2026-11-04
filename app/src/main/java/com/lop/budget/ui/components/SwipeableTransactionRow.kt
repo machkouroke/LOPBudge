@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +49,8 @@ import kotlin.math.roundToInt
  * (seuil toujours bloqué à 50%).
  * Voir : https://stackoverflow.com/questions/79834653/
  *
- * - Swipe droite (StartToEnd) : toggle Payé / Non payé — la ligne revient à sa place
+ * - Swipe droite (StartToEnd) : toggle Payé / Non payé — la ligne revient à sa place. Sans
+ *   [onTogglePaid] (carte de Suivi, LOP-204), la ligne ne glisse pas vers la droite.
  * - Swipe gauche  (EndToStart) : suppression via onDelete()
  *
  * Seuil configurable via [thresholdFraction] (défaut 40% de la largeur du composant).
@@ -58,7 +60,7 @@ import kotlin.math.roundToInt
 @Composable
 fun SwipeableTransactionRow(
     isPaid: Boolean,
-    onTogglePaid: () -> Unit,
+    onTogglePaid: (() -> Unit)?,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -70,6 +72,9 @@ fun SwipeableTransactionRow(
 ) {
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
+    // Le geste survit aux recompositions : il appelle toujours les actions de la ligne actuelle.
+    val currentOnTogglePaid by rememberUpdatedState(onTogglePaid)
+    val currentOnDelete by rememberUpdatedState(onDelete)
 
     // Largeur mesurée du composant (en px), mise à jour par onSizeChanged
     var componentWidthPx by remember { mutableFloatStateOf(0f) }
@@ -200,7 +205,7 @@ fun SwipeableTransactionRow(
                             // Limiter le déplacement à ±80% de la largeur
                             val clamped = newOffset.coerceIn(
                                 -componentWidthPx * 0.80f,
-                                componentWidthPx * 0.80f,
+                                if (currentOnTogglePaid != null) componentWidthPx * 0.80f else 0f,
                             )
                             scope.launch { offsetX.snapTo(clamped) }
 
@@ -234,9 +239,9 @@ fun SwipeableTransactionRow(
                             if (!actionFired && (triggeredByPosition || triggeredByFling)) {
                                 actionFired = true
                                 if (currentOffset > 0f) {
-                                    onTogglePaid()
+                                    currentOnTogglePaid?.invoke()
                                 } else {
-                                    onDelete()
+                                    currentOnDelete()
                                 }
                             }
                             resetToSettled()

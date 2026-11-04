@@ -278,15 +278,6 @@ class GoalEditViewModel @Inject constructor(
         }
     }
 
-    fun delete(onDone: () -> Unit) {
-        goalId?.let {
-            viewModelScope.launch {
-                goalRepo.delete(it)
-                onDone()
-            }
-        }
-    }
-
     private companion object {
         const val KEY_DRAFT = "goal.draft"
     }

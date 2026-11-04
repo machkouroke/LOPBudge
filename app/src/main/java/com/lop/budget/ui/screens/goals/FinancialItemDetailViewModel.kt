@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.FinancialItemKind
 import com.lop.budget.domain.usecase.financial.ArchiveFinancialItemUseCase
+import com.lop.budget.domain.usecase.financial.DeleteFinancialItemUseCase
 import com.lop.budget.domain.usecase.financial.FinancialItemDetail
 import com.lop.budget.domain.usecase.financial.ObserveFinancialItemDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,7 +47,7 @@ enum class StatusChange { Idle, Running, Failed }
 
 /**
  * Consultation d'un élément financier (LOP-203). La lecture n'écrit rien (I-1) ; seuls Archiver et
- * Restaurer écrivent, par leur use case (LOP-206).
+ * Restaurer (LOP-206) et Supprimer, après confirmation (LOP-204), écrivent, par leur use case.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -55,6 +56,7 @@ class FinancialItemDetailViewModel @Inject constructor(
     observeDetail: ObserveFinancialItemDetailUseCase,
     settings: SettingsRepository,
     private val archiveItem: ArchiveFinancialItemUseCase,
+    deleteItem: DeleteFinancialItemUseCase,
 ) : ViewModel() {
 
     /** Type demandé par la route ; `null` s'il est inconnu, ce qui vaut introuvable (I-2). */
@@ -103,6 +105,26 @@ class FinancialItemDetailViewModel @Inject constructor(
             }
         }
     }
+
+    private val deletion = DeleteConfirmation(viewModelScope, deleteItem)
+
+    /** Confirmation de suppression ouverte, ou `null` (LOP-204, CA-01). */
+    val deleteRequest: StateFlow<DeleteRequest?> = deletion.request
+
+    private val _deleted = MutableStateFlow(false)
+
+    /** Suppression réussie : l'écran rend la main à la liste (CA-05). */
+    val deleted: StateFlow<Boolean> = _deleted.asStateFlow()
+
+    /** Sur l'élément affiché seulement : rien en chargement, en erreur ou introuvable (P-5). */
+    fun askDelete() {
+        val d = (uiState.value as? FinancialItemDetailUiState.Loaded)?.detail ?: return
+        deletion.ask(d.kind, d.id, d.name)
+    }
+
+    fun dismissDelete() = deletion.dismiss()
+
+    fun confirmDelete() = deletion.confirm { _deleted.value = true }
 
     companion object {
         const val ARG_KIND = "kind"

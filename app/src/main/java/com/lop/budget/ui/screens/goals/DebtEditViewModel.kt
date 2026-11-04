@@ -311,15 +311,6 @@ class DebtEditViewModel @Inject constructor(
         }
     }
 
-    fun delete(onDone: () -> Unit) {
-        loanId?.let {
-            viewModelScope.launch {
-                loanRepo.delete(it)
-                onDone()
-            }
-        }
-    }
-
     companion object {
         /** Argument des routes de création et de modification : nom d'un [LoanDirection]. */
         const val ARG_DIRECTION = "direction"
