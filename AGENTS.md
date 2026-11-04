@@ -115,6 +115,7 @@ décision.
 - Pour JUnit/Robolectric : lire `app/src/test/AGENTS.md`.
 - Pour les tests instrumentés : lire `app/src/androidTest/AGENTS.md`.
 - Pour Maestro : lire `Maestro/AGENTS.md` et `Maestro/GUIDE_BONNES_PRATIQUES.md`.
+- Pour toute interface (couleurs, surfaces, relief, feuilles, typographie) : lire `DESIGN.md`.
 
 ## 9. Poste de développement Windows — Gradle et le répertoire temporaire
 
