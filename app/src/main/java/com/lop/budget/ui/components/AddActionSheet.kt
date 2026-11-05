@@ -2,69 +2,80 @@ package com.lop.budget.ui.components
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.CallReceived
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.lop.budget.R
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
-import com.lop.budget.ui.theme.lopRimBrush
 import com.lop.budget.ui.motion.MotionSpec
 import com.lop.budget.ui.theme.LopTheme
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 /**
- * Menu d'ajout (CA-01, CA-02) : carte **flottante** posée au-dessus de l'écran courant.
+ * Menu d'ajout (LOP-230) : pile verticale calée sur le +, Revenu en haut, Dépense au plus près du
+ * pouce, et un ✕ posé exactement sur le + (P-3). Titre et description de chaque action sont dans une
+ * pastille opaque, lisible quel que soit l'écran flouté dessous (P-4). À l'ouverture, le + pivote en ✕
+ * et les actions montent en rebond, Dépense d'abord, comme Silo ; la fermeture rejoue ce mouvement à
+ * l'envers, sans rebond (P-5).
  *
- * Ordre de dessin du flou — c'est le point qui était faux : `hazeEffect` peint le rendu
- * flouté *par-dessus* ce que les modificateurs précédents ont dessiné. Un `background()`
- * chaîné **avant** lui est donc entièrement recouvert et la teinte du scrim n'a aucun effet
- * prévisible. Le scrim doit venir **après** le flou, et la carte porte son propre flou pour
- * lire comme du verre plutôt que comme une surface opaque.
+ * [anchor] rend les bornes du + dans la racine ; il n'est lu qu'au placement, jamais en composition.
+ *
+ * Ordre de dessin du flou : `hazeEffect` peint le rendu flouté *par-dessus* ce que les modificateurs
+ * précédents ont dessiné. La teinte du voile passe donc par haze lui-même, pas par un `background()`.
  */
 @Composable
 fun AddActionSheet(
@@ -72,6 +83,7 @@ fun AddActionSheet(
     onDismiss: () -> Unit,
     onSelect: (TransactionType) -> Unit,
     hazeState: HazeState?,
+    anchor: () -> Rect?,
     modifier: Modifier = Modifier,
 ) {
     // Thème réellement appliqué, mode Système compris (LOP-229) : `themeMode == DARK` s'y trompait.
@@ -81,33 +93,25 @@ fun AddActionSheet(
         BackHandler(onBack = onDismiss)
     }
 
-    // Scrim : teinte appliquée par haze lui-même, pas par un background() séparé.
     val scrimColor = if (isDark) Color.Black.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.30f)
     val hazeBackground = MaterialTheme.colorScheme.background
-    // La carte est opaque : rien du contenu sous-jacent ne doit transparaître.
-    val sheetColor = MaterialTheme.colorScheme.surface
-    val sheetBorder = lopRimBrush()
-
-    val density = LocalDensity.current
-    val contentProgress by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = if (visible) MotionSpec.sheetEnterSpring() else MotionSpec.sheetExitSpring(),
-        label = "sheetContentCascade",
-    )
+    val paneTitle = stringResource(R.string.add_action_title)
 
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(tween(MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut)),
-        exit = fadeOut(tween(MotionSpec.FAST_MS, easing = MotionSpec.easeOut)),
+        // Le voile attend que les actions aient amorcé leur descente : il s'efface ensuite sur le +
+        // réel, que le ✕ a rejoint en repivotant.
+        exit = fadeOut(tween(MotionSpec.MEDIUM_MS, delayMillis = 60, easing = MotionSpec.easeOut)),
         modifier = modifier.fillMaxSize(),
     ) {
+        var origin by remember { mutableStateOf(Offset.Zero) }
         Box(
             Modifier
                 .fillMaxSize()
-                // `hazeEffect(state)` seul retombe sur HazeDefaults.blurRadius (20 dp), trop
-                // faible : le texte du fond restait lisible. Rayon et teinte sont donc
-                // explicites, et la teinte passe par haze (un background() chaîné avant
-                // l'effet est recouvert par le rendu flouté, chaîné après il l'aplatit).
+                .onGloballyPositioned { origin = it.positionInRoot() }
+                // `hazeEffect(state)` seul retombe sur HazeDefaults.blurRadius (20 dp), trop faible :
+                // le texte du fond restait lisible. Rayon et teinte sont donc explicites.
                 .then(
                     if (hazeState != null) {
                         Modifier.hazeEffect(state = hazeState) {
@@ -120,183 +124,199 @@ fun AddActionSheet(
                         Modifier.background(scrimColor)
                     }
                 )
-                .clickableNoRipple(onDismiss),
+                // Pas de `clickable` sur le voile : TalkBack y verrait un bouton sans libellé. Le ✕
+                // porte la fermeture pour le lecteur d'écran.
+                .pointerInput(onDismiss) { detectTapGestures { onDismiss() } }
+                .semantics { this.paneTitle = paneTitle },
         ) {
-            AnimatedVisibility(
-                visible = visible,
-                enter = slideInVertically(
-                    animationSpec = MotionSpec.sheetEnterSpring(),
-                ) { fullHeight -> (fullHeight * 0.4f).toInt() } +
-                        scaleIn(
-                            initialScale = 0.92f,
-                            animationSpec = MotionSpec.sheetEnterSpring(),
-                        ) +
-                        fadeIn(
-                            animationSpec = tween(MotionSpec.MEDIUM_MS, easing = MotionSpec.easeOut),
-                        ),
-                exit = slideOutVertically(
-                    animationSpec = MotionSpec.sheetExitSpring(),
-                ) { fullHeight -> (fullHeight * 0.4f).toInt() } +
-                        scaleOut(
-                            targetScale = 0.94f,
-                            animationSpec = MotionSpec.sheetExitSpring(),
-                        ) +
-                        fadeOut(
-                            animationSpec = tween(MotionSpec.FAST_MS, easing = MotionSpec.easeOut),
-                        ),
-                modifier = Modifier.align(Alignment.BottomCenter),
-            ) {
-                val sheetShape = RoundedCornerShape(32.dp)
-
-                // Marges sur les quatre côtés : la carte flotte au lieu d'être collée au bord.
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 16.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(elevation = 24.dp, shape = sheetShape, clip = false)
-                            .clip(sheetShape)
-                            // Opaque : la carte de choix ne laisse rien transparaître.
-                            // Un hazeEffect ici ne floutait rien de toute façon — le
-                            // `shadow` au-dessus ouvre une nouvelle couche graphique et
-                            // le contenu réapparaissait net.
-                            .background(sheetColor)
-                            .border(BorderStroke(1.dp, sheetBorder), sheetShape)
-                            .clickableNoRipple { /* bloque le dismiss du scrim */ }
-                            .testTag(TestTags.ADD_ACTION_SHEET),
-                    ) {
-                        Column(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp)
-                                .padding(top = 22.dp, bottom = 20.dp),
-                        ) {
-                            val headerAlpha = contentProgress.coerceIn(0f, 1f)
-                            val headerTranslationY = with(density) { (1f - headerAlpha) * 10.dp.toPx() }
-
-                            Column(
-                                modifier = Modifier.graphicsLayer {
-                                    alpha = headerAlpha
-                                    translationY = headerTranslationY
-                                },
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.add_action_title),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Spacer(Modifier.height(2.dp))
-                                Text(
-                                    text = stringResource(R.string.add_action_subtitle),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-
-                            Spacer(Modifier.height(18.dp))
-
-                            // Deux tuiles de largeur égale avec animation en cascade.
-                            val expenseProgress = ((contentProgress - 0.12f) / 0.88f).coerceIn(0f, 1f)
-                            val incomeProgress = ((contentProgress - 0.22f) / 0.78f).coerceIn(0f, 1f)
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                AddActionTile(
-                                    label = stringResource(R.string.add_action_expense),
-                                    icon = Icons.AutoMirrored.Filled.CallReceived,
-                                    tint = LopTheme.extended.expense,
-                                    testTag = TestTags.ADD_ACTION_EXPENSE,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .graphicsLayer {
-                                            alpha = expenseProgress
-                                            scaleX = 0.94f + (0.06f * expenseProgress)
-                                            scaleY = 0.94f + (0.06f * expenseProgress)
-                                            translationY = with(density) { (1f - expenseProgress) * 16.dp.toPx() }
-                                        },
-                                    onClick = { onSelect(TransactionType.EXPENSE) },
-                                )
-                                AddActionTile(
-                                    label = stringResource(R.string.add_action_income),
-                                    icon = Icons.AutoMirrored.Filled.CallMade,
-                                    tint = LopTheme.extended.income,
-                                    testTag = TestTags.ADD_ACTION_INCOME,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .graphicsLayer {
-                                            alpha = incomeProgress
-                                            scaleX = 0.94f + (0.06f * incomeProgress)
-                                            scaleY = 0.94f + (0.06f * incomeProgress)
-                                            translationY = with(density) { (1f - incomeProgress) * 16.dp.toPx() }
-                                        },
-                                    onClick = { onSelect(TransactionType.INCOME) },
-                                )
-                            }
+            Column(
+                modifier = Modifier
+                    .layout { measurable, constraints ->
+                        // Coin bas droit de la pile sur celui du + ; sans mesure, coin bas droit de l'écran.
+                        val bounds = anchor()?.translate(-origin)
+                        val right = bounds?.right?.roundToInt() ?: (constraints.maxWidth - 24.dp.roundToPx())
+                        val bottom = bounds?.bottom?.roundToInt() ?: (constraints.maxHeight - 24.dp.roundToPx())
+                        // Marge gauche : un libellé agrandi passe à la ligne au lieu de sortir de l'écran.
+                        val placeable = measurable.measure(
+                            Constraints(
+                                maxWidth = (right - 16.dp.roundToPx()).coerceAtLeast(0),
+                                maxHeight = bottom.coerceAtLeast(0),
+                            )
+                        )
+                        layout(constraints.maxWidth, constraints.maxHeight) {
+                            placeable.place(right - placeable.width, bottom - placeable.height)
                         }
                     }
-                }
+                    .testTag(TestTags.ADD_ACTION_SHEET),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                AddActionRow(
+                    label = stringResource(R.string.add_action_income),
+                    description = stringResource(R.string.add_action_income_desc),
+                    icon = Icons.AutoMirrored.Filled.CallMade,
+                    tint = LopTheme.extended.income,
+                    testTag = TestTags.ADD_ACTION_INCOME,
+                    shown = visible,
+                    enterDelayMs = 70,
+                    exitDelayMs = 0,
+                    onClick = { onSelect(TransactionType.INCOME) },
+                )
+                AddActionRow(
+                    label = stringResource(R.string.add_action_expense),
+                    description = stringResource(R.string.add_action_expense_desc),
+                    icon = Icons.AutoMirrored.Filled.CallReceived,
+                    tint = LopTheme.extended.expense,
+                    testTag = TestTags.ADD_ACTION_EXPENSE,
+                    shown = visible,
+                    enterDelayMs = 30,
+                    exitDelayMs = 30,
+                    onClick = { onSelect(TransactionType.EXPENSE) },
+                )
+                CloseButton(shown = visible, onClick = onDismiss)
             }
         }
     }
 }
 
 /**
- * Tuile d'action : la zone cliquable **et** le testTag portent sur toute la carte, pas
- * seulement sur la pastille d'icône — la cible de tap couvre désormais la tuile entière.
+ * Une action : pastille titre + description, puis rond d'icône aligné sur le ✕. Toute la ligne est la
+ * cible du tap et un seul nœud pour TalkBack (« Dépense, Sorties d'argent », bouton) ; l'icône n'a pas
+ * de description, sinon elle serait lue deux fois.
  */
 @Composable
-private fun AddActionTile(
+private fun AddActionRow(
     label: String,
+    description: String,
     icon: ImageVector,
     tint: Color,
     testTag: String,
+    shown: Boolean,
+    enterDelayMs: Long,
+    exitDelayMs: Long,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    val tileShape = RoundedCornerShape(24.dp)
+    val rise = rememberMenuProgress(shown, enterDelayMs, exitDelayMs)
+    val pillShape = MaterialTheme.shapes.small
 
-    Column(
-        modifier = modifier
-            .clip(tileShape)
-            .background(tint.copy(alpha = 0.10f))
-            .border(1.dp, tint.copy(alpha = 0.22f), tileShape)
+    Row(
+        modifier = Modifier
+            // Monte d'environ une action plus bas, de derrière le ✕ (dessiné après), et dépasse sa
+            // place avant de s'y poser (P-5).
+            .graphicsLayer {
+                alpha = rise.value.coerceIn(0f, 1f)
+                translationY = (1f - rise.value) * 64.dp.toPx()
+            }
             .pressScaleClickable(
                 intent = HapticIntent.Selection,
                 pressedScale = 0.96f,
                 onClick = onClick,
             )
-            .padding(vertical = 18.dp)
+            .semantics { role = Role.Button }
             .testTag(testTag),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        Column(
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .surfaceRelief(pillShape)
+                .background(MaterialTheme.colorScheme.surface, pillShape)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.End,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End,
+            )
+        }
         Box(
             modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(tint.copy(alpha = 0.18f)),
+                .graphicsLayer {
+                    val scale = 0.6f + 0.4f * rise.value
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .size(56.dp)
+                .surfaceRelief(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = label,
+                contentDescription = null,
                 tint = tint,
                 modifier = Modifier.size(26.dp),
             )
         }
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
     }
+}
+
+/**
+ * ✕ posé sur le + : même rendu que lui (DESIGN.md § 6). C'est le glyphe + qui pivote de 45°, comme
+ * dans Silo : à la première image il se confond avec le bouton qu'il recouvre, et il redevient + à la
+ * fermeture (P-5).
+ */
+@Composable
+private fun CloseButton(shown: Boolean, onClick: () -> Unit) {
+    val turn = rememberMenuProgress(shown, enterDelayMs = 0, exitDelayMs = 0)
+
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primary,
+        border = BorderStroke(
+            1.dp,
+            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.35f), Color.Transparent)),
+        ),
+        shadowElevation = 8.dp,
+        modifier = Modifier
+            .size(56.dp)
+            .testTag(TestTags.ADD_ACTION_CLOSE),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = stringResource(R.string.close),
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .size(28.dp)
+                    .graphicsLayer { rotationZ = 45f * turn.value },
+            )
+        }
+    }
+}
+
+/**
+ * Progression du menu, de 0 (replié dans le +) à 1 (en place). À l'ouverture, le ressort rebondissant
+ * de l'app la fait dépasser 1 avant de s'y poser ; à la fermeture, le ressort ferme des overlays la
+ * ramène à 0 sans rebond, pendant que `AnimatedVisibility` garde le contenu le temps de son fondu.
+ * Rouvrir en pleine fermeture repart de la valeur courante. Avec les animations système coupées, les
+ * ressorts aboutissent aussitôt.
+ */
+@Composable
+private fun rememberMenuProgress(
+    shown: Boolean,
+    enterDelayMs: Long,
+    exitDelayMs: Long,
+): Animatable<Float, AnimationVector1D> {
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(shown) {
+        if (shown) {
+            delay(enterDelayMs)
+            progress.animateTo(1f, MotionSpec.floatSpring())
+        } else {
+            delay(exitDelayMs)
+            progress.animateTo(0f, MotionSpec.sheetExitSpring())
+        }
+    }
+    return progress
 }

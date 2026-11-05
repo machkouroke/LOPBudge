@@ -30,7 +30,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -106,6 +110,12 @@ fun LopNavHost() {
     val editRequest by actionVm.editRequest.collectAsStateWithLifecycle()
 
     var showAddActions by rememberSaveable { mutableStateOf(false) }
+    // Bornes du + : le menu d'ajout y pose son ✕ (LOP-230, P-3). Lues au placement seulement,
+    // pour ne pas recomposer l'hôte à chaque image du glissement de la barre.
+    var addButtonBounds by remember { mutableStateOf<Rect?>(null) }
+    // Menu d'ajout ouvert : l'écran et la barre sortent de l'arbre d'accessibilité. Sinon TalkBack y
+    // pose encore le focus, et un double-tap les active à travers le voile (LOP-230, CA-01, CA-05).
+    val underAddMenu = if (showAddActions) Modifier.clearAndSetSemantics {} else Modifier
 
     // Onglet de Suivi, lu par l'écran et par le FAB : une seule source, ils ne divergent jamais
     // (LOP-22, I-2). Tenu ici, il survit à la navigation vers une autre section (CA-01).
@@ -139,6 +149,7 @@ fun LopNavHost() {
                 modifier = Modifier
                     .fillMaxSize()
                     .hazeSource(state = hazeState)
+                    .then(underAddMenu)
             ) {
                 NavHost(
                     navController = navController,
@@ -591,7 +602,8 @@ fun LopNavHost() {
                 ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .then(underAddMenu),
             ) {
                 Box(
                     modifier = Modifier
@@ -625,6 +637,7 @@ fun LopNavHost() {
                         addLabel = stringResource(addKind?.let(::creationLabel) ?: R.string.add),
                         addTypeIcon = addKind?.let(::creationIcon),
                         hazeState = hazeState,
+                        addButtonModifier = Modifier.onGloballyPositioned { addButtonBounds = it.boundsInRoot() },
                     )
                 }
             }
@@ -659,6 +672,7 @@ fun LopNavHost() {
                     navController.navigate(Routes.add(type))
                 },
                 hazeState = hazeState,
+                anchor = { addButtonBounds },
             )
 
             // SIBLING 4: Global Delete Request Handler

@@ -56,6 +56,8 @@ fun FloatingBottomBar(
     modifier: Modifier = Modifier,
     addTypeIcon: ImageVector? = null,
     hazeState: HazeState? = null,
+    // Sert à mesurer le + : le ✕ du menu d'ajout se pose exactement dessus (LOP-230, P-3).
+    addButtonModifier: Modifier = Modifier,
 ) {
     val pillShape = RoundedCornerShape(32.dp)
     // Contrôle en relief (P-6) : plus clair que les cartes en sombre, blanc en clair.
@@ -134,7 +136,7 @@ fun FloatingBottomBar(
                 1.dp,
                 Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.35f), Color.Transparent)),
             ),
-            modifier = Modifier.size(56.dp).testTag(TestTags.NAV_ADD_BUTTON),
+            modifier = addButtonModifier.size(56.dp).testTag(TestTags.NAV_ADD_BUTTON),
             shadowElevation = 8.dp
         ) {
             Box(contentAlignment = Alignment.Center) {

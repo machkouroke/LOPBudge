@@ -45,6 +45,7 @@ object TestTags {
     const val ADD_ACTION_SHEET = "add.action.sheet"
     const val ADD_ACTION_EXPENSE = "add.action.expense"
     const val ADD_ACTION_INCOME = "add.action.income"
+    const val ADD_ACTION_CLOSE = "add.action.close"
 
     // Home Screen — solde total et carte « Ce mois » (LOP-231)
     const val HOME_TOTAL_BALANCE = "home.total.balance"

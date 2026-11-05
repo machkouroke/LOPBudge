@@ -85,13 +85,34 @@ class Journey(private val rule: ComposeTestRule, private val folder: String) {
     // Parcours partagés
     // =============================================================================================
 
-    /** Accueil → `+` → Dépense : le formulaire d'ajout s'ouvre avec son sélecteur de catégorie. */
+    /**
+     * Accueil → `+` → Dépense → formulaire d'ajout, puis sélecteur de catégorie ouvert par « ⋯ Plus » :
+     * depuis LOP-227 P-7, il ne s'ouvre plus seul.
+     */
     fun openExpenseForm() {
         click(node(TestTags.NAV_ADD_BUTTON))
         await("feuille d'ajout") { count(TestTags.ADD_ACTION_SHEET) == 1 }
         click(node(TestTags.ADD_ACTION_EXPENSE))
         awaitScreen(TestTags.SCREEN_EDIT)
-        await("sélecteur de catégorie ouvert seul en mode ajout") { count(TestTags.PICKER_CATEGORY_SHEET) == 1 }
+        expectNoCategoryPickerOnArrival()
+        openCategoryPicker()
+    }
+
+    /**
+     * LOP-227, CA-01 (P-7) : à l'arrivée en création, aucun sélecteur ne s'ouvre seul. Témoin positif
+     * d'abord, « ⋯ Plus » propre au formulaire de transaction ; puis repos, pour qu'une ouverture
+     * déclenchée à la composition ait eu lieu avant le constat.
+     */
+    fun expectNoCategoryPickerOnArrival() {
+        await("formulaire de transaction chargé (« ⋯ Plus » affiché)") { count(TestTags.TX_EDIT_CATEGORY_MORE) == 1 }
+        rule.waitForIdle()
+        expect("LOP-227 CA-01 — aucun sélecteur de catégorie ouvert seul à l'arrivée", 0, count(TestTags.PICKER_CATEGORY_SHEET))
+    }
+
+    /** « ⋯ Plus » ouvre le sélecteur complet (LOP-227, P-7). Chemin d'action, pas un oracle. */
+    fun openCategoryPicker() {
+        click(node(TestTags.TX_EDIT_CATEGORY_MORE))
+        await("sélecteur de catégorie ouvert par « ⋯ Plus »") { count(TestTags.PICKER_CATEGORY_SHEET) == 1 }
     }
 
     /** Par la recherche du sélecteur ouvert : une tuile trouvée se choisit directement, sans ses sous-catégories. */
