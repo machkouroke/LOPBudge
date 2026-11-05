@@ -39,12 +39,13 @@
     <string name="tx_new_title">Nouvelle transaction</string>
     <string name="tx_type_expense">Dépense</string>
     <string name="tx_type_income">Revenu</string>
-    <string name="tx_amount_label">Montant</string>
     <string name="tx_date_label">Date</string>
-    <string name="tx_name_label">Nom de la transaction</string>
+    <string name="tx_name_label">Nom</string>
     <string name="tx_category_label">Catégorie</string>
-    <string name="tx_select_category">Sélectionner une catégorie</string>
     <string name="tx_category_sheet_title">Choisir une catégorie</string>
+    <!-- LOP-227, P-7 : bouton qui ouvre la liste complète depuis les suggestions du formulaire. -->
+    <string name="tx_category_more">Plus</string>
+    <string name="tx_category_more_action">Voir toutes les catégories</string>
     <string name="tx_no_categories">Aucune catégorie disponible</string>
     <string name="tx_create_category">Créer une nouvelle catégorie</string>
     <string name="tx_account_label">Compte</string>
@@ -53,12 +54,12 @@
     <string name="tx_no_accounts">Aucun compte disponible</string>
     <string name="tx_tags_label">Étiquettes (max 3)</string>
     <string name="tx_no_tags">Aucune étiquette</string>
-    <string name="tx_notes_label">Notes (optionnel)</string>
+    <string name="tx_notes_label">Note</string>
+    <!-- LOP-227 : libellé du montant mis en avant, avec le symbole de la devise de l'application. -->
+    <string name="tx_amount_in_currency">Montant en %1$s</string>
+    <!-- LOP-227 : texte d'attente des champs libres du formulaire (nom, note). -->
+    <string name="tx_field_optional">Facultatif</string>
 
-    <!-- New section headers (Material expressive layout) -->
-    <string name="tx_section_main">Informations</string>
-    <string name="tx_section_classification">Catégorie &amp; compte</string>
-    <string name="tx_section_optional">Détails</string>
     <string name="tx_required_fields_hint">Renseigne un montant, une catégorie et un compte pour enregistrer.</string>
 
     <string name="tx_repeat_label">Répéter</string>

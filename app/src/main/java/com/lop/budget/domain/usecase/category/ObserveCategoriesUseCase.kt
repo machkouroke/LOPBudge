@@ -41,6 +41,13 @@ class ObserveCategoriesUseCase @Inject constructor(
     fun observeByType(type: TransactionType): Flow<List<CategoryEntity>> =
         categoryRepo.observeByType(type.name)
 
+    /**
+     * LOP-227, P-7 : les [limit] dernières catégories du [type] utilisées par une transaction, la
+     * plus récente d'abord. Vide sans historique : le complément est l'affaire de l'appelant.
+     */
+    fun observeRecentlyUsed(type: TransactionType, limit: Int): Flow<List<CategoryEntity>> =
+        categoryRepo.observeRecentlyUsed(type.name, limit)
+
     /** La catégorie de dépense proposée par défaut à la saisie d'une transaction. */
     suspend fun defaultExpenseCategoryId(): Long = categoryRepo.getDefaultExpenseCategoryId()
 

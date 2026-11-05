@@ -3,11 +3,13 @@ package com.lop.budget.ui.screens.transaction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -26,9 +28,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.repeatOnLifecycle
 import com.lop.budget.R
 import com.lop.budget.domain.model.FinancialItemKind
 import com.lop.budget.domain.model.ItemStatus
@@ -57,6 +57,8 @@ fun TransactionEditScreen(
 ) {
     val form by vm.form.collectAsStateWithLifecycle()
     val categories by vm.categories.collectAsStateWithLifecycle()
+    val recentCategories by vm.recentCategories.collectAsStateWithLifecycle()
+    val suggestedCategories by vm.suggestedCategories.collectAsStateWithLifecycle()
     val accounts by vm.accounts.collectAsStateWithLifecycle()
     val tags by vm.tags.collectAsStateWithLifecycle()
     val goals by vm.goals.collectAsStateWithLifecycle()
@@ -79,8 +81,8 @@ fun TransactionEditScreen(
 
     // CA-04 : résolution des @StringRes au plus près de l'affichage ; le ViewModel ne
     // manipule que des identifiants de ressource, jamais de texte localisé.
-    val amountError = fieldErrors[TransactionFormField.AMOUNT]?.let { stringResource(it) }
-    val categoryError = fieldErrors[TransactionFormField.CATEGORY]?.let { stringResource(it) }
+    // Ni erreur de montant ni erreur de catégorie ici : l'un ou l'autre manquant grise Enregistrer
+    // (P-6 de LOP-227).
     val accountError = fieldErrors[TransactionFormField.ACCOUNT]?.let { stringResource(it) }
     // CA-05 de LOP-5 : choix devenu indisponible, signalé sous son champ.
     val goalError = fieldErrors[TransactionFormField.GOAL]?.let { stringResource(it) }
@@ -100,21 +102,9 @@ fun TransactionEditScreen(
     }
 
 
+    // LOP-227, P-7 : aucun sélecteur ne s'ouvre seul ; la catégorie se choisit dans la rangée de
+    // suggestions, ou par « Plus ».
     var activeSheet by rememberSaveable { mutableStateOf<EditSheet?>(null) }
-    var autoOpenedCategory by rememberSaveable { mutableStateOf(false) }
-    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
-
-    LaunchedEffect(vm.isEditing) {
-        // Ouvert depuis une proposition détectée, le formulaire arrive déjà pré-rempli, catégorie
-        // comprise (CA-16) : ouvrir le sélecteur par-dessus masquerait la saisie proposée.
-        if (vm.isEditing || vm.editingProposalId != null || autoOpenedCategory) return@LaunchedEffect
-        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            if (!autoOpenedCategory) {
-                activeSheet = EditSheet.Category
-                autoOpenedCategory = true
-            }
-        }
-    }
 
     LopScreenScaffold(
         title = if (vm.isEditing) stringResource(R.string.tx_edit_title) else stringResource(R.string.tx_new_title),
@@ -123,12 +113,21 @@ fun TransactionEditScreen(
         modifier = Modifier.testTag(TestTags.SCREEN_EDIT),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            Box(Modifier.fillMaxWidth().padding(20.dp)) {
+            // CA-06 de LOP-227 : l'app est bord à bord, le clavier ne redimensionne rien. La marge
+            // du clavier remonte le bouton au-dessus de lui, et la liste, qui réserve la hauteur de
+            // cette barre, défile jusqu'à la dernière ligne.
+            Box(Modifier.fillMaxWidth().imePadding().padding(20.dp)) {
                 Button(
                     onClick = { vm.save(onDone) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp).testTag(TestTags.BTN_SAVE),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag(TestTags.BTN_SAVE),
                     shape = MaterialTheme.shapes.medium,
-                    enabled = form.isValid && !isSaving
+                    enabled = form.isValid && !isSaving,
+                    // Désactivé, le bouton reste opaque : les lignes qui défilent dessous ne se lisent
+                    // pas au travers de « Enregistrer ».
+                    colors = ButtonDefaults.buttonColors(
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
                 ) {
                     Text(stringResource(R.string.save))
                 }
@@ -136,58 +135,62 @@ fun TransactionEditScreen(
         }
     ) {
         item {
-            MainSection(
+            AmountHeader(
                 form = form,
                 currency = currency,
-                amountError = amountError,
-                isPaidToggleVisible = vm.isPaidToggleVisible,
                 onSetType = vm::setType,
                 onSetAmount = vm::setAmountRaw,
-                onSetTitle = vm::setTitle,
-                onSetStatus = vm::setStatus
             )
         }
 
         item {
-            ClassificationSection(
+            CategorySuggestions(
+                suggestions = suggestedCategories,
+                selectedId = form.categoryId,
+                onSelect = vm::setCategory,
+                onMore = { activeSheet = EditSheet.Category },
+            )
+        }
+
+        item {
+            EntryRowsCard(
                 form = form,
-                categories = categories,
                 accounts = accounts,
+                tags = tags,
+                accountError = accountError,
+                onSetTitle = vm::setTitle,
+                onSetNote = vm::setNote,
+                onOpenAccount = { activeSheet = EditSheet.Account },
+                onOpenDate = { activeSheet = EditSheet.Date },
+                onOpenTags = { activeSheet = EditSheet.Tags },
+            )
+        }
+
+        item {
+            OptionsCard(
+                form = form,
+                isPaidToggleVisible = vm.isPaidToggleVisible,
                 linkedGoal = linkedGoal,
                 linkedLoan = linkedLoan,
-                tags = tags,
-                categoryError = categoryError,
-                accountError = accountError,
                 goalError = goalError,
                 loanError = loanError,
-                onOpenCategory = { activeSheet = EditSheet.Category },
-                onOpenAccount = { activeSheet = EditSheet.Account },
+                onSetStatus = vm::setStatus,
                 onOpenGoal = { activeSheet = EditSheet.Goal },
                 onOpenDebt = { activeSheet = EditSheet.Debt },
-                onOpenTags = { activeSheet = EditSheet.Tags }
+                recurrence = if (vm.isRecurrenceSectionVisible) {
+                    {
+                        RecurrenceRows(
+                            form = form,
+                            onSetInterval = vm::setInterval,
+                            onToggleDow = vm::toggleDayOfWeek,
+                            onSetEndDate = vm::setEndDate,
+                            onSetMaxOccurrences = vm::setMaxOccurrences,
+                            onOpenFrequency = { activeSheet = EditSheet.Frequency },
+                            onOpenEndDate = { activeSheet = EditSheet.EndDate },
+                        )
+                    }
+                } else null,
             )
-        }
-
-        item {
-            OptionalSection(
-                form = form,
-                onSetNote = vm::setNote,
-                onOpenDate = { activeSheet = EditSheet.Date }
-            )
-        }
-
-        if (vm.isRecurrenceSectionVisible) {
-            item {
-                RecurrenceSection(
-                    form = form,
-                    onSetInterval = vm::setInterval,
-                    onToggleDow = vm::toggleDayOfWeek,
-                    onSetEndDate = vm::setEndDate,
-                    onSetMaxOccurrences = vm::setMaxOccurrences,
-                    onOpenFrequency = { activeSheet = EditSheet.Frequency },
-                    onOpenEndDate = { activeSheet = EditSheet.EndDate }
-                )
-            }
         }
     }
 
@@ -197,6 +200,8 @@ fun TransactionEditScreen(
                 title = stringResource(R.string.tx_category_sheet_title),
                 categories = categories.filter { it.type == form.type },
                 selectedId = form.categoryId,
+                // P-7 : « Récente » montre les vraies dernières catégories utilisées.
+                recents = recentCategories,
                 onSelect = { id ->
                     vm.setCategory(id)
                     activeSheet = null

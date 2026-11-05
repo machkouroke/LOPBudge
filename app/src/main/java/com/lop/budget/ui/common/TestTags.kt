@@ -136,6 +136,14 @@ object TestTags {
     const val TX_EDIT_FIELD_GOAL = "transaction.edit.field.goal"
     const val TX_EDIT_FIELD_DEBT = "transaction.edit.field.debt"
     const val TX_EDIT_FIELD_TAGS = "transaction.edit.field.tags"
+    /** Champ Note de la carte « saisie » (LOP-227, P-3). */
+    const val TX_EDIT_FIELD_NOTE = "transaction.edit.field.note"
+    /**
+     * Rangée des catégories suggérées sous le montant, et son bouton « Plus » (LOP-227, P-7). La
+     * pastille choisie porte [TX_EDIT_FIELD_CATEGORY].
+     */
+    const val TX_EDIT_CATEGORY_SUGGESTIONS = "transaction.edit.category.suggestions"
+    const val TX_EDIT_CATEGORY_MORE = "transaction.edit.category.more"
     const val TX_EDIT_TYPE_INCOME = "transaction.edit.type.income"
     const val TX_EDIT_TYPE_EXPENSE = "transaction.edit.type.expense"
     const val TX_EDIT_BLOCK_RECURRENCE = "transaction.edit.block.recurrence"

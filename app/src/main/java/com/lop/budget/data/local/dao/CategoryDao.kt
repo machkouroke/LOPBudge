@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 interface CategoryOperations {
     fun observeAll(): Flow<List<CategoryEntity>>
     fun observeByType(type: String): Flow<List<CategoryEntity>>
+    fun observeRecentlyUsed(type: String, limit: Int): Flow<List<CategoryEntity>>
     suspend fun getById(id: Long): CategoryEntity?
     suspend fun upsert(category: CategoryEntity): Long
     suspend fun delete(id: Long)
@@ -29,6 +30,24 @@ interface CategoryDao : CategoryOperations {
 
     @Query("SELECT * FROM categories WHERE type = :type ORDER BY name")
     override fun observeByType(type: String): Flow<List<CategoryEntity>>
+
+    /**
+     * LOP-227, P-7 : les [limit] catégories du [type] les plus récemment utilisées, la plus récente
+     * d'abord. « Récente » suit l'ordre de saisie des transactions (identifiant décroissant) : aucune
+     * date de création n'est stockée. Une ligne supprimée ne compte pas ; un ajustement de solde
+     * (catégorie 0) ne joint aucune catégorie.
+     */
+    @Query(
+        """
+        SELECT c.* FROM categories c
+        JOIN transactions t ON t.categoryId = c.id
+        WHERE c.type = :type AND t.deleted = 0
+        GROUP BY c.id
+        ORDER BY MAX(t.id) DESC
+        LIMIT :limit
+        """
+    )
+    override fun observeRecentlyUsed(type: String, limit: Int): Flow<List<CategoryEntity>>
 
     @Upsert override suspend fun upsert(category: CategoryEntity): Long
 

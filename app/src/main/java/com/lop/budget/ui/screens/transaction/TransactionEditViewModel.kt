@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -125,6 +126,33 @@ fun TransactionForm.toEdition(defaultTitle: String): TransactionEdition = Transa
     linkedLoanId = linkedLoanId,
     tagIds = tagIds.toList(),
 )
+
+/** LOP-227, P-7 : nombre de catégories suggérées sous le montant. */
+private const val SUGGESTED_CATEGORIES = 5
+
+/**
+ * LOP-227, P-7 : catégories suggérées par le formulaire, [limit] au plus.
+ *
+ * Les dernières utilisées ([recent]) d'abord, complétées par les catégories principales de [all]
+ * dans l'ordre reçu (alphabétique). La catégorie choisie, si elle n'y figure pas, passe en tête :
+ * un choix fait par « Plus » reste visible. Seules les catégories du [type] sont retenues — au
+ * changement de type, les deux sources ne basculent pas dans la même émission.
+ */
+internal fun suggestCategories(
+    recent: List<CategoryEntity>,
+    all: List<CategoryEntity>,
+    type: TransactionType,
+    selectedId: Long?,
+    limit: Int,
+): List<CategoryEntity> {
+    val ofType = all.filter { it.type == type }
+    val base = (recent.filter { it.type == type } + ofType.filter { it.parentCategoryId == null })
+        .distinctBy { it.id }
+        .take(limit)
+    val selected = ofType.find { it.id == selectedId }
+    return if (selected == null || base.any { it.id == selected.id }) base
+    else listOf(selected) + base.take(limit - 1)
+}
 
 @HiltViewModel
 class TransactionEditViewModel @Inject constructor(
@@ -359,6 +387,17 @@ class TransactionEditViewModel @Inject constructor(
     val categories: StateFlow<List<CategoryEntity>> = _form.flatMapLatest { f ->
         observeCategories.observeByType(f.type)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** LOP-227, P-7 : les dernières catégories du type utilisées, sans complément (« Récente »). */
+    val recentCategories: StateFlow<List<CategoryEntity>> = _form.map { it.type }.distinctUntilChanged()
+        .flatMapLatest { observeCategories.observeRecentlyUsed(it, SUGGESTED_CATEGORIES) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** LOP-227, P-7 : la rangée de catégories proposée sous le montant (voir [suggestCategories]). */
+    val suggestedCategories: StateFlow<List<CategoryEntity>> =
+        combine(recentCategories, categories, _form) { recent, all, f ->
+            suggestCategories(recent, all, f.type, f.categoryId, SUGGESTED_CATEGORIES)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val accounts: StateFlow<List<AccountEntity>> = accountRepo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

@@ -1,6 +1,7 @@
 package com.lop.budget.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,6 +62,11 @@ fun CategoryBottomSheet(
      * feuille reste ouverte, c'est l'appelant qui décide de la fermer.
      */
     selectedIds: Set<Long> = setOfNotNull(selectedId),
+    /**
+     * Section « Récente » : les dernières catégories utilisées, fournies par l'appelant (LOP-227,
+     * P-7). `null` : les trois premières catégories principales, comme avant ; vide : pas de section.
+     */
+    recents: List<CategoryEntity>? = null,
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var currentParent by remember { mutableStateOf<CategoryEntity?>(null) }
@@ -79,7 +85,7 @@ fun CategoryBottomSheet(
     val rootCategories = remember(categories) {
         categories.filter { it.parentCategoryId == null }
     }
-    val recents = remember(rootCategories) { rootCategories.take(3) }
+    val recentTiles = recents ?: remember(rootCategories) { rootCategories.take(3) }
     LopBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier.testTag(TestTags.PICKER_CATEGORY_SHEET),
@@ -109,10 +115,15 @@ fun CategoryBottomSheet(
             )
         }
 
+        // Relief des contrôles flottants sur fond opaque, comme l'écran Recherche (LOP-228) : le
+        // champ ne se fond plus dans la feuille (LOP-227, P-7).
         LopSearchBar(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .surfaceRelief(LopFieldShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, LopFieldShape),
             placeholder = "Chercher une catégorie...",
         )
 
@@ -138,10 +149,10 @@ fun CategoryBottomSheet(
                     onClick = onSelectNone,
                 )
             }
-            if (!isSearching && currentParent == null && recents.isNotEmpty()) {
+            if (!isSearching && currentParent == null && recentTiles.isNotEmpty()) {
                 SectionLabel("Récente")
                 CategoryTileRow(
-                    tiles = recents.map { CategoryTile.Item(it) },
+                    tiles = recentTiles.map { CategoryTile.Item(it) },
                     selectedIds = selectedIds,
                     parentIds = parentIds,
                     onOpenParent = { currentParent = it },
