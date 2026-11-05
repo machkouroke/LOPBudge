@@ -1,6 +1,7 @@
 package com.lop.budget.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,27 +19,39 @@ import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lop.budget.R
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.motion.MotionSpec
 import com.lop.budget.ui.navigation.Routes
 import com.lop.budget.ui.theme.lopRimBrush
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /**
  * Barre de navigation type "Pill" flottante, inspirée du Galaxy Store.
@@ -85,7 +98,14 @@ fun FloatingBottomBar(
                 .height(64.dp)
                 .softShadow(CircleShape)
         ) {
-            Row(
+            // Place de chaque onglet dans la pilule, relevée au placement : l'indicateur s'y aligne.
+            val tabBounds = remember { mutableStateMapOf<String, Rect>() }
+            fun Modifier.tabOf(route: String) = onPlaced {
+                val bounds = it.boundsInParent()
+                if (tabBounds[route] != bounds) tabBounds[route] = bounds
+            }
+
+            Box(
                 modifier = Modifier
                     .background(pillColor)
                     .hazeEffect(state = hazeState) {
@@ -94,33 +114,38 @@ fun FloatingBottomBar(
                     }
                     .padding(horizontal = 8.dp)
                     .fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceAround
             ) {
-                GalaxyNavItem(
-                    icon = Icons.Outlined.Home,
-                    selectedIcon = Icons.Filled.Home,
-                    label = stringResource(R.string.nav_home),
-                    selected = current == Routes.HOME,
-                    onClick = { onSelect(Routes.HOME) },
-                    modifier = Modifier.testTag(TestTags.NAV_HOME)
-                )
-                GalaxyNavItem(
-                    icon = Icons.Outlined.Assessment,
-                    selectedIcon = Icons.Filled.Assessment,
-                    label = stringResource(R.string.nav_analytics),
-                    selected = current == Routes.ANALYTICS,
-                    onClick = { onSelect(Routes.ANALYTICS) },
-                    modifier = Modifier.testTag(TestTags.NAV_ANALYTICS)
-                )
-                GalaxyNavItem(
-                    icon = Icons.Outlined.Flag,
-                    selectedIcon = Icons.Filled.Flag,
-                    label = stringResource(R.string.nav_goals),
-                    selected = current == Routes.GOALS,
-                    onClick = { onSelect(Routes.GOALS) },
-                    modifier = Modifier.testTag(TestTags.NAV_GOALS)
-                )
+                tabBounds[current]?.let { NavIndicator(target = it) }
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    GalaxyNavItem(
+                        icon = Icons.Outlined.Home,
+                        selectedIcon = Icons.Filled.Home,
+                        label = stringResource(R.string.nav_home),
+                        selected = current == Routes.HOME,
+                        onClick = { onSelect(Routes.HOME) },
+                        modifier = Modifier.testTag(TestTags.NAV_HOME).tabOf(Routes.HOME)
+                    )
+                    GalaxyNavItem(
+                        icon = Icons.Outlined.Assessment,
+                        selectedIcon = Icons.Filled.Assessment,
+                        label = stringResource(R.string.nav_analytics),
+                        selected = current == Routes.ANALYTICS,
+                        onClick = { onSelect(Routes.ANALYTICS) },
+                        modifier = Modifier.testTag(TestTags.NAV_ANALYTICS).tabOf(Routes.ANALYTICS)
+                    )
+                    GalaxyNavItem(
+                        icon = Icons.Outlined.Flag,
+                        selectedIcon = Icons.Filled.Flag,
+                        label = stringResource(R.string.nav_goals),
+                        selected = current == Routes.GOALS,
+                        onClick = { onSelect(Routes.GOALS) },
+                        modifier = Modifier.testTag(TestTags.NAV_GOALS).tabOf(Routes.GOALS)
+                    )
+                }
             }
         }
 
@@ -172,6 +197,37 @@ fun FloatingBottomBar(
     }
 }
 
+/**
+ * Indicateur unique de l'onglet sélectionné (LOP-226, CA-02, CA-03, P-6). Le bord avant suit un
+ * ressort rapide, le bord arrière un lent : il s'étire vers l'onglet visé puis s'y resserre. Un
+ * ressort repart de sa position et de sa vitesse, des taps rapides le réorientent en plein vol.
+ */
+@Composable
+private fun NavIndicator(target: Rect) {
+    val left = remember { Animatable(target.left) }
+    val right = remember { Animatable(target.right) }
+    LaunchedEffect(target) {
+        val towardsRight = target.left > left.value
+        val leading = MotionSpec.spatialFast(visibilityThreshold = 0.5f)
+        val trailing = MotionSpec.spatialSlow(visibilityThreshold = 0.5f)
+        launch { left.animateTo(target.left, if (towardsRight) trailing else leading) }
+        launch { right.animateTo(target.right, if (towardsRight) leading else trailing) }
+    }
+    Box(
+        Modifier
+            // Lus au placement : le glissement ne recompose pas la barre.
+            .layout { measurable, constraints ->
+                val width = (right.value - left.value).roundToInt().coerceAtLeast(0)
+                val placeable = measurable.measure(Constraints.fixed(width, target.height.roundToInt()))
+                layout(constraints.maxWidth, constraints.maxHeight) {
+                    placeable.place(left.value.roundToInt(), target.top.roundToInt())
+                }
+            }
+            .background(MaterialTheme.colorScheme.surfaceDim, RoundedCornerShape(32.dp))
+            .testTag(TestTags.NAV_INDICATOR)
+    )
+}
+
 @Composable
 private fun GalaxyNavItem(
     icon: ImageVector,
@@ -182,6 +238,19 @@ private fun GalaxyNavItem(
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+
+    // L'icône qu'on vient de choisir rebondit légèrement (LOP-226, P-6) ; pas au premier affichage.
+    val iconScale = remember { Animatable(1f) }
+    var wasSelected by remember { mutableStateOf(selected) }
+    LaunchedEffect(selected) {
+        if (selected && !wasSelected) {
+            iconScale.snapTo(0.9f)
+            iconScale.animateTo(1f, MotionSpec.spatialBouncy())
+        } else {
+            iconScale.snapTo(1f)
+        }
+        wasSelected = selected
+    }
 
     // Onglet sélectionné à l'accent actif (LOP-229, CA-02). Sans la couleur, il se distingue par
     // le creux, l'icône pleine (contour ailleurs) et le gras (CA-04, P-6).
@@ -199,9 +268,7 @@ private fun GalaxyNavItem(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
-            )
-            .clip(RoundedCornerShape(32.dp))
-            .background(if (selected) MaterialTheme.colorScheme.surfaceDim else Color.Transparent),
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -210,7 +277,12 @@ private fun GalaxyNavItem(
             imageVector = if (selected) selectedIcon else icon,
             contentDescription = label,
             tint = tintColor,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier
+                .size(24.dp)
+                .graphicsLayer {
+                    scaleX = iconScale.value
+                    scaleY = iconScale.value
+                }
         )
         Spacer(Modifier.height(4.dp))
 

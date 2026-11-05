@@ -1,227 +1,63 @@
 package com.lop.budget.ui.navigation
 
-import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.runtime.Composable
-import androidx.navigation.NamedNavArgument
+import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavDeepLink
-import androidx.navigation.NavGraphBuilder
-import androidx.navigation.compose.composable
+import com.lop.budget.ui.motion.MotionSpec
+
+private typealias NavTransitionScope = AnimatedContentTransitionScope<NavBackStackEntry>
 
 /**
- * Types d'animations de navigation disponibles.
- */
-enum class NavAnimationType {
-    /** Glissement vertical (Up/Down) - Utilisé pour les transactions et écrans principaux. */
-    MAIN,
-    /** Glissement latéral (Left/Right) - Utilisé pour les menus secondaires (paramètres, recherche, etc.). */
-    SECONDARY,
-    /** Animation par défaut du NavHost (Slide horizontal entre les onglets racines). */
-    ROOT
-}
-
-/**
- * Centralisation des animations de navigation pour assurer une cohérence visuelle.
+ * Transitions de navigation, communes à toutes les destinations (LOP-226, CA-05).
+ *
+ * - Entre deux onglets principaux : l'ancien s'efface, puis le nouveau apparaît en passant de 96 %
+ *   à 100 %. Aucun glissement (CA-02, P-6). Les écrans racines sont transparents : un fondu croisé
+ *   superposerait les deux pages, d'où l'enchaînement.
+ * - Ouverture d'un écran secondaire : il entre par le bord droit ; l'écran recouvert recule d'un
+ *   quart de largeur vers la gauche en s'effaçant (CA-01, P-4, P-5).
+ * - Retour : miroir exact de l'ouverture (CA-01, P-3).
  */
 object NavAnimations {
-    private const val DEFAULT_DURATION = 400
-    private const val ROOT_DURATION = 500
-    private val defaultEasing = FastOutSlowInEasing
-    
-    private val screenOrder = listOf(Routes.HOME, Routes.ANALYTICS, Routes.GOALS)
 
-    private fun isRoot(route: String?): Boolean {
-        val baseRoute = route?.substringBefore("/") ?: return false
-        return baseRoute in Routes.rootRoutes
+    private fun isRoot(entry: NavBackStackEntry) =
+        entry.destination.route?.substringBefore("/") in Routes.rootRoutes
+
+    private fun NavTransitionScope.betweenTabs() = isRoot(initialState) && isRoot(targetState)
+
+    private val slide = MotionSpec.screenTween<IntOffset>()
+    // Le recul s'efface au rythme de l'écran qui le recouvre.
+    private val recedeFade = MotionSpec.screenTween<Float>()
+
+    // Courbes de sortie et d'entrée appariées : l'ancien tient puis part, le nouveau est visible
+    // dès son départ. Avec une même courbe lente au départ, l'écran restait vide ~50 ms.
+    private val tabEnter = tween<Float>(MotionSpec.TAB_IN_MS, MotionSpec.TAB_OUT_MS, MotionSpec.enterDecelerate)
+        .let { fadeIn(it) + scaleIn(it, initialScale = 0.96f) }
+    private val tabExit = fadeOut(tween(MotionSpec.TAB_OUT_MS, easing = MotionSpec.exitAccelerate))
+
+    val enter: NavTransitionScope.() -> EnterTransition = {
+        if (betweenTabs()) tabEnter
+        else slideIntoContainer(SlideDirection.Left, slide)
     }
 
-    /**
-     * Transition d'entrée globale pour le NavHost.
-     * Gère intelligemment les transitions entre onglets (Shared Axis) et la signature Home.
-     */
-    fun getGlobalEnterTransition(
-        initial: String?,
-        target: String?
-    ): AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition {
-        return {
-            val initialRoot = isRoot(initial)
-            val targetRoot = isRoot(target)
-
-            when {
-                // Transition entre onglets principaux (Shared Axis)
-                initialRoot && targetRoot -> {
-                    val initialIndex = screenOrder.indexOf(initial?.substringBefore("/"))
-                    val targetIndex = screenOrder.indexOf(target?.substringBefore("/"))
-                    val direction = if (initialIndex > targetIndex) 
-                        AnimatedContentTransitionScope.SlideDirection.Right 
-                    else 
-                        AnimatedContentTransitionScope.SlideDirection.Left
-
-                    slideIntoContainer(
-                        towards = direction,
-                        animationSpec = tween(ROOT_DURATION, easing = defaultEasing)
-                    ) + fadeIn(animationSpec = tween(ROOT_DURATION))
-                }
-                
-                // Retour à l'accueil depuis un écran secondaire (Signature Home)
-                target?.substringBefore("/") == Routes.HOME && !initialRoot -> {
-                    scaleIn(
-                        initialScale = 0.95f,
-                        animationSpec = tween(DEFAULT_DURATION, easing = defaultEasing)
-                    ) + fadeIn(
-                        initialAlpha = 0.5f,
-                        animationSpec = tween(DEFAULT_DURATION, easing = defaultEasing)
-                    )
-                }
-
-                // Par défaut
-                else -> fadeIn(animationSpec = tween(DEFAULT_DURATION))
-            }
-        }
+    val exit: NavTransitionScope.() -> ExitTransition = {
+        if (betweenTabs()) tabExit
+        else slideOutOfContainer(SlideDirection.Left, slide) { it / 4 } + fadeOut(recedeFade)
     }
 
-    /**
-     * Transition de sortie globale pour le NavHost.
-     */
-    fun getGlobalExitTransition(
-        initial: String?,
-        target: String?
-    ): AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition {
-        return {
-            val initialRoot = isRoot(initial)
-            val targetRoot = isRoot(target)
-
-            when {
-                // Transition entre onglets principaux (Shared Axis)
-                initialRoot && targetRoot -> {
-                    val initialIndex = screenOrder.indexOf(initial?.substringBefore("/"))
-                    val targetIndex = screenOrder.indexOf(target?.substringBefore("/"))
-                    val direction = if (initialIndex > targetIndex) 
-                        AnimatedContentTransitionScope.SlideDirection.Right 
-                    else 
-                        AnimatedContentTransitionScope.SlideDirection.Left
-
-                    slideOutOfContainer(
-                        towards = direction,
-                        animationSpec = tween(ROOT_DURATION, easing = defaultEasing)
-                    ) + fadeOut(animationSpec = tween(ROOT_DURATION))
-                }
-
-                // Départ de l'accueil vers un écran secondaire (Signature Home)
-                initial?.substringBefore("/") == Routes.HOME && !targetRoot -> {
-                    scaleOut(
-                        targetScale = 0.95f,
-                        animationSpec = tween(DEFAULT_DURATION, easing = defaultEasing)
-                    ) + fadeOut(
-                        targetAlpha = 0.5f,
-                        animationSpec = tween(DEFAULT_DURATION, easing = defaultEasing)
-                    )
-                }
-
-                // Par défaut
-                else -> fadeOut(animationSpec = tween(DEFAULT_DURATION))
-            }
-        }
+    val popEnter: NavTransitionScope.() -> EnterTransition = {
+        if (betweenTabs()) tabEnter
+        else slideIntoContainer(SlideDirection.Right, slide) { it / 4 } + fadeIn(recedeFade)
     }
 
-    // --- Helpers pour composableAnimated ---
-
-    fun enter(
-        type: NavAnimationType,
-        duration: Int = DEFAULT_DURATION
-    ): AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition? = {
-        when (type) {
-            NavAnimationType.MAIN -> slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                animationSpec = tween(duration, easing = defaultEasing)
-            )
-            NavAnimationType.SECONDARY -> slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                animationSpec = tween(duration, easing = defaultEasing)
-            )
-            NavAnimationType.ROOT -> null
-        }
+    val popExit: NavTransitionScope.() -> ExitTransition = {
+        if (betweenTabs()) tabExit
+        else slideOutOfContainer(SlideDirection.Right, slide)
     }
-
-    fun exit(
-        type: NavAnimationType,
-        duration: Int = DEFAULT_DURATION
-    ): AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition? = {
-        when (type) {
-            NavAnimationType.MAIN -> slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                animationSpec = tween(duration, easing = defaultEasing)
-            )
-            NavAnimationType.SECONDARY -> slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                animationSpec = tween(duration, easing = defaultEasing)
-            )
-            NavAnimationType.ROOT -> null
-        }
-    }
-
-    fun popEnter(
-        type: NavAnimationType,
-        duration: Int = DEFAULT_DURATION
-    ): AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition? = {
-        when (type) {
-            NavAnimationType.MAIN -> slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                animationSpec = tween(duration, easing = defaultEasing)
-            )
-            NavAnimationType.SECONDARY -> slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                animationSpec = tween(duration, easing = defaultEasing)
-            )
-            NavAnimationType.ROOT -> null
-        }
-    }
-
-    fun popExit(
-        type: NavAnimationType,
-        duration: Int = DEFAULT_DURATION
-    ): AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition? = {
-        when (type) {
-            NavAnimationType.MAIN -> slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                animationSpec = tween(duration, easing = defaultEasing)
-            )
-            NavAnimationType.SECONDARY -> slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                animationSpec = tween(duration, easing = defaultEasing)
-            )
-            NavAnimationType.ROOT -> null
-        }
-    }
-}
-
-/**
- * Extension de NavGraphBuilder pour déclarer une destination avec ses animations prédéfinies.
- */
-fun NavGraphBuilder.composableAnimated(
-    route: String,
-    type: NavAnimationType,
-    arguments: List<NamedNavArgument> = emptyList(),
-    deepLinks: List<NavDeepLink> = emptyList(),
-    content: @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit
-) {
-    composable(
-        route = route,
-        arguments = arguments,
-        deepLinks = deepLinks,
-        enterTransition = NavAnimations.enter(type),
-        exitTransition = NavAnimations.exit(type),
-        popEnterTransition = NavAnimations.popEnter(type),
-        popExitTransition = NavAnimations.popExit(type),
-        content = content
-    )
 }

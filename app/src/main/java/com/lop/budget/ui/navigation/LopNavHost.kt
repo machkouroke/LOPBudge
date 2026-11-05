@@ -157,30 +157,11 @@ fun LopNavHost() {
                     modifier = Modifier
                         .fillMaxSize()
                         .statusBarsPadding(),
-                    enterTransition = {
-                        NavAnimations.getGlobalEnterTransition(
-                            initialState.destination.route,
-                            targetState.destination.route
-                        )(this)
-                    },
-                    exitTransition = {
-                        NavAnimations.getGlobalExitTransition(
-                            initialState.destination.route,
-                            targetState.destination.route
-                        )(this)
-                    },
-                    popEnterTransition = {
-                        NavAnimations.getGlobalEnterTransition(
-                            initialState.destination.route,
-                            targetState.destination.route
-                        )(this)
-                    },
-                    popExitTransition = {
-                        NavAnimations.getGlobalExitTransition(
-                            initialState.destination.route,
-                            targetState.destination.route
-                        )(this)
-                    },
+                    // Une seule définition pour toutes les destinations (LOP-226, CA-05).
+                    enterTransition = NavAnimations.enter,
+                    exitTransition = NavAnimations.exit,
+                    popEnterTransition = NavAnimations.popEnter,
+                    popExitTransition = NavAnimations.popExit,
                 ) {
                     composable(Routes.HOME) {
                         HomeScreen(
@@ -191,9 +172,8 @@ fun LopNavHost() {
                             )
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.DETECTED,
-                        NavAnimationType.MAIN,
                         // LOP-172 / CA-05 : point d'entrée de la notification de détection.
                         deepLinks = listOf(
                             navDeepLink { uriPattern = Routes.deepLinkPattern(Routes.DETECTED) }
@@ -207,9 +187,8 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.ANALYTICS,
-                        NavAnimationType.ROOT,
                         arguments = listOf(
                             navArgument("type") {
                                 type = NavType.StringType
@@ -239,9 +218,8 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.FINANCIAL_DETAIL,
-                        NavAnimationType.MAIN,
                         arguments = listOf(
                             navArgument(FinancialItemDetailViewModel.ARG_KIND) { type = NavType.StringType },
                             navArgument(FinancialItemDetailViewModel.ARG_ID) { type = NavType.LongType },
@@ -258,16 +236,15 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(Routes.GOAL_ADD, NavAnimationType.MAIN) {
+                    composable(Routes.GOAL_ADD) {
                         GoalEditScreen(
                             onBack = { navController.popBackStack() },
                             onSaved = { kind -> navController.closeCreation(kind) },
                         )
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.GOAL_EDIT,
-                        NavAnimationType.MAIN,
                         arguments = listOf(navArgument("id") { type = NavType.LongType })
                     ) {
                         GoalEditScreen(
@@ -276,9 +253,8 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.DEBT_ADD,
-                        NavAnimationType.MAIN,
                         arguments = listOf(navArgument(DebtEditViewModel.ARG_DIRECTION) {
                             type = NavType.StringType
                             defaultValue = LoanDirection.BORROWED.name
@@ -290,9 +266,8 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.DEBT_EDIT,
-                        NavAnimationType.MAIN,
                         arguments = listOf(
                             navArgument("id") { type = NavType.LongType },
                             navArgument(DebtEditViewModel.ARG_DIRECTION) {
@@ -307,16 +282,15 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(Routes.ACCOUNTS, NavAnimationType.MAIN) {
+                    composable(Routes.ACCOUNTS) {
                         AccountsScreen(
                             onBack = { navController.popBackStack() },
                             onOpenDetail = { id -> navController.navigate(Routes.accountDetail(id)) }
                         )
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.MONTHLY,
-                        NavAnimationType.SECONDARY,
                         arguments = listOf(
                             navArgument("type") { 
                                 type = NavType.StringType 
@@ -337,11 +311,11 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(Routes.AI, NavAnimationType.SECONDARY) {
+                    composable(Routes.AI) {
                         AiScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composableAnimated(Routes.SETTINGS, NavAnimationType.MAIN) {
+                    composable(Routes.SETTINGS) {
                         SettingsScreen(
                             onBack = { navController.popBackStack() },
                             onNavigateToTags = { navController.navigate(Routes.TAGS_MANAGE) },
@@ -350,9 +324,8 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.SEARCH,
-                        NavAnimationType.MAIN,
                         arguments = listOf(SearchViewModel.ARG_START, SearchViewModel.ARG_END).map { name ->
                             navArgument(name) {
                                 type = NavType.StringType
@@ -369,7 +342,7 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(Routes.CATEGORIES_MANAGE, NavAnimationType.SECONDARY) {
+                    composable(Routes.CATEGORIES_MANAGE) {
                         CategoriesManageScreen(
                             onBack = { navController.popBackStack() },
                             onAddCategory = { type -> navController.navigate(Routes.categoryCreate(type)) },
@@ -383,9 +356,8 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.CATEGORY_CREATE,
-                        NavAnimationType.SECONDARY,
                         arguments = listOf(
                             navArgument("type") {
                                 type = NavType.StringType
@@ -396,17 +368,15 @@ fun LopNavHost() {
                         CategoryCreateScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.CATEGORY_EDIT,
-                        NavAnimationType.SECONDARY,
                         arguments = listOf(navArgument("id") { type = NavType.LongType })
                     ) {
                         CategoryCreateScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.ACCOUNT_DETAIL,
-                        NavAnimationType.MAIN,
                         arguments = listOf(navArgument("id") { type = NavType.LongType })
                     ) {
                         AccountDetailScreen(
@@ -418,7 +388,7 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(Routes.ACCOUNTS_MANAGE, NavAnimationType.SECONDARY) {
+                    composable(Routes.ACCOUNTS_MANAGE) {
                         AccountsManageScreen(
                             onBack = { navController.popBackStack() },
                             onAddAccount = { navController.navigate(Routes.ACCOUNT_ADD) },
@@ -428,25 +398,23 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(Routes.ACCOUNT_ADD, NavAnimationType.SECONDARY) {
+                    composable(Routes.ACCOUNT_ADD) {
                         AccountEditScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.ACCOUNT_EDIT,
-                        NavAnimationType.SECONDARY,
                         arguments = listOf(navArgument("id") { type = NavType.LongType })
                     ) {
                         AccountEditScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composableAnimated(Routes.TAGS_MANAGE, NavAnimationType.SECONDARY) {
+                    composable(Routes.TAGS_MANAGE) {
                         TagsManageScreen(onBack = { navController.popBackStack() })
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.ADD,
-                        NavAnimationType.MAIN,
                         arguments = listOf(
                             navArgument("type") {
                                 type = NavType.StringType
@@ -487,9 +455,8 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.EDIT,
-                        NavAnimationType.MAIN,
 
                         arguments = listOf(
                             navArgument("id") { type = NavType.LongType },
@@ -525,9 +492,8 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.DETAIL,
-                        NavAnimationType.MAIN,
                         arguments = listOf(navArgument("id") { type = NavType.LongType }),
                         // LOP-172 / CA-02 : ouverture d'une transaction précise depuis une
                         // notification ou le widget, avec son identifiant.
@@ -558,9 +524,8 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(
+                    composable(
                         Routes.SERIES_CALENDAR,
-                        NavAnimationType.SECONDARY,
                         arguments = listOf(
                             navArgument(SeriesCalendarViewModel.ARG_START_ID) { type = NavType.LongType }
                         ),
@@ -622,7 +587,9 @@ fun LopNavHost() {
                         .padding(bottom = 20.dp, top = 40.dp)
                 ) {
                     FloatingBottomBar(
-                        current = currentRoute,
+                        // Pendant sa sortie, la barre garde l'onglet qu'elle quitte : l'indicateur
+                        // descend avec elle au lieu de disparaître (LOP-226, CA-02).
+                        current = barRoute ?: currentRoute,
                         onSelect = { route ->
                             navController.navigate(route) {
                                 popUpTo(Routes.HOME) { saveState = true }

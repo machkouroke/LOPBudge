@@ -2,6 +2,7 @@ package com.lop.budget.ui.motion
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -24,9 +25,44 @@ object MotionSpec {
     val easeOut: Easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
     /** Easing plus neutre. */
     val standard: Easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
+    /** Élément qui part : tient puis s'en va vite (Material 3 « emphasized accelerate »). */
+    val exitAccelerate: Easing = CubicBezierEasing(0.3f, 0.0f, 0.8f, 0.15f)
+    /** Élément qui arrive : visible tout de suite, se pose en douceur (« emphasized decelerate »). */
+    val enterDecelerate: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
 
     fun <T> fastTween(durationMs: Int = FAST_MS) = tween<T>(durationMillis = durationMs, easing = easeOut)
     fun <T> mediumTween(durationMs: Int = MEDIUM_MS) = tween<T>(durationMillis = durationMs, easing = easeOut)
+
+    // --- Écrans (LOP-226, CA-05, P-8) --- Règles d'emploi : DESIGN.md § Mouvement.
+
+    /** Ouverture et retour d'un écran. */
+    const val SCREEN_MS = 400
+    /**
+     * Départ doux, arrivée douce. La première image d'un écran neuf coûte cher (~65 ms en debug) :
+     * avec un départ doux, elle n'avance presque pas le mouvement, qui ne paraît pas sauter.
+     */
+    val screenEasing: Easing = FastOutSlowInEasing
+    fun <T> screenTween() = tween<T>(durationMillis = SCREEN_MS, easing = screenEasing)
+
+    /** Fondu enchaîné entre onglets : l'ancien part, puis le nouveau arrive. */
+    const val TAB_OUT_MS = 200
+    const val TAB_IN_MS = 300
+
+    // --- Ressorts de déplacement (LOP-226, CA-05, P-7) ---
+    // Un ressort garde sa vitesse quand sa cible change : un mouvement interrompu repart de là
+    // où il est, sans à-coup. Réservés aux éléments qu'on peut réorienter en plein vol.
+
+    /** Bord avant de l'indicateur (~0,3 s). */
+    fun <T> spatialFast(visibilityThreshold: T? = null) =
+        spring(dampingRatio = 0.9f, stiffness = 400f, visibilityThreshold = visibilityThreshold)
+
+    /** Bord arrière de l'indicateur, qui traîne pour l'étirer (~0,5 s). */
+    fun <T> spatialSlow(visibilityThreshold: T? = null) =
+        spring(dampingRatio = 0.9f, stiffness = 150f, visibilityThreshold = visibilityThreshold)
+
+    /** Rebond visible, réservé aux petits éléments : icône de l'onglet choisi. */
+    fun <T> spatialBouncy(visibilityThreshold: T? = null) =
+        spring(dampingRatio = 0.6f, stiffness = 800f, visibilityThreshold = visibilityThreshold)
 
     /** Spring doux pour éléments flottants. */
     fun floatSpring() = spring<Float>(

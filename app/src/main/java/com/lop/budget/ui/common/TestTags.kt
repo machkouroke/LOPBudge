@@ -40,6 +40,8 @@ object TestTags {
     const val NAV_HOME = "nav.home"
     const val NAV_ANALYTICS = "nav.analytics"
     const val NAV_GOALS = "nav.goals"
+    /** Indicateur unique de l'onglet sélectionné, qui coulisse d'un onglet à l'autre (LOP-226). */
+    const val NAV_INDICATOR = "nav.indicator"
 
     // Add action sheet
     const val ADD_ACTION_SHEET = "add.action.sheet"

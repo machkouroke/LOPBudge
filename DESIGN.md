@@ -40,6 +40,8 @@ des écrans.
 | `ui/components/Common.kt` | `FloatingCard`, `Modifier.surfaceRelief`, `Modifier.softShadow`, `LopScreenScaffold` |
 | `ui/components/LopBottomSheet.kt` | La feuille modale de l'app |
 | `ui/components/FloatingBottomBar.kt` | Barre du bas et bouton + |
+| `ui/motion/MotionSpec.kt` | Ressorts et durées de toutes les animations (§ 13) |
+| `ui/navigation/NavAnimations.kt` | Transitions entre écrans (§ 13) |
 
 Ne crée pas de couleur en dur dans un écran : passe par un rôle de `MaterialTheme.colorScheme` ou par
 `LopTheme.extended`. Si aucun rôle ne convient, ajoute-le dans `Color.kt` avec sa justification.
@@ -194,7 +196,8 @@ Cercle de 44 dp, fond `surfaceContainerHigh`, `surfaceRelief(CircleShape)`, icô
 ### Barre du bas — `FloatingBottomBar`
 
 - Pilule de 64 dp de haut, fond `surfaceContainerHigh`, liseré, `softShadow(CircleShape)`, effet haze.
-- **Onglet sélectionné** : pastille `surfaceDim`, icône **pleine**, icône et libellé en `primary`,
+- **Onglet sélectionné** : un indicateur unique `surfaceDim` qui coulisse d'un onglet à l'autre
+  (§ 13), icône **pleine**, icône et libellé en `primary`,
   libellé en gras. On la reconnaît sans la couleur (forme, remplissage, graisse : CA-04).
 - **Onglet non sélectionné** : icône contour et libellé en `onSurface` à 80 %, libellé SemiBold 12 sp.
 - Tout nouvel onglet fournit deux icônes, `icon` (contour) et `selectedIcon` (pleine).
@@ -316,6 +319,7 @@ pleine ou une graisse.
 - [ ] Aucune couleur en dur ; montants en `LopTheme.extended.income` / `expense`.
 - [ ] Styles de `MaterialTheme.typography` plutôt que des graisses forcées.
 - [ ] Contrastes vérifiés en clair et en sombre (§ 9) ; sélection lisible sans la couleur.
+- [ ] Animations sur les jetons de `MotionSpec` (§ 13), aucune durée ni courbe locale.
 - [ ] Vérifié à l'écran, sur le téléphone, dans les quatre combinaisons : clair / sombre × couleur
       dynamique activée / désactivée. Réglages de l'utilisateur remis à leur valeur d'origine.
 
@@ -328,3 +332,55 @@ Inspirés de Silo, mais relevant de l'agencement des écrans, pas de la charte :
 - intertitres en petites capitales espacées (« À VENIR ») ;
 - listes groupées dans une seule carte, avec séparateurs et icônes dans des pastilles teintées ;
 - choix de la couleur d'accent dans l'app.
+
+---
+
+## 13. Mouvement
+
+Source : US **LOP-226** (P-3 à P-8). Toute animation part de `MotionSpec` : aucune durée, courbe ni
+ressort défini localement dans un écran.
+
+### 13.1 Les jetons
+
+| Jeton | Réglage | Sert à |
+| --- | --- | --- |
+| `screenTween()` = `SCREEN_MS` + `screenEasing` | 400 ms, `FastOutSlowInEasing` | ouverture et retour d'un écran, recul de l'écran recouvert |
+| `TAB_OUT_MS` / `TAB_IN_MS` + `exitAccelerate` / `enterDecelerate` | 200 puis 300 ms, courbes Material 3 « emphasized » | fondu enchaîné entre onglets |
+| `spatialFast` | ressort 0,9 / 400 (~0,3 s) | bord avant de l'indicateur |
+| `spatialSlow` | ressort 0,9 / 150 (~0,5 s) | bord arrière de l'indicateur, qui traîne pour l'étirer |
+| `spatialBouncy` | ressort 0,6 / 800 | rebond visible, petits éléments seulement : icône de l'onglet choisi |
+| `FAST_MS` / `MEDIUM_MS` / `SLOW_MS` + `easeOut` | 90 / 180 / 260 ms | fondus et apparitions à durée : feuilles, barre du bas |
+
+### 13.2 Durée ou ressort
+
+- Un **écran** prend une durée avec un départ doux (`screenTween`). La première image d'un écran
+  neuf coûte cher (~65 ms mesurés en debug) : avec un départ doux, elle n'avance presque pas le
+  mouvement. Un ressort part à pleine accélération : cette image avalait le début, l'écran semblait
+  sauter et l'ensemble paraissait trop rapide (P-8, essais du 5 novembre 2026 sur le téléphone).
+- Un **élément qu'on peut réorienter en plein vol** prend un ressort (`spatial*`) : interrompu, il
+  repart de sa position et de sa vitesse, sans à-coup. C'est le cas de l'indicateur sous des taps
+  rapides.
+- Un **fondu entre deux écrans transparents** prend une durée : il faut retarder l'entrant, sinon
+  les deux pages se superposent. Courbes appariées : l'ancien tient puis part, le nouveau est visible
+  dès son départ ; une même courbe lente des deux côtés laisse l'écran vide entre les deux.
+
+### 13.3 Les règles
+
+- **Jamais de rebond sur un élément plein écran.** Le rebond (`spatialBouncy`) est réservé aux
+  éléments de la taille d'une icône.
+- **Ouverture d'un écran** : il entre par le bord droit ; l'écran recouvert recule d'un quart de
+  largeur vers la gauche en s'effaçant. **Retour** : miroir exact.
+- **Entre onglets** : aucun glissement. L'ancien s'efface, puis le nouveau apparaît en passant de
+  96 % à 100 %.
+- **Indicateur de la barre** : un seul, qui suit la pile de navigation et non le tap. Bord avant
+  `spatialFast`, bord arrière `spatialSlow` : il s'étire vers l'onglet visé puis se resserre.
+- **Barre du bas** : elle sort et revient par le bas, comme si elle quittait le bord du téléphone.
+- **Feuilles et popups** : elles montent du bas (`LopBottomSheet`, § 7) ; elles ne prennent pas le
+  mouvement horizontal des écrans.
+- **Animations système désactivées** : Compose suit l'échelle d'animation du système, chaque
+  mouvement atteint aussitôt sa position finale. Une animation ne porte jamais d'état : la
+  destination et la sélection existent sans elle.
+- Les écrans restent opaques (§ 4) : le recul de l'écran recouvert ne se voit que sur la bande que
+  l'écran entrant n'a pas encore couverte.
+- **Juger un mouvement sur le téléphone**, pas sur le papier : les valeurs ci-dessus viennent
+  d'essais à l'écran.
