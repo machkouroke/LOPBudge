@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -46,6 +47,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.compositeOver
@@ -55,9 +63,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringArrayResource
 import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.lop.budget.BuildConfig
 import com.lop.budget.R
@@ -157,7 +167,7 @@ private fun AmountField(
                 RowLabel(stringResource(R.string.tx_amount_in_currency, Format.currencySymbol(currency)))
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     if (amountInput.isEmpty()) {
-                        Text("0", style = style, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("0", style = style, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f))
                     }
                     inner()
                 }
@@ -187,10 +197,12 @@ fun CategorySuggestions(
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Rangée non paresseuse : cinq choix au plus, tous composés même hors de l'écran, pour
             // que le choix courant reste trouvable par son identifiant.
+            val scroll = rememberScrollState()
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .horizontalScroll(rememberScrollState())
+                    .fadingEdges(scroll)
+                    .horizontalScroll(scroll)
                     .testTag(TestTags.TX_EDIT_CATEGORY_SUGGESTIONS)
                     .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -254,6 +266,35 @@ private fun CategoryChip(
         )
     }
 }
+
+/**
+ * Estompe les bords d'une rangée qui défile, du côté où il reste à voir : une pastille coupée s'efface
+ * au lieu de s'arrêter net contre « Plus » (LOP-227, P-8). La lecture de [scroll] a lieu au dessin :
+ * le fondu suit le défilement sans recomposer.
+ */
+private fun Modifier.fadingEdges(scroll: ScrollState, width: Dp = 32.dp): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val w = width.toPx().coerceAtMost(size.width / 2)
+        if (scroll.canScrollBackward) {
+            drawRect(
+                brush = Brush.horizontalGradient(0f to Color.Transparent, 1f to Color.Black, startX = 0f, endX = w),
+                size = Size(w, size.height),
+                blendMode = BlendMode.DstIn,
+            )
+        }
+        if (scroll.canScrollForward) {
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to Color.Black, 1f to Color.Transparent, startX = size.width - w, endX = size.width,
+                ),
+                topLeft = Offset(size.width - w, 0f),
+                size = Size(w, size.height),
+                blendMode = BlendMode.DstIn,
+            )
+        }
+    }
 
 /** « ⋯ Plus » : ouvre le sélecteur complet des catégories. */
 @Composable
@@ -543,6 +584,26 @@ private fun RowLabel(text: String) = Text(
     color = MaterialTheme.colorScheme.onSurfaceVariant,
 )
 
+/**
+ * LOP-227, P-8 : trois niveaux de texte dans une ligne, à la manière de Silo. La valeur saisie est
+ * foncée et en graisse moyenne ; le libellé est gris ; l'attente (« Facultatif », « Aucun prêt lié »)
+ * est plus claire encore.
+ */
+@Composable
+private fun rowValueStyle() = MaterialTheme.typography.bodyLarge.copy(
+    fontWeight = FontWeight.Medium,
+    color = MaterialTheme.colorScheme.onSurface,
+)
+
+/**
+ * Texte d'attente : `onSurfaceVariant` à 85 %, soit 4,83:1 sur la carte en clair et 6,03:1 en sombre.
+ * Plus clair, il passerait sous le seuil de 4,5:1 de DESIGN.md § 9.
+ */
+@Composable
+private fun rowPlaceholderStyle() = MaterialTheme.typography.bodyLarge.copy(
+    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+)
+
 /** Valeur d'une ligne ; [muted] pour l'absence de choix (« Aucun objectif lié »). */
 @Composable
 private fun RowValue(text: String, icon: Any? = null, iconTint: Color? = null, muted: Boolean = false) {
@@ -552,11 +613,7 @@ private fun RowValue(text: String, icon: Any? = null, iconTint: Color? = null, m
             CircleIcon(icon = icon, tint = tint, background = tint.copy(alpha = 0.15f), size = 28.dp)
             Spacer(Modifier.width(8.dp))
         }
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-        )
+        Text(text = text, style = if (muted) rowPlaceholderStyle() else rowValueStyle())
     }
 }
 
@@ -575,12 +632,11 @@ private fun RowTextField(
     modifier: Modifier = Modifier,
     singleLine: Boolean = true,
 ) {
-    val style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface)
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier.fillMaxWidth(),
-        textStyle = style,
+        textStyle = rowValueStyle(),
         singleLine = singleLine,
         maxLines = if (singleLine) 1 else 4,
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
@@ -589,11 +645,7 @@ private fun RowTextField(
             LabeledRow(label) {
                 Box {
                     if (value.isEmpty()) {
-                        Text(
-                            stringResource(R.string.tx_field_optional),
-                            style = style,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Text(stringResource(R.string.tx_field_optional), style = rowPlaceholderStyle())
                     }
                     inner()
                 }
