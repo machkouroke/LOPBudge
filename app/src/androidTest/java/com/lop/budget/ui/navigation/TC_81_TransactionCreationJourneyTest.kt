@@ -151,7 +151,7 @@ class TransactionCreationJourneyTest {
         case = "U-01 (TC-81-1)"
         startOn(LocalDate.of(2027, 1, 15))
         openExpenseForm()
-        // CA-01 : le sélecteur, ouvert seul en mode ajout, ne liste que le type du point d'entrée.
+        // CA-01 : le sélecteur, ouvert par « ⋯ Plus » depuis LOP-227 P-7, ne liste que le type du point d'entrée.
         await("CA-01 — racine dépense « Alimentation » proposée") { count(tile("Alimentation"), merged = true) > 0 }
         expect("CA-01 — racine revenu « Salaire » absente du sélecteur", 0, count(tile("Salaire"), merged = true))
         pickCategory("Pharmacie")

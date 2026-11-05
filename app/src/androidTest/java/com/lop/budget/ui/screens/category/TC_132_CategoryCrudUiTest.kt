@@ -366,8 +366,7 @@ class CategoryCrudUiTest {
         awaitTag(TestTags.PICKER_CATEGORY_SHEET, "UI-08 — CA-11 : le champ parent devait ouvrir CategoryBottomSheet")
         assertSharedPicker("UI-08 champ parent")
 
-        launchDeepLink(Routes.add(EXPENSE))
-        awaitTag(TestTags.PICKER_CATEGORY_SHEET, "UI-08 — CA-11 : le formulaire transaction devait ouvrir CategoryBottomSheet")
+        openPickerFromTransactionForm(EXPENSE, "UI-08", "UI-08 — CA-11 : « ⋯ Plus » du formulaire transaction devait ouvrir CategoryBottomSheet")
         assertSharedPicker("UI-08 formulaire transaction")
     }
 
@@ -441,12 +440,28 @@ class CategoryCrudUiTest {
     }
 
     /**
-     * Le formulaire d'ajout ouvre seul son sélecteur de catégorie ; sa tuile « Ajouter » se désigne
-     * par sa description d'accessibilité, dans la feuille du sélecteur et nulle part ailleurs.
+     * Formulaire d'ajout ouvert par lien, puis son sélecteur de catégorie par « ⋯ Plus ». Depuis
+     * LOP-227 P-7, aucun sélecteur ne s'ouvre seul à l'arrivée (CA-01) : vérifié après le témoin
+     * « ⋯ Plus » et un retour au repos, pour qu'une ouverture lancée à la composition ait eu lieu.
+     */
+    private fun openPickerFromTransactionForm(type: TransactionType, caseId: String, openFailure: String) {
+        launchDeepLink(Routes.add(type))
+        awaitTag(TestTags.TX_EDIT_CATEGORY_MORE, "$caseId — formulaire transaction non affiché (« ⋯ Plus » absent)")
+        composeRule.waitForIdle()
+        val openedAlone = composeRule.onAllNodesWithTag(TestTags.PICKER_CATEGORY_SHEET).fetchSemanticsNodes().size
+        if (openedAlone != 0) {
+            fail("$caseId — LOP-227 CA-01 : aucun sélecteur de catégorie ouvert seul à l'arrivée ; observé : $openedAlone ; arbre =\n${semanticsDump()}")
+        }
+        composeRule.onNodeWithTag(TestTags.TX_EDIT_CATEGORY_MORE).performClick()
+        awaitTag(TestTags.PICKER_CATEGORY_SHEET, openFailure)
+    }
+
+    /**
+     * La tuile « Ajouter » du sélecteur se désigne par sa description d'accessibilité, dans la feuille
+     * du sélecteur et nulle part ailleurs.
      */
     private fun createCategoryFromTransactionForm(type: TransactionType, caseId: String) {
-        launchDeepLink(Routes.add(type))
-        awaitTag(TestTags.PICKER_CATEGORY_SHEET, "$caseId — le sélecteur de catégorie ne s'est pas ouvert")
+        openPickerFromTransactionForm(type, caseId, "$caseId — « ⋯ Plus » n'a pas ouvert le sélecteur de catégorie")
         composeRule.onNode(
             hasContentDescription(ADD_TILE) and hasAnyAncestor(hasTestTag(TestTags.PICKER_CATEGORY_SHEET)),
             useUnmergedTree = true,

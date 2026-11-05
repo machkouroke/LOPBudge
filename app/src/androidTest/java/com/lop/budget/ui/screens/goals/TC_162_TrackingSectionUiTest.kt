@@ -719,9 +719,12 @@ class TrackingSectionUiTest {
             j.count(TestTags.ADD_ACTION_SHEET) == 1 && j.count(TestTags.ADD_ACTION_EXPENSE) == 1 && j.count(TestTags.ADD_ACTION_INCOME) == 1
         }
         j.click(j.node(TestTags.ADD_ACTION_EXPENSE))
-        j.await("CA-05 : saisie de transaction ouverte (formulaire et sélecteur de catégorie)") {
-            j.count(TestTags.SCREEN_EDIT) == 1 && j.count(TestTags.PICKER_CATEGORY_SHEET) == 1
+        // `SCREEN_EDIT` est aussi porté par le formulaire d'objectif : « ⋯ Plus », propre au formulaire de
+        // transaction, le distingue. Le sélecteur ouvert seul jouait ce rôle avant LOP-227 P-7.
+        j.await("CA-05 : saisie de transaction ouverte (formulaire de transaction, « ⋯ Plus »)") {
+            j.count(TestTags.SCREEN_EDIT) == 1 && j.count(TestTags.TX_EDIT_CATEGORY_MORE) == 1
         }
+        j.expectNoCategoryPickerOnArrival()
         expectUnchanged()
     }
 

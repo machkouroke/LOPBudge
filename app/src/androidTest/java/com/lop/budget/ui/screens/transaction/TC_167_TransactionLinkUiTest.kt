@@ -492,11 +492,12 @@ class TransactionLinkUiTest {
             j.count(TestTags.SCREEN_EDIT) == 0 && j.count(hasText(name) and j.inside(TestTags.SCREEN_FINANCIAL_DETAIL)) > 0
     }
 
-    /** Détail → action d'ajout → formulaire ; la feuille de catégorie s'ouvre seule en création. */
+    /** Détail → action d'ajout → formulaire ; la catégorie se choisit par « ⋯ Plus » (LOP-227 P-7). */
     private fun openLinkedForm(category: String) {
         j.click(j.node(TestTags.FINANCIAL_DETAIL_ADD_TRANSACTION))
         j.awaitScreen(TestTags.SCREEN_EDIT)
-        j.await("sélecteur de catégorie ouvert seul") { j.count(TestTags.PICKER_CATEGORY_SHEET) == 1 }
+        j.expectNoCategoryPickerOnArrival()
+        j.openCategoryPicker()
         j.pickCategory(category)
     }
 

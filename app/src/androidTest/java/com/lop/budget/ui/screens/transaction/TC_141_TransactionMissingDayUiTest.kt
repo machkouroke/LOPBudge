@@ -486,18 +486,27 @@ class TransactionMissingDayUiTest {
     }
 
     /**
-     * Création : le sélecteur de catégorie s'ouvre seul. On choisit la catégorie de fixture par la
-     * recherche, puis on pose les autres valeurs par les setters.
+     * Création : depuis LOP-227 P-7, aucun sélecteur ne s'ouvre seul (CA-01, vérifié après le témoin
+     * « ⋯ Plus » et un retour au repos) ; « ⋯ Plus » ouvre le sélecteur de catégorie. On choisit la
+     * catégorie de fixture par la recherche, puis on pose les autres valeurs par les setters.
      */
     private fun openCreation(label: String, start: Long, frequency: RecurrenceFrequency) {
         launch(label, mapOf("type" to TransactionType.EXPENSE.name))
+        await(label, "formulaire d'ajout affiché (« ⋯ Plus »)") { count(hasTestTag(TestTags.TX_EDIT_CATEGORY_MORE)) == 1 }
+        composeRule.waitForIdle()
+        val openedAlone = count(hasTestTag(TestTags.PICKER_CATEGORY_SHEET))
+        if (openedAlone != 0) {
+            fail("$label / LOP-227 CA-01 — aucun sélecteur de catégorie ouvert seul à l'arrivée ; observé : $openedAlone\nArbre : ${dump(label)}")
+        }
+        composeRule.onNode(hasTestTag(TestTags.TX_EDIT_CATEGORY_MORE)).performClick()
         val sheetTitle = appContext.getString(R.string.tx_category_sheet_title)
-        await(label, "sélecteur de catégorie ouvert automatiquement") { count(hasText(sheetTitle)) > 0 }
+        await(label, "sélecteur de catégorie ouvert par « ⋯ Plus »") { count(hasText(sheetTitle)) > 0 }
         composeRule.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(TestTags.PICKER_CATEGORY_SHEET)), useUnmergedTree = true)
             .performTextInput("ZZ_L88")
         // La tuile cliquable fusionne son libellé : texte et clic ne sont réunis que dans l'arbre
-        // fusionné. Dans l'arbre non fusionné, le texte est un nœud enfant sans action.
-        val tile = hasText(CATEGORY_NAME) and hasClickAction()
+        // fusionné. Dans l'arbre non fusionné, le texte est un nœud enfant sans action. Depuis
+        // LOP-227 P-7, la rangée de suggestions porte aussi ce nom : on vise la feuille du sélecteur.
+        val tile = hasText(CATEGORY_NAME) and hasClickAction() and hasAnyAncestor(hasTestTag(TestTags.PICKER_CATEGORY_SHEET))
         await(label, "catégorie de fixture trouvée") { composeRule.onAllNodes(tile).fetchSemanticsNodes().size == 1 }
         composeRule.onNode(tile).performSemanticsAction(SemanticsActions.OnClick)
         await(label, "sélecteur refermé") { count(hasTestTag(TestTags.PICKER_CATEGORY_SHEET)) == 0 }

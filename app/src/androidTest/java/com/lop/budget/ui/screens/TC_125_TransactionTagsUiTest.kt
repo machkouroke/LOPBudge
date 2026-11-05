@@ -14,6 +14,7 @@ import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -524,14 +525,21 @@ class TransactionTagsUiTest {
     /**
      * Ouvre la feuille de tags depuis le formulaire d'ajout.
      *
-     * En ajout, le sélecteur de catégorie s'ouvre **seul** : il faut le refermer avant d'atteindre
-     * la zone des tags. C'est un chemin d'interaction déduit de la structure de l'écran, jamais un
-     * oracle.
+     * Depuis LOP-227 P-7, aucun sélecteur ne s'ouvre seul en ajout (CA-01, vérifié ici après un témoin
+     * positif) ; « ⋯ Plus » ouvre le sélecteur de catégorie, refermé ensuite par le choix avant
+     * d'atteindre la zone des tags. Ouverture et choix sont un chemin d'interaction, jamais un oracle.
      */
     private fun openTagsSheet(label: String) {
+        awaitTag(TestTags.TX_EDIT_CATEGORY_MORE, "$label — formulaire d'ajout non affiché (« ⋯ Plus » absent)")
+        composeRule.waitForIdle()
+        val openedAlone = composeRule.onAllNodesWithTag(TestTags.PICKER_CATEGORY_SHEET).fetchSemanticsNodes().size
+        if (openedAlone != 0) {
+            fail("$label — LOP-227 CA-01 : aucun sélecteur de catégorie ouvert seul à l'arrivée ; observé : $openedAlone\nArbre :\n${semanticsDump()}")
+        }
+        composeRule.onNodeWithTag(TestTags.TX_EDIT_CATEGORY_MORE).performClick()
         awaitText(
             string(R.string.tx_category_sheet_title),
-            "$label — le sélecteur de catégorie ne s'est pas ouvert automatiquement",
+            "$label — « ⋯ Plus » n'a pas ouvert le sélecteur de catégorie",
         )
         // Choisir une catégorie referme la feuille (`onSelect` remet `activeSheet` à null). C'est
         // le geste réel de l'utilisateur, et il évite un retour arrière : une feuille modale vit
@@ -548,9 +556,12 @@ class TransactionTagsUiTest {
         ).performTextInput(CATEGORY_SEARCH_PREFIX)
         composeRule.waitForIdle()
 
-        // Le champ de recherche contient le préfixe, jamais le nom complet : la correspondance
-        // exacte ne peut donc désigner que la tuile de la catégorie.
-        composeRule.onNodeWithText(CATEGORY_NAME).performClick()
+        // Le champ de recherche contient le préfixe, jamais le nom complet. Depuis LOP-227 P-7, la
+        // rangée de suggestions du formulaire porte aussi ce nom : la tuile se cherche donc dans la
+        // feuille du sélecteur.
+        composeRule.onNode(
+            hasText(CATEGORY_NAME) and hasAnyAncestor(hasTestTag(TestTags.PICKER_CATEGORY_SHEET)),
+        ).performClick()
         awaitTag(TestTags.TX_EDIT_FIELD_TAGS, "$label — le formulaire n'a pas repris la main")
 
         // La zone des tags est en bas d'un formulaire défilant : elle est composée mais hors
