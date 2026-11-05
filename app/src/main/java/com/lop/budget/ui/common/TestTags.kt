@@ -46,14 +46,7 @@ object TestTags {
     const val ADD_ACTION_EXPENSE = "add.action.expense"
     const val ADD_ACTION_INCOME = "add.action.income"
 
-    // Home Screen
-    /**
-     * Retirés de l'écran par LOP-231 (CA-02, P-4). Conservés tant que les androidTest qui les
-     * citent ne sont pas repris : sans eux, toute la suite instrumentée cesse de compiler.
-     */
-    const val HOME_MONTH_PICKER = "home.month.picker"
-    const val HOME_GO_TO_TODAY = "home.go.to.today"
-    // Solde total et carte « Ce mois » (LOP-231)
+    // Home Screen — solde total et carte « Ce mois » (LOP-231)
     const val HOME_TOTAL_BALANCE = "home.total.balance"
     const val HOME_MONTH_WIDGET = "home.month.widget"
     const val HOME_MONTH_EXPENSE = "home.month.expense"

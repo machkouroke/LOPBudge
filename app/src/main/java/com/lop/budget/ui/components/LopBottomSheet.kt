@@ -9,6 +9,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -177,12 +178,10 @@ fun LopBottomSheet(
                     .surfaceRelief(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                     .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    // Empêche le clic header / zones vides d’atteindre le scrim.
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                    ),
+                    // Empêche le clic header / zones vides d’atteindre le scrim. Un geste et non un
+                    // `clickable` : celui-ci fusionnait tout le contenu non cliquable de la feuille en
+                    // un seul bouton sans action pour l'accessibilité (ANO du 5 novembre 2026, LOP-229).
+                    .pointerInput(Unit) { detectTapGestures { } },
             ) {
                 Box(
                     Modifier

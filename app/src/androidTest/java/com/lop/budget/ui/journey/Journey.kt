@@ -27,7 +27,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
 import androidx.room.withTransaction
 import androidx.test.core.app.ActivityScenario
-import androidx.test.espresso.Espresso
+import androidx.test.uiautomator.UiDevice
 import androidx.test.platform.app.InstrumentationRegistry
 import com.lop.budget.MainActivity
 import com.lop.budget.data.local.LopDatabase
@@ -249,9 +249,16 @@ class Journey(private val rule: ComposeTestRule, private val folder: String) {
         awaitScreen(to)
     }
 
-    /** Retour système : la fenêtre au premier plan le reçoit, une feuille modale se ferme. */
+    /**
+     * Retour système, injecté par UiAutomator : la fenêtre au premier plan le reçoit, une feuille
+     * modale se ferme. Pas `Espresso.pressBack` : il attend une racine qui a le focus et ne demande
+     * plus de mise en page ; une feuille qui s'ouvre anime encore son voile, et sur l'appareil virtuel
+     * l'attente dépassait 10 s (TC-167 U-01c puis U-01d, audit du 5 novembre 2026). Arrivé avant le
+     * focus de la feuille, le retour atteint l'activité, dont le `BackHandler` de `LopBottomSheet`
+     * ferme la même feuille ; l'attente qui suit chaque appel reste l'oracle.
+     */
     fun pressBack() {
-        act("retour système") { Espresso.pressBackUnconditionally() }
+        act("retour système") { UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack() }
         rule.waitForIdle()
     }
 

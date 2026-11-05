@@ -316,7 +316,8 @@ class MonthlyAnalysisUiTest {
             Back.SYSTEM -> UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
         }
         awaitCondition(case, "CA-01", "retour à l'accueil") { count(TestTags.SCREEN_HOME) > 0 && count(TestTags.SCREEN_MONTHLY) == 0 }
-        check(case, "CA-01", "mois de l'accueil conservé (« Mars 2026 »), lu ${homeMonth()}", homeMonth() == "Mars 2026")
+        // « Mars 2026 » jusqu'à LOP-231 : la carte « Ce mois » n'affiche que le nom du mois (audit du 5 novembre 2026).
+        check(case, "CA-01", "mois de l'accueil conservé (« Mars »), lu ${homeMonth()}", homeMonth() == "Mars")
 
         openCard(case, card, if (expense) "-1 409,40 €" else "100,00 €")
         assertOpening("$case, réouverture", card)
@@ -983,7 +984,7 @@ class MonthlyAnalysisUiTest {
     private fun launchOnMarch(case: String) {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         awaitTag(case, "montage", TestTags.SCREEN_HOME)
-        awaitCondition(case, "montage", "carte « Ce mois » sur « Mars »") { texts(TestTags.HOME_MONTH_WIDGET) == listOf("Mars") }
+        awaitCondition(case, "montage", "carte « Ce mois » sur « Mars »") { homeMonth() == "Mars" }
     }
 
     private fun openCard(case: String, card: String, total: String) {
@@ -1219,7 +1220,8 @@ class MonthlyAnalysisUiTest {
 
     private fun totalText() = read(hasTestTag(TestTags.ANALYSIS_TOTAL)) { it.textValues() }.flatten().singleOrNull()
 
-    private fun homeMonth() = texts(TestTags.HOME_MONTH_PICKER).singleOrNull()
+    /** Mois de l'accueil : titre de la carte « Ce mois » (LOP-231), nom du mois seul. */
+    private fun homeMonth() = texts(TestTags.HOME_MONTH_WIDGET).singleOrNull()
 
     private fun sheetFields(): List<String?> = listOf(TestTags.ANALYSIS_PERIOD_START, TestTags.ANALYSIS_PERIOD_END).map { tag ->
         texts(tag).getOrNull(1)
