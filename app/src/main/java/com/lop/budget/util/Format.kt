@@ -70,6 +70,17 @@ object Format {
     }
 
     /**
+     * Solde signé : « +30,00 € », « −50,00 € », « 0,00 € ». Même signe moins que les lignes de
+     * transaction (`TransactionRow`), pas le trait d'union du formateur. Vue unifiée (LOP-228) et
+     * « Solde du mois » de l'accueil (LOP-231, CA-03).
+     */
+    fun signedMoney(cents: Long, currency: String): String = when {
+        cents > 0 -> "+" + money(cents, currency)
+        cents < 0 -> "−" + money(-cents, currency)
+        else -> money(0L, currency)
+    }
+
+    /**
      * Part de [part] dans [whole], en pourcentage à une décimale, arrondi demi vers le haut
      * (LOP-40, CA-03) : 4000 sur 10000 rend « 40,0 % », 1 sur 16 rend « 6,3 % ».
      *

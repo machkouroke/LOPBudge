@@ -21,7 +21,9 @@
     <string name="others">Autres</string>
 
     <!-- Home Screen -->
-    <string name="home_balance_title">Solde de %1$s</string>
+    <string name="home_total_balance">Solde total</string>
+    <string name="home_month_balance">Solde du mois</string>
+    <string name="home_month_error">Impossible de lire les montants du mois</string>
     <string name="home_unpaid_subscriptions">Abonnements non payés</string>
     <string name="home_subscriptions">Abonnements</string>
     <string name="home_no_pending_subscriptions">Aucun abonnement en attente</string>
@@ -30,8 +32,6 @@
     <string name="home_recurring_tag">Récurrent</string>
     <string name="home_no_transactions_month">Aucune transaction ce mois-ci.</string>
     <string name="home_scroll_to_top">Retour en haut</string>
-    <string name="home_change_month">Changer de mois</string>
-    <string name="home_go_to_current_month">Revenir au mois actuel</string>
     <string name="home_detected_transactions">Transactions détectées</string>
 
     <!-- Transaction Edit Screen -->
@@ -173,6 +173,30 @@
     <string name="analysis_period_end">Fin</string>
     <string name="analysis_period_apply">Appliquer</string>
     <string name="analysis_period_invalid">La fin doit être égale ou postérieure au début</string>
+    <!-- Vue unifiée des transactions (LOP-228) -->
+    <string name="search_placeholder">Titre, note, montant…</string>
+    <string name="search_filter_tags">Étiquettes</string>
+    <string name="search_all_categories">Toutes les catégories</string>
+    <string name="search_all_tags">Toutes les étiquettes</string>
+    <string name="search_all_dates">Toutes les dates</string>
+    <string name="search_more">+%1$d</string>
+    <string name="search_filters">Filtres</string>
+    <string name="search_filters_reset">Réinitialiser</string>
+    <string name="search_filters_clear">Effacer les filtres</string>
+    <string name="search_filter_type">Type</string>
+    <string name="search_filter_status">Statut</string>
+    <string name="search_filter_categories">Catégories</string>
+    <string name="search_filter_accounts">Comptes</string>
+    <string name="search_filter_period">Période</string>
+    <string name="search_status_paid">Payé</string>
+    <string name="search_status_planned">Planifié</string>
+    <string name="search_from">Du %1$s</string>
+    <string name="search_to">Au %1$s</string>
+    <string name="search_balance">Solde</string>
+    <string name="search_prompt">Entrez un mot-clé ou utilisez les filtres</string>
+    <string name="search_error">Impossible de charger les transactions</string>
+    <string name="search_remove_filter">Retirer le filtre</string>
+    <string name="search_date_clear">Effacer : %1$s</string>
 
     <!-- Settings Screen -->
     <string name="settings_title">Réglages</string>
@@ -397,6 +421,16 @@
     <string name="series_calendar_retry">Réessayer</string>
     <string name="series_calendar_day_selected">sélectionné</string>
     <string name="series_calendar_day_today">aujourd\'hui</string>
+    <plurals name="search_count">
+        <item quantity="one">%d transaction</item>
+        <item quantity="many">%d transactions</item>
+        <item quantity="other">%d transactions</item>
+    </plurals>
+    <plurals name="search_filters_applied">
+        <item quantity="one">Filtres, %d appliqué</item>
+        <item quantity="many">Filtres, %d appliqués</item>
+        <item quantity="other">Filtres, %d appliqués</item>
+    </plurals>
     <plurals name="series_calendar_day_count">
         <item quantity="one">%d occurrence</item>
         <item quantity="many">%d occurrences</item>

@@ -74,7 +74,6 @@ data class MonthlyTransactionsUiState(
     val filter: PaidFilter = PaidFilter.ALL,
     val insightMode: InsightMode = InsightMode.CATEGORY,
     val searchQuery: String = "",
-    val hasResultsInOtherMonths: Boolean = false,
     val selectedAccountId: Long? = null,
     val selectedCategoryId: Long? = null,
     val currency: String = "EUR",
@@ -132,11 +131,11 @@ class MonthlyTransactionsViewModel @Inject constructor(
     /** Numéro de lecture : [retry] relance les recherches sans changer aucun critère affiché. */
     private val attempt = MutableStateFlow(0)
 
+    // Texte, compte et type ne changent plus en cours d'écran : leurs puces appartenaient à
+    // l'historique, remplacé par la vue unifiée (LOP-228, P-8). Les flux restent, l'état les expose
+    // encore et TC-149 les lit.
     fun setFilter(f: PaidFilter) { filter.value = f }
-    fun onQueryChange(q: String) { searchQuery.value = q }
-    fun onAccountFilterChange(id: Long?) { selectedAccountId.value = id }
     fun onCategoryFilterChange(id: Long?) { selectedCategoryId.value = id }
-    fun setType(t: TransactionType?) { type.value = t }
 
     /**
      * LOP-40, CA-05 : une fin antérieure au début ne change pas l'analyse ; un seul jour est
@@ -358,11 +357,6 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 else ordered + withoutMovement(catId, categories)
             }.orEmpty()
 
-            // Check if results exist globally if none in current month.
-            // `criteria.query` et non `query` : c'est la requête avec laquelle ces lignes ont
-            // réellement été cherchées, les deux ne coïncident pas pendant le debounce.
-            val hasResultsInOtherMonths = criteria.query.isNotBlank() && filtered.isEmpty()
-
             MonthlyTransactionsUiState(
                 month = YearMonth.from(p.start),
                 period = p,
@@ -370,7 +364,6 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 filter = f,
                 insightMode = mode,
                 searchQuery = query,
-                hasResultsInOtherMonths = hasResultsInOtherMonths,
                 selectedAccountId = accId,
                 selectedCategoryId = catId,
                 availableAccounts = accounts,

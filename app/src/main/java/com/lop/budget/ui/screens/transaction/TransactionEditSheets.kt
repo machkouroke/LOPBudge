@@ -67,13 +67,17 @@ fun TagsBottomSheet(
     tags: List<TagEntity>,
     selectedTagIds: Set<Long>,
     onToggleTag: (Long) -> Unit,
-    onCreateTag: (String, Int) -> Unit,
+    /** `null` : pas de création, la feuille ne sert qu'à choisir (filtres de LOP-228). */
+    onCreateTag: ((String, Int) -> Unit)?,
     onDismiss: () -> Unit,
     /**
      * LOP-21, CA-08 : suppression du tag **du référentiel**, pas de la seule sélection. N'est
      * appelée qu'après confirmation ; la feuille porte la confirmation, le use case ne confirme pas.
+     * `null` : aucune corbeille sur les étiquettes.
      */
-    onDeleteTag: (Long) -> Unit,
+    onDeleteTag: ((Long) -> Unit)?,
+    /** Consigne sous le titre ; `null` n'en affiche aucune. */
+    subtitle: String? = stringResource(R.string.tx_tags_sheet_subtitle),
     /** CA-05 : message d'erreur de création, résolu par l'écran. `null` quand il n'y en a pas. */
     tagNameError: String? = null,
     /** CA-05 : purge de l'erreur à la frappe suivante. */
@@ -95,11 +99,13 @@ fun TagsBottomSheet(
                 stringResource(R.string.tx_tags_sheet_title),
                 style = MaterialTheme.typography.titleLarge
             )
-            Text(
-                stringResource(R.string.tx_tags_sheet_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (subtitle != null) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             Spacer(Modifier.height(16.dp))
 
@@ -127,7 +133,7 @@ fun TagsBottomSheet(
                         tags = recentTags,
                         selectedTagIds = selectedTagIds,
                         onToggleTag = onToggleTag,
-                        onRequestDelete = { tagPendingDeleteId = it },
+                        onRequestDelete = onDeleteTag?.let { { id: Long -> tagPendingDeleteId = id } },
                     )
                     if (otherTags.isNotEmpty()) {
                         TagSectionLabel(stringResource(R.string.tx_tags_section_all))
@@ -135,86 +141,90 @@ fun TagsBottomSheet(
                             tags = otherTags,
                             selectedTagIds = selectedTagIds,
                             onToggleTag = onToggleTag,
-                            onRequestDelete = { tagPendingDeleteId = it },
+                            onRequestDelete = onDeleteTag?.let { { id: Long -> tagPendingDeleteId = id } },
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            // LOP-228 : la feuille des filtres n'en crée pas, elle ne fait que choisir.
+            if (onCreateTag != null) {
+                val create: (String, Int) -> Unit = onCreateTag
+                Spacer(Modifier.height(32.dp))
 
-            // Création d'un tag
-            Text(
-                stringResource(R.string.tx_tags_create_title),
-                style = MaterialTheme.typography.titleMedium
-            )
-            // CA-14 : `rememberSaveable` et non `remember`. La feuille elle-même est sauvegardée
-            // par `activeSheet` ; une saisie en cours doit avoir la même durée de vie, sinon
-            // l'utilisateur retrouve sa feuille ouverte et son champ vidé.
-            var newTagName by rememberSaveable { mutableStateOf("") }
-            // La couleur suit la même règle de survie que le nom : la saisie en cours, c'est le
-            // couple nom + couleur. Stockée en ARGB — `Color` n'est pas `Saveable`.
-            var newTagColorArgb by rememberSaveable {
-                mutableStateOf(DefaultTagColor.toArgb())
-            }
-            Row(
-                modifier = Modifier.padding(top = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = newTagName,
-                    onValueChange = {
-                        newTagName = it
-                        onTagNameChanged()
-                    },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text(stringResource(R.string.tx_tags_name_label)) },
-                    isError = tagNameError != null,
-                    supportingText = if (tagNameError != null) {
-                        { Text(tagNameError) }
-                    } else {
-                        null
-                    },
-                    singleLine = true,
-                    // Même rendu « pilule » que la barre de recherche de catégorie, sans son
-                    // comportement : ni loupe, ni `ImeAction.Search` — ce champ crée, il ne
-                    // cherche pas. Filtrer la liste au fil de la frappe masquerait les tags
-                    // sélectionnés, que CA-14 de LOP-3 exige de retrouver intacts.
-                    shape = LopFieldShape,
-                    colors = lopFieldColors(),
+                // Création d'un tag
+                Text(
+                    stringResource(R.string.tx_tags_create_title),
+                    style = MaterialTheme.typography.titleMedium
                 )
-                Spacer(Modifier.width(12.dp))
-                // CA-05 : le bouton reste actionnable même sur un nom vide. Le refus appartient au
-                // ViewModel, qui expose un message ; une interdiction silencieuse n'explique rien.
-                IconButton(
-                    onClick = {
-                        onCreateTag(newTagName, newTagColorArgb)
-                        if (newTagName.isNotBlank()) newTagName = ""
-                    },
-                ) {
-                    // L'icône portait `contentDescription = null` : le bouton n'avait aucun nom
-                    // pour un lecteur d'écran, et rien d'autre ne le désignait.
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = stringResource(R.string.tx_tags_add_action),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
+                // CA-14 : `rememberSaveable` et non `remember`. La feuille elle-même est sauvegardée
+                // par `activeSheet` ; une saisie en cours doit avoir la même durée de vie, sinon
+                // l'utilisateur retrouve sa feuille ouverte et son champ vidé.
+                var newTagName by rememberSaveable { mutableStateOf("") }
+                // La couleur suit la même règle de survie que le nom : la saisie en cours, c'est le
+                // couple nom + couleur. Stockée en ARGB — `Color` n'est pas `Saveable`.
+                var newTagColorArgb by rememberSaveable {
+                    mutableStateOf(DefaultTagColor.toArgb())
                 }
-            }
+                Row(
+                    modifier = Modifier.padding(top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = newTagName,
+                        onValueChange = {
+                            newTagName = it
+                            onTagNameChanged()
+                        },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text(stringResource(R.string.tx_tags_name_label)) },
+                        isError = tagNameError != null,
+                        supportingText = if (tagNameError != null) {
+                            { Text(tagNameError) }
+                        } else {
+                            null
+                        },
+                        singleLine = true,
+                        // Même rendu « pilule » que la barre de recherche de catégorie, sans son
+                        // comportement : ni loupe, ni `ImeAction.Search` — ce champ crée, il ne
+                        // cherche pas. Filtrer la liste au fil de la frappe masquerait les tags
+                        // sélectionnés, que CA-14 de LOP-3 exige de retrouver intacts.
+                        shape = LopFieldShape,
+                        colors = lopFieldColors(),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    // CA-05 : le bouton reste actionnable même sur un nom vide. Le refus appartient au
+                    // ViewModel, qui expose un message ; une interdiction silencieuse n'explique rien.
+                    IconButton(
+                        onClick = {
+                            create(newTagName, newTagColorArgb)
+                            if (newTagName.isNotBlank()) newTagName = ""
+                        },
+                    ) {
+                        // L'icône portait `contentDescription = null` : le bouton n'avait aucun nom
+                        // pour un lecteur d'écran, et rien d'autre ne le désignait.
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = stringResource(R.string.tx_tags_add_action),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
 
-            // P-2 : la couleur fait partie du tag à la création. La modal imposait un violet en
-            // dur, l'écran de gestion offrait la palette — deux tags créés côte à côte n'avaient
-            // pas le même contrat selon l'écran emprunté. Même sélecteur des deux côtés.
-            Spacer(Modifier.height(16.dp))
-            Text(
-                stringResource(R.string.tx_tags_color_label),
-                style = MaterialTheme.typography.labelLarge,
-            )
-            Spacer(Modifier.height(12.dp))
-            TagColorPicker(
-                selected = Color(newTagColorArgb),
-                onSelect = { newTagColorArgb = it.toArgb() },
-            )
+                // P-2 : la couleur fait partie du tag à la création. La modal imposait un violet en
+                // dur, l'écran de gestion offrait la palette — deux tags créés côte à côte n'avaient
+                // pas le même contrat selon l'écran emprunté. Même sélecteur des deux côtés.
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    stringResource(R.string.tx_tags_color_label),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                Spacer(Modifier.height(12.dp))
+                TagColorPicker(
+                    selected = Color(newTagColorArgb),
+                    onSelect = { newTagColorArgb = it.toArgb() },
+                )
+            }
         }
     }
 
@@ -232,7 +242,7 @@ fun TagsBottomSheet(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onDeleteTag(tagPendingDelete.id)
+                        onDeleteTag?.invoke(tagPendingDelete.id)
                         tagPendingDeleteId = null
                     },
                     modifier = Modifier.testTag(TestTags.TAG_DELETE_CONFIRM),
@@ -283,7 +293,7 @@ private fun TagChipFlow(
     tags: List<TagEntity>,
     selectedTagIds: Set<Long>,
     onToggleTag: (Long) -> Unit,
-    onRequestDelete: (Long) -> Unit,
+    onRequestDelete: ((Long) -> Unit)?,
 ) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
@@ -327,16 +337,18 @@ private fun TagChipFlow(
                 // la sélection » — or l'action supprime le tag partout. Cible tactile de 18 dp,
                 // celle que M3 prévoit dans un chip de 32 dp : le clic enfant est prioritaire,
                 // il ne bascule donc pas la sélection.
-                trailingIcon = {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = stringResource(R.string.tx_tags_delete_action),
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clickable { onRequestDelete(tag.id) }
-                            .testTag("${TestTags.TAG_CHIP_DELETE}_${tag.id}"),
-                    )
+                trailingIcon = if (onRequestDelete == null) null else {
+                    {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.tx_tags_delete_action),
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable { onRequestDelete(tag.id) }
+                                .testTag("${TestTags.TAG_CHIP_DELETE}_${tag.id}"),
+                        )
+                    }
                 },
             )
         }

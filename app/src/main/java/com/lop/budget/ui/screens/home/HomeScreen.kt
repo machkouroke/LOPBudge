@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -32,7 +33,6 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -41,9 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -66,18 +64,21 @@ import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.theme.lopBackgroundBrush
-import com.lop.budget.ui.components.BalanceDashboardWidget
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.SUMMARY_PLACEHOLDER
+import com.lop.budget.ui.components.SummaryFigure
 import com.lop.budget.ui.components.surfaceRelief
-import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.TransactionsDashboardWidget
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.navigation.Routes
 import com.lop.budget.ui.theme.ExpenseCoral
+import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
 import java.time.YearMonth
+import java.time.format.TextStyle
+import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -118,44 +119,27 @@ fun HomeScreen(
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
-    @Suppress("UNUSED_VALUE")
-    var isMonthPickerOpen by remember { mutableStateOf(false) }
-
-    if (isMonthPickerOpen) {
-        MonthPickerBottomSheet(
-            selected = state.month,
-            currentMonth = vm.currentMonth(),
-            onSelect = vm::setMonth,
-
-            onDismiss = { isMonthPickerOpen = false },
-        )
-    }
-
     Box(modifier = Modifier.fillMaxSize().testTag(TestTags.SCREEN_HOME)) {
         HomeContent(
             state = state,
             statusBarPadding = statusBarPadding,
             onOpenTransaction = onOpenTransaction,
+            // LOP-231, P-5 : Dépenses et Revenus de « Ce mois » ouvrent leur analyse du mois courant.
             onOpenMonthly = { type, ym ->
                 navController.navigate(Routes.monthly(type, ym, mode = "ANALYTICS"))
             },
+            // LOP-228 P-8 et LOP-231 CA-05 : la vue unifiée, sur le mois de l'accueil, du 1er au dernier jour.
             onSeeAllTransactions = { ym ->
-                navController.navigate(Routes.monthly(null, ym, mode = "HISTORY"))
+                navController.navigate(Routes.search(ym.atDay(1), ym.atEndOfMonth()))
             },
             onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
             onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },
-            onPrevMonth = { vm.prevMonth() },
-            onNextMonth = { vm.nextMonth() }
         )
 
         // Overlay UI (Header and Floating elements)
         HomeOverlay(
             state = state,
-            isCurrentMonth = state.isCurrentMonth,
-
-            onMonthClick = { isMonthPickerOpen = true },
-            onTodayClick = { vm.goToCurrentMonth() },
-            onSearchClick = { navController.navigate(Routes.SEARCH) },
+            onSearchClick = { navController.navigate(Routes.search()) },
             onDetectedClick = { navController.navigate(Routes.DETECTED) },
             onSettingsClick = { navController.navigate(Routes.SETTINGS) },
             modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)
@@ -172,8 +156,6 @@ fun HomeContent(
     onSeeAllTransactions: (YearMonth) -> Unit,
     onOpenAccounts: () -> Unit,
     onOpenAccountDetail: (Long) -> Unit,
-    onPrevMonth: () -> Unit,
-    onNextMonth: () -> Unit
 ) {
     val listState = rememberLazyListState()
 
@@ -187,31 +169,16 @@ fun HomeContent(
         ),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        item(key = "budget_summary", contentType = "summary") {
-            // Using AnimatedContent for smooth transitions between months
-            AnimatedContent(
-                targetState = state.month,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
-                },
-                label = "dashboard_balance"
-            ) { targetMonth ->
-                // Note: since the rest of 'state' (income, expense) is already for 'targetMonth', 
-                // we just use it directly.
-                BalanceDashboardWidget(
-                    month = targetMonth,
-                    income = state.monthIncome,
-                    expense = state.monthExpense,
-                    currency = state.currency,
-                    onPrevMonth = onPrevMonth,
-                    onNextMonth = onNextMonth,
-                    onOpenMonthly = {
-                        if (it != null) {
-                            onOpenMonthly(it, targetMonth)
-                        }
-                    }
-                )
-            }
+        item(key = "total_balance", contentType = "summary") {
+            TotalBalanceHeader(state.totalBalance, state.currency)
+        }
+
+        item(key = "month_widget", contentType = "month") {
+            MonthWidget(
+                state = state,
+                onOpen = { onSeeAllTransactions(state.month) },
+                onOpenAnalysis = { type -> onOpenMonthly(type, state.month) },
+            )
         }
 
         item(key = "accounts_widget", contentType = "accounts") {
@@ -359,6 +326,99 @@ fun HomeContent(
     }
 }
 
+/** LOP-231, CA-01 : solde total du moteur de comptes, « — » tant qu'il n'est pas lu. */
+@Composable
+private fun TotalBalanceHeader(total: Long?, currency: String) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            stringResource(R.string.home_total_balance),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            total?.let { Format.money(it, currency) } ?: SUMMARY_PLACEHOLDER,
+            style = MaterialTheme.typography.displayLarge,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            modifier = Modifier.testTag(TestTags.HOME_TOTAL_BALANCE),
+        )
+    }
+}
+
+/**
+ * LOP-231, carte « Ce mois » : nom du mois courant, Dépenses, Solde du mois, Revenus (CA-03).
+ * Aucun montant tant que la lecture n'est pas faite, un message en cas d'échec (CA-04). La carte
+ * ouvre la vue unifiée (CA-05) ; Dépenses et Revenus ouvrent leur analyse (P-5).
+ */
+@Composable
+private fun MonthWidget(
+    state: HomeUiState,
+    onOpen: () -> Unit,
+    onOpenAnalysis: (TransactionType) -> Unit,
+) {
+    val ext = LopTheme.extended
+    val ready = !state.isMonthLoading
+    val balanceColor = when {
+        state.monthBalance > 0 -> ext.income
+        state.monthBalance < 0 -> ext.expense
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    val monthName = remember(state.month) {
+        state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }
+    }
+    FloatingCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickableNoRipple(onOpen)
+            .testTag(TestTags.HOME_MONTH_WIDGET),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(monthName, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (state.monthLoadFailed) {
+                Text(
+                    stringResource(R.string.home_month_error),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag(TestTags.HOME_MONTH_ERROR),
+                )
+            } else {
+                Row(Modifier.fillMaxWidth()) {
+                    SummaryFigure(
+                        R.string.expense, Format.money(state.monthExpense, state.currency).takeIf { ready },
+                        ext.expense, TestTags.HOME_MONTH_EXPENSE,
+                        Modifier.weight(1f).clickableNoRipple { onOpenAnalysis(TransactionType.EXPENSE) },
+                    )
+                    SummaryFigure(
+                        R.string.home_month_balance, Format.signedMoney(state.monthBalance, state.currency).takeIf { ready },
+                        balanceColor, TestTags.HOME_MONTH_BALANCE, Modifier.weight(1f),
+                    )
+                    SummaryFigure(
+                        R.string.income, Format.money(state.monthIncome, state.currency).takeIf { ready },
+                        ext.income, TestTags.HOME_MONTH_INCOME,
+                        Modifier.weight(1f).clickableNoRipple { onOpenAnalysis(TransactionType.INCOME) },
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun AccountWidgetCard(
     balance: AccountBalance,
@@ -405,17 +465,11 @@ fun AccountWidgetCard(
 @Composable
 fun HomeOverlay(
     state: HomeUiState,
-    isCurrentMonth: Boolean,
-    onMonthClick: () -> Unit,
-    onTodayClick: () -> Unit,
     onSearchClick: () -> Unit,
     onDetectedClick: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Optimization: Read monthYear once
-    val monthLabel = remember(state.month) { Format.monthYear(state.month) }
-    
     // Voile sous l'en-tête : le dégradé du fond lui-même (LOP-229, CA-01), effacé vers le bas comme
     // avant. Le masque DstIn n'atténue que le voile ; l'en-tête est dessiné après, intact.
     val background = lopBackgroundBrush(WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
@@ -439,45 +493,18 @@ fun HomeOverlay(
             }
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
+        // LOP-231, CA-02 : ni pastille de mois ni retour au mois actuel, l'accueil est sur le mois courant.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.End
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .surfaceRelief(androidx.compose.foundation.shape.RoundedCornerShape(50))
-                    .background(
-                        MaterialTheme.colorScheme.surfaceContainerHigh,
-                        androidx.compose.foundation.shape.RoundedCornerShape(50)
-                    )
-                    .clickableNoRipple { onMonthClick() }
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .testTag(TestTags.HOME_MONTH_PICKER)
-            ) {
-                Icon(
-                    Icons.Filled.CalendarMonth,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(monthLabel, style = MaterialTheme.typography.titleSmall)
-            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (!isCurrentMonth) {
-                    IconButton(
-                        icon = Icons.Outlined.Today, 
-                        onClick = onTodayClick,
-                        modifier = Modifier.testTag(TestTags.HOME_GO_TO_TODAY)
-                    )
-                }
                 IconButton(
                     icon = Icons.Outlined.Search, 
                     onClick = onSearchClick, 

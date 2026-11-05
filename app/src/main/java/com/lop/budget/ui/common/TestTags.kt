@@ -47,8 +47,19 @@ object TestTags {
     const val ADD_ACTION_INCOME = "add.action.income"
 
     // Home Screen
+    /**
+     * Retirés de l'écran par LOP-231 (CA-02, P-4). Conservés tant que les androidTest qui les
+     * citent ne sont pas repris : sans eux, toute la suite instrumentée cesse de compiler.
+     */
     const val HOME_MONTH_PICKER = "home.month.picker"
     const val HOME_GO_TO_TODAY = "home.go.to.today"
+    // Solde total et carte « Ce mois » (LOP-231)
+    const val HOME_TOTAL_BALANCE = "home.total.balance"
+    const val HOME_MONTH_WIDGET = "home.month.widget"
+    const val HOME_MONTH_EXPENSE = "home.month.expense"
+    const val HOME_MONTH_BALANCE = "home.month.balance"
+    const val HOME_MONTH_INCOME = "home.month.income"
+    const val HOME_MONTH_ERROR = "home.month.error"
     const val HOME_SEE_ALL_ACCOUNTS = "home.see.all.accounts"
     const val HOME_ACCOUNT_CARD = "home.account.card"
 
@@ -169,11 +180,38 @@ object TestTags {
     const val DELETE_CONFIRM_SUBMIT = "transaction.delete.confirm.submit"
     const val DELETE_CONFIRM_CANCEL = "transaction.delete.confirm.cancel"
 
-    // Search
+    // Search — vue unifiée des transactions (LOP-228)
     const val SEARCH_BAR = "search.bar"
-    const val SEARCH_CHIP_ACCOUNT = "search.filter.account"
-    const val SEARCH_CHIP_CATEGORY = "search.filter.category"
-    const val SEARCH_CHIP_DATE = "search.filter.date"
+    const val SEARCH_FILTER_OPEN = "search.filter.open"
+    const val SEARCH_FILTER_SHEET = "search.filter.sheet"
+    /** + `EXPENSE` / `INCOME`. */
+    const val SEARCH_FILTER_TYPE_PREFIX = "search.filter.type."
+    /** + `PAID` / `PLANNED`. */
+    const val SEARCH_FILTER_STATUS_PREFIX = "search.filter.status."
+    /** + identifiant de compte, `0` pour « Sans compte ». */
+    const val SEARCH_FILTER_ACCOUNT_PREFIX = "search.filter.account."
+    /** Ligne qui ouvre le sélecteur de catégories (`PICKER_CATEGORY_SHEET`). */
+    const val SEARCH_FILTER_CATEGORIES = "search.filter.categories"
+    /** Ligne qui ouvre le sélecteur d'étiquettes. */
+    const val SEARCH_FILTER_TAGS = "search.filter.tags"
+    /** Bloc unique de la période : ouvre le sélecteur d'intervalle. */
+    const val SEARCH_FILTER_PERIOD = "search.filter.period"
+    const val SEARCH_FILTER_PERIOD_CLEAR = "search.filter.period.clear"
+    const val SEARCH_FILTER_RESET = "search.filter.reset"
+    const val SEARCH_FILTER_APPLY = "search.filter.apply"
+    /** + `type`, `status`, `period`, `category.<id>`, `account.<id>`, `tag.<nom>` : toucher la puce retire le critère. */
+    const val SEARCH_ACTIVE_PREFIX = "search.active."
+    const val SEARCH_ACTIVE_CLEAR = "search.active.clear"
+    const val SEARCH_SUMMARY = "search.summary"
+    const val SEARCH_SUMMARY_COUNT = "search.summary.count"
+    const val SEARCH_SUMMARY_EXPENSE = "search.summary.expense"
+    const val SEARCH_SUMMARY_INCOME = "search.summary.income"
+    const val SEARCH_SUMMARY_BALANCE = "search.summary.balance"
+    const val SEARCH_PROMPT = "search.prompt"
+    const val SEARCH_EMPTY = "search.empty"
+    const val SEARCH_ERROR = "search.error"
+    const val SEARCH_RETRY = "search.retry"
+    const val SEARCH_REFRESHING = "search.refreshing"
 
     // Goals & Debts
     const val GOAL_CARD = "goal.card"

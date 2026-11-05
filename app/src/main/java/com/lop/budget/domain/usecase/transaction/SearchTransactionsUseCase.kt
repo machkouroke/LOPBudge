@@ -21,8 +21,9 @@ import javax.inject.Singleton
  * Recherche de transactions sur une fenêtre de dates.
  *
  * Point d'entrée **unique** de la recherche dans l'app, quel que soit l'écran :
- * - `SearchViewModel` l'appelle sans bornes, et retombe alors sur la fenêtre par défaut ;
- * - `MonthlyTransactionsViewModel` l'appelle avec les bornes du mois affiché.
+ * - `SearchViewModel`, vue unifiée des transactions (LOP-228), l'appelle par [matching] avec les
+ *   bornes choisies, ou sans, et retombe alors sur la fenêtre par défaut ;
+ * - `MonthlyTransactionsViewModel`, l'analyse, l'appelle avec les bornes de la période affichée.
  *
  * La règle de correspondance (titre, note, nom de tag, montant — sans distinction de casse ni
  * d'accents) et **tous** les filtres — compte, catégorie, type, statut, tag — ne sont donc définis
@@ -46,6 +47,9 @@ class SearchTransactionsUseCase @Inject constructor(
      *
      * [tagName] se compare au nom exact du tag, casse ignorée. La correspondance **partielle**
      * sur un nom de tag reste du ressort de [query] (CA-10), pas de ce filtre.
+     *
+     * Forme à une valeur par axe, celle des Analyses : elle ne fait que déléguer à [matching],
+     * seule implémentation.
      */
     operator fun invoke(
         query: String,
@@ -56,13 +60,35 @@ class SearchTransactionsUseCase @Inject constructor(
         type: TransactionType? = null,
         status: TransactionStatus? = null,
         tagName: String? = null,
+    ): Flow<List<TransactionWithRelations>> = matching(
+        query, setOfNotNull(accountId), setOfNotNull(categoryId), startDate, endDate, type, status, setOfNotNull(tagName),
+    )
+
+    /**
+     * LOP-228, P-7 et P-10 : plusieurs comptes, catégories et étiquettes. Dans un même axe, une
+     * ligne passe si elle désigne **l'une** des valeurs (OU) ; entre axes, les critères restent en
+     * ET. Un ensemble vide ne filtre pas, comme `null` dans la forme à une valeur. Une étiquette se
+     * compare à son nom exact, casse ignorée, comme [invoke].
+     *
+     * Un nom distinct plutôt qu'une surcharge d'`invoke` : deux `invoke` de même arité rendraient
+     * ambigu tout `every { useCase(any(), …) }` des doublures existantes.
+     */
+    fun matching(
+        query: String,
+        accountIds: Set<Long>,
+        categoryIds: Set<Long>,
+        startDate: Long?,
+        endDate: Long?,
+        type: TransactionType? = null,
+        status: TransactionStatus? = null,
+        tagNames: Set<String> = emptySet(),
     ): Flow<List<TransactionWithRelations>> {
         // CA-01 — requête vide : texte blank **et** aucun critère, dates comprises. Court-circuit
         // avant toute lecture de la source : rien à chercher, rien à parcourir. La règle vit ici
         // et nulle part ailleurs (I-4), `SearchViewModel` n'a pas à la redoubler.
-        if (query.isBlank() && accountId == null && categoryId == null &&
+        if (query.isBlank() && accountIds.isEmpty() && categoryIds.isEmpty() &&
             startDate == null && endDate == null &&
-            type == null && status == null && tagName == null
+            type == null && status == null && tagNames.isEmpty()
         ) {
             return flowOf(emptyList())
         }
@@ -91,12 +117,12 @@ class SearchTransactionsUseCase @Inject constructor(
                 transactions
                     .asSequence()
                     .filter { it.matchesQuery(needle, queryCents) }
-                    .filter { accountId == null || it.transaction.accountId == accountId }
-                    .filter { categoryId == null || it.transaction.categoryId == categoryId }
+                    .filter { accountIds.isEmpty() || it.transaction.accountId in accountIds }
+                    .filter { categoryIds.isEmpty() || it.transaction.categoryId in categoryIds }
                     .filter { type == null || it.transaction.type == type }
                     .filter { status == null || it.transaction.status == status }
                     .filter { row ->
-                        tagName == null || row.tags.any { it.name.equals(tagName, ignoreCase = true) }
+                        tagNames.isEmpty() || row.tags.any { tag -> tagNames.any { it.equals(tag.name, ignoreCase = true) } }
                     }
                     // CA-16, décision du 11 septembre 2026. Croissant : la fenêtre par défaut
                     // couvre un mois de passé pour six de futur, si bien qu'un tri décroissant

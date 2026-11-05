@@ -79,6 +79,7 @@ import com.lop.budget.ui.screens.manage.CategoriesManageScreen
 import com.lop.budget.ui.screens.manage.TagsManageScreen
 import com.lop.budget.ui.screens.monthly.MonthlyTransactionsScreen
 import com.lop.budget.ui.screens.search.SearchScreen
+import com.lop.budget.ui.screens.search.SearchViewModel
 import com.lop.budget.ui.screens.settings.SettingsScreen
 import com.lop.budget.ui.screens.transaction.TransactionEditScreen
 import dev.chrisbanes.haze.hazeSource
@@ -320,9 +321,6 @@ fun LopNavHost() {
                         MonthlyTransactionsScreen(
                             onBack = { navController.popBackStack() },
                             onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
-                            onNavigateToSearch = { query ->
-                                navController.navigate(Routes.SEARCH + "?q=$query")
-                            },
                             hazeState = hazeState,
                             snackbarHostState = snackbarHostState
                         )
@@ -341,7 +339,17 @@ fun LopNavHost() {
                         )
                     }
 
-                    composableAnimated(Routes.SEARCH, NavAnimationType.MAIN) {
+                    composableAnimated(
+                        Routes.SEARCH,
+                        NavAnimationType.MAIN,
+                        arguments = listOf(SearchViewModel.ARG_START, SearchViewModel.ARG_END).map { name ->
+                            navArgument(name) {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            }
+                        },
+                    ) {
                         SearchScreen(
                             onBack = { navController.popBackStack() },
                             onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },

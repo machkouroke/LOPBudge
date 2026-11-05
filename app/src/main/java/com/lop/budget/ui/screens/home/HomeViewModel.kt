@@ -6,7 +6,6 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.AccountBalance
-import com.lop.budget.domain.model.AccountBalances
 import com.lop.budget.domain.model.CurrencyCatalog
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
@@ -22,7 +21,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import java.time.Clock
 import java.time.YearMonth
@@ -32,9 +32,17 @@ import androidx.compose.runtime.Immutable
 
 @Immutable
 data class HomeUiState(
-    /** Sans valeur par défaut : le mois courant vient de l'horloge injectée du ViewModel. */
+    /**
+     * Mois de « Ce mois » : toujours le mois courant (LOP-231, CA-02, P-4). Sans valeur par défaut :
+     * il vient de l'horloge injectée du ViewModel.
+     */
     val month: YearMonth,
-    val isCurrentMonth: Boolean = true,
+    /** Solde total du moteur de comptes (LOP-231, CA-01) ; `null` tant qu'il n'est pas lu. */
+    val totalBalance: Long? = null,
+    /** Montants du mois pas encore lus : l'écran n'affiche aucun zéro (LOP-231, CA-04). */
+    val isMonthLoading: Boolean = true,
+    /** Lecture du mois en échec : distinguée d'un mois vide (LOP-231, CA-04). */
+    val monthLoadFailed: Boolean = false,
     /**
      * Même valeur initiale que le dépôt et que tous les autres états (I-3).
      *
@@ -44,6 +52,8 @@ data class HomeUiState(
     val currency: String = CurrencyCatalog.default.code,
     val monthIncome: Long = 0L,
     val monthExpense: Long = 0L,
+    /** « Solde du mois » : revenus moins dépenses du mois, calculé par le use case (CA-03). */
+    val monthBalance: Long = 0L,
     val previousPeriodExpense: Long = 0L,
     val totalBudget: Long = 800_000L,
     val projectedBalance: Long = 0L,
@@ -63,9 +73,12 @@ data class HomeUiState(
 }
 
 /**
- * Expose l'accueil. Les indicateurs métier sont calculés par [ObserveHomeSummaryUseCase] :
- * ce ViewModel n'assemble que la navigation de mois, la devise et l'état des notifications
- * (I-12, P-12 de LOP-87).
+ * Expose l'accueil. Les indicateurs métier sont calculés par [ObserveHomeSummaryUseCase] et le
+ * solde total par [GetAccountBalancesUseCase] : ce ViewModel n'assemble que le mois courant, la
+ * devise et l'état des notifications (I-12, P-12 de LOP-87).
+ *
+ * L'accueil n'a plus de navigation de mois (LOP-231, CA-02, P-4) : il est toujours sur le mois
+ * courant.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -78,21 +91,18 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
 
     /** Mois courant lu sur l'horloge injectée ; le fuseau est relu à chaque appel, comme [ObserveHomeSummaryUseCase]. */
-    fun currentMonth(): YearMonth = YearMonth.now(clock.withZone(ZoneId.systemDefault()))
+    private fun currentMonth(): YearMonth = YearMonth.now(clock.withZone(ZoneId.systemDefault()))
 
-    private val month = MutableStateFlow(currentMonth())
+    /**
+     * Relu à chaque abonnement, et non figé à la création du ViewModel : l'accueil rouvert après
+     * un changement de mois montre le nouveau mois.
+     */
+    private val month: Flow<YearMonth> = flow { emit(currentMonth()) }
 
     // `map` et non `combine(..., flowOf(Unit))` : le second flux était constant.
     val detectedCount: StateFlow<Int> = detectionRepo.observePending()
         .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
-    fun setMonth(value: YearMonth) { month.value = value }
-
-
-    fun goToCurrentMonth() { month.value = currentMonth() }
-    fun nextMonth() { month.value = month.value.plusMonths(1) }
-    fun prevMonth() { month.value = month.value.minusMonths(1) }
 
     private fun YearMonth.range(): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()
@@ -102,34 +112,35 @@ class HomeViewModel @Inject constructor(
         return start to end
     }
 
-    private val summary: Flow<HomeSummary> = month.flatMapLatest { ym ->
+    /** `null` : lecture en échec, distinguée d'un mois vide (LOP-231, CA-04). */
+    private val summary: Flow<Pair<YearMonth, HomeSummary?>> = month.flatMapLatest { ym ->
         val (start, end) = ym.range()
         val (previousStart, previousEnd) = ym.minusMonths(1).range()
         observeHomeSummary(start, end, previousStart, previousEnd)
+            .map<HomeSummary, Pair<YearMonth, HomeSummary?>> { ym to it }
+            .catch { emit(ym to null) }
     }
 
     val uiState: StateFlow<HomeUiState> =
         combine(
             summary,
             settings.currency,
-            month,
             getAccountBalancesUseCase.observe(),
             detectedCount,
             settings.notificationDetectionEnabled
-        ) { args ->
-            val data = args[0] as HomeSummary
-            val currency = args[1] as String
-            val ym = args[2] as YearMonth
-            val balances = args[3] as AccountBalances
-            val detected = args[4] as Int
-            val detectionEnabled = args[5] as Boolean
+        ) { read, currency, balances, detected, detectionEnabled ->
+            val (ym, monthSummary) = read
+            val data = monthSummary ?: HomeSummary()
 
             HomeUiState(
                 month = ym,
-                isCurrentMonth = ym == currentMonth(),
+                totalBalance = balances.total,
+                isMonthLoading = false,
+                monthLoadFailed = monthSummary == null,
                 currency = currency,
                 monthIncome = data.income,
                 monthExpense = data.expense,
+                monthBalance = data.balance,
                 previousPeriodExpense = data.previousPeriodExpense,
                 projectedBalance = data.projectedBalance,
                 daysUntilPayday = data.daysUntilPayday,
@@ -144,5 +155,5 @@ class HomeViewModel @Inject constructor(
             )
         }
             .flowOn(Dispatchers.Default)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState(month = month.value))
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState(month = currentMonth()))
 }

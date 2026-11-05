@@ -3,6 +3,7 @@ package com.lop.budget.ui.navigation
 import com.lop.budget.domain.model.FinancialItemKind
 import com.lop.budget.domain.model.LoanDirection
 import com.lop.budget.domain.model.TransactionType
+import java.time.LocalDate
 import java.time.YearMonth
 
 /** Routes de navigation de l'application. */
@@ -41,7 +42,15 @@ object Routes {
     }
     const val AI = "ai"
     const val SETTINGS = "settings"
-    const val SEARCH = "search"
+    /**
+     * Vue unifiée des transactions (LOP-228). [start] et [end] sont des jours entiers, bornes
+     * incluses ; absents, aucune période n'est appliquée (P-2).
+     */
+    const val SEARCH = "search?start={start}&end={end}"
+    fun search(start: LocalDate? = null, end: LocalDate? = null): String {
+        val params = listOfNotNull(start?.let { "start=$it" }, end?.let { "end=$it" })
+        return if (params.isEmpty()) "search" else "search?" + params.joinToString("&")
+    }
     const val CATEGORY_CREATE = "category/create?type={type}"
 
     /**

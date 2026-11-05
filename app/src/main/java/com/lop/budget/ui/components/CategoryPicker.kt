@@ -55,6 +55,12 @@ fun CategoryBottomSheet(
      */
     onSelectNone: (() -> Unit)? = null,
     noneLabel: String = "Aucune",
+    /**
+     * Catégories marquées. Par défaut, la seule [selectedId]. Les filtres de la vue des
+     * transactions en marquent plusieurs (LOP-228, P-7) : [onSelect] y bascule une catégorie et la
+     * feuille reste ouverte, c'est l'appelant qui décide de la fermer.
+     */
+    selectedIds: Set<Long> = setOfNotNull(selectedId),
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var currentParent by remember { mutableStateOf<CategoryEntity?>(null) }
@@ -128,7 +134,7 @@ fun CategoryBottomSheet(
             if (!isSearching && currentParent == null && onSelectNone != null) {
                 NoneRow(
                     label = noneLabel,
-                    isSelected = selectedId == null,
+                    isSelected = selectedIds.isEmpty(),
                     onClick = onSelectNone,
                 )
             }
@@ -136,7 +142,7 @@ fun CategoryBottomSheet(
                 SectionLabel("Récente")
                 CategoryTileRow(
                     tiles = recents.map { CategoryTile.Item(it) },
-                    selectedId = selectedId,
+                    selectedIds = selectedIds,
                     parentIds = parentIds,
                     onOpenParent = { currentParent = it },
                     onSelect = onSelect,
@@ -170,7 +176,7 @@ fun CategoryBottomSheet(
                             when (tile) {
                                 is CategoryTile.Item -> CategoryGridItem(
                                     cat = tile.cat,
-                                    isSelected = selectedId == tile.cat.id,
+                                    isSelected = tile.cat.id in selectedIds,
                                     modifier = Modifier.weight(1f),
                                     onClick = {
                                         if (tile.cat.id in parentIds && !isSearching) {
@@ -374,7 +380,7 @@ private fun SectionLabel(text: String) {
 @Composable
 private fun CategoryTileRow(
     tiles: List<CategoryTile>,
-    selectedId: Long?,
+    selectedIds: Set<Long>,
     parentIds: Set<Long>,
     onOpenParent: (CategoryEntity) -> Unit,
     onSelect: (Long) -> Unit,
@@ -390,7 +396,7 @@ private fun CategoryTileRow(
                 when (tile) {
                     is CategoryTile.Item -> CategoryGridItem(
                         cat = tile.cat,
-                        isSelected = selectedId == tile.cat.id,
+                        isSelected = tile.cat.id in selectedIds,
                         modifier = Modifier.weight(1f),
                         onClick = {
                             if (tile.cat.id in parentIds && !isSearching) onOpenParent(tile.cat)

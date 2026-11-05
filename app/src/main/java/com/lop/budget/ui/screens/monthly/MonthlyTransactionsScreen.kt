@@ -5,31 +5,20 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -58,11 +47,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.domain.CategoryBreakdown
-import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
-import com.lop.budget.ui.components.AccountBottomSheet
-import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.DonutChart
 import com.lop.budget.ui.components.DonutSlice
 import com.lop.budget.ui.components.FloatingCard
@@ -70,7 +56,6 @@ import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.LopBottomSheet
 import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
-import com.lop.budget.ui.components.LopSearchBar
 import com.lop.budget.ui.components.PickerBottomSheet
 import com.lop.budget.ui.components.pressScaleClickable
 import com.lop.budget.ui.components.transactionDayGroups
@@ -81,8 +66,6 @@ import dev.chrisbanes.haze.HazeState
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.TextStyle
-import java.util.Locale
 import kotlinx.coroutines.delay
 
 /** Panneau de catégories ouvert par l'analyse (LOP-40, CA-09). */
@@ -93,7 +76,6 @@ private enum class CategorySheet { ALL, OTHERS }
 fun MonthlyTransactionsScreen(
     onBack: () -> Unit,
     onOpenTransaction: (Long) -> Unit,
-    onNavigateToSearch: (String) -> Unit, // Callback to navigate to global search
     snackbarHostState: SnackbarHostState,
     hazeState: HazeState? = null,
     vm: MonthlyTransactionsViewModel = hiltViewModel(),
@@ -102,10 +84,6 @@ fun MonthlyTransactionsScreen(
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
 
-    var showTypePicker by remember { mutableStateOf(false) }
-    var showStatusPicker by remember { mutableStateOf(false) }
-    var showAccountPicker by remember { mutableStateOf(false) }
-    var showCategoryPicker by remember { mutableStateOf(false) }
     var showPeriodSheet by remember { mutableStateOf(false) }
     var categorySheet by remember { mutableStateOf<CategorySheet?>(null) }
 
@@ -113,8 +91,8 @@ fun MonthlyTransactionsScreen(
     val accent = if (state.type == TransactionType.INCOME) ext.income else ext.expense
 
     // LOP-40, CA-01 : l'analyse porte le nom du type analysé, pas un titre générique.
+    // L'historique de cet écran est remplacé par la vue unifiée (LOP-228, P-8) : seule l'analyse reste.
     val pageTitle = when {
-        !state.isAnalyticsMode -> stringResource(R.string.monthly_transactions_title)
         state.type == TransactionType.INCOME -> stringResource(R.string.income)
         state.type == TransactionType.EXPENSE -> stringResource(R.string.expense)
         else -> "Analyses"
@@ -127,251 +105,25 @@ fun MonthlyTransactionsScreen(
         modifier = Modifier.testTag(TestTags.SCREEN_MONTHLY),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         header = {
-            if (state.isAnalyticsMode) {
-                AnalysisFilters(
-                    state = state,
-                    accent = accent,
-                    onOpenPeriod = { showPeriodSheet = true },
-                    onStatus = vm::setFilter,
-                )
-            }
-        },
-    ) {
-        if (state.isAnalyticsMode) {
-            analysisContent(
+            AnalysisFilters(
                 state = state,
                 accent = accent,
-                txVersions = txVersions,
-                onOpenTransaction = onOpenTransaction,
-                onToggleCategory = vm::toggleCategory,
-                onClearCategory = { vm.onCategoryFilterChange(null) },
-                onEditPeriod = { showPeriodSheet = true },
-                onRetry = vm::retry,
-                onOpenCategories = { categorySheet = CategorySheet.ALL },
-                onOpenOthers = { categorySheet = CategorySheet.OTHERS },
+                onOpenPeriod = { showPeriodSheet = true },
+                onStatus = vm::setFilter,
             )
-        } else {
-            item {
-                val monthStr = state.month.month.getDisplayName(TextStyle.FULL, Locale.FRANCE).replaceFirstChar { it.uppercase() }
-                Text(
-                    "$monthStr ${state.month.year}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Use the new modern LopSearchBar
-                    LopSearchBar(
-                        value = state.searchQuery,
-                        onValueChange = vm::onQueryChange,
-                        placeholder = "Rechercher ce mois..."
-                    )
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 8.dp)
-                    ) {
-                        item {
-                            FilterChip(
-                                selected = state.type != null,
-                                onClick = { showTypePicker = true },
-                                modifier = Modifier.testTag("monthly.filter.type"),
-                                label = {
-                                    Text(when(state.type) {
-                                        null -> "Tous les types"
-                                        TransactionType.EXPENSE -> "Dépenses"
-                                        TransactionType.INCOME -> "Revenus"
-                                    })
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        when(state.type) {
-                                            null -> Icons.Default.SwapHoriz
-                                            TransactionType.EXPENSE -> Icons.Default.ArrowDownward
-                                            TransactionType.INCOME -> Icons.Default.ArrowUpward
-                                        },
-                                        null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            )
-                        }
-                        item {
-                            FilterChip(
-                                selected = state.filter != PaidFilter.ALL,
-                                onClick = { showStatusPicker = true },
-                                modifier = Modifier.testTag("monthly.filter.status"),
-                                label = {
-                                    Text(when(state.filter) {
-                                        PaidFilter.ALL -> "Tous les statuts"
-                                        PaidFilter.PAID -> "Payé"
-                                        PaidFilter.PLANNED -> "Planifié"
-                                    })
-                                }
-                            )
-                        }
-                        item {
-                            FilterChip(
-                                selected = state.selectedAccountId != null,
-                                onClick = { showAccountPicker = true },
-                                modifier = Modifier.testTag("monthly.filter.account"),
-                                label = {
-                                    val acc = state.availableAccounts.find { it.id == state.selectedAccountId }
-                                    Text(
-                                        when {
-                                            acc != null -> acc.name
-                                            // Filtre actif sur les transactions sans rattachement :
-                                            // aucun compte ne correspond, et pourtant le filtre existe.
-                                            state.selectedAccountId == NO_ACCOUNT_ID ->
-                                                stringResource(R.string.tx_no_account)
-                                            else -> "Compte"
-                                        }
-                                    )
-                                },
-                                leadingIcon = { Icon(Icons.Default.Wallet, null, modifier = Modifier.size(18.dp)) },
-                                trailingIcon = if (state.selectedAccountId != null) {
-                                    { IconButton(onClick = { vm.onAccountFilterChange(null) }, modifier = Modifier.size(18.dp)) { Icon(Icons.Default.Close, null) } }
-                                } else null
-                            )
-                        }
-                        item {
-                            FilterChip(
-                                selected = state.selectedCategoryId != null,
-                                onClick = { showCategoryPicker = true },
-                                modifier = Modifier.testTag("monthly.filter.category"),
-                                label = {
-                                    val cat = state.availableCategories.find { it.id == state.selectedCategoryId }
-                                    Text(cat?.name ?: "Catégorie")
-                                },
-                                leadingIcon = { Icon(Icons.Default.Category, null, modifier = Modifier.size(18.dp)) },
-                                trailingIcon = if (state.selectedCategoryId != null) {
-                                    { IconButton(onClick = { vm.onCategoryFilterChange(null) }, modifier = Modifier.size(18.dp)) { Icon(Icons.Default.Close, null) } }
-                                } else null
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Cross-month suggestion banner
-            item {
-                AnimatedVisibility(
-                    visible = state.hasResultsInOtherMonths,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Aucun résultat ce mois-ci", style = MaterialTheme.typography.titleSmall)
-                                Text("Des transactions correspondantes existent dans d'autres mois.", style = MaterialTheme.typography.bodySmall)
-                            }
-                            TextButton(
-                                onClick = { onNavigateToSearch(state.searchQuery) },
-                                modifier = Modifier.testTag("monthly.suggestion.see_all")
-                            ) {
-                                Text("Voir tout")
-                            }
-                        }
-                    }
-                }
-            }
-
-            item {
-                Spacer(Modifier.height(8.dp))
-                Text(stringResource(R.string.monthly_transactions_title), style = MaterialTheme.typography.titleLarge)
-            }
-
-            // Liste centralisée
-            transactionDayGroups(
-                dayGroups = state.dayGroups,
-                currency = state.currency,
-                txVersions = txVersions,
-                onOpenTransaction = onOpenTransaction
-            )
-
-            if (state.dayGroups.isEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.monthly_no_transactions),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-    }
-
-    if (showTypePicker) {
-        PickerBottomSheet(
-            title = "Filtrer par type",
-            items = listOf(TransactionType.EXPENSE, TransactionType.INCOME),
-            isSelected = { it == state.type },
-            onSelect = {
-                vm.setType(it)
-                showTypePicker = false
-            },
-            onDismiss = { showTypePicker = false },
-            itemLabel = { if (it == TransactionType.EXPENSE) "Dépenses" else "Revenus" },
-            allowNone = true,
-            noneLabel = "Tous les types",
-        )
-    }
-
-    if (showStatusPicker) {
-        PickerBottomSheet(
-            title = "Filtrer par statut",
-            items = listOf(PaidFilter.PAID, PaidFilter.PLANNED),
-            isSelected = { it == state.filter },
-            onSelect = {
-                vm.setFilter(it ?: PaidFilter.ALL)
-                showStatusPicker = false
-            },
-            onDismiss = { showStatusPicker = false },
-            itemLabel = { if (it == PaidFilter.PAID) "Payé" else "Planifié" },
-            allowNone = true,
-            noneLabel = "Tous les statuts",
-        )
-    }
-
-    if (showAccountPicker) {
-        // Pas d'option « Tous les comptes » : ne rien filtrer est l'état par défaut, obtenu en
-        // retirant le filtre par la croix du chip. En revanche « Sans compte » est bien un filtre
-        // à part entière, qui ne ramène que les transactions sans rattachement.
-        AccountBottomSheet(
-            title = "Filtrer par compte",
-            accounts = state.availableAccounts,
-            selectedId = state.selectedAccountId,
-            onSelect = { id ->
-                vm.onAccountFilterChange(id)
-                showAccountPicker = false
-            },
-            onDismiss = { showAccountPicker = false },
-        )
-    }
-
-    if (showCategoryPicker) {
-        CategoryBottomSheet(
-            title = "Filtrer par catégorie",
-            categories = state.availableCategories,
-            selectedId = state.selectedCategoryId,
-            onSelect = {
-                vm.onCategoryFilterChange(it)
-                showCategoryPicker = false
-            },
-            onDismiss = { showCategoryPicker = false }
+        },
+    ) {
+        analysisContent(
+            state = state,
+            accent = accent,
+            txVersions = txVersions,
+            onOpenTransaction = onOpenTransaction,
+            onToggleCategory = vm::toggleCategory,
+            onClearCategory = { vm.onCategoryFilterChange(null) },
+            onEditPeriod = { showPeriodSheet = true },
+            onRetry = vm::retry,
+            onOpenCategories = { categorySheet = CategorySheet.ALL },
+            onOpenOthers = { categorySheet = CategorySheet.OTHERS },
         )
     }
 
