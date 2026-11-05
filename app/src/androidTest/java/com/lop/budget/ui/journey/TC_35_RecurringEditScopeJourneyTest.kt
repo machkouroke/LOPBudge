@@ -29,7 +29,7 @@ import javax.inject.Inject
  * ## Niveau et chaîne réelle
  * Graphe réel, `Journey` : liste de janvier 2027 → détail → Modifier → `RecurringEditSheet` (portée)
  * → `TransactionEditScreen` → enregistrement → détail, puis listes de décembre 2026 et février 2027
- * par le sélecteur de mois de l'accueil. Jeu du seeder ancré sur l'horloge figée au 15 janvier 2027 :
+ * par la période de la vue unifiée (LOP-228 ; l'accueil n'a plus de sélecteur de mois depuis LOP-231). Jeu du seeder ancré sur l'horloge figée au 15 janvier 2027 :
  * « Loyer » est mensuel depuis le 1er décembre 2026, « Salaire » depuis le 1er janvier 2027,
  * « Courses Hebdomadaires » est la ponctuelle du 14 janvier.
  *
@@ -123,7 +123,7 @@ class RecurringEditScopeJourneyTest {
 
         renameAndSave("Loyer updated")
 
-        back(TestTags.SCREEN_DETAIL, TestTags.SCREEN_MONTHLY)
+        back(TestTags.SCREEN_DETAIL, TestTags.SCREEN_SEARCH)
         expectTitles("SINGLE — janvier : l'occurrence modifiée", listOf("Courses Hebdomadaires", "Loyer updated", "Salaire"))
         switchMonth(2027, "Févr.", "Février 2027")
         expectTitles("SINGLE — février : occurrence inchangée", listOf("Loyer", "Salaire"))
@@ -140,7 +140,7 @@ class RecurringEditScopeJourneyTest {
 
         renameAndSave("Loyer updated")
 
-        back(TestTags.SCREEN_DETAIL, TestTags.SCREEN_MONTHLY)
+        back(TestTags.SCREEN_DETAIL, TestTags.SCREEN_SEARCH)
         expectTitles("FUTURE — janvier : l'occurrence ciblée", listOf("Courses Hebdomadaires", "Loyer updated", "Salaire"))
         switchMonth(2027, "Févr.", "Février 2027")
         expectTitles("FUTURE — février : les suivantes, sans doublon de l'ancienne série", listOf("Loyer updated", "Salaire"))
@@ -157,7 +157,7 @@ class RecurringEditScopeJourneyTest {
 
         renameAndSave("Loyer updated")
 
-        back(TestTags.SCREEN_DETAIL, TestTags.SCREEN_MONTHLY)
+        back(TestTags.SCREEN_DETAIL, TestTags.SCREEN_SEARCH)
         expectTitles("ALL — janvier", listOf("Courses Hebdomadaires", "Loyer updated", "Salaire"))
         switchMonth(2027, "Févr.", "Février 2027")
         expectTitles("ALL — février, sans doublon", listOf("Loyer updated", "Salaire"))

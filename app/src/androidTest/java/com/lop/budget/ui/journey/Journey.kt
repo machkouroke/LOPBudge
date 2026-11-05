@@ -2,15 +2,18 @@ package com.lop.budget.ui.journey
 
 import android.graphics.Bitmap
 import android.view.WindowManager
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -42,7 +45,10 @@ import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.TextStyle
+import java.util.Locale
 
 /**
  * Pilote commun des parcours instrumentés portés depuis Maestro (octobre 2026).
@@ -112,49 +118,76 @@ class Journey(private val rule: ComposeTestRule, private val folder: String) {
         click(rule.onNode(save))
     }
 
-    /** Témoin : l'accueil affiche bien [month] avant d'ouvrir sa liste par « Voir tout ». */
+    /**
+     * Témoin : l'accueil est sur [month] (« Janvier 2027 »), puis « Voir tout » ouvre la liste du mois,
+     * c'est-à-dire la vue unifiée sur ce mois entier (LOP-228, P-8).
+     *
+     * Depuis LOP-231 (P-4), l'accueil n'a plus de pastille de mois : il est toujours sur le mois de
+     * l'horloge, dont la carte « Ce mois » porte le nom, sans l'année.
+     */
     fun openMonthFromHome(month: String) {
-        await("accueil sur « $month »") { texts(TestTags.HOME_MONTH_PICKER) == listOf(month) }
+        await("accueil sur « $month »") { texts(TestTags.HOME_MONTH_WIDGET) == listOf(month.substringBefore(' ')) }
         val seeAll = hasTestTag(SEE_ALL) and inside(TestTags.SCREEN_HOME)
-        // Le fondu du mois garde un temps l'ancien bloc : attendre un seul bouton, celui du mois affiché.
         await("bouton « Voir tout » unique") {
             runCatching { scrollTo(TestTags.SCREEN_HOME, seeAll) }
             count(seeAll) == 1
         }
         click(rule.onNode(seeAll))
-        awaitScreen(TestTags.SCREEN_MONTHLY)
+        awaitScreen(LIST)
     }
 
-    /** Accueil → sélecteur de mois → année par ses flèches → mois par son libellé abrégé. */
-    fun showMonth(year: Int, chip: String, label: String) {
-        click(node(TestTags.HOME_MONTH_PICKER))
-        await("feuille du sélecteur de mois") { count(hasContentDescription(NEXT_YEAR)) > 0 }
-        var steps = 0
-        while (sheetYear() != year && steps++ < 5) {
-            click(rule.onNode(hasContentDescription(if (sheetYear() > year) PREVIOUS_YEAR else NEXT_YEAR), useUnmergedTree = true))
-        }
-        expect("année du sélecteur de mois", year, sheetYear())
-        click(rule.onNode(hasText(chip) and hasClickAction()))
-        await("accueil sur « $label »") {
-            count(hasContentDescription(NEXT_YEAR)) == 0 && texts(TestTags.HOME_MONTH_PICKER) == listOf(label)
-        }
-    }
-
-    /** Depuis la liste du mois : retour à l'accueil, autre mois, nouvelle liste. */
+    /**
+     * Depuis la liste du mois : la période devient le mois [chip] de [year], du 1er au dernier jour,
+     * par la feuille Filtres → Période → OK → Appliquer (LOP-228, CA-02). L'accueil n'ayant plus de
+     * sélecteur de mois (LOP-231, P-4), c'est le chemin qui reste pour lire un autre mois.
+     */
     fun switchMonth(year: Int, chip: String, label: String) {
-        back(TestTags.SCREEN_MONTHLY, TestTags.SCREEN_HOME)
-        showMonth(year, chip, label)
-        openMonthFromHome(label)
+        val month = YearMonth.of(year, MONTH_CHIPS.indexOf(chip) + 1)
+        val before = texts(PERIOD_CHIP)
+        click(node(TestTags.SEARCH_FILTER_OPEN))
+        await("feuille Filtres") { count(TestTags.SEARCH_FILTER_SHEET) == 1 }
+        click(node(TestTags.SEARCH_FILTER_PERIOD))
+        await("sélecteur de période") { count(ANY_DAY) > 0 }
+        pickDay(month.atDay(1))
+        pickDay(month.atEndOfMonth())
+        click(rule.onNode(hasText(OK) and hasClickAction()))
+        await("sélecteur de période refermé") { count(ANY_DAY) == 0 }
+        click(node(TestTags.SEARCH_FILTER_APPLY))
+        await("liste sur « $label »") { count(TestTags.SEARCH_FILTER_SHEET) == 0 && texts(PERIOD_CHIP).let { it.isNotEmpty() && it != before } }
     }
 
-    private fun sheetYear(): Int = rule.onAllNodes(
-        SemanticsMatcher("année du sélecteur") { n -> n.config.getOrNull(SemanticsProperties.Text)?.any { it.text.matches(Regex("\\d{4}")) } == true },
-        useUnmergedTree = true,
-    ).fetchSemanticsNodes().single().config[SemanticsProperties.Text].first().text.toInt()
+    /**
+     * Case [date] du sélecteur d'intervalle Material, amenée à l'écran puis touchée. La liste compte un
+     * élément par mois depuis janvier de `DatePickerDefaults.YearRange.first` : on y saute par l'index
+     * du mois, `performScrollToNode` ne sachant pas remonter vers un mois antérieur.
+     */
+    @OptIn(ExperimentalMaterial3Api::class)
+    private fun pickDay(date: LocalDate) {
+        val cell = day(date)
+        val index = (date.year - DatePickerDefaults.YearRange.first) * 12 + date.monthValue - 1
+        act("défilement du sélecteur de période vers $date") {
+            rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange) and hasAnyDescendant(ANY_DAY))
+                .performScrollToIndex(index)
+            rule.waitForIdle()
+        }
+        await("case du $date") { count(cell) == 1 }
+        click(rule.onNode(cell))
+    }
+
+    /**
+     * Case de jour, un bouton dont le texte porte son état et sa date : [« Dans la plage »,
+     * « Lundi 1 février 2027 »] (ICU, première lettre capitale). L'espace devant le jour empêche
+     * « 1 février » de désigner aussi le 11 ou le 21. L'action de clic écarte les en-têtes de jour de
+     * la liste, derrière la boîte de dialogue, qui portent la même date.
+     */
+    private fun day(date: LocalDate): SemanticsMatcher {
+        val text = " ${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.FULL, Locale.FRANCE)} ${date.year}"
+        return hasClickAction() and SemanticsMatcher("case du $date") { n -> labels(n).any { " $it".contains(text, ignoreCase = true) } }
+    }
 
     /** Titres de toutes les lignes de la liste du mois, triés ; attend qu'au moins une ligne soit rendue. */
     fun monthTitles(): List<String> {
-        await("lignes du mois chargées") { titles().isNotEmpty() }
+        await("lignes du mois chargées") { expandStacks(); titles().isNotEmpty() }
         return titles()
     }
 
@@ -164,14 +197,25 @@ class Journey(private val rule: ComposeTestRule, private val folder: String) {
      */
     fun expectTitles(label: String, expected: List<String>) {
         val sorted = expected.sorted()
-        runCatching { rule.waitUntil(TIMEOUT_MS) { runCatching { titles() == sorted }.getOrDefault(false) } }
+        runCatching { rule.waitUntil(TIMEOUT_MS) { runCatching { expandStacks(); titles() == sorted }.getOrDefault(false) } }
         expect(label, sorted, titles())
     }
 
     fun titles(): List<String> = rule.onAllNodes(
-        hasTestTag(TestTags.TRANSACTION_ITEM_TITLE) and inside(TestTags.SCREEN_MONTHLY),
+        hasTestTag(TestTags.TRANSACTION_ITEM_TITLE) and inside(LIST),
         useUnmergedTree = true,
     ).fetchSemanticsNodes().map { n -> n.config[SemanticsProperties.Text].joinToString { it.text } }.sorted()
+
+    /**
+     * Déplie les piles de la vue unifiée : elle empile une série qui a plusieurs occurrences dans la
+     * période, et une pile repliée ne porte ni titre de ligne ni geste. L'historique d'origine montrait
+     * chaque occurrence ; dépliées, deux occurrences d'une même série restent deux lignes.
+     */
+    fun expandStacks() {
+        rule.onAllNodes(COLLAPSED_STACK and inside(LIST)).fetchSemanticsNodes().forEach { n ->
+            rule.onNode(hasTestTag(n.config[SemanticsProperties.TestTag])).performSemanticsAction(SemanticsActions.OnClick)
+        }
+    }
 
     /**
      * Ligne de la liste du mois désignée par son titre exact : le nœud cliquable fusionné de la carte,
@@ -180,13 +224,14 @@ class Journey(private val rule: ComposeTestRule, private val folder: String) {
     fun row(title: String): SemanticsNodeInteraction {
         val matcher = rowMatcher(title)
         await("ligne « $title » unique dans la liste du mois") {
-            runCatching { scrollTo(TestTags.SCREEN_MONTHLY, matcher) }
+            runCatching { expandStacks() }
+            runCatching { scrollTo(LIST, matcher) }
             count(matcher, merged = true) == 1
         }
         return rule.onNode(matcher)
     }
 
-    fun rowMatcher(title: String) = hasClickAction() and hasText(title) and inside(TestTags.SCREEN_MONTHLY)
+    fun rowMatcher(title: String) = hasClickAction() and hasText(title) and inside(LIST)
 
     /** Liste du mois → détail de la ligne [title]. */
     fun openDetail(title: String) {
@@ -322,9 +367,29 @@ class Journey(private val rule: ComposeTestRule, private val folder: String) {
 
         /** Étiquette posée en dur par `TransactionsDashboardWidget`, absente de `TestTags`. */
         const val SEE_ALL = "recent_transactions_see_all"
-        const val NEXT_YEAR = "Année suivante"
-        const val PREVIOUS_YEAR = "Année précédente"
-        val SCREENS = listOf(TestTags.SCREEN_HOME, TestTags.SCREEN_EDIT, TestTags.SCREEN_DETAIL, TestTags.SCREEN_MONTHLY)
+        /** La liste du mois : la vue unifiée depuis LOP-228 (P-8), l'historique mensuel avant. */
+        const val LIST = TestTags.SCREEN_SEARCH
+        val SCREENS = listOf(TestTags.SCREEN_HOME, TestTags.SCREEN_EDIT, TestTags.SCREEN_DETAIL, LIST)
+
+        /** Puce de la période appliquée, dans la vue unifiée (« 1 janv. – 31 janv. 2027 »). */
+        const val PERIOD_CHIP = TestTags.SEARCH_ACTIVE_PREFIX + "period"
+        const val OK = "OK"
+        val MONTH_CHIPS = listOf("Janv.", "Févr.", "Mars", "Avr.", "Mai", "Juin", "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc.")
+
+        /** Textes et descriptions d'un nœud. */
+        private fun labels(n: SemanticsNode): List<String> =
+            n.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } +
+                n.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
+
+        /** Toute case de jour du sélecteur d'intervalle : un bouton daté « <jour> <mois> <année> ». */
+        val ANY_DAY = hasClickAction() and SemanticsMatcher("case de jour") { n ->
+            labels(n).any { Regex("\\d{1,2} \\p{L}+ \\d{4}").containsMatchIn(it) }
+        }
+
+        /** Pile repliée de `StackedTransactionGroup` : étiquettes posées en dur, absentes de `TestTags`. */
+        val COLLAPSED_STACK = SemanticsMatcher("pile repliée") { n ->
+            n.config.getOrNull(SemanticsProperties.TestTag)?.let { it.startsWith("transaction_stack_") && !it.startsWith("transaction_stack_expanded_") } == true
+        }
 
         fun at(year: Int, month: Int, day: Int): Instant = LocalDateTime.of(year, month, day, 12, 0).atZone(PARIS).toInstant()
 

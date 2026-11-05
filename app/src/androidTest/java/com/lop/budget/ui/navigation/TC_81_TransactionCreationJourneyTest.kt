@@ -43,7 +43,7 @@ import javax.inject.Inject
  * U-01  TC-81-1  CA-01         AddActionSheet → TransactionEditScreen : segment Dépense, sélecteur sans revenu
  *                CA-11         LopNavHost (id > 0 → détail) ; TransactionDetailScreen : titre et montant
  *                CA-06, I-4    TransactionActionViewModel.requestEdit : formulaire direct, sans feuille de portée
- *                CA-11         MonthlyTransactionsScreen : la ponctuelle une fois, le reste du mois intact
+ *                CA-11         vue unifiée sur le mois (LOP-228) : la ponctuelle une fois, le reste du mois intact
  * U-02  TC-81-2  CA-01, CA-07  TransactionEditViewModel : date par défaut = « aujourd'hui » = ancrage
  *                I-6           MainSection : bascule « payé » retirée par la récurrence
  *                CA-07, I-4    CreateTransactionUseCase (série) ; listes de janvier puis de février 2027 :
@@ -232,7 +232,7 @@ class TransactionCreationJourneyTest {
         startOn(LocalDate.of(2027, 1, 15))
         openMonthFromHome("Janvier 2027")
         expectTitles("précondition — « $CANCELLED » absent, liste peuplée", SEEDED_JANUARY)
-        back(TestTags.SCREEN_MONTHLY, TestTags.SCREEN_HOME)
+        back(TestTags.SCREEN_SEARCH, TestTags.SCREEN_HOME)
         openExpenseForm()
         pickCategory("Pharmacie")
         typeTitleAndAmount(CANCELLED)

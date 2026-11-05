@@ -99,7 +99,7 @@ class RecurringDeleteSheetJourneyTest {
         click(node(TestTags.TRANSACTION_DETAIL_DELETE))
 
         assertThreeScopesThenCancel()
-        back(TestTags.SCREEN_DETAIL, TestTags.SCREEN_MONTHLY)
+        back(TestTags.SCREEN_DETAIL, TestTags.SCREEN_SEARCH)
         expectTitles("CA-03 — Annuler ne supprime rien", ALL)
     }
 

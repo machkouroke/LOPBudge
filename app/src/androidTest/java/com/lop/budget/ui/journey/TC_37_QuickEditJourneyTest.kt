@@ -101,7 +101,7 @@ class QuickEditJourneyTest {
         expect("le détail reste affiché", TestTags.SCREEN_DETAIL, activeScreen())
         await("catégorie « Logement » affichée") { categoryValue() == listOf("Logement") }
 
-        back(TestTags.SCREEN_DETAIL, TestTags.SCREEN_MONTHLY)
+        back(TestTags.SCREEN_DETAIL, TestTags.SCREEN_SEARCH)
         openDetail("Courses Hebdomadaires")
         expect("catégorie relue après retour", listOf("Logement"), categoryValue())
     }

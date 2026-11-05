@@ -98,7 +98,7 @@ import org.junit.runner.RunWith
  * ## Niveau et chaîne exercée
  * UI instrumentée sur le téléphone de recette (SM-S938B). Système testé : `MonthlyTransactionsScreen`
  * en mode ANALYTICS. U-01 à U-06 passent par la vraie application : `MainActivity` → `LopNavHost`
- * → accueil (`HomeScreen`, `BalanceDashboardWidget`) → `Routes.monthly(type, ym, "ANALYTICS")` →
+ * → accueil (`HomeScreen`, carte « Ce mois » de LOP-231) → `Routes.monthly(type, ym, "ANALYTICS")` →
  * `MonthlyTransactionsViewModel` (Hilt) → recherche réelle → Room en mémoire (`TestAppModule`).
  * U-07 monte l'écran par son paramètre `vm` existant (hôte : `MainActivity`), sur un vrai ViewModel
  * et une vraie recherche dont seul `TransactionDao.observeForMerge` est retenu ou mis en échec par
@@ -107,7 +107,7 @@ import org.junit.runner.RunWith
  *
  * ## Traçabilité — cas → CA / invariant → production
  * ```
- * U-01a–d  CA-01        BalanceDashboardWidget → Routes.monthly ; titre, période, statut, retour
+ * U-01a–d  CA-01        carte « Ce mois » → Routes.monthly ; titre, période, statut, retour
  * U-02a–f  CA-05        PeriodSheet / LopDatePicker → setPeriod ; Appliquer seul, refus, fermetures
  * U-03a–e  CA-03, CA-06 CategoryCapsule, DonutChart.onSliceClick, figuresOf (P-9), homonymes, repli
  * U-04a–c  CA-09        Legend / legendSlots, DonutChart (Autres), panneaux Voir toutes et Autres
@@ -916,7 +916,7 @@ class MonthlyAnalysisUiTest {
                 LopBudgeTheme(themeMode = ThemeMode.LIGHT, dynamicColor = false) {
                     Surface {
                         MonthlyTransactionsScreen(
-                            onBack = {}, onOpenTransaction = {}, onNavigateToSearch = {},
+                            onBack = {}, onOpenTransaction = {},
                             snackbarHostState = remember { SnackbarHostState() }, vm = vm,
                         )
                     }
@@ -975,19 +975,15 @@ class MonthlyAnalysisUiTest {
     // Parcours
     // ==============================================================================================
 
+    /**
+     * Accueil sur mars 2026. Depuis LOP-231 (P-4), l'accueil n'a plus de sélecteur de mois : il
+     * s'ouvre sur le mois de l'horloge, figée au 15 mars 2026 ([NOW]). Témoin : « Mars » en titre de
+     * la carte « Ce mois ».
+     */
     private fun launchOnMarch(case: String) {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         awaitTag(case, "montage", TestTags.SCREEN_HOME)
-        click(node(TestTags.HOME_MONTH_PICKER))
-        awaitCondition(case, "montage", "feuille du mois") { count(hasContentDescription("Année suivante")) > 0 }
-        var steps = 0
-        while (sheetYear() != 2026 && steps++ < 5) {
-            click(composeRule.onNode(hasContentDescription(if (sheetYear() > 2026) "Année précédente" else "Année suivante"), useUnmergedTree = true))
-        }
-        click(composeRule.onNode(hasText("Mars") and hasClickAction()))
-        awaitCondition(case, "montage", "mois de l'accueil « Mars 2026 »") {
-            count(hasContentDescription("Année suivante")) == 0 && homeMonth() == "Mars 2026"
-        }
+        awaitCondition(case, "montage", "carte « Ce mois » sur « Mars »") { texts(TestTags.HOME_MONTH_WIDGET) == listOf("Mars") }
     }
 
     private fun openCard(case: String, card: String, total: String) {
@@ -1152,14 +1148,18 @@ class MonthlyAnalysisUiTest {
 
     private data class SheetRow(val label: String, val supporting: String?, val selected: Boolean)
 
+    /**
+     * Arbre non fusionné : depuis LOP-229, une feuille (`LopBottomSheet`) est cliquable pour retenir
+     * les touchers et fusionne sa liste dans son propre nœud ; la liste n'existe plus, seule, que là.
+     */
     private fun rowCount(list: SemanticsMatcher): Int =
-        read(list, unmerged = false) { it.config.getOrNull(SemanticsProperties.CollectionInfo)?.rowCount ?: 0 }.single()
+        read(list) { it.config.getOrNull(SemanticsProperties.CollectionInfo)?.rowCount ?: 0 }.single()
 
     /** Lignes d'une feuille de catégories, dans l'ordre, parcourues par l'action de défilement. */
     private fun sheetRows(case: String, sheetTag: String): List<SheetRow> {
         val rows = linkedMapOf<String, SheetRow>()
         val listMatcher = VERTICAL_SCROLL and inSheet(sheetTag)
-        val list = composeRule.onNode(listMatcher)
+        val list = composeRule.onNode(listMatcher, useUnmergedTree = true)
         val count = rowCount(listMatcher)
         for (index in 0 until count) {
             list.performScrollToIndex(index)
@@ -1180,7 +1180,7 @@ class MonthlyAnalysisUiTest {
     }
 
     private fun revealInSheet(sheetTag: String, text: String) {
-        composeRule.onNode(VERTICAL_SCROLL and inSheet(sheetTag)).performScrollToNode(hasText(text, substring = true))
+        composeRule.onNode(VERTICAL_SCROLL and inSheet(sheetTag), useUnmergedTree = true).performScrollToNode(hasText(text, substring = true))
         composeRule.waitForIdle()
     }
 
@@ -1275,10 +1275,6 @@ class MonthlyAnalysisUiTest {
 
     private fun SemanticsNode.textValues(): List<String> =
         config.getOrNull(SemanticsProperties.Text).orEmpty().map { normalize(it.text) }
-
-    private fun sheetYear(): Int = read(
-        SemanticsMatcher("année du sélecteur") { n -> n.config.getOrNull(SemanticsProperties.Text)?.any { it.text.matches(YEAR) } == true },
-    ) { it.config[SemanticsProperties.Text].first().text.toInt() }.single()
 
     private fun node(tag: String): SemanticsNodeInteraction = composeRule.onNode(hasTestTag(tag))
 
@@ -1423,9 +1419,6 @@ class MonthlyAnalysisUiTest {
         val IS_CAPSULE = SemanticsMatcher("capsule de catégorie") {
             it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith(TestTags.ANALYSIS_CATEGORY_PREFIX) == true
         }
-
-        /** Année seule, telle qu'affichée par la feuille du mois. */
-        val YEAR = Regex("[0-9]{4}")
 
         /** Un montant (chiffres, virgule, deux décimales ou €) ou un pourcentage. */
         val FIGURE = Regex("""\d,\d|€|%""")

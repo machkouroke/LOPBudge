@@ -548,7 +548,12 @@ class TransactionLinkUiTest {
         .map { n -> Opt(texts(n).map { it.removeSuffix(" ✅") }, n.config[SemanticsProperties.Selected], n.boundsInRoot.top) }
         .sortedBy { it.top }
 
-    private fun headers(): List<Pair<String, Float>> = rule.onAllNodes(hasTestTag(TestTags.PICKER_GROUP_HEADER)).fetchSemanticsNodes()
+    /**
+     * Arbre **non fusionné** : depuis LOP-229, la feuille (`LopBottomSheet`) est cliquable pour
+     * retenir les touchers, et fusionne ses textes non cliquables ; dans l'arbre fusionné, l'en-tête
+     * perd son `testTag` (`androidTest/AGENTS.md` §3 : une feuille se lit non fusionnée).
+     */
+    private fun headers(): List<Pair<String, Float>> = rule.onAllNodes(hasTestTag(TestTags.PICKER_GROUP_HEADER), useUnmergedTree = true).fetchSemanticsNodes()
         .map { texts(it).joinToString(" ") to it.boundsInRoot.top }
         .sortedBy { it.second }
 

@@ -776,7 +776,7 @@ class SeriesCalendarJourneyTest {
         val sheetControls = listOf("Année précédente", "Année suivante", "Aujourd'hui").map {
             // Nœud cliquable fusionné : l'icône d'« Aujourd'hui » n'est que son enfant.
             it to composeRule.onNode(hasContentDescription(it) and hasClickAction())
-        } + listOf("Janv.", "Mars", "Déc.").map { it to composeRule.onNode(hasText(it) and hasClickAction()) }
+        } + listOf("Janv.", "Mars", "Déc.").map { it to composeRule.onNode(monthChipNode(it)) }
         val sheetProblems = sheetControls.flatMap { (name, interaction) -> controlProblems(name, interaction) }
 
         assertEquals(
@@ -1015,12 +1015,18 @@ class SeriesCalendarJourneyTest {
         awaitDetail(label, title)
     }
 
-    /** Variante avec parent : accueil → sélecteur de mois → ligne physique de départ. */
+    /**
+     * Variante avec parent : accueil du mois visé → ligne physique de départ.
+     *
+     * Depuis LOP-231 (P-4), l'accueil n'a plus de sélecteur de mois : il s'ouvre sur le mois de son
+     * horloge. Elle est figée au 15 du mois visé, midi, jour sans transaction dans les deux jeux (T0
+     * le 31 janvier 2026, départ de D le 31 décembre 2025) : aucune ligne n'est « du jour », la carte
+     * des transactions récentes montre les mêmes lignes qu'avec le sélecteur.
+     */
     private fun openStartFromHome(label: String, year: Int, monthChip: String, title: String) {
+        clock.fixedAt = LocalDate.of(year, MONTH_CHIPS.indexOf(monthChip) + 1, 15).atTime(12, 0).atZone(PARIS).toInstant()
         scenario = ActivityScenario.launch(Intent(targetContext(), MainActivity::class.java))
         awaitScreen(label, TestTags.SCREEN_HOME)
-        click(node(TestTags.HOME_MONTH_PICKER))
-        chooseInMonthSheet(label, year, monthChip)
         // La ligne se trouve dans le bloc des transactions récentes, qui ne porte pas `transaction.item` :
         // elle est désignée par son libellé et son action de clic, sur l'accueil seulement.
         val start = composeRule.onNode(hasClickAction() and inScreen(TestTags.SCREEN_HOME) and hasText(title, substring = true))
@@ -1070,9 +1076,9 @@ class SeriesCalendarJourneyTest {
         }
         assertEquals("$label — année affichée dans le sélecteur", year, sheetYear())
         await(label, "mois « $monthChip » dans le sélecteur") {
-            composeRule.onAllNodes(hasText(monthChip) and hasClickAction()).fetchSemanticsNodes().size == 1
+            composeRule.onAllNodes(monthChipNode(monthChip)).fetchSemanticsNodes().size == 1
         }
-        click(composeRule.onNode(hasText(monthChip) and hasClickAction()))
+        click(composeRule.onNode(monthChipNode(monthChip)))
         await(label, "fermeture du sélecteur") {
             composeRule.onAllNodes(hasContentDescription("Année suivante"), useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
         }
@@ -1209,6 +1215,13 @@ class SeriesCalendarJourneyTest {
     }
 
     private fun hasAnyDescendantText(text: String) = hasAnyDescendant(hasText(text, substring = true))
+
+    /**
+     * Puce de mois du sélecteur : cliquable **sans descendant cliquable**. Depuis LOP-229, la feuille
+     * (`LopBottomSheet`) est elle-même cliquable et fusionne ses textes non cliquables, dont le
+     * sous-titre du mois choisi (« Mars ») : `hasText` + `hasClickAction` y trouvait deux nœuds.
+     */
+    private fun monthChipNode(text: String) = hasText(text) and hasClickAction() and !hasAnyDescendant(hasClickAction())
 
     private fun node(tag: String) = composeRule.onNode(hasTestTag(tag))
 

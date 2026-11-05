@@ -89,12 +89,11 @@ import org.robolectric.annotation.Config
  * Base neuve par cas. Main = `StandardTestDispatcher` ; Default et Room restent réels, attente en
  * temps réel de 10 s au plus, sans pause fixe ni réabonnement. Dérogation à `app/src/test/AGENTS.md`
  * §3, comme TC-151 : le collecteur d'états, et lui seul, tourne sur `UnconfinedTestDispatcher`, pour
- * qu'aucune émission ne se perde. Ces états n'ont pas d'indicateur de chargement : leur valeur
- * initiale porte le mois courant de l'accueil, lu sur [HOME_OPENED] (octobre 2026, hors de mars),
- * donc le premier état de mars 2026 est le premier résultat lu. Il porte l'oracle ; tout état de
- * mars reçu ensuite doit lui être identique. L'accueil reçoit son mois **avant** d'être observé :
- * sinon un état transitoire peut associer mars au résumé du mois d'ouverture. Jusqu'à l'injection de
- * l'horloge dans `HomeViewModel` (30 octobre 2026), ce mois d'ouverture était le mois réel.
+ * qu'aucune émission ne se perde. Depuis LOP-231 (P-4), l'accueil n'a plus de navigation de mois :
+ * il s'ouvre sur le mois de son horloge, [CLOCK] (15 mars 2026), et son état initial porte
+ * `isMonthLoading`. Le premier état de mars **chargé** est donc le premier résultat lu. Il porte
+ * l'oracle ; tout état de mars chargé reçu ensuite doit lui être identique. Les Analyses n'ont pas
+ * d'indicateur de chargement : leur état initial porte le mois réel, hors de mars.
  * Fuseau Europe/Paris et `Locale.FRANCE` forcés puis restaurés. La devise n'est pas écrite
  * (DataStore sous Windows, voir TC-151) : EUR est vérifié en précondition.
  *
@@ -171,10 +170,9 @@ class MonthEndBoundsRoomTest {
             assertCurrencyIsEur(case)
             val s = seed()
             val vm = homeVm()
-            vm.setMonth(MARCH)
             val obs = observe(vm.uiState)
 
-            val state = obs.await(case, { it.describe() }) { it.month == MARCH }
+            val state = obs.await(case, { it.describe() }) { it.month == MARCH && !it.isMonthLoading }
             val ctx = "État : ${state.describe()}"
 
             assertEquals(
@@ -199,7 +197,7 @@ class MonthEndBoundsRoomTest {
                 ),
                 state.dayGroups.map { g -> Day(g.date, g.total, g.transactions.map { it.transaction.id }.toSet()) },
             )
-            obs.assertRepeatsIdentical(case, { it.describe() }) { it.month == MARCH }
+            obs.assertRepeatsIdentical(case, { it.describe() }) { it.month == MARCH && !it.isMonthLoading }
         }
 
     // ==========================================================================================
@@ -295,7 +293,7 @@ class MonthEndBoundsRoomTest {
                     GetAccountBalancesUseCase(accountRepo, transactionRepo),
                     NotificationDetectionRepository(db.detectedTransactionProposalDao()),
                     settings,
-                    HOME_OPENED,
+                    CLOCK,
                 )
             }
         }
@@ -383,8 +381,6 @@ class MonthEndBoundsRoomTest {
 
         val CLOCK: Clock = Clock.fixed(Instant.parse("2026-03-15T12:00:00Z"), ZoneId.of(ZONE))
 
-        /** Jour d'ouverture de l'accueil, hors de mars : `setMonth(MARCH)` est une vraie navigation. */
-        val HOME_OPENED: Clock = Clock.fixed(Instant.parse("2026-10-13T10:00:00Z"), ZoneId.of(ZONE))
 
         val MARCH: YearMonth = YearMonth.of(2026, 3)
         val MARCH_1: LocalDate = LocalDate.parse("2026-03-01")

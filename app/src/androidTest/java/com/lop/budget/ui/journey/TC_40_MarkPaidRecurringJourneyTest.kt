@@ -158,7 +158,7 @@ class MarkPaidRecurringJourneyTest {
         reveal(TestTags.SCREEN_DETAIL, hasTestTag(TestTags.TRANSACTION_DETAIL_TOGGLE_PAID))
         await("statut payé sur le détail") { texts(TestTags.TRANSACTION_DETAIL_TOGGLE_PAID) == listOf(MARK_UNPAID) }
         expect("« Marquer comme payé » n'est plus proposé", 0, count(hasText(MARK_PAID), merged = true))
-        back(TestTags.SCREEN_DETAIL, TestTags.SCREEN_MONTHLY)
+        back(TestTags.SCREEN_DETAIL, TestTags.SCREEN_SEARCH)
         expect("la ligne reste une occurrence de série", 1, count(rowMatcher("Loyer") and hasContentDescription("Récurrent"), merged = true))
     }
 
