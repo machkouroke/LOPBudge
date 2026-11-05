@@ -1,0 +1,11 @@
+appId: com.lop.budget
+---
+# Subflow pour revenir sur Home depuis un écran secondaire.
+
+- repeat:
+    while:
+      notVisible: { id: "home.month.picker" }
+    commands:
+      - tapOn: { id: "common.btn.back" }
+
+- assertVisible: { id: "home.month.picker" }
