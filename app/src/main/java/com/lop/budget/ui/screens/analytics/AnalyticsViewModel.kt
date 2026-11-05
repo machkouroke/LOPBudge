@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onEach
 import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
@@ -77,9 +79,18 @@ class AnalyticsViewModel @Inject constructor(
             atEndOfMonth().atTime(23, 59, 59, 999_000_000).atZone(zone).toInstant().toEpochMilli()
     }
 
+    private val loaded = MutableStateFlow(false)
+    /**
+     * Vrai quand l'état porte la lecture des critères demandés ; faux de leur changement à leur
+     * lecture. Faux, l'écran montre son squelette (LOP-226, CA-06). Séparé de [uiState], dont
+     * les émissions restent celles d'avant.
+     */
+    val isLoaded: StateFlow<Boolean> = loaded.asStateFlow()
+
     val uiState: StateFlow<AnalyticsUiState> =
         combine(month, type, settings.currency) { m, t, c -> Triple(m, t, c) }
             .flatMapLatest { (m, t, currency) ->
+                loaded.value = false
                 val (start, end) = m.range()
                 // `map` et non `combine(flow, MutableStateFlow(Unit))` : le second flux était
                 // constant, il n'apportait qu'un niveau de combine et sa synchronisation.
@@ -87,6 +98,7 @@ class AnalyticsViewModel @Inject constructor(
                     AnalyticsUiState(m, currency, t, analytics.total, analytics.breakdown)
                 }
             }
+            .onEach { loaded.value = true }
             // Le filtrage, le groupement et le tri tournaient sur le thread UI : `stateIn`
             // collecte sur `viewModelScope`, donc `Dispatchers.Main.immediate`.
             .flowOn(Dispatchers.Default)

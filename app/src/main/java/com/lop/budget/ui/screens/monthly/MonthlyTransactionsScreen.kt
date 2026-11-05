@@ -49,6 +49,8 @@ import com.lop.budget.R
 import com.lop.budget.domain.CategoryBreakdown
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.components.DonutChart
 import com.lop.budget.ui.components.DonutSlice
 import com.lop.budget.ui.components.FloatingCard
@@ -66,7 +68,6 @@ import dev.chrisbanes.haze.HazeState
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import kotlinx.coroutines.delay
 
 /** Panneau de catégories ouvert par l'analyse (LOP-40, CA-09). */
 private enum class CategorySheet { ALL, OTHERS }
@@ -82,6 +83,7 @@ fun MonthlyTransactionsScreen(
     actionVm: com.lop.budget.ui.common.TransactionActionViewModel = hiltViewModel(LocalContext.current as androidx.activity.ComponentActivity)
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = state.isRefreshing)
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
 
     var showPeriodSheet by remember { mutableStateOf(false) }
@@ -115,6 +117,7 @@ fun MonthlyTransactionsScreen(
     ) {
         analysisContent(
             state = state,
+            showSkeleton = showSkeleton,
             accent = accent,
             txVersions = txVersions,
             onOpenTransaction = onOpenTransaction,
@@ -169,9 +172,6 @@ fun MonthlyTransactionsScreen(
 
 /** Portions individuelles de l'anneau ; au-delà, un regroupement « Autres catégories » (CA-09). */
 private const val DONUT_SLICES = 6
-
-/** Délai avant « Actualisation… » : une réponse plus rapide n'affiche aucun indicateur (CA-10). */
-private const val REFRESHING_INDICATOR_DELAY_MS = 200L
 
 private enum class CardMode { REFRESHING, FAILED, EMPTY, READY }
 
@@ -326,6 +326,7 @@ private fun StatusSegment(selected: PaidFilter, accent: Color, onSelect: (PaidFi
  */
 private fun LazyListScope.analysisContent(
     state: MonthlyTransactionsUiState,
+    showSkeleton: Boolean,
     accent: Color,
     txVersions: Map<Long, Int>,
     onOpenTransaction: (Long) -> Unit,
@@ -338,7 +339,10 @@ private fun LazyListScope.analysisContent(
 ) {
     val mode = cardMode(state)
 
-    item(key = "analysis_card") {
+    // Résultat pas encore celui des critères affichés : un squelette à la place de la carte, à
+    // l'ouverture comme à chaque rechargement (LOP-226, CA-06, P-10). La légende, qui sert de
+    // filtre, reste utilisable.
+    if (showSkeleton) skeleton(TestTags.ANALYSIS_REFRESHING, cards = 1) else item(key = "analysis_card") {
         FloatingCard(Modifier.fillMaxWidth()) {
             // Le résultat précédent disparaît d'un coup, seul le nouveau apparaît en fondu : une
             // transition ne mélange pas deux résultats (I-3), et les anciennes parts ne se
@@ -346,7 +350,7 @@ private fun LazyListScope.analysisContent(
             val trigger: Any = if (mode == CardMode.READY) state.breakdown else mode
             AppearOnChange(trigger = trigger, durationMs = if (mode == CardMode.EMPTY) 150 else 220, initialScale = 0.96f) {
                 when (mode) {
-                    CardMode.REFRESHING -> RefreshingContent()
+                    CardMode.REFRESHING -> Unit // jamais rendu : le squelette le remplace
                     CardMode.FAILED -> ErrorContent(onRetry)
                     CardMode.EMPTY -> EmptyContent(
                         state = state,
@@ -366,7 +370,7 @@ private fun LazyListScope.analysisContent(
         }
     }
 
-    if (mode == CardMode.READY) {
+    if (!showSkeleton && mode == CardMode.READY) {
         transactionDayGroups(
             dayGroups = state.dayGroups,
             currency = state.currency,
@@ -398,25 +402,6 @@ private fun AppearOnChange(
                 scaleY = scale
             },
         ) { content() }
-    }
-}
-
-@Composable
-private fun RefreshingContent() {
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(REFRESHING_INDICATOR_DELAY_MS)
-        visible = true
-    }
-    Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-        if (visible) {
-            Text(
-                stringResource(R.string.analysis_refreshing),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.testTag(TestTags.ANALYSIS_REFRESHING),
-            )
-        }
     }
 }
 

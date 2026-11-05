@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -34,7 +35,12 @@ class CategoriesManageViewModel @Inject constructor(
     private val deleteCategoryUseCase: DeleteCategoryUseCase,
 ) : ViewModel() {
 
+    private val loaded = MutableStateFlow(false)
+    /** Vrai dès la première lecture ; avant, l'écran montre son squelette (LOP-226, CA-06). */
+    val isLoaded: StateFlow<Boolean> = loaded.asStateFlow()
+
     val uiState: StateFlow<CategoriesByType> = observeCategories.observeGroupedByType()
+        .onEach { loaded.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CategoriesByType())
 
     private val _pendingDelete = MutableStateFlow<PendingCategoryDelete?>(null)

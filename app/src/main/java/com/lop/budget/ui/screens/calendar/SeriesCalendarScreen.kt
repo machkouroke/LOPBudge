@@ -56,6 +56,8 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.usecase.transaction.DaySelection
 import com.lop.budget.domain.usecase.transaction.MonthOccurrences
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -83,6 +85,9 @@ fun SeriesCalendarScreen(
     val scope = rememberCoroutineScope()
     val unavailable = stringResource(R.string.series_calendar_unavailable)
     var showMonthPicker by rememberSaveable { mutableStateOf(false) }
+    val showSkeleton = rememberShowSkeleton(
+        loading = state.month == null && state.content !is CalendarContent.Error && state.content !is CalendarContent.Unavailable
+    )
 
     LaunchedEffect(vm) {
         vm.events.collect { event ->
@@ -108,11 +113,12 @@ fun SeriesCalendarScreen(
             item { MessageText(unavailable) }
             return@LopScreenScaffold
         }
+        if (showSkeleton) {
+            skeleton()
+            return@LopScreenScaffold
+        }
         if (month == null) {
-            item {
-                if (content is CalendarContent.Error) ErrorBlock(vm::retry)
-                else MessageText(stringResource(R.string.loading))
-            }
+            if (content is CalendarContent.Error) item { ErrorBlock(vm::retry) } else skeleton()
             return@LopScreenScaffold
         }
 
@@ -152,7 +158,7 @@ fun SeriesCalendarScreen(
             state.selectedDay == null -> item {
                 MessageText(stringResource(R.string.series_calendar_select_day), TestTags.SERIES_CALENDAR_SELECT_HINT)
             }
-            selection == null -> item { MessageText(stringResource(R.string.loading)) }
+            selection == null -> skeleton(cards = 1)
             selection is DaySelection.Empty -> item {
                 MessageText(stringResource(R.string.series_calendar_empty_day), TestTags.SERIES_CALENDAR_EMPTY_DAY)
             }

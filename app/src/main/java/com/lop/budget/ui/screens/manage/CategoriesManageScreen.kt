@@ -34,6 +34,8 @@ import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.motion.MotionSpec
 import com.lop.budget.util.IconMapper
 
@@ -46,6 +48,7 @@ fun CategoriesManageScreen(
     vm: CategoriesManageViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = !vm.isLoaded.collectAsStateWithLifecycle().value)
     val pendingDelete by vm.pendingDelete.collectAsStateWithLifecycle()
     var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
 
@@ -103,6 +106,8 @@ fun CategoriesManageScreen(
             }
         }
 
+        // Squelette sous les onglets Dépenses / Revenus, qui restent utilisables.
+        if (showSkeleton) return@LopScreenScaffold skeleton()
         val categories =
             if (selectedType == TransactionType.EXPENSE) state.expense else state.income
 

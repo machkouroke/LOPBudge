@@ -58,6 +58,8 @@ import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.common.TransactionActionViewModel
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.components.AccountBottomSheet
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.CircleIcon
@@ -120,6 +122,7 @@ fun TransactionDetailScreen(
 
     val twr = state.transaction
     val tx = twr?.transaction
+    val showSkeleton = rememberShowSkeleton(loading = tx == null)
     val scaffoldTitle = tx?.title ?: stringResource(R.string.tx_default_title)
     // CA-15 : l'état de sauvegarde vit dans l'orchestrateur qui écrit réellement, pas dans l'état
     // du détail — sinon le verrou ne protégerait que cet écran.
@@ -133,13 +136,8 @@ fun TransactionDetailScreen(
             modifier = Modifier.testTag(TestTags.SCREEN_DETAIL),
             snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) }
         ) {
-            if (tx == null) {
-                item {
-                    Text(
-                        stringResource(R.string.loading),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            if (showSkeleton || tx == null) {
+                skeleton()
             } else {
                 val isIncome = tx.type == TransactionType.INCOME
 

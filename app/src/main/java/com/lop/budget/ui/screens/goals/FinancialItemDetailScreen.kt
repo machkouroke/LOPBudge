@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -51,6 +50,8 @@ import com.lop.budget.domain.model.ItemStatus
 import com.lop.budget.domain.usecase.account.AccountRowAction
 import com.lop.budget.domain.usecase.financial.FinancialItemDetail
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -82,6 +83,7 @@ fun FinancialItemDetailScreen(
     val deleteRequest by vm.deleteRequest.collectAsStateWithLifecycle()
     val deleted by vm.deleted.collectAsStateWithLifecycle()
     val loaded = state as? FinancialItemDetailUiState.Loaded
+    val showSkeleton = rememberShowSkeleton(loading = state == FinancialItemDetailUiState.Loading)
 
     LaunchedEffect(deleted) { if (deleted) onDeleted() }
     deleteRequest?.let { FinancialItemDeleteSheet(it, onConfirm = vm::confirmDelete, onDismiss = vm::dismissDelete) }
@@ -94,12 +96,12 @@ fun FinancialItemDetailScreen(
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
         modifier = Modifier.testTag(TestTags.SCREEN_FINANCIAL_DETAIL),
     ) {
+        if (showSkeleton) {
+            skeleton(TestTags.FINANCIAL_DETAIL_LOADING)
+            return@LopScreenScaffold
+        }
         when (val s = state) {
-            FinancialItemDetailUiState.Loading -> item {
-                Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(Modifier.testTag(TestTags.FINANCIAL_DETAIL_LOADING))
-                }
-            }
+            FinancialItemDetailUiState.Loading -> skeleton(TestTags.FINANCIAL_DETAIL_LOADING)
 
             FinancialItemDetailUiState.Error -> item {
                 Column(

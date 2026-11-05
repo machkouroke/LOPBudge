@@ -30,6 +30,7 @@ import com.lop.budget.domain.model.DebtType
 import com.lop.budget.domain.model.FinancialItemKind
 import com.lop.budget.domain.usecase.financial.FinancialItemRefusal
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.rememberShowSkeleton
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -49,6 +50,7 @@ fun DebtEditScreen(
     vm: DebtEditViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = state.isLoading)
     val form = state.form
     val refusals = state.refusals
     val isDebt = state.kind == FinancialItemKind.DEBT
@@ -72,7 +74,7 @@ fun DebtEditScreen(
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
         modifier = Modifier.testTag(TestTags.SCREEN_EDIT)
     ) {
-        if (state.isLoading) return@LopScreenScaffold editLoading("debt.edit")
+        if (showSkeleton) return@LopScreenScaffold editLoading("debt.edit")
         if (state.notFound) return@LopScreenScaffold editNotFound("debt.edit", backToList)
         item {
             SaveButton(

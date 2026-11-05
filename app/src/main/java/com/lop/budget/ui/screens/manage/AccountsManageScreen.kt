@@ -41,6 +41,8 @@ import com.lop.budget.ui.components.ConfirmDeleteSheet
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.util.IconMapper
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,6 +54,7 @@ fun AccountsManageScreen(
     vm: AccountsManageViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = !vm.isLoaded.collectAsStateWithLifecycle().value)
     var accountToDelete by remember { mutableStateOf<AccountEntity?>(null) }
 
     accountToDelete?.let { account ->
@@ -91,6 +94,7 @@ fun AccountsManageScreen(
             }
         }
     ) {
+        if (showSkeleton) return@LopScreenScaffold skeleton()
         if (state.activeAccounts.isNotEmpty()) {
             item {
                 Text(

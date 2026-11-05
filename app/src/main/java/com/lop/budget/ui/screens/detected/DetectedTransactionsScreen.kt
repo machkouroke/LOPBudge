@@ -50,6 +50,8 @@ import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.HapticIntent
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.pressScaleClickable
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.util.Format
 
 @Composable
@@ -59,6 +61,7 @@ fun DetectedTransactionsScreen(
     vm: DetectedTransactionsViewModel = hiltViewModel(),
 ) {
     val pending = vm.pending.collectAsStateWithLifecycle().value
+    val showSkeleton = rememberShowSkeleton(loading = !vm.isLoaded.collectAsStateWithLifecycle().value)
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
@@ -81,6 +84,7 @@ fun DetectedTransactionsScreen(
         modifier = Modifier.testTag(TestTags.SCREEN_DETECTED),
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) {
+        if (showSkeleton) return@LopScreenScaffold skeleton()
         if (pending.isEmpty()) {
             item {
                 FloatingCard(Modifier.fillMaxWidth()) {

@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,9 +25,14 @@ class DetectedTransactionsViewModel @Inject constructor(
     private val refuseProposal: RefuseProposalUseCase,
 ) : ViewModel() {
 
+    private val loaded = MutableStateFlow(false)
+    /** Vrai dès la première lecture ; avant, l'écran montre son squelette (LOP-226, CA-06). */
+    val isLoaded: StateFlow<Boolean> = loaded.asStateFlow()
+
     /** Propositions non traitées : en attente et incertaines (P-6). */
     val pending: StateFlow<List<Proposal>> =
         proposals.observePending()
+            .onEach { loaded.value = true }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _effects = MutableSharedFlow<InboxEffect>(extraBufferCapacity = 8)

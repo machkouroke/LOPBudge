@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,6 +32,10 @@ class AccountsManageViewModel @Inject constructor(
     settings: SettingsRepository,
 ) : ViewModel() {
 
+    private val loaded = MutableStateFlow(false)
+    /** Vrai dès la première lecture ; avant, l'écran montre son squelette (LOP-226, CA-06). */
+    val isLoaded: StateFlow<Boolean> = loaded.asStateFlow()
+
     val uiState: StateFlow<AccountsManageUiState> = combine(
         accountRepo.observeAll(),
         settings.currency
@@ -38,7 +45,8 @@ class AccountsManageViewModel @Inject constructor(
             archivedAccounts = accounts.filter { it.archived },
             currency = currency
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountsManageUiState())
+    }.onEach { loaded.value = true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AccountsManageUiState())
 
     fun toggleArchive(account: AccountEntity) {
         viewModelScope.launch {

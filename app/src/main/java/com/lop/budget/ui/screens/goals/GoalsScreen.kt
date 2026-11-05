@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.filled.TrackChanges
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -51,6 +50,8 @@ import com.lop.budget.R
 import com.lop.budget.domain.model.FinancialItemKind
 import com.lop.budget.domain.usecase.financial.FinancialItemSummary
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -89,6 +90,17 @@ fun GoalsScreen(
     }
 
     deleteRequest?.let { FinancialItemDeleteSheet(it, onConfirm = vm::confirmDelete, onDismiss = vm::dismissDelete) }
+
+    val lists = archives ?: state
+    val (load, emptyText) = when (selected) {
+        FinancialItemKind.GOAL -> lists.goals to
+            if (archives != null) R.string.tracking_empty_archived_goals else R.string.tracking_empty_goals
+        FinancialItemKind.DEBT -> lists.debts to
+            if (archives != null) R.string.tracking_empty_archived_debts else R.string.tracking_empty_debts
+        FinancialItemKind.RECEIVABLE -> lists.receivables to
+            if (archives != null) R.string.tracking_empty_archived_receivables else R.string.tracking_empty_receivables
+    }
+    val showSkeleton = rememberShowSkeleton(loading = load is ListLoad.Loading)
 
     LopScreenScaffold(
         title = stringResource(R.string.nav_goals),
@@ -132,19 +144,10 @@ fun GoalsScreen(
             }
         }
 
-        val lists = archives ?: state
-        val (load, emptyText) = when (selected) {
-            FinancialItemKind.GOAL -> lists.goals to
-                if (archives != null) R.string.tracking_empty_archived_goals else R.string.tracking_empty_goals
-            FinancialItemKind.DEBT -> lists.debts to
-                if (archives != null) R.string.tracking_empty_archived_debts else R.string.tracking_empty_debts
-            FinancialItemKind.RECEIVABLE -> lists.receivables to
-                if (archives != null) R.string.tracking_empty_archived_receivables else R.string.tracking_empty_receivables
-        }
         // Une archive ouvre le même détail que la liste normale (CA-03). Le swipe de fin vers début
         // ouvre la confirmation de suppression, dans les deux filtres (LOP-204, CA-01) ; la carte
         // revient à sa place et ne part qu'après le succès (CA-07). Pas d'action vers la droite.
-        listContent(load, emptyText, vm::retry) { item ->
+        listContent(load, showSkeleton, emptyText, vm::retry) { item ->
             val accent = if (item.kind == FinancialItemKind.DEBT) ext.expense else ext.income
             SwipeableTransactionRow(
                 isPaid = false,
@@ -164,16 +167,15 @@ fun GoalsScreen(
  */
 private fun LazyListScope.listContent(
     load: ListLoad<FinancialItemSummary>,
+    showSkeleton: Boolean,
     @StringRes emptyText: Int,
     onRetry: () -> Unit,
     card: @Composable (FinancialItemSummary) -> Unit,
 ) {
+    // Squelette sous les onglets et filtres, qui restent utilisables (LOP-226, CA-06).
+    if (showSkeleton) return skeleton(TestTags.GOAL_LIST_LOADING)
     when (load) {
-        ListLoad.Loading -> item {
-            Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(Modifier.testTag(TestTags.GOAL_LIST_LOADING))
-            }
-        }
+        ListLoad.Loading -> skeleton(TestTags.GOAL_LIST_LOADING)
         ListLoad.Error -> item {
             Column(
                 Modifier.fillMaxWidth().padding(48.dp).testTag(TestTags.GOAL_LIST_ERROR),

@@ -42,6 +42,8 @@ import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.PickerBottomSheet
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.util.IconMapper
 
 
@@ -56,6 +58,7 @@ fun TransactionEditScreen(
     vm: TransactionEditViewModel = hiltViewModel(),
 ) {
     val form by vm.form.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = !vm.loadedState.collectAsStateWithLifecycle().value)
     val categories by vm.categories.collectAsStateWithLifecycle()
     val recentCategories by vm.recentCategories.collectAsStateWithLifecycle()
     val suggestedCategories by vm.suggestedCategories.collectAsStateWithLifecycle()
@@ -134,6 +137,7 @@ fun TransactionEditScreen(
             }
         }
     ) {
+        if (showSkeleton) return@LopScreenScaffold skeleton()
         item {
             AmountHeader(
                 form = form,

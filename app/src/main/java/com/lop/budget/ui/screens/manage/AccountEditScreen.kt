@@ -31,6 +31,8 @@ import com.lop.budget.data.repository.IconSearchRepository
 import com.lop.budget.domain.model.AccountType
 import com.lop.budget.domain.usecase.account.AccountRefusal
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.components.LopBottomSheet
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.ConfirmDeleteSheet
@@ -51,6 +53,7 @@ fun AccountEditScreen(
     vm: AccountFormViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = !state.isLoaded)
     var showTypeSheet by remember { mutableStateOf(false) }
     var showBankSheet by remember { mutableStateOf(false) }
     var showIconSheet by remember { mutableStateOf(false) }
@@ -148,13 +151,8 @@ fun AccountEditScreen(
             }
         }
     ) {
-        if (!state.isLoaded) {
-            item {
-                Box(
-                    Modifier.fillParentMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
-            }
+        if (showSkeleton) {
+            skeleton()
         } else {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {

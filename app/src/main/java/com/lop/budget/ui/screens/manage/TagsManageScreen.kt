@@ -52,6 +52,8 @@ import com.lop.budget.ui.components.LopFieldShape
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.TagColorPicker
 import com.lop.budget.ui.components.lopFieldColors
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 
 @Composable
 fun TagsManageScreen(
@@ -59,6 +61,7 @@ fun TagsManageScreen(
     vm: TagsManageViewModel = hiltViewModel(),
 ) {
     val tags by vm.tags.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = !vm.isLoaded.collectAsStateWithLifecycle().value)
     var editingTag by remember { mutableStateOf<TagEntity?>(null) }
     var showCreateSheet by remember { mutableStateOf(false) }
     var tagToDelete by remember { mutableStateOf<TagEntity?>(null) }
@@ -84,6 +87,7 @@ fun TagsManageScreen(
             }
         }
     ) {
+        if (showSkeleton) return@LopScreenScaffold skeleton()
         if (tags.isEmpty()) {
             item {
                 Text(

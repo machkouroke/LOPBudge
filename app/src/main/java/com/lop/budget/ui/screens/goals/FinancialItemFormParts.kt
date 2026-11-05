@@ -46,6 +46,7 @@ import com.lop.budget.domain.model.FinancialItemKind
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.usecase.financial.FinancialItemRefusal
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.components.AccountBottomSheet
 import com.lop.budget.ui.components.ConfirmDeleteSheet
 import com.lop.budget.ui.components.FloatingCard
@@ -158,11 +159,7 @@ internal fun rememberDraftExit(hasUnsavedChanges: Boolean, onBack: () -> Unit): 
 }
 
 /** Modification : valeurs pas encore relues, aucun champ ni Enregistrer (CA-01 de LOP-205). */
-internal fun LazyListScope.editLoading(tagPrefix: String) = item {
-    Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(Modifier.testTag("$tagPrefix.loading"))
-    }
-}
+internal fun LazyListScope.editLoading(tagPrefix: String) = skeleton("$tagPrefix.loading")
 
 /**
  * Modification d'un élément disparu (CA-07 de LOP-205) : plus de formulaire, seulement le constat

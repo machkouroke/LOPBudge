@@ -42,6 +42,8 @@ import com.lop.budget.ui.components.DonutSlice
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 
@@ -50,6 +52,7 @@ fun AnalyticsScreen(
     vm: AnalyticsViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = !vm.isLoaded.collectAsStateWithLifecycle().value)
     val ext = LopTheme.extended
 
     // Limite à 6 tranches + "Autres" pour la lisibilité.
@@ -71,6 +74,7 @@ fun AnalyticsScreen(
         onBack = null,
         modifier = Modifier.testTag(TestTags.SCREEN_ANALYTICS)
     ) {
+        if (showSkeleton) return@LopScreenScaffold skeleton()
         item {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),

@@ -23,6 +23,7 @@ import com.lop.budget.R
 import com.lop.budget.domain.model.FinancialItemKind
 import com.lop.budget.domain.usecase.financial.FinancialItemRefusal
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.rememberShowSkeleton
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopDatePicker
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -40,6 +41,7 @@ fun GoalEditScreen(
     vm: GoalEditViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = state.isLoading)
     val form = state.form
     val refusals = state.refusals
 
@@ -55,7 +57,7 @@ fun GoalEditScreen(
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
         modifier = Modifier.testTag(TestTags.SCREEN_EDIT)
     ) {
-        if (state.isLoading) return@LopScreenScaffold editLoading("goal.edit")
+        if (showSkeleton) return@LopScreenScaffold editLoading("goal.edit")
         if (state.notFound) return@LopScreenScaffold editNotFound("goal.edit", backToList)
         item {
             SaveButton(

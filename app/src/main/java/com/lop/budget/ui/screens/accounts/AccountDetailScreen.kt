@@ -18,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
@@ -40,6 +42,7 @@ fun AccountDetailScreen(
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
     val account = state.account
+    val showSkeleton = rememberShowSkeleton(loading = account == null)
 
     LopScreenScaffold(
         title = "Compte",
@@ -47,8 +50,8 @@ fun AccountDetailScreen(
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) {
-        if (account == null) {
-            item { Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+        if (showSkeleton || account == null) {
+            skeleton()
         } else {
             val color = Color(account.colorArgb)
             

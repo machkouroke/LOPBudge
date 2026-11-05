@@ -70,6 +70,8 @@ import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.common.TransactionActionViewModel
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopBottomSheet
@@ -93,7 +95,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlinx.coroutines.delay
 
 /**
  * Vue unifiée recherche + historique des transactions (LOP-228).
@@ -132,17 +133,9 @@ fun SearchScreen(
         }.filter { it.second.isNotEmpty() }
     }
 
-    // CA-05 : un indicateur seulement au-delà de 200 ms d'attente, comme l'analyse (LOP-40).
-    var showRefreshing by remember { mutableStateOf(false) }
-    LaunchedEffect(state.isRefreshing) {
-        showRefreshing = false
-        if (state.isRefreshing) {
-            delay(REFRESHING_INDICATOR_DELAY_MS)
-            showRefreshing = true
-        }
-    }
-    // Lignes d'une recherche précédente : estompées, jamais présentées comme le nouveau résultat.
-    val listAlpha = if (state.isRefreshing) 0.4f else 1f
+    // Tant que les lignes ne sont pas celles des critères affichés, un squelette les remplace
+    // (LOP-226, CA-06, P-10) : jamais un ancien résultat présenté comme le nouveau (CA-05).
+    val showSkeleton = rememberShowSkeleton(loading = !state.isPrompt && !state.loadFailed && state.isRefreshing)
 
     LopScreenScaffold(
         title = stringResource(R.string.monthly_transactions_title),
@@ -173,14 +166,15 @@ fun SearchScreen(
                     FiltersButton(state.filters.count) { showFilters = true }
                 }
                 ActiveFilters(state, onApply = vm::applyFilters)
-                if (!state.isPrompt && !state.loadFailed) SummaryCard(state, showRefreshing)
+                if (!state.isPrompt && !state.loadFailed) SummaryCard(state)
             }
         },
     ) {
         when {
             state.isPrompt -> item(key = "search_prompt") { Message(R.string.search_prompt, TestTags.SEARCH_PROMPT) }
             state.loadFailed -> item(key = "search_error") { ErrorContent(onRetry = vm::retry) }
-            !state.isRefreshing && state.count == 0 ->
+            showSkeleton -> skeleton(TestTags.SEARCH_REFRESHING)
+            state.count == 0 ->
                 item(key = "search_empty") { Message(R.string.analysis_empty, TestTags.SEARCH_EMPTY) }
             else -> dayGroupItems.forEach { (date, itemsToDisplay) ->
                 // Une pile en tête du jour porte ses propres dates : pas d'en-tête au-dessus.
@@ -192,7 +186,7 @@ fun SearchScreen(
                             text = Format.fullDate(date),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.alpha(listAlpha).padding(vertical = 8.dp),
+                            modifier = Modifier.padding(vertical = 8.dp),
                         )
                     }
                 }
@@ -201,7 +195,7 @@ fun SearchScreen(
                     if (sid != null && multiOccurrencesSeries.containsKey(sid)) "stack_$sid"
                     else "${twr.transaction.id}_${txVersions[twr.transaction.id] ?: 0}"
                 }) { twr ->
-                    Box(Modifier.alpha(listAlpha).testTag(TestTags.TRANSACTION_ITEM)) {
+                    Box(Modifier.testTag(TestTags.TRANSACTION_ITEM)) {
                         val stack = twr.transaction.seriesId?.let(multiOccurrencesSeries::get)
                         if (stack != null) {
                             StackedTransactionGroup(
@@ -233,7 +227,6 @@ fun SearchScreen(
     }
 }
 
-private const val REFRESHING_INDICATOR_DELAY_MS = 200L
 
 private val DAY_MONTH = DateTimeFormatter.ofPattern("d MMM", Locale.FRANCE)
 private val DAY_MONTH_YEAR = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.FRANCE)
@@ -339,7 +332,7 @@ private fun statusLabel(status: TransactionStatus) =
  * celles des critères affichés, aucun montant n'est montré.
  */
 @Composable
-private fun SummaryCard(state: SearchUiState, showRefreshing: Boolean) {
+private fun SummaryCard(state: SearchUiState) {
     val ext = LopTheme.extended
     val ready = !state.isRefreshing
     val balanceColor = when {
@@ -359,14 +352,6 @@ private fun SummaryCard(state: SearchUiState, showRefreshing: Boolean) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.testTag(TestTags.SEARCH_SUMMARY_COUNT),
                 )
-                if (showRefreshing) {
-                    Text(
-                        stringResource(R.string.analysis_refreshing),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.testTag(TestTags.SEARCH_REFRESHING),
-                    )
-                }
             }
             Row(Modifier.fillMaxWidth()) {
                 SummaryFigure(

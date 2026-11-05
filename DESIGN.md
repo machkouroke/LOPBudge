@@ -42,6 +42,7 @@ des écrans.
 | `ui/components/FloatingBottomBar.kt` | Barre du bas et bouton + |
 | `ui/motion/MotionSpec.kt` | Ressorts et durées de toutes les animations (§ 13) |
 | `ui/navigation/NavAnimations.kt` | Transitions entre écrans (§ 13) |
+| `ui/components/Skeleton.kt` | Squelette des écrans qui chargent (§ 13.4) |
 
 Ne crée pas de couleur en dur dans un écran : passe par un rôle de `MaterialTheme.colorScheme` ou par
 `LopTheme.extended`. Si aucun rôle ne convient, ajoute-le dans `Color.kt` avec sa justification.
@@ -320,6 +321,7 @@ pleine ou une graisse.
 - [ ] Styles de `MaterialTheme.typography` plutôt que des graisses forcées.
 - [ ] Contrastes vérifiés en clair et en sombre (§ 9) ; sélection lisible sans la couleur.
 - [ ] Animations sur les jetons de `MotionSpec` (§ 13), aucune durée ni courbe locale.
+- [ ] Écran qui charge : `rememberShowSkeleton` + `skeleton(tag)` (§ 13.4), jamais un indicateur tournant.
 - [ ] Vérifié à l'écran, sur le téléphone, dans les quatre combinaisons : clair / sombre × couleur
       dynamique activée / désactivée. Réglages de l'utilisateur remis à leur valeur d'origine.
 
@@ -337,7 +339,7 @@ Inspirés de Silo, mais relevant de l'agencement des écrans, pas de la charte :
 
 ## 13. Mouvement
 
-Source : US **LOP-226** (P-3 à P-8). Toute animation part de `MotionSpec` : aucune durée, courbe ni
+Source : US **LOP-226** (P-3 à P-11). Toute animation part de `MotionSpec` : aucune durée, courbe ni
 ressort défini localement dans un écran.
 
 ### 13.1 Les jetons
@@ -384,3 +386,37 @@ ressort défini localement dans un écran.
   l'écran entrant n'a pas encore couverte.
 - **Juger un mouvement sur le téléphone**, pas sur le papier : les valeurs ci-dessus viennent
   d'essais à l'écran.
+
+### 13.4 Chargement : le squelette
+
+Un écran qui charge des données montre un **squelette** à la place de son contenu (CA-06, P-9) :
+des cartes grises fixes (`onSurface` à 8 %) aux formes d'une ligne de l'app — pastille, libellé,
+montant. Pas d'indicateur tournant, pas de scintillement : un squelette ne coûte presque rien à
+dessiner, la transition d'entrée reste fluide.
+
+```kotlin
+val showSkeleton = rememberShowSkeleton(loading = state is Loading)
+LopScreenScaffold(…) {
+    if (showSkeleton) return@LopScreenScaffold skeleton(TestTags.X_LOADING)
+    …
+}
+```
+
+- **Pendant la transition d'entrée**, un écran qui chargeait à son ouverture garde son squelette
+  même si ses données arrivent avant la fin : le contenu lourd n'est jamais construit pendant le
+  glissement. Navigation tient l'écran qui entre à `STARTED` et ne le passe `RESUMED` qu'à la fin
+  de son animation : c'est ce signal qui est lu.
+- **Un écran sans chargement** (formulaire de création) n'a jamais de squelette.
+- **Un retour** sur un écran déjà affiché n'en remontre pas : l'état est sauvegardé.
+- **Un rechargement** (Mensuel, Recherche, Analyses : période, filtre ou texte changé) remet le
+  squelette tout de suite, sans délai, à la place d'un « Actualisation… » ou de résultats estompés
+  (P-10). Un ancien résultat n'est jamais montré sous de nouveaux critères.
+- **Un ViewModel sans état de chargement** expose `isLoaded: StateFlow<Boolean>`, posé par
+  `onEach { loaded.value = true }` sur sa source : son flux existant ne change ni de type, ni de
+  valeur initiale, ni d'émissions (P-11).
+- **Une section** qui recharge sous des contrôles toujours utilisables (onglets de Suivi) met le
+  squelette à la place de la section seulement.
+- Le squelette porte le repère de test de l'état de chargement de l'écran, une seule fois, et
+  s'annonce « Chargement… » à TalkBack. À l'arrivée du contenu, il se dissout dessus.
+- Un indicateur d'**action** en cours (Enregistrer, recherche d'icône, génération IA) reste un
+  indicateur : ce n'est pas un contenu qui charge.

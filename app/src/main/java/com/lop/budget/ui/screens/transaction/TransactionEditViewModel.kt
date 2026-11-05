@@ -218,7 +218,10 @@ class TransactionEditViewModel @Inject constructor(
     val editScope: EditScope =
         savedStateHandle.get<String>("scope")?.let { EditScope.valueOf(it) } ?: EditScope.SINGLE
     private val seriesDate: Long? = savedStateHandle["date"]
-    var isLoaded = false
+    private val loaded = MutableStateFlow(false)
+    val isLoaded: Boolean get() = loaded.value
+    /** Valeurs relues, ou formulaire de création prêt ; avant, squelette (LOP-226, CA-06). */
+    val loadedState: StateFlow<Boolean> = loaded.asStateFlow()
 
     private val initialType: TransactionType =
         savedStateHandle.get<String>("type")
@@ -379,7 +382,7 @@ class TransactionEditViewModel @Inject constructor(
 
     private fun markLoaded() {
         initialForm = _form.value
-        isLoaded = true
+        loaded.value = true
     }
 
     // ------------------------------------------------------------- Référentiels

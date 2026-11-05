@@ -24,6 +24,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.components.CategoryBottomSheet
 import com.lop.budget.ui.components.CategoryDeleteConfirmSheet
 import com.lop.budget.ui.components.FloatingCard
@@ -38,6 +40,7 @@ fun CategoryCreateScreen(
     vm: CategoryFormViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = !state.isLoaded)
     var showParentSheet by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
@@ -94,8 +97,8 @@ fun CategoryCreateScreen(
             }
         }
     ) {
-        if (!state.isLoaded) {
-            item { Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+        if (showSkeleton) {
+            skeleton()
         } else {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {

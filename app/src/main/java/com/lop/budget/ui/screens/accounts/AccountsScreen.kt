@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,13 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.ui.components.rememberShowSkeleton
+import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.components.CircleIcon
 import androidx.compose.ui.platform.testTag
 import com.lop.budget.ui.common.TestTags
@@ -43,6 +42,7 @@ fun AccountsScreen(
     vm: AccountsViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = state == AccountsUiState.Loading)
 
     LopScreenScaffold(
         title = stringResource(R.string.accounts_title),
@@ -50,19 +50,13 @@ fun AccountsScreen(
         navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
         modifier = Modifier.testTag(TestTags.SCREEN_ACCOUNT_BALANCES)
     ) {
+        if (showSkeleton) {
+            skeleton(TestTags.ACCOUNTS_LOADING)
+            return@LopScreenScaffold
+        }
         when (val s = state) {
 
-            AccountsUiState.Loading -> item {
-                val loading = stringResource(R.string.loading)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 48.dp)
-                        .testTag(TestTags.ACCOUNTS_LOADING)
-                        .semantics { contentDescription = loading },
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
-            }
+            AccountsUiState.Loading -> skeleton(TestTags.ACCOUNTS_LOADING)
 
             AccountsUiState.Error -> item {
                 Text(
