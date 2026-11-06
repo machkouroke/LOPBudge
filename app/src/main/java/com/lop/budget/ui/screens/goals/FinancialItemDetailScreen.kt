@@ -101,7 +101,7 @@ fun FinancialItemDetailScreen(
             return@LopScreenScaffold
         }
         when (val s = state) {
-            FinancialItemDetailUiState.Loading -> skeleton(TestTags.FINANCIAL_DETAIL_LOADING)
+            FinancialItemDetailUiState.Loading -> Unit // attente courte : rien (P-12)
 
             FinancialItemDetailUiState.Error -> item {
                 Column(

@@ -350,7 +350,7 @@ private fun LazyListScope.analysisContent(
             val trigger: Any = if (mode == CardMode.READY) state.breakdown else mode
             AppearOnChange(trigger = trigger, durationMs = if (mode == CardMode.EMPTY) 150 else 220, initialScale = 0.96f) {
                 when (mode) {
-                    CardMode.REFRESHING -> Unit // jamais rendu : le squelette le remplace
+                    CardMode.REFRESHING -> Box(Modifier.fillMaxWidth().height(200.dp)) // attente courte : rien (P-12)
                     CardMode.FAILED -> ErrorContent(onRetry)
                     CardMode.EMPTY -> EmptyContent(
                         state = state,

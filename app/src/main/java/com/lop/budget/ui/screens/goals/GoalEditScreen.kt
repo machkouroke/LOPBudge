@@ -58,6 +58,7 @@ fun GoalEditScreen(
         modifier = Modifier.testTag(TestTags.SCREEN_EDIT)
     ) {
         if (showSkeleton) return@LopScreenScaffold editLoading("goal.edit")
+        if (state.isLoading) return@LopScreenScaffold // attente courte : rien (P-12)
         if (state.notFound) return@LopScreenScaffold editNotFound("goal.edit", backToList)
         item {
             SaveButton(

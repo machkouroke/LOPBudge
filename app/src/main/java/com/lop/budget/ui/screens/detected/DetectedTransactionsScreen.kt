@@ -26,6 +26,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -61,7 +62,8 @@ fun DetectedTransactionsScreen(
     vm: DetectedTransactionsViewModel = hiltViewModel(),
 ) {
     val pending = vm.pending.collectAsStateWithLifecycle().value
-    val showSkeleton = rememberShowSkeleton(loading = !vm.isLoaded.collectAsStateWithLifecycle().value)
+    val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = !isLoaded)
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
@@ -85,6 +87,7 @@ fun DetectedTransactionsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) {
         if (showSkeleton) return@LopScreenScaffold skeleton()
+        if (!isLoaded) return@LopScreenScaffold // attente courte : rien (P-12)
         if (pending.isEmpty()) {
             item {
                 FloatingCard(Modifier.fillMaxWidth()) {

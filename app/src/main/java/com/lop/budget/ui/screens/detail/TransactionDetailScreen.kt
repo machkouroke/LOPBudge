@@ -137,7 +137,7 @@ fun TransactionDetailScreen(
             snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) }
         ) {
             if (showSkeleton || tx == null) {
-                skeleton()
+                if (showSkeleton) skeleton() // attente courte : rien (P-12)
             } else {
                 val isIncome = tx.type == TransactionType.INCOME
 

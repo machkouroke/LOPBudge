@@ -321,7 +321,7 @@ pleine ou une graisse.
 - [ ] Styles de `MaterialTheme.typography` plutôt que des graisses forcées.
 - [ ] Contrastes vérifiés en clair et en sombre (§ 9) ; sélection lisible sans la couleur.
 - [ ] Animations sur les jetons de `MotionSpec` (§ 13), aucune durée ni courbe locale.
-- [ ] Écran qui charge : `rememberShowSkeleton` + `skeleton(tag)` (§ 13.4), jamais un indicateur tournant.
+- [ ] Écran qui charge : `rememberShowSkeleton` + `skeleton(tag)`, rien pendant une attente courte (§ 13.4).
 - [ ] Vérifié à l'écran, sur le téléphone, dans les quatre combinaisons : clair / sombre × couleur
       dynamique activée / désactivée. Réglages de l'utilisateur remis à leur valeur d'origine.
 
@@ -339,7 +339,7 @@ Inspirés de Silo, mais relevant de l'agencement des écrans, pas de la charte :
 
 ## 13. Mouvement
 
-Source : US **LOP-226** (P-3 à P-11). Toute animation part de `MotionSpec` : aucune durée, courbe ni
+Source : US **LOP-226** (P-3 à P-12). Toute animation part de `MotionSpec` : aucune durée, courbe ni
 ressort défini localement dans un écran.
 
 ### 13.1 Les jetons
@@ -389,28 +389,31 @@ ressort défini localement dans un écran.
 
 ### 13.4 Chargement : le squelette
 
-Un écran qui charge des données montre un **squelette** à la place de son contenu (CA-06, P-9) :
-des cartes grises fixes (`onSurface` à 8 %) aux formes d'une ligne de l'app — pastille, libellé,
-montant. Pas d'indicateur tournant, pas de scintillement : un squelette ne coûte presque rien à
-dessiner, la transition d'entrée reste fluide.
+Un écran qui charge des données montre un **squelette** à la place de son contenu (CA-06, P-9),
+**seulement si l'attente dure** (P-12) : des cartes grises fixes (`onSurface` à 8 %) aux formes
+d'une ligne de l'app — pastille, libellé, montant. Pas d'indicateur tournant, pas de scintillement.
 
 ```kotlin
 val showSkeleton = rememberShowSkeleton(loading = state is Loading)
 LopScreenScaffold(…) {
     if (showSkeleton) return@LopScreenScaffold skeleton(TestTags.X_LOADING)
+    if (state is Loading) return@LopScreenScaffold // attente courte : rien
     …
 }
 ```
 
-- **Pendant la transition d'entrée**, un écran qui chargeait à son ouverture garde son squelette
-  même si ses données arrivent avant la fin : le contenu lourd n'est jamais construit pendant le
-  glissement. Navigation tient l'écran qui entre à `STARTED` et ne le passe `RESUMED` qu'à la fin
-  de son animation : c'est ce signal qui est lu.
-- **Un écran sans chargement** (formulaire de création) n'a jamais de squelette.
-- **Un retour** sur un écran déjà affiché n'en remontre pas : l'état est sauvegardé.
-- **Un rechargement** (Mensuel, Recherche, Analyses : période, filtre ou texte changé) remet le
-  squelette tout de suite, sans délai, à la place d'un « Actualisation… » ou de résultats estompés
-  (P-10). Un ancien résultat n'est jamais montré sous de nouveaux critères.
+- **Attente courte** (moins de `SKELETON_DELAY_MS`, 200 ms — la base locale répond presque
+  toujours avant) : aucun squelette, le contenu arrive directement. Pendant ce temps l'écran
+  n'affiche rien de faux : ni message « vide », ni formulaire aux valeurs non relues.
+- **Attente longue** : le squelette apparaît à 200 ms et reste au moins `SKELETON_MIN_MS`
+  (300 ms), même si les données arrivent juste après : il ne clignote jamais sur une image.
+- Un squelette systématique, affiché même quand les données sont déjà là, fait amateur : c'est
+  la règle d'avant P-12, abandonnée après essai sur le téléphone.
+- **Un retour** sur un écran déjà affiché n'en montre pas : ses données sont déjà là.
+- **Un rechargement** (Mensuel, Recherche, Analyses : période, filtre ou texte changé) suit la
+  même règle (P-10, P-12) : au-delà de 200 ms, le squelette remplace « Actualisation… » ; avant,
+  l'écran garde son attente propre — résultats estompés dans Recherche, carte vide dans Mensuel.
+  Un ancien résultat n'est jamais présenté comme le nouveau.
 - **Un ViewModel sans état de chargement** expose `isLoaded: StateFlow<Boolean>`, posé par
   `onEach { loaded.value = true }` sur sa source : son flux existant ne change ni de type, ni de
   valeur initiale, ni d'émissions (P-11).

@@ -48,7 +48,8 @@ fun CategoriesManageScreen(
     vm: CategoriesManageViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val showSkeleton = rememberShowSkeleton(loading = !vm.isLoaded.collectAsStateWithLifecycle().value)
+    val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = !isLoaded)
     val pendingDelete by vm.pendingDelete.collectAsStateWithLifecycle()
     var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
 
@@ -108,6 +109,7 @@ fun CategoriesManageScreen(
 
         // Squelette sous les onglets Dépenses / Revenus, qui restent utilisables.
         if (showSkeleton) return@LopScreenScaffold skeleton()
+        if (!isLoaded) return@LopScreenScaffold // attente courte : rien (P-12)
         val categories =
             if (selectedType == TransactionType.EXPENSE) state.expense else state.income
 

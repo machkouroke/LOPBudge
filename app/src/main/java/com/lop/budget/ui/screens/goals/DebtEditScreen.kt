@@ -75,6 +75,7 @@ fun DebtEditScreen(
         modifier = Modifier.testTag(TestTags.SCREEN_EDIT)
     ) {
         if (showSkeleton) return@LopScreenScaffold editLoading("debt.edit")
+        if (state.isLoading) return@LopScreenScaffold // attente courte : rien (P-12)
         if (state.notFound) return@LopScreenScaffold editNotFound("debt.edit", backToList)
         item {
             SaveButton(

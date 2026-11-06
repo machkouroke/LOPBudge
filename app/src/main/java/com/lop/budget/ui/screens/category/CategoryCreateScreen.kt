@@ -97,8 +97,8 @@ fun CategoryCreateScreen(
             }
         }
     ) {
-        if (showSkeleton) {
-            skeleton()
+        if (showSkeleton || !state.isLoaded) {
+            if (showSkeleton) skeleton() // attente courte : rien (P-12)
         } else {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {

@@ -88,6 +88,7 @@ fun SeriesCalendarScreen(
     val showSkeleton = rememberShowSkeleton(
         loading = state.month == null && state.content !is CalendarContent.Error && state.content !is CalendarContent.Unavailable
     )
+    val showDaySkeleton = rememberShowSkeleton(loading = state.selectedDay != null && state.selection == null)
 
     LaunchedEffect(vm) {
         vm.events.collect { event ->
@@ -118,7 +119,7 @@ fun SeriesCalendarScreen(
             return@LopScreenScaffold
         }
         if (month == null) {
-            if (content is CalendarContent.Error) item { ErrorBlock(vm::retry) } else skeleton()
+            if (content is CalendarContent.Error) item { ErrorBlock(vm::retry) }
             return@LopScreenScaffold
         }
 
@@ -158,7 +159,7 @@ fun SeriesCalendarScreen(
             state.selectedDay == null -> item {
                 MessageText(stringResource(R.string.series_calendar_select_day), TestTags.SERIES_CALENDAR_SELECT_HINT)
             }
-            selection == null -> skeleton(cards = 1)
+            selection == null -> if (showDaySkeleton) skeleton(cards = 1)
             selection is DaySelection.Empty -> item {
                 MessageText(stringResource(R.string.series_calendar_empty_day), TestTags.SERIES_CALENDAR_EMPTY_DAY)
             }

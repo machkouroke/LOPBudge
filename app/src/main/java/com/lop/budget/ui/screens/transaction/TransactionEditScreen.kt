@@ -58,7 +58,8 @@ fun TransactionEditScreen(
     vm: TransactionEditViewModel = hiltViewModel(),
 ) {
     val form by vm.form.collectAsStateWithLifecycle()
-    val showSkeleton = rememberShowSkeleton(loading = !vm.loadedState.collectAsStateWithLifecycle().value)
+    val isLoaded by vm.loadedState.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = !isLoaded)
     val categories by vm.categories.collectAsStateWithLifecycle()
     val recentCategories by vm.recentCategories.collectAsStateWithLifecycle()
     val suggestedCategories by vm.suggestedCategories.collectAsStateWithLifecycle()
@@ -138,6 +139,7 @@ fun TransactionEditScreen(
         }
     ) {
         if (showSkeleton) return@LopScreenScaffold skeleton()
+        if (!isLoaded) return@LopScreenScaffold // attente courte : rien (P-12)
         item {
             AmountHeader(
                 form = form,

@@ -51,7 +51,7 @@ fun AccountDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) {
         if (showSkeleton || account == null) {
-            skeleton()
+            if (showSkeleton) skeleton() // attente courte : rien (P-12)
         } else {
             val color = Color(account.colorArgb)
             

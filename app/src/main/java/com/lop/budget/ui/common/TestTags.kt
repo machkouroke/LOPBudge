@@ -57,6 +57,14 @@ object TestTags {
     const val HOME_MONTH_INCOME = "home.month.income"
     const val HOME_MONTH_ERROR = "home.month.error"
     const val HOME_SEE_ALL_ACCOUNTS = "home.see.all.accounts"
+
+    // Analyses — période mensuelle ou annuelle (LOP-234)
+    const val ANALYTICS_PERIOD_PILL = "analytics.period.pill"
+    const val ANALYTICS_PERIOD_PREVIOUS = "analytics.period.previous"
+    const val ANALYTICS_PERIOD_NEXT = "analytics.period.next"
+    const val ANALYTICS_MODE_MONTH = "analytics.mode.month"
+    const val ANALYTICS_MODE_YEAR = "analytics.mode.year"
+    const val ANALYTICS_YEAR_PICKER = "analytics.year.picker"
     const val HOME_ACCOUNT_CARD = "home.account.card"
 
     // Accounts & current balances (LOP-13)

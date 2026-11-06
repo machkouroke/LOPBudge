@@ -61,7 +61,8 @@ fun TagsManageScreen(
     vm: TagsManageViewModel = hiltViewModel(),
 ) {
     val tags by vm.tags.collectAsStateWithLifecycle()
-    val showSkeleton = rememberShowSkeleton(loading = !vm.isLoaded.collectAsStateWithLifecycle().value)
+    val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = !isLoaded)
     var editingTag by remember { mutableStateOf<TagEntity?>(null) }
     var showCreateSheet by remember { mutableStateOf(false) }
     var tagToDelete by remember { mutableStateOf<TagEntity?>(null) }
@@ -88,6 +89,7 @@ fun TagsManageScreen(
         }
     ) {
         if (showSkeleton) return@LopScreenScaffold skeleton()
+        if (!isLoaded) return@LopScreenScaffold // attente courte : rien (P-12)
         if (tags.isEmpty()) {
             item {
                 Text(

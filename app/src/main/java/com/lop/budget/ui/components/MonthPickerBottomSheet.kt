@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -116,6 +117,69 @@ fun MonthPickerBottomSheet(
                 }
             }
 
+            Spacer(Modifier.height(28.dp))
+        }
+    }
+}
+
+/**
+ * Choix direct d'une année (LOP-234, CA-03) : pages de 12 années, l'année affichée en tête de la
+ * dernière rangée. Un appui valide et ferme ; fermer la feuille annule.
+ */
+@Composable
+fun YearPickerBottomSheet(
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var first by remember(selected) { mutableStateOf(selected - 9) }
+
+    LopBottomSheet(onDismiss = onDismiss, modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.year_picker_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { first -= 12 }) {
+                    Icon(Icons.Filled.ChevronLeft, contentDescription = stringResource(R.string.year_picker_previous))
+                }
+                Text(
+                    text = "$first – ${first + 11}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = { first += 12 }) {
+                    Icon(Icons.Filled.ChevronRight, contentDescription = stringResource(R.string.year_picker_next))
+                }
+            }
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                items((first until first + 12).toList()) { year ->
+                    PickerPill(
+                        text = year.toString(),
+                        isSelected = year == selected,
+                        onClick = {
+                            onSelect(year)
+                            onDismiss()
+                        },
+                    )
+                }
+            }
             Spacer(Modifier.height(28.dp))
         }
     }
@@ -233,8 +297,19 @@ private fun MonthPill(
     locale: Locale,
     onClick: () -> Unit,
 ) {
-    val isSelected = selected.year == year && selected.month == month
+    PickerPill(
+        text = month.getDisplayName(TextStyle.SHORT, locale).replaceFirstChar { it.uppercase(locale) },
+        isSelected = selected.year == year && selected.month == month,
+        onClick = onClick,
+    )
+}
 
+@Composable
+private fun PickerPill(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
     val shape = RoundedCornerShape(28.dp)
 
     val container = if (isSelected) {
@@ -276,7 +351,7 @@ private fun MonthPill(
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
-                text = month.getDisplayName(TextStyle.SHORT, locale).replaceFirstChar { it.uppercase(locale) },
+                text = text,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                 color = content,

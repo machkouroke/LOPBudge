@@ -1,35 +1,47 @@
 package com.lop.budget.ui.screens.analytics
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.AutoGraph
-import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ChevronLeft
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -39,12 +51,12 @@ import com.lop.budget.R
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.DonutSlice
-import com.lop.budget.ui.components.FloatingCard
 import com.lop.budget.ui.components.LopScreenScaffold
-import com.lop.budget.ui.components.clickableNoRipple
+import com.lop.budget.ui.components.MonthPickerBottomSheet
+import com.lop.budget.ui.components.YearPickerBottomSheet
 import com.lop.budget.ui.components.rememberShowSkeleton
 import com.lop.budget.ui.components.skeleton
-import com.lop.budget.ui.theme.LopTheme
+import com.lop.budget.ui.components.surfaceRelief
 import com.lop.budget.util.Format
 
 @Composable
@@ -52,8 +64,13 @@ fun AnalyticsScreen(
     vm: AnalyticsViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val showSkeleton = rememberShowSkeleton(loading = !vm.isLoaded.collectAsStateWithLifecycle().value)
-    val ext = LopTheme.extended
+    val period by vm.period.collectAsStateWithLifecycle()
+    val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
+    // Données lues pour la période affichée seulement : celles d'avant un geste ne se présentent
+    // jamais sous la nouvelle pastille (LOP-234, CA-04).
+    val current = isLoaded && state.mode == period.mode && state.month == period.month
+    val showSkeleton = rememberShowSkeleton(loading = !current)
+    var showPicker by rememberSaveable { mutableStateOf(false) }
 
     // Limite à 6 tranches + "Autres" pour la lisibilité.
     val top = state.breakdown.take(6)
@@ -64,17 +81,23 @@ fun AnalyticsScreen(
         if (othersTotal > 0) add(DonutSlice(othersTotal.toDouble(), Color(0xFF9E9E9E), stringResource(R.string.others)))
     }
 
-    val title = when (state.type) {
-        TransactionType.EXPENSE -> stringResource(R.string.expense)
-        TransactionType.INCOME -> stringResource(R.string.income)
-    }
-
     LopScreenScaffold(
-        title = title,
+        title = stringResource(R.string.analytics_title),
         onBack = null,
-        modifier = Modifier.testTag(TestTags.SCREEN_ANALYTICS)
+        modifier = Modifier.testTag(TestTags.SCREEN_ANALYTICS),
+        // Fixé sous le titre, hors de la liste : visible et utilisable pendant le défilement (CA-05).
+        header = {
+            PeriodHeader(
+                period = period,
+                onPrevious = vm::previousPeriod,
+                onNext = vm::nextPeriod,
+                onPick = { showPicker = true },
+                onMode = vm::setMode,
+            )
+        },
     ) {
         if (showSkeleton) return@LopScreenScaffold skeleton()
+        if (!current) return@LopScreenScaffold // attente courte : rien (P-12)
         item {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
@@ -142,203 +165,163 @@ fun AnalyticsScreen(
             }
         }
 
-        // Section Spent in budget period
+        // P-6 : seuls des montants lus pour la période restent ; les blocs factices (courbe simulée,
+        // « vs période précédente », Budget, Prévision, « Aujourd'hui ») sont retirés.
         item {
-            Spacer(Modifier.height(24.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column {
-                    val totalSpent = state.breakdown.sumOf { it.total }
-                    Text(stringResource(R.string.analytics_spent_period), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(4.dp))
-                    Text(Format.money(totalSpent, state.currency), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.material3.Icon(Icons.Filled.ArrowUpward, null, tint = com.lop.budget.ui.theme.ExpenseCoral, modifier = Modifier.size(14.dp))
-                        Text(stringResource(R.string.analytics_vs_last_period, Format.money(109.89, state.currency)), style = MaterialTheme.typography.bodyMedium, color = com.lop.budget.ui.theme.ExpenseCoral)
-                    }
-                }
-                com.lop.budget.ui.components.CircleIcon(
-                    icon = Icons.Filled.Restaurant, // Placeholder
-                    tint = Color.Black,
-                    background = com.lop.budget.ui.theme.CategoryOrange,
-                    size = 64.dp
-                )
+            Column(Modifier.fillMaxWidth().padding(top = 32.dp)) {
+                Text(stringResource(R.string.analytics_spent_period), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(4.dp))
+                Text(Format.money(state.breakdown.sumOf { it.total }, state.currency), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
             }
         }
+    }
 
-        // Graphique simulé (Ligne)
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .padding(vertical = 12.dp)
-            ) {
-                // Ligne de limite budget
-                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawLine(
-                        color = Color.DarkGray,
-                        start = androidx.compose.ui.geometry.Offset(0f, size.height * 0.2f),
-                        end = androidx.compose.ui.geometry.Offset(size.width, size.height * 0.2f),
-                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-                    )
-                }
-                Text("$1 500", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.TopEnd))
-                
-                // Ligne Actual
-                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawLine(
-                        color = com.lop.budget.ui.theme.CategoryOrange,
-                        start = androidx.compose.ui.geometry.Offset(0f, size.height * 0.8f),
-                        end = androidx.compose.ui.geometry.Offset(size.width * 0.4f, size.height * 0.8f),
-                        strokeWidth = 6f
-                    )
-                    drawCircle(color = com.lop.budget.ui.theme.CategoryOrange, radius = 12f, center = androidx.compose.ui.geometry.Offset(0f, size.height * 0.8f))
-                }
-                
-                // Ligne Forecast
-                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawLine(
-                        color = Color.Gray,
-                        start = androidx.compose.ui.geometry.Offset(0f, size.height * 0.8f),
-                        end = androidx.compose.ui.geometry.Offset(size.width, size.height * 0.3f),
-                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f),
-                        strokeWidth = 4f
-                    )
-                }
-                
-                // Légende X-axis
-                Row(
-                    modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("1", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("6", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("11", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("16", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("20", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("25", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("30", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-        
-        // Légende Graphique
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(10.dp).clip(CircleShape).background(com.lop.budget.ui.theme.CategoryOrange))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.analytics_actual), style = MaterialTheme.typography.bodyMedium)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(10.dp).clip(CircleShape).background(Color.Gray))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.analytics_forecast), style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
-
-        // Cartes Budget & Forecast
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
-                // Carte Budget
-                FloatingCard(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
-                ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            androidx.compose.material3.Icon(Icons.Filled.AccountBalanceWallet, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.analytics_budget), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Spacer(Modifier.height(16.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Mini Donut Chart
-                            Box(modifier = Modifier.size(60.dp), contentAlignment = Alignment.Center) {
-                                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                                    drawArc(color = Color.DarkGray, startAngle = 0f, sweepAngle = 360f, useCenter = false, style = androidx.compose.ui.graphics.drawscope.Stroke(12f))
-                                    drawArc(color = com.lop.budget.ui.theme.CategoryOrange, startAngle = -90f, sweepAngle = 32f, useCenter = false, style = androidx.compose.ui.graphics.drawscope.Stroke(12f))
-                                }
-                                Text("9%", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            }
-                            Spacer(Modifier.width(16.dp))
-                            Column {
-                                Text(Format.money(1372.0, state.currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                                Text(stringResource(R.string.analytics_left), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-                
-                // Carte Forecast
-                FloatingCard(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
-                ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            androidx.compose.material3.Icon(Icons.Filled.AutoGraph, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.analytics_forecast), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Spacer(Modifier.height(20.dp))
-                        Text(Format.money(430.0, state.currency), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(4.dp))
-                        Text(stringResource(R.string.analytics_spend_forecast, Format.money(45.73, state.currency)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
-        
-        // Today Transactions
-        item {
-            Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.analytics_today), style = MaterialTheme.typography.titleMedium)
-                Text(Format.money(128.0, state.currency), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        
-        item {
-            FloatingCard(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    com.lop.budget.ui.components.CircleIcon(
-                        icon = Icons.Filled.Restaurant, // Placeholder
-                        tint = Color.Black,
-                        background = com.lop.budget.ui.theme.CategoryOrange,
-                        size = 48.dp
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.other), style = MaterialTheme.typography.titleMedium)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("R", style = MaterialTheme.typography.labelSmall, modifier = Modifier.background(Color.DarkGray, androidx.compose.foundation.shape.RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 1.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.other), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    Text(Format.money(128.0, state.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                }
-            }
+    // CA-03 : un appui sur un mois ou une année valide ; fermer la feuille annule.
+    if (showPicker) {
+        when (period.mode) {
+            AnalysisMode.MONTH -> MonthPickerBottomSheet(
+                selected = period.month,
+                currentMonth = vm.currentMonth(),
+                onSelect = vm::pickMonth,
+                onDismiss = { showPicker = false },
+            )
+            AnalysisMode.YEAR -> YearPickerBottomSheet(
+                selected = period.month.year,
+                onSelect = vm::pickYear,
+                onDismiss = { showPicker = false },
+                modifier = Modifier.testTag(TestTags.ANALYTICS_YEAR_PICKER),
+            )
         }
     }
 }
 
+/** Pastille de période entre ses flèches, puis le choix Mois / Année (CA-01). Aucun mode Semaine. */
 @Composable
-private fun Seg(label: String, selected: Boolean, color: Color, modifier: Modifier, onClick: () -> Unit) {
-    Surface(
-        modifier = modifier.clickableNoRipple(onClick),
-        shape = CircleShape,
-        color = if (selected) color.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+private fun PeriodHeader(
+    period: AnalyticsPeriod,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onPick: () -> Unit,
+    onMode: (AnalysisMode) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(label, color = if (selected) color else MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(vertical = 12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // CA-03, P-5 : commandes visibles, sans geste de balayage.
+            RoundButton(Icons.Outlined.ChevronLeft, stringResource(R.string.analytics_previous_period), TestTags.ANALYTICS_PERIOD_PREVIOUS, onPrevious)
+            PeriodPill(period, onPrevious, onNext, onPick, Modifier.weight(1f))
+            RoundButton(Icons.Outlined.ChevronRight, stringResource(R.string.analytics_next_period), TestTags.ANALYTICS_PERIOD_NEXT, onNext)
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .padding(4.dp),
+        ) {
+            Seg(stringResource(R.string.analytics_mode_month), period.mode == AnalysisMode.MONTH, Modifier.weight(1f).testTag(TestTags.ANALYTICS_MODE_MONTH)) { onMode(AnalysisMode.MONTH) }
+            Seg(stringResource(R.string.analytics_mode_year), period.mode == AnalysisMode.YEAR, Modifier.weight(1f).testTag(TestTags.ANALYTICS_MODE_YEAR)) { onMode(AnalysisMode.YEAR) }
+        }
+    }
+}
+
+/** « Mai 2026 » en mode Mois (P-7), « 2026 » en mode Année. */
+private fun AnalyticsPeriod.label(): String =
+    if (mode == AnalysisMode.MONTH) Format.monthYear(month) else month.year.toString()
+
+/**
+ * CA-02, P-4 : doigt vers la gauche → période suivante, vers la droite → précédente, au-delà de
+ * 48 dp. Un appui sans glissement ouvre le choix direct (CA-03).
+ */
+@Composable
+private fun PeriodPill(
+    period: AnalyticsPeriod,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onPick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val previous by rememberUpdatedState(onPrevious)
+    val next by rememberUpdatedState(onNext)
+    val shape = RoundedCornerShape(50)
+    Row(
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .surfaceRelief(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, shape)
+            .clip(shape)
+            .pointerInput(Unit) {
+                val threshold = 48.dp.toPx()
+                var dx = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { dx = 0f },
+                    onDragEnd = {
+                        if (dx <= -threshold) next() else if (dx >= threshold) previous()
+                    },
+                ) { change, amount ->
+                    change.consume()
+                    dx += amount
+                }
+            }
+            .clickable(onClickLabel = stringResource(R.string.analytics_pick_period), role = Role.Button, onClick = onPick)
+            .testTag(TestTags.ANALYTICS_PERIOD_PILL)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.CalendarMonth, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.width(8.dp))
+        Text(period.label(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+/** Bouton rond d'en-tête (`DESIGN.md` § 6). */
+@Composable
+private fun RoundButton(icon: ImageVector, description: String, tag: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .surfaceRelief(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+            .clip(CircleShape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .testTag(tag),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = description, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+/** Segment du choix Mois / Année, sur le modèle des onglets de Suivi. */
+@Composable
+private fun Seg(label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Surface(
+        modifier = modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(12.dp))
+            // Le mode choisi s'annonce sélectionné ; la graisse le distingue sans la couleur.
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick),
+        color = if (selected) MaterialTheme.colorScheme.surface else Color.Transparent,
+        tonalElevation = if (selected) 2.dp else 0.dp,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }

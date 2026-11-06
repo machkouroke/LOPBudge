@@ -54,7 +54,8 @@ fun AccountsManageScreen(
     vm: AccountsManageViewModel = hiltViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val showSkeleton = rememberShowSkeleton(loading = !vm.isLoaded.collectAsStateWithLifecycle().value)
+    val isLoaded by vm.isLoaded.collectAsStateWithLifecycle()
+    val showSkeleton = rememberShowSkeleton(loading = !isLoaded)
     var accountToDelete by remember { mutableStateOf<AccountEntity?>(null) }
 
     accountToDelete?.let { account ->
@@ -95,6 +96,7 @@ fun AccountsManageScreen(
         }
     ) {
         if (showSkeleton) return@LopScreenScaffold skeleton()
+        if (!isLoaded) return@LopScreenScaffold // attente courte : rien (P-12)
         if (state.activeAccounts.isNotEmpty()) {
             item {
                 Text(

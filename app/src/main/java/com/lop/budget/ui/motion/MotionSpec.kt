@@ -48,6 +48,12 @@ object MotionSpec {
     const val TAB_OUT_MS = 200
     const val TAB_IN_MS = 300
 
+    // --- Squelette (LOP-226, CA-06, P-12) ---
+    /** Attente en deçà de laquelle aucun squelette n'apparaît : le contenu arrive directement. */
+    const val SKELETON_DELAY_MS = 200L
+    /** Durée minimale d'un squelette affiché : il ne clignote jamais sur une seule image. */
+    const val SKELETON_MIN_MS = 300L
+
     // --- Ressorts de déplacement (LOP-226, CA-05, P-7) ---
     // Un ressort garde sa vitesse quand sa cible change : un mouvement interrompu repart de là
     // où il est, sans à-coup. Réservés aux éléments qu'on peut réorienter en plein vol.

@@ -132,14 +132,17 @@
     <string name="tx_detail_delete_future">Les suivantes uniquement</string>
 
     <!-- Analytics Screen -->
+    <!-- Période des Analyses (LOP-234) -->
+    <string name="analytics_title">Analyses</string>
+    <string name="analytics_mode_month">Mois</string>
+    <string name="analytics_mode_year">Année</string>
+    <string name="analytics_previous_period">Période précédente</string>
+    <string name="analytics_next_period">Période suivante</string>
+    <string name="analytics_pick_period">Choisir la période</string>
+    <string name="year_picker_title">Choisir une année</string>
+    <string name="year_picker_previous">Années précédentes</string>
+    <string name="year_picker_next">Années suivantes</string>
     <string name="analytics_spent_period">Dépensé sur la période</string>
-    <string name="analytics_vs_last_period">%1$s vs période précédente</string>
-    <string name="analytics_actual">Réel</string>
-    <string name="analytics_forecast">Prévision</string>
-    <string name="analytics_budget">Budget</string>
-    <string name="analytics_left">Restant</string>
-    <string name="analytics_spend_forecast">Dépense %1$s / jour\npour rester dans la limite</string>
-    <string name="analytics_today">Aujourd\'hui</string>
 
     <string name="see_all">Voir tout</string>
     <string name="no_accounts_to_show">Aucun compte à afficher</string>

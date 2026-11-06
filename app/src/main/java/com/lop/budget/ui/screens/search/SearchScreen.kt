@@ -136,6 +136,9 @@ fun SearchScreen(
     // Tant que les lignes ne sont pas celles des critères affichés, un squelette les remplace
     // (LOP-226, CA-06, P-10) : jamais un ancien résultat présenté comme le nouveau (CA-05).
     val showSkeleton = rememberShowSkeleton(loading = !state.isPrompt && !state.loadFailed && state.isRefreshing)
+    // Avant que le squelette prenne le relais, les lignes d'une recherche précédente sont
+    // estompées, jamais présentées comme le nouveau résultat (CA-05 de LOP-228).
+    val listAlpha = if (state.isRefreshing) 0.4f else 1f
 
     LopScreenScaffold(
         title = stringResource(R.string.monthly_transactions_title),
@@ -174,7 +177,7 @@ fun SearchScreen(
             state.isPrompt -> item(key = "search_prompt") { Message(R.string.search_prompt, TestTags.SEARCH_PROMPT) }
             state.loadFailed -> item(key = "search_error") { ErrorContent(onRetry = vm::retry) }
             showSkeleton -> skeleton(TestTags.SEARCH_REFRESHING)
-            state.count == 0 ->
+            !state.isRefreshing && state.count == 0 ->
                 item(key = "search_empty") { Message(R.string.analysis_empty, TestTags.SEARCH_EMPTY) }
             else -> dayGroupItems.forEach { (date, itemsToDisplay) ->
                 // Une pile en tête du jour porte ses propres dates : pas d'en-tête au-dessus.
@@ -186,7 +189,7 @@ fun SearchScreen(
                             text = Format.fullDate(date),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(vertical = 8.dp),
+                            modifier = Modifier.alpha(listAlpha).padding(vertical = 8.dp),
                         )
                     }
                 }
@@ -195,7 +198,7 @@ fun SearchScreen(
                     if (sid != null && multiOccurrencesSeries.containsKey(sid)) "stack_$sid"
                     else "${twr.transaction.id}_${txVersions[twr.transaction.id] ?: 0}"
                 }) { twr ->
-                    Box(Modifier.testTag(TestTags.TRANSACTION_ITEM)) {
+                    Box(Modifier.alpha(listAlpha).testTag(TestTags.TRANSACTION_ITEM)) {
                         val stack = twr.transaction.seriesId?.let(multiOccurrencesSeries::get)
                         if (stack != null) {
                             StackedTransactionGroup(

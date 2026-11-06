@@ -175,7 +175,7 @@ private fun LazyListScope.listContent(
     // Squelette sous les onglets et filtres, qui restent utilisables (LOP-226, CA-06).
     if (showSkeleton) return skeleton(TestTags.GOAL_LIST_LOADING)
     when (load) {
-        ListLoad.Loading -> skeleton(TestTags.GOAL_LIST_LOADING)
+        ListLoad.Loading -> Unit // attente courte : rien (P-12)
         ListLoad.Error -> item {
             Column(
                 Modifier.fillMaxWidth().padding(48.dp).testTag(TestTags.GOAL_LIST_ERROR),

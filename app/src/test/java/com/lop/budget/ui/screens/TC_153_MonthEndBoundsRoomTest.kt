@@ -303,7 +303,7 @@ class MonthEndBoundsRoomTest {
     private fun analyticsVm(type: TransactionType): AnalyticsViewModel {
         val handle = SavedStateHandle(mapOf("type" to type.name, "ym" to MARCH.toString()))
         val factory = viewModelFactory {
-            initializer { AnalyticsViewModel(handle, ObserveMonthlyAnalyticsUseCase(observeTransactions), settings) }
+            initializer { AnalyticsViewModel(handle, ObserveMonthlyAnalyticsUseCase(observeTransactions), settings, CLOCK) }
         }
         return ViewModelProvider(store, factory)[AnalyticsViewModel::class.java]
     }

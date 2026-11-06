@@ -19,8 +19,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -28,45 +29,35 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.lop.budget.R
 import com.lop.budget.ui.motion.MotionSpec
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
 
 /**
- * Vrai tant qu'un écran doit montrer son squelette plutôt que son contenu (LOP-226, CA-06, P-9) :
- * il charge, ou il chargeait à son ouverture et sa transition d'entrée n'est pas finie. Le contenu
- * lourd n'est ainsi jamais construit pendant le glissement, qui reste fluide.
- *
- * Un écran ouvert sans rien à charger (formulaire de création) n'a jamais de squelette.
+ * Vrai quand l'écran doit montrer son squelette (LOP-226, CA-06, P-12) : seulement si l'attente
+ * dure. Un chargement plus court que [MotionSpec.SKELETON_DELAY_MS] n'affiche rien, le contenu
+ * arrive directement ; l'écran n'affiche alors ni squelette ni contenu partiel. Une fois affiché,
+ * le squelette reste au moins [MotionSpec.SKELETON_MIN_MS] : il ne clignote jamais.
  */
 @Composable
 fun rememberShowSkeleton(loading: Boolean): Boolean {
-    val loadingAtOpen = rememberSaveable { loading }
-    return loading || (loadingAtOpen && !rememberScreenEntered())
-}
-
-/**
- * Vrai une fois la transition d'entrée de l'écran terminée. Navigation tient l'écran qui entre à
- * STARTED et ne le passe RESUMED qu'à la fin de son animation. Hors navigation (écran testé seul),
- * l'hôte est déjà RESUMED : vrai tout de suite. Retenu : un retour sur l'écran ne rejoue rien.
- */
-@Composable
-private fun rememberScreenEntered(): Boolean {
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var entered by rememberSaveable { mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
-    if (!entered) {
-        LaunchedEffect(lifecycle) {
-            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
-            entered = true
+    // Instant d'apparition, sur l'horloge des images ; null tant qu'il n'est pas affiché.
+    var shownAt by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(loading) {
+        val since = shownAt
+        if (loading && since == null) {
+            delay(MotionSpec.SKELETON_DELAY_MS)
+            shownAt = withFrameMillis { it }
+        } else if (!loading && since != null) {
+            delay((MotionSpec.SKELETON_MIN_MS - (withFrameMillis { it } - since)).coerceAtLeast(0))
+            shownAt = null
         }
     }
-    return entered
+    return shownAt != null
 }
 
 /**
- * Squelette d'un contenu qui charge (LOP-226, CA-06, P-9) : des cartes aux formes des lignes de
+ * Squelette d'un contenu qui charge (LOP-226, CA-06, P-9, P-12) : des cartes aux formes des lignes de
  * l'app, sans donnée ni scintillement, presque gratuites à dessiner. À l'arrivée du contenu, il se
  * dissout dessus. Annoncé « Chargement… » par TalkBack.
  *

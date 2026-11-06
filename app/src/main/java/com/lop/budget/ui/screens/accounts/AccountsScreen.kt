@@ -56,7 +56,7 @@ fun AccountsScreen(
         }
         when (val s = state) {
 
-            AccountsUiState.Loading -> skeleton(TestTags.ACCOUNTS_LOADING)
+            AccountsUiState.Loading -> Unit // attente courte : rien (P-12)
 
             AccountsUiState.Error -> item {
                 Text(
