@@ -484,9 +484,11 @@ class FinancialItemUpdateUiTest {
             j.count(TestTags.SCREEN_EDIT) == 0 && j.count(TestTags.SCREEN_HOME) == 0
     }
 
+    /** Le titre porte le nom dès le chargement, le squelette reste encore 300 ms au plus (LOP-237). */
     private fun awaitDetail(name: String) = j.await("détail « $name » chargé, seul affiché") {
         j.count(TestTags.SCREEN_FINANCIAL_DETAIL) == 1 && j.count(TestTags.SCREEN_EDIT) == 0 &&
-            j.count(hasText(name) and j.inside(TestTags.SCREEN_FINANCIAL_DETAIL)) > 0
+            j.count(hasText(name) and j.inside(TestTags.SCREEN_FINANCIAL_DETAIL)) > 0 &&
+            j.count(TestTags.FINANCIAL_DETAIL_LOADING) == 0
     }
 
     private fun awaitSheet() = j.await("feuille Quitter / Continuer affichée") { j.count("form.leave") == 1 }

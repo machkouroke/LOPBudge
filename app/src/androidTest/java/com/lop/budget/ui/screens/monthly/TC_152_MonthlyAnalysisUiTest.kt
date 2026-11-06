@@ -689,6 +689,8 @@ class MonthlyAnalysisUiTest {
         reveal(row)
         click(composeRule.onNode(hasClickAction() and hasAnyAncestor(row) and hasText("QA-40 Courses mars", substring = true)))
         awaitTag(case, "CA-08", TestTags.SCREEN_DETAIL)
+        // L'écran est là avant son contenu : un squelette tenu 300 ms peut le précéder (LOP-237).
+        awaitTag(case, "CA-08", TestTags.TRANSACTION_DETAIL_TITLE)
         check(case, "CA-08", "détail de EC, lu ${texts(TestTags.TRANSACTION_DETAIL_TITLE)}",
             texts(TestTags.TRANSACTION_DETAIL_TITLE).any { it.contains("QA-40 Courses mars") })
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()

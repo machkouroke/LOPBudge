@@ -487,9 +487,11 @@ class TransactionLinkUiTest {
         j.count(tag) >= 1
     }
 
+    /** Le titre porte le nom dès le chargement, le squelette reste encore 300 ms au plus (LOP-237). */
     private fun awaitDetail(name: String) = j.await("détail « $name » seul affiché") {
         j.count(TestTags.SCREEN_FINANCIAL_DETAIL) == 1 && j.count(TestTags.SCREEN_GOALS) == 0 &&
-            j.count(TestTags.SCREEN_EDIT) == 0 && j.count(hasText(name) and j.inside(TestTags.SCREEN_FINANCIAL_DETAIL)) > 0
+            j.count(TestTags.SCREEN_EDIT) == 0 && j.count(hasText(name) and j.inside(TestTags.SCREEN_FINANCIAL_DETAIL)) > 0 &&
+            j.count(TestTags.FINANCIAL_DETAIL_LOADING) == 0
     }
 
     /** Détail → action d'ajout → formulaire ; la catégorie se choisit par « ⋯ Plus » (LOP-227 P-7). */

@@ -94,7 +94,7 @@ class QuickEditJourneyTest {
         openDetail("Courses Hebdomadaires")
         expect("témoin — catégorie de départ", listOf("Courses"), categoryValue())
 
-        openCategoryPicker()
+        openCategoryPickerFromDetail()
         pickCategory("Logement")
 
         expect("aucune feuille de portée récurrente", 0, count(TestTags.RECURRING_EDIT_SHEET))
@@ -112,7 +112,7 @@ class QuickEditJourneyTest {
         openDetail("Loyer")
         expect("témoin — catégorie de départ", listOf("Loyer"), categoryValue())
 
-        openCategoryPicker()
+        openCategoryPickerFromDetail()
         expect("sélecteur ouvert, aucune feuille de portée", 0, count(TestTags.RECURRING_EDIT_SHEET))
         pickCategory("Alimentation")
 
@@ -123,7 +123,7 @@ class QuickEditJourneyTest {
     private fun Journey.categoryValue() = texts(TestTags.TRANSACTION_DETAIL_FIELD_CATEGORY + TestTags.VALUE_SUFFIX, merged = false)
 
     /** La ligne Catégorie du détail est cliquable sous son étiquette : son nœud cliquable est un enfant. */
-    private fun Journey.openCategoryPicker() {
+    private fun Journey.openCategoryPickerFromDetail() {
         click(composeRule.onNode(hasClickAction() and inside(TestTags.TRANSACTION_DETAIL_FIELD_CATEGORY)))
         await("sélecteur de catégorie ouvert") { count(TestTags.PICKER_CATEGORY_SHEET) == 1 }
         expect("titre du sélecteur", 1, count(hasText("Choisir une catégorie"), merged = true))

@@ -546,6 +546,8 @@ class CategoryCrudUiTest {
         awaitTag(TestTags.SETTINGS_NAV_CATEGORIES, "réglages non rendus")
         composeRule.onNodeWithTag(TestTags.SETTINGS_NAV_CATEGORIES).performScrollTo().performClick()
         awaitTag(TestTags.SCREEN_CATEGORIES, "gestion des catégories non rendue")
+        // L'écran est là avant ses lignes : un squelette tenu 300 ms peut les précéder (LOP-237).
+        awaitTag("category.edit.$libreId", "lignes de la gestion des catégories non chargées")
     }
 
     private fun openEditFromManage(categoryId: Long, caseId: String) {

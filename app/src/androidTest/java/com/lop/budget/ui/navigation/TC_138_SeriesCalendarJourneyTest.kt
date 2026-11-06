@@ -600,6 +600,8 @@ class SeriesCalendarJourneyTest {
 
     private fun scrollMarchListToR07(label: String): Anchor {
         awaitScreen(label, TestTags.SCREEN_SERIES_CALENDAR)
+        // La liste longue peut passer par un squelette tenu 300 ms : l'écran seul ne prouve pas son en-tête (LOP-237).
+        await(label, "en-tête du mois chargé") { count(TestTags.SERIES_CALENDAR_MONTH_PICKER) == 1 }
         pickMonth(label, 2026, "Mars")
         awaitDayCount(label, MAR_2, 12)
         click(shownDay(MAR_2))

@@ -533,11 +533,14 @@ class FinancialItemDetailUiTest {
     /**
      * Détail seul affiché et chargé : le nom attendu est lu dans le titre ou dans `field_name`. Au
      * retour d'un écran suivant, la liste garde sa position et `field_name`, en tête, peut ne pas
-     * être composé ; le titre, lui, ne porte le nom qu'une fois l'élément chargé.
+     * être composé ; le titre, lui, ne porte le nom qu'une fois l'élément chargé. Le squelette, s'il
+     * est apparu, reste au moins 300 ms après le chargement (LOP-226 CA-06, P-12) : le titre seul ne
+     * prouve donc pas le contenu, d'où son absence exigée (LOP-237).
      */
     private fun awaitDetail(name: String) = j.await("détail « $name » chargé, seul affiché") {
         j.count(TestTags.SCREEN_FINANCIAL_DETAIL) == 1 && j.count(TestTags.SCREEN_GOALS) == 0 &&
-            j.count(hasText(name) and j.inside(TestTags.SCREEN_FINANCIAL_DETAIL)) > 0
+            j.count(hasText(name) and j.inside(TestTags.SCREEN_FINANCIAL_DETAIL)) > 0 &&
+            j.count(TestTags.FINANCIAL_DETAIL_LOADING) == 0
     }
 
     // ==============================================================================================
