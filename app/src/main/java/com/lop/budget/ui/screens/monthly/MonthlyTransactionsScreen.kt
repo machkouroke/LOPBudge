@@ -165,7 +165,7 @@ fun MonthlyTransactionsScreen(
             isNoneSelected = { state.selectedCategoryId == null },
             itemIcon = { icons[it.categoryId] },
             itemTint = { Color(it.colorArgb) },
-            itemSupportingText = { choice -> figuresOf(state, choice)?.let { (amount, share) -> "$amount · $share" } },
+            itemSupportingText = { choice -> figuresOf(state, choice, showSkeleton)?.let { (amount, share) -> "$amount · $share" } },
         )
     }
 }
@@ -185,12 +185,14 @@ private fun cardMode(state: MonthlyTransactionsUiState) = when {
 /**
  * Montant signé et part d'une catégorie dans période + type + statut, quelle que soit la catégorie
  * active (P-9) : choisir ne change que la coche, l'anneau et le total. `null` tant que les choix
- * ne sont pas ceux des critères affichés, ou en cas d'échec (I-3, CA-10).
+ * ne sont pas ceux des critères affichés, ou en cas d'échec (I-3, CA-10). `null` aussi tant que la
+ * carte est en squelette, qui peut durer après le chargement (LOP-226 P-12) : les chiffres arrivent
+ * avec la carte, pas avant (LOP-238).
  *
  * Les dépenses sont négatives, la part est arrondie à une décimale (CA-03).
  */
-private fun figuresOf(state: MonthlyTransactionsUiState, choice: CategoryBreakdown): Pair<String, String>? {
-    if (state.isRefreshing || state.loadFailed) return null
+private fun figuresOf(state: MonthlyTransactionsUiState, choice: CategoryBreakdown, cardSkeleton: Boolean): Pair<String, String>? {
+    if (cardSkeleton || state.isRefreshing || state.loadFailed) return null
     val signed = if (state.type == TransactionType.EXPENSE) -choice.total else choice.total
     val percent = Format.percent(choice.total, state.categoryChoices.sumOf { it.total })
     return Format.money(signed, state.currency) to percent
@@ -366,7 +368,7 @@ private fun LazyListScope.analysisContent(
 
     if (state.categoryChoices.isNotEmpty()) {
         item(key = "analysis_legend") {
-            Legend(state, onToggleCategory, onClearCategory, onOpenCategories)
+            Legend(state, showSkeleton, onToggleCategory, onClearCategory, onOpenCategories)
         }
     }
 
@@ -573,6 +575,7 @@ private fun AmountText(amount: String, accent: Color) {
 @Composable
 private fun Legend(
     state: MonthlyTransactionsUiState,
+    cardSkeleton: Boolean,
     onToggleCategory: (Long) -> Unit,
     onClearCategory: () -> Unit,
     onOpenCategories: () -> Unit,
@@ -595,7 +598,7 @@ private fun Legend(
                             CategoryCapsule(
                                 choice = choice,
                                 active = choice.categoryId == state.selectedCategoryId,
-                                figures = figuresOf(state, choice),
+                                figures = figuresOf(state, choice, cardSkeleton),
                                 onClick = { choice.categoryId?.let(onToggleCategory) },
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                             )

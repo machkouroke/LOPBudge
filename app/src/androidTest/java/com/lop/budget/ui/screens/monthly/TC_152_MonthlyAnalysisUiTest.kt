@@ -113,7 +113,7 @@ import org.junit.runner.RunWith
  * U-04a–c  CA-09        Legend / legendSlots, DonutChart (Autres), panneaux Voir toutes et Autres
  * U-05a–c  CA-07        EmptyContent, choix de base P-9, Retirer la catégorie, Modifier la période
  * U-06a–e  CA-08        géométrie de la grille, nom long, thèmes, animations, retour du détail
- * U-07a–g  CA-10, I-3   cardMode / RefreshingContent (200 ms) / ErrorContent / retry
+ * U-07a–g  CA-10, I-3   cardMode / squelette rememberShowSkeleton (200 ms, tenu 300 ms ; LOP-226 CA-06) / ErrorContent / retry
  * U-08     CA-04        HORS PÉRIMÈTRE (décision du 9 octobre 2026 : cadrage à revoir) — non mesuré
  * ```
  *
@@ -741,13 +741,8 @@ class MonthlyAnalysisUiTest {
         advance(2)
         // t0 + 201 ms atteint ; une trame rend l'état du délai écoulé (« après conduite des trames »).
         composeRule.mainClock.advanceTimeByFrame()
-        check(case, "CA-10", "« Actualisation… » à t0 + 201 ms, lu ${texts(TestTags.ANALYSIS_REFRESHING)} (t0 = $t0)",
-            texts(TestTags.ANALYSIS_REFRESHING) == listOf(REFRESHING))
-        assertNothingDisplayed(case, "t0 + 201 ms")
-        holds.forEach { it.release.complete(Unit) }
-        awaitVm(case, vm, "résultat prêt") { it.isReadyFor(PaidFilter.ALL) }
-        composeRule.mainClock.advanceTimeByFrame()
-        assertResultTogether(case, "-1 409,40 €", listOf("loyer" to Triple("QA-40 Loyer", "-820,00 €", "58,2 %"), "courses" to Triple("QA-40 Courses", "-589,40 €", "41,8 %")))
+        assertSkeletonHeldThenResult(case, t0, vm, PaidFilter.ALL, holds,
+            "-1 409,40 €", listOf("loyer" to Triple("QA-40 Loyer", "-820,00 €", "58,2 %"), "courses" to Triple("QA-40 Courses", "-589,40 €", "41,8 %")))
     }
 
     @Test
@@ -787,11 +782,41 @@ class MonthlyAnalysisUiTest {
         assertNothingDisplayed(case, "t0 + 199 ms")
         advance(2)
         composeRule.mainClock.advanceTimeByFrame()
-        check(case, "CA-10", "« Actualisation… » à t0 + 201 ms (t0 = $t0)", texts(TestTags.ANALYSIS_REFRESHING) == listOf(REFRESHING))
+        assertSkeletonHeldThenResult(case, t0, vm, PaidFilter.PAID, holds,
+            "-820,00 €", listOf("loyer" to Triple("QA-40 Loyer", "-820,00 €", "100,0 %")))
+    }
+
+    /**
+     * LOP-226 CA-06 (P-10, P-12), passé t0 + 201 ms : un seul squelette, à la place de la carte. Il
+     * reste au moins 300 ms, même une fois le résultat prêt, puis le résultat entier le remplace.
+     * L'horloge de test sert une image 16 ms après sa demande. Le délai écoulé, le squelette lit
+     * l'heure à une image et ne paraît qu'à la recomposition de l'image suivante : on conduit jusqu'à
+     * trois images après t0 + 201 ms. Son heure de départ précède d'une image la première où on le
+     * voit : il part donc au plus tôt 283 ms après celle-ci. D'où 280 ms (sous la borne) et 332 ms
+     * (au-delà, image de recomposition comprise).
+     */
+    private fun assertSkeletonHeldThenResult(
+        case: String,
+        t0: Long,
+        vm: MonthlyTransactionsViewModel,
+        filter: PaidFilter,
+        holds: List<GateMode.Hold>,
+        total: String,
+        expected: List<Pair<String, Triple<String, String, String>>>,
+    ) {
+        repeat(2) { if (count(TestTags.ANALYSIS_REFRESHING) == 0) composeRule.mainClock.advanceTimeByFrame() }
+        val shown = composeRule.mainClock.currentTime
+        check(case, "CA-10, LOP-226 CA-06", "un seul squelette au plus trois images après t0 + 201 ms (t0 = $t0, lu à t0 + ${shown - t0} ms) : ${count(TestTags.ANALYSIS_REFRESHING)}",
+            count(TestTags.ANALYSIS_REFRESHING) == 1)
+        assertNothingDisplayed(case, "squelette affiché (t0 + ${shown - t0} ms)")
         holds.forEach { it.release.complete(Unit) }
-        awaitVm(case, vm, "résultat Payé prêt") { it.isReadyFor(PaidFilter.PAID) }
-        composeRule.mainClock.advanceTimeByFrame()
-        assertResultTogether(case, "-820,00 €", listOf("loyer" to Triple("QA-40 Loyer", "-820,00 €", "100,0 %")))
+        awaitVm(case, vm, "résultat $filter prêt") { it.isReadyFor(filter) }
+        advance(280 - (composeRule.mainClock.currentTime - shown))
+        check(case, "LOP-226 CA-06", "résultat prêt, squelette encore là 280 ms après son apparition, lu ${count(TestTags.ANALYSIS_REFRESHING)}",
+            vm.uiState.value.isReadyFor(filter) && count(TestTags.ANALYSIS_REFRESHING) == 1)
+        assertNothingDisplayed(case, "squelette tenu (+280 ms)")
+        advance(332 - (composeRule.mainClock.currentTime - shown))
+        assertResultTogether(case, total, expected)
     }
 
     @Test fun u07d_une_seule_lecture_prete_la_premiere() = runSingleReady("U-07d première lecture seule", releaseFirst = true)
@@ -1381,7 +1406,6 @@ class MonthlyAnalysisUiTest {
         const val REVENUS = "Revenus"
         const val INVALID = "La fin doit être égale ou postérieure au début"
         const val EMPTY = "Aucune transaction pour ces filtres"
-        const val REFRESHING = "Actualisation…"
         const val ERROR = "Impossible de charger l’analyse"
         const val RETRY = "Réessayer"
         const val ALL_CATEGORIES = "Toutes les catégories"
