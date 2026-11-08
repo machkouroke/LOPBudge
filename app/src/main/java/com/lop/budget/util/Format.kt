@@ -120,6 +120,15 @@ object Format {
     /** Frontière UI : centimes -> euros d'un champ numérique, sans perte (cf. [money]). */
     fun eurosOf(cents: Long): Double = BigDecimal.valueOf(cents, 2).toDouble()
 
+    /** Graduation d'échelle, sans centimes : « 0 € », « 500 € », « 2,5 k€ » (LOP-235, P-8). */
+    fun compactMoney(amountCents: Long, currencyCode: String = "EUR"): String {
+        val units = BigDecimal.valueOf(amountCents, 2)
+        val number = NumberFormat.getNumberInstance(Locale.FRANCE).apply { maximumFractionDigits = 1 }
+        val symbol = currencySymbol(currencyCode)
+        return if (units.abs() >= BigDecimal(1000)) "${number.format(units.movePointLeft(3))} k$symbol"
+        else "${number.format(units)} $symbol"
+    }
+
     /** Symbole seul ("EUR" -> "€"), pour les champs de saisie qui affichent déjà le nombre. */
     fun currencySymbol(currencyCode: String = "EUR", locale: Locale = Locale.FRANCE): String =
         runCatching { Currency.getInstance(currencyCode).getSymbol(locale) }
@@ -131,6 +140,14 @@ object Format {
 
     fun dayMonth(millis: Long): String =
         Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(dayMonth)
+
+    /** "1 mai" : axe de la tendance en mode Mois (LOP-235). */
+    fun dayMonth(date: LocalDate): String = date.format(dayMonth)
+
+    private val shortMonth = DateTimeFormatter.ofPattern("MMM", Locale.FRANCE)
+
+    /** "janv." : axe de la tendance en mode Année (LOP-235). */
+    fun shortMonth(date: LocalDate): String = date.format(shortMonth)
 
     fun fullDate(millis: Long): String =
         fullDate(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate())

@@ -143,6 +143,14 @@
     <string name="year_picker_previous">Années précédentes</string>
     <string name="year_picker_next">Années suivantes</string>
     <string name="analytics_spent_period">Dépensé sur la période</string>
+    <!-- Tendance des Analyses (LOP-235) -->
+    <string name="analytics_trend_title">Tendance</string>
+    <string name="analytics_trend_income">Entrées</string>
+    <string name="analytics_trend_expense">Sorties</string>
+    <string name="analytics_trend_empty">Aucune transaction pour cette période</string>
+    <string name="analytics_trend_error">Impossible de charger la tendance</string>
+    <!-- %1$s : jour ou mois du point ; %2$s, %3$s : montants des entrées et des sorties. -->
+    <string name="analytics_trend_point">%1$s · Entrées %2$s · Sorties %3$s</string>
 
     <string name="see_all">Voir tout</string>
     <string name="no_accounts_to_show">Aucun compte à afficher</string>

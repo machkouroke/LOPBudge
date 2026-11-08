@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.CategoryBreakdown
+import com.lop.budget.domain.usecase.insight.AnalyticsTrend
 import com.lop.budget.domain.usecase.insight.ObserveMonthlyAnalyticsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -12,6 +13,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.update
 import java.time.Clock
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 /** Granularité de la période d'analyse (LOP-234) : mois civil ou année civile, fuseau de l'appareil. */
@@ -39,6 +42,10 @@ data class AnalyticsUiState(
     val type: TransactionType = TransactionType.EXPENSE,
     val total: Long = 0L,
     val breakdown: List<CategoryBreakdown> = emptyList(),
+    /** Série de tendance de la **même** lecture de période que l'anneau (LOP-235, CA-05). */
+    val trend: AnalyticsTrend = AnalyticsTrend(),
+    /** Lecture de la tendance en échec pour cette période (CA-04) ; l'anneau n'en dépend pas. */
+    val trendFailed: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -111,9 +118,16 @@ class AnalyticsViewModel @Inject constructor(
         }
     }
 
-    /** Bornes en millisecondes, premier et dernier jours inclus, fuseau de l'appareil. */
-    private fun AnalyticsPeriod.range(): Pair<Long, Long> {
-        val zone = ZoneId.systemDefault()
+    /** Numéro de lecture : [retryTrend] relance la lecture sans changer la période (LOP-235, CA-04). */
+    private val attempt = MutableStateFlow(0)
+
+    /** CA-04 de LOP-235 : relit la période affichée après un échec de la tendance. */
+    fun retryTrend() = attempt.update { it + 1 }
+
+    private data class Criteria(val period: AnalyticsPeriod, val type: TransactionType, val currency: String, val attempt: Int)
+
+    /** Bornes en millisecondes, premier et dernier jours inclus, dans [zone]. */
+    private fun AnalyticsPeriod.range(zone: ZoneId): Pair<Long, Long> {
         val first = if (mode == AnalysisMode.MONTH) month.atDay(1) else month.withMonth(1).atDay(1)
         val last = if (mode == AnalysisMode.MONTH) month.atEndOfMonth() else month.withMonth(12).atEndOfMonth()
         return first.atStartOfDay(zone).toInstant().toEpochMilli() to
@@ -130,14 +144,25 @@ class AnalyticsViewModel @Inject constructor(
     val isLoaded: StateFlow<Boolean> = loaded.asStateFlow()
 
     val uiState: StateFlow<AnalyticsUiState> =
-        combine(_period, type, settings.currency) { p, t, c -> Triple(p, t, c) }
+        combine(_period, type, settings.currency, attempt) { p, t, c, n -> Criteria(p, t, c, n) }
             .flatMapLatest { (p, t, currency) ->
                 loaded.value = false
-                val (start, end) = p.range()
-                // `map` et non `combine(flow, MutableStateFlow(Unit))` : le second flux était
-                // constant, il n'apportait qu'un niveau de combine et sa synchronisation.
-                observeMonthlyAnalytics(start, end, t).map { analytics ->
-                    AnalyticsUiState(p.month, p.mode, currency, t, analytics.total, analytics.breakdown)
+                val zone = ZoneId.systemDefault()
+                val (start, end) = p.range(zone)
+                val unit = if (p.mode == AnalysisMode.MONTH) ChronoUnit.DAYS else ChronoUnit.MONTHS
+                // Son propre `catch` : un échec de la tendance ne coupe ni l'anneau ni la
+                // répartition, et ne laisse aucune ancienne courbe (CA-04 de LOP-235).
+                val trend = observeMonthlyAnalytics.trend(start, end, unit, zone)
+                    .map<AnalyticsTrend, AnalyticsTrend?> { it }
+                    .catch { emit(null) }
+                // Anneau et tendance dans le même état, sous la même période : une série n'est
+                // jamais présentée avec les montants d'une autre période (CA-05 de LOP-235).
+                combine(observeMonthlyAnalytics(start, end, t), trend) { analytics, tr ->
+                    AnalyticsUiState(
+                        p.month, p.mode, currency, t, analytics.total, analytics.breakdown,
+                        trend = tr ?: AnalyticsTrend(),
+                        trendFailed = tr == null,
+                    )
                 }
             }
             .onEach { loaded.value = true }

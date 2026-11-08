@@ -98,6 +98,10 @@ fun AnalyticsScreen(
     ) {
         if (showSkeleton) return@LopScreenScaffold skeleton()
         if (!current) return@LopScreenScaffold // attente courte : rien (P-12)
+        // LOP-235 : en tête du contenu ; les tuiles de LOP-233 viendront dessous.
+        item {
+            TrendSection(state.trend, state.trendFailed, state.mode, state.currency, vm::retryTrend)
+        }
         item {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),

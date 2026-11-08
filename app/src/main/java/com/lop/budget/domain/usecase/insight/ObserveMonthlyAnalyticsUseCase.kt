@@ -10,6 +10,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -67,7 +71,50 @@ class ObserveMonthlyAnalyticsUseCase @Inject constructor(
                 breakdown = BreakdownEngine.byCategory(filtered),
             )
         }.flowOn(Dispatchers.Default)
+
+    /**
+     * Série de tendance de [start]..[end] (LOP-235) : une case par jour ([ChronoUnit.DAYS]) ou par
+     * mois ([ChronoUnit.MONTHS]), de la première à la dernière, zéros compris (CA-02).
+     *
+     * Payées **et** planifiées, occurrences virtuelles comprises, tous comptes et sans compte (P-5).
+     * Chaque case ne compte que ses transactions, à leur date affichée, sans cumul (P-4, CA-01).
+     * Supprimées, ajustements et doublons d'occurrence sont déjà écartés par
+     * [ObserveTransactionsUseCase] (I-2) ; rien n'est écrit (I-1).
+     */
+    fun trend(start: Long, end: Long, unit: ChronoUnit, zone: ZoneId): Flow<AnalyticsTrend> =
+        observeTransactionsUseCase(start, end).map { rows ->
+            trendPoints(rows, start.toLocalDate(zone), end.toLocalDate(zone), unit, zone)
+        }.flowOn(Dispatchers.Default)
 }
+
+/** Une case de la série de tendance : un jour en mode Mois, un mois en mode Année ; en centimes. */
+data class TrendPoint(val start: LocalDate, val income: Long, val expense: Long)
+
+/** Série de tendance d'une période. [empty] : aucune transaction lue sur la période (CA-04). */
+data class AnalyticsTrend(val points: List<TrendPoint> = emptyList(), val empty: Boolean = true)
+
+/** Cases de [first] à [last] inclus ; chaque ligne tombe dans celle de sa date affichée dans [zone]. */
+internal fun trendPoints(
+    rows: List<TransactionWithRelations>,
+    first: LocalDate,
+    last: LocalDate,
+    unit: ChronoUnit,
+    zone: ZoneId,
+): AnalyticsTrend {
+    require(unit == ChronoUnit.DAYS || unit == ChronoUnit.MONTHS) { "unit: $unit" }
+    fun caseOf(date: LocalDate) = if (unit == ChronoUnit.MONTHS) date.withDayOfMonth(1) else date
+    val byCase = rows.groupBy { caseOf(it.transaction.date.toLocalDate(zone)) }
+    val points = generateSequence(caseOf(first)) { it.plus(1, unit) }
+        .takeWhile { !it.isAfter(last) }
+        .map { case ->
+            val txs = byCase[case].orEmpty()
+            TrendPoint(case, txs.sumAmountOf(TransactionType.INCOME), txs.sumAmountOf(TransactionType.EXPENSE))
+        }
+        .toList()
+    return AnalyticsTrend(points, empty = rows.isEmpty())
+}
+
+private fun Long.toLocalDate(zone: ZoneId): LocalDate = Instant.ofEpochMilli(this).atZone(zone).toLocalDate()
 
 private fun List<TransactionWithRelations>.sumAmountOf(type: TransactionType): Long =
     filter { it.transaction.type == type }.sumOf { it.transaction.amount }

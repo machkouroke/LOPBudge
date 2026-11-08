@@ -65,6 +65,18 @@ object TestTags {
     const val ANALYTICS_MODE_MONTH = "analytics.mode.month"
     const val ANALYTICS_MODE_YEAR = "analytics.mode.year"
     const val ANALYTICS_YEAR_PICKER = "analytics.year.picker"
+
+    // Analyses — tendance de la période (LOP-235)
+    const val ANALYTICS_TREND = "analytics.trend"
+    /** Préfixe : suivi de `.<yyyy-MM-dd>` en mode Mois, `.<yyyy-MM>` en mode Année. */
+    const val ANALYTICS_TREND_POINT = "analytics.trend.point"
+    const val ANALYTICS_TREND_LEGEND_INCOME = "analytics.trend.legend.income"
+    const val ANALYTICS_TREND_LEGEND_EXPENSE = "analytics.trend.legend.expense"
+    const val ANALYTICS_TREND_AXIS_START = "analytics.trend.axis.start"
+    const val ANALYTICS_TREND_AXIS_END = "analytics.trend.axis.end"
+    const val ANALYTICS_TREND_EMPTY = "analytics.trend.empty"
+    const val ANALYTICS_TREND_ERROR = "analytics.trend.error"
+    const val ANALYTICS_TREND_RETRY = "analytics.trend.retry"
     const val HOME_ACCOUNT_CARD = "home.account.card"
 
     // Accounts & current balances (LOP-13)
