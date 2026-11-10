@@ -90,8 +90,18 @@ class ObserveMonthlyAnalyticsUseCase @Inject constructor(
 /** Une case de la série de tendance : un jour en mode Mois, un mois en mode Année ; en centimes. */
 data class TrendPoint(val start: LocalDate, val income: Long, val expense: Long)
 
-/** Série de tendance d'une période. [empty] : aucune transaction lue sur la période (CA-04). */
-data class AnalyticsTrend(val points: List<TrendPoint> = emptyList(), val empty: Boolean = true)
+/**
+ * Série de tendance et totaux des tuiles d'une période (LOP-235, LOP-233).
+ *
+ * [income] et [expense] sont les sommes des points sur la période, payées et planifiées comprises
+ * (CA-01 de LOP-233, CA-05 de LOP-235). [empty] : aucune transaction lue sur la période (CA-04).
+ */
+data class AnalyticsTrend(
+    val points: List<TrendPoint> = emptyList(),
+    val empty: Boolean = true,
+    val income: Long = 0L,
+    val expense: Long = 0L,
+)
 
 /** Cases de [first] à [last] inclus ; chaque ligne tombe dans celle de sa date affichée dans [zone]. */
 internal fun trendPoints(
@@ -111,7 +121,12 @@ internal fun trendPoints(
             TrendPoint(case, txs.sumAmountOf(TransactionType.INCOME), txs.sumAmountOf(TransactionType.EXPENSE))
         }
         .toList()
-    return AnalyticsTrend(points, empty = rows.isEmpty())
+    return AnalyticsTrend(
+        points = points,
+        empty = rows.isEmpty(),
+        income = points.sumOf { it.income },
+        expense = points.sumOf { it.expense },
+    )
 }
 
 private fun Long.toLocalDate(zone: ZoneId): LocalDate = Instant.ofEpochMilli(this).atZone(zone).toLocalDate()

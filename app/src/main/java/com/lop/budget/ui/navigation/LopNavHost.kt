@@ -296,10 +296,24 @@ fun LopNavHost() {
                                 type = NavType.StringType 
                                 nullable = true 
                             },
-                            navArgument("ym") { type = NavType.StringType },
+                            navArgument("ym") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
                             navArgument("mode") { 
                                 type = NavType.StringType 
                                 defaultValue = "HISTORY"
+                            },
+                            navArgument("start") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                            navArgument("end") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
                             },
                         )
                     ) {

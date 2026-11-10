@@ -115,12 +115,24 @@ class MonthlyTransactionsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val initialType = savedStateHandle.get<String>("type")?.let { TransactionType.valueOf(it) }
-    private val initialMonth = savedStateHandle.get<String>("ym")?.let { YearMonth.parse(it) }
-        ?: YearMonth.now(clock.withZone(ZoneId.systemDefault()))
+    // LOP-233, CA-02 : ouvert depuis les tuiles d'Analyses avec `start` et `end` (mois ou année),
+    // ou depuis l'accueil et les fiches LOP-40 avec `ym`.
+    private val initialPeriod: AnalysisPeriod = run {
+        val start = savedStateHandle.get<String>("start")?.takeIf { it != "{start}" }?.let(LocalDate::parse)
+        val end = savedStateHandle.get<String>("end")?.takeIf { it != "{end}" }?.let(LocalDate::parse)
+        if (start != null && end != null && !end.isBefore(start)) {
+            AnalysisPeriod(start, end)
+        } else {
+            val ym = savedStateHandle.get<String>("ym")?.takeIf { it != "{ym}" }?.let(YearMonth::parse)
+                ?: YearMonth.now(clock.withZone(ZoneId.systemDefault()))
+            AnalysisPeriod.of(ym)
+        }
+    }
+    private val initialMonth = YearMonth.from(initialPeriod.start)
     private val initialMode = savedStateHandle.get<String>("mode") ?: "HISTORY"
     private val analytics = initialMode == "ANALYTICS"
 
-    private val period = MutableStateFlow(AnalysisPeriod.of(initialMonth))
+    private val period = MutableStateFlow(initialPeriod)
     private val type = MutableStateFlow<TransactionType?>(initialType) // null = ALL
     private val filter = MutableStateFlow(PaidFilter.ALL)
     private val insightMode = MutableStateFlow(InsightMode.CATEGORY)
@@ -391,6 +403,7 @@ class MonthlyTransactionsViewModel @Inject constructor(
                 // (I-3, CA-01 de LOP-40).
                 MonthlyTransactionsUiState(
                     month = initialMonth,
+                    period = initialPeriod,
                     type = initialType,
                     isAnalyticsMode = analytics,
                     isRefreshing = true,
