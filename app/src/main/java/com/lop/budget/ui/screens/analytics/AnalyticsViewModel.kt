@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import java.time.Clock
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -32,7 +33,13 @@ import javax.inject.Inject
 enum class AnalysisMode { MONTH, YEAR }
 
 /** Période demandée. En mode [AnalysisMode.YEAR], seule l'année de [month] compte. */
-data class AnalyticsPeriod(val mode: AnalysisMode, val month: YearMonth)
+data class AnalyticsPeriod(val mode: AnalysisMode, val month: YearMonth) {
+    /** Premier jour inclus : le 1er du mois, ou le 1er janvier (CA-02 de LOP-233). */
+    val first: LocalDate get() = if (mode == AnalysisMode.MONTH) month.atDay(1) else month.withMonth(1).atDay(1)
+
+    /** Dernier jour inclus : le dernier du mois, ou le 31 décembre (CA-02 de LOP-233). */
+    val last: LocalDate get() = if (mode == AnalysisMode.MONTH) month.atEndOfMonth() else month.withMonth(12).atEndOfMonth()
+}
 
 data class AnalyticsUiState(
     /** Mois affiché en mode [AnalysisMode.MONTH] ; en mode [AnalysisMode.YEAR], seule son année compte. */
@@ -128,8 +135,6 @@ class AnalyticsViewModel @Inject constructor(
 
     /** Bornes en millisecondes, premier et dernier jours inclus, dans [zone]. */
     private fun AnalyticsPeriod.range(zone: ZoneId): Pair<Long, Long> {
-        val first = if (mode == AnalysisMode.MONTH) month.atDay(1) else month.withMonth(1).atDay(1)
-        val last = if (mode == AnalysisMode.MONTH) month.atEndOfMonth() else month.withMonth(12).atEndOfMonth()
         return first.atStartOfDay(zone).toInstant().toEpochMilli() to
             // Dernière milliseconde de la période incluse (même cause que LOP-197).
             last.atTime(23, 59, 59, 999_000_000).atZone(zone).toInstant().toEpochMilli()

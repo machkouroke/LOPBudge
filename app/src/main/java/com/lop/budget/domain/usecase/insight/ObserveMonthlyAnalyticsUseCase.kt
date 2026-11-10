@@ -101,7 +101,10 @@ data class AnalyticsTrend(
     val empty: Boolean = true,
     val income: Long = 0L,
     val expense: Long = 0L,
-)
+) {
+    /** Tuile Solde de LOP-233 (P-6, CA-07) : revenus − dépenses, comme le « Solde du mois » de l'accueil. */
+    val balance: Long get() = income - expense
+}
 
 /** Cases de [first] à [last] inclus ; chaque ligne tombe dans celle de sa date affichée dans [zone]. */
 internal fun trendPoints(

@@ -202,7 +202,12 @@ fun LopNavHost() {
                             }
                         )
                     ) {
-                        AnalyticsScreen()
+                        // LOP-233, CA-02 et CA-04 : le détail s'empile sur Analyses, qui garde
+                        // son ViewModel, donc son mode et sa période, pour le retour.
+                        AnalyticsScreen(
+                            onOpenDetail = { type, start, end -> navController.navigate(Routes.monthly(type, start, end)) },
+                            onOpenTransactions = { start, end -> navController.navigate(Routes.search(start, end)) },
+                        )
                     }
 
                     composable(Routes.GOALS) { entry ->

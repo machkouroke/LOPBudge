@@ -77,6 +77,14 @@ object TestTags {
     const val ANALYTICS_TREND_EMPTY = "analytics.trend.empty"
     const val ANALYTICS_TREND_ERROR = "analytics.trend.error"
     const val ANALYTICS_TREND_RETRY = "analytics.trend.retry"
+    /** Tuiles de LOP-233 : un appui ouvre le détail du type sur la période affichée. */
+    const val ANALYTICS_TILE_INCOME = "analytics.tile.income"
+    const val ANALYTICS_TILE_EXPENSE = "analytics.tile.expense"
+    /** Solde de la période ; un appui ouvre la vue unifiée sur la période (P-6, CA-07). */
+    const val ANALYTICS_TILE_BALANCE = "analytics.tile.balance"
+    /** Remplace les trois tuiles quand la lecture échoue (CA-05). */
+    const val ANALYTICS_TILES_ERROR = "analytics.tiles.error"
+    const val ANALYTICS_TILES_RETRY = "analytics.tiles.retry"
     const val HOME_ACCOUNT_CARD = "home.account.card"
 
     // Accounts & current balances (LOP-13)
