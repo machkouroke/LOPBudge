@@ -139,7 +139,7 @@ object Routes {
     fun editFromProposal(proposalId: Long) = "edit/0?proposalId=$proposalId"
 
     // Monthly income/expense pages
-    const val MONTHLY = "monthly?type={type}&ym={ym}&mode={mode}&start={start}&end={end}"
+    const val MONTHLY = "monthly?type={type}&ym={ym}&mode={mode}&start={start}&end={end}&category={category}"
     fun monthly(type: TransactionType?, ym: YearMonth, mode: String = "HISTORY"): String {
         val typePart = if (type != null) "type=${type.name}&" else ""
         return "monthly?${typePart}ym=$ym&mode=$mode"
@@ -147,10 +147,11 @@ object Routes {
 
     /**
      * Analyse détaillée ouverte sur les bornes exactes d'une période mensuelle ou annuelle
-     * (LOP-233, CA-02). L'entrée par [ym] depuis l'accueil reste inchangée.
+     * (LOP-233, CA-02). L'entrée par [ym] depuis l'accueil reste inchangée. [categoryId] ouvre le
+     * détail sur cette catégorie déjà choisie (LOP-240, CA-07).
      */
-    fun monthly(type: TransactionType, start: LocalDate, end: LocalDate): String =
-        "monthly?type=${type.name}&start=$start&end=$end&mode=ANALYTICS"
+    fun monthly(type: TransactionType, start: LocalDate, end: LocalDate, categoryId: Long? = null): String =
+        "monthly?type=${type.name}&start=$start&end=$end&mode=ANALYTICS" + (categoryId?.let { "&category=$it" } ?: "")
 
     /** Routes affichant la bottom bar flottante. */
     val rootRoutes = setOf(HOME, ANALYTICS, GOALS)

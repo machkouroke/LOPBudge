@@ -6,6 +6,7 @@ import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.CategoryBreakdown
 import com.lop.budget.domain.usecase.insight.AnalyticsTrend
+import com.lop.budget.domain.usecase.insight.HabitsComparison
 import com.lop.budget.domain.usecase.insight.ObserveMonthlyAnalyticsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -53,6 +55,10 @@ data class AnalyticsUiState(
     val trend: AnalyticsTrend = AnalyticsTrend(),
     /** Lecture de la tendance en échec pour cette période (CA-04) ; l'anneau n'en dépend pas. */
     val trendFailed: Boolean = false,
+    /** Carte de LOP-240 ; `null` en mode Année ou pour un mois futur : la carte est absente (CA-06). */
+    val habits: HabitsComparison? = null,
+    /** Lecture de la carte de LOP-240 en échec (CA-06) ; tendance et tuiles n'en dépendent pas. */
+    val habitsFailed: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -160,13 +166,24 @@ class AnalyticsViewModel @Inject constructor(
                 val trend = observeMonthlyAnalytics.trend(start, end, unit, zone)
                     .map<AnalyticsTrend, AnalyticsTrend?> { it }
                     .catch { emit(null) }
+                // LOP-240 : carte du mode Mois seulement (CA-06), jour de comparaison lu sur
+                // l'horloge injectée. Son propre `catch`, comme la tendance : son échec ne coupe rien.
+                val habits = if (p.mode == AnalysisMode.MONTH) {
+                    observeMonthlyAnalytics.aboveHabits(p.month, LocalDate.now(clock.withZone(zone)), zone)
+                        .map { Result.success(it) }
+                        .catch { emit(Result.failure(it)) }
+                } else {
+                    flowOf(Result.success<HabitsComparison?>(null))
+                }
                 // Anneau et tendance dans le même état, sous la même période : une série n'est
                 // jamais présentée avec les montants d'une autre période (CA-05 de LOP-235).
-                combine(observeMonthlyAnalytics(start, end, t), trend) { analytics, tr ->
+                combine(observeMonthlyAnalytics(start, end, t), trend, habits) { analytics, tr, h ->
                     AnalyticsUiState(
                         p.month, p.mode, currency, t, analytics.total, analytics.breakdown,
                         trend = tr ?: AnalyticsTrend(),
                         trendFailed = tr == null,
+                        habits = h.getOrNull(),
+                        habitsFailed = h.isFailure,
                     )
                 }
             }

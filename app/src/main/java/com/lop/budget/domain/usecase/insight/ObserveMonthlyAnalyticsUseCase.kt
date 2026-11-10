@@ -3,15 +3,18 @@ package com.lop.budget.domain.usecase.insight
 import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.BreakdownEngine
 import com.lop.budget.domain.CategoryBreakdown
+import com.lop.budget.domain.model.NO_CATEGORY_LABEL
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
@@ -85,6 +88,112 @@ class ObserveMonthlyAnalyticsUseCase @Inject constructor(
         observeTransactionsUseCase(start, end).map { rows ->
             trendPoints(rows, start.toLocalDate(zone), end.toLocalDate(zone), unit, zone)
         }.flowOn(Dispatchers.Default)
+
+    /**
+     * Catégories au-dessus de leurs habitudes en [month] (LOP-240), ou `null` pour un mois futur :
+     * la carte n'y figure pas (CA-06). Jour de comparaison : [today] pour le mois courant, le
+     * dernier jour pour un mois passé. Une seule lecture, du 1er du sixième mois de référence au
+     * jour de comparaison inclus ; supprimées et ajustements en sont déjà absents (I-2) ; rien
+     * n'est écrit (I-1).
+     */
+    fun aboveHabits(month: YearMonth, today: LocalDate, zone: ZoneId): Flow<HabitsComparison?> {
+        val day = when {
+            month > YearMonth.from(today) -> return flowOf(null)
+            month == YearMonth.from(today) -> today
+            else -> month.atEndOfMonth()
+        }
+        val start = month.minusMonths(REFERENCE_MONTHS).atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        // Dernière milliseconde du jour de comparaison incluse (même cause que LOP-197).
+        val end = day.atTime(23, 59, 59, 999_000_000).atZone(zone).toInstant().toEpochMilli()
+        return observeTransactionsUseCase(start, end)
+            .map { rows -> habitsComparison(rows, month, day, zone) }
+            .flowOn(Dispatchers.Default)
+    }
+}
+
+/** Résultat de la carte de LOP-240 pour un mois passé ou courant. */
+sealed interface HabitsComparison {
+    /** CA-05 : moins de trois mois de référence contiennent une transaction ; [missing] = 3 − ce nombre. */
+    data class NotEnoughHistory(val missing: Int) : HabitsComparison
+
+    /**
+     * [until] : jour de comparaison, fin de la période ouverte au toucher d'une ligne (CA-07).
+     * [lines] vide : « Aucune catégorie au-dessus de vos habitudes » (CA-05).
+     */
+    data class Ready(val until: LocalDate, val lines: List<CategoryAboveHabits>) : HabitsComparison
+}
+
+/** Une ligne de la carte : [spent] dépensé à date, [usual] niveau habituel ; en centimes. */
+data class CategoryAboveHabits(
+    val categoryId: Long,
+    val name: String,
+    val colorArgb: Int,
+    /** Nom d'icône de la catégorie (`CategoryEntity.icon`) ; `null` sans catégorie résolue. */
+    val icon: String?,
+    val spent: Long,
+    val usual: Long,
+) {
+    val gap: Long get() = spent - usual
+}
+
+private const val REFERENCE_MONTHS = 6L
+private const val MIN_HISTORY_MONTHS = 3
+private const val MAX_LINES = 3
+private const val MIN_GAP_CENTS = 2_000L
+
+/**
+ * Règles du vocabulaire de LOP-240 (P-2), sur les lignes lues de `month − 6` au jour [day].
+ *
+ * Dépensé à date : dépenses d'une catégorie, ponctuelles et occurrences de séries (P-5), payées et
+ * planifiées, du 1er au jour de comparaison, borné à la longueur de chaque mois (CA-02). Un mois de
+ * référence compte dans l'historique dès qu'il contient une transaction, quelle qu'elle soit (P-6).
+ */
+internal fun habitsComparison(
+    rows: List<TransactionWithRelations>,
+    month: YearMonth,
+    day: LocalDate,
+    zone: ZoneId,
+): HabitsComparison {
+    val references = (1..REFERENCE_MONTHS).map { month.minusMonths(it) }
+    val byMonth = rows.groupBy { YearMonth.from(it.transaction.date.toLocalDate(zone)) }
+    val withHistory = references.count { !byMonth[it].isNullOrEmpty() }
+    if (withHistory < MIN_HISTORY_MONTHS) return HabitsComparison.NotEnoughHistory(MIN_HISTORY_MONTHS - withHistory)
+
+    fun spentToDate(ym: YearMonth): Map<Long, Long> {
+        val lastDay = minOf(day.dayOfMonth, ym.lengthOfMonth())
+        return byMonth[ym].orEmpty()
+            .filter { it.transaction.type == TransactionType.EXPENSE && it.transaction.date.toLocalDate(zone).dayOfMonth <= lastDay }
+            .groupBy({ it.transaction.categoryId }, { it.transaction.amount })
+            .mapValues { (_, amounts) -> amounts.sum() }
+    }
+
+    val referenceSpent = references.map(::spentToDate)
+    val categories = byMonth[month].orEmpty().associate { it.transaction.categoryId to it.category }
+    val lines = spentToDate(month)
+        .map { (categoryId, spent) ->
+            val category = categories[categoryId]
+            CategoryAboveHabits(
+                categoryId = categoryId,
+                name = category?.name ?: NO_CATEGORY_LABEL,
+                colorArgb = category?.colorArgb ?: BreakdownEngine.NO_CATEGORY_COLOR,
+                icon = category?.icon,
+                spent = spent,
+                usual = medianOfEven(referenceSpent.map { it[categoryId] ?: 0L }),
+            )
+        }
+        // Au moins 20 € et au moins 20 % de l'habituel (5 × écart ≥ habituel, exact en entiers) ;
+        // un habituel nul n'exige que les 20 €.
+        .filter { it.gap >= MIN_GAP_CENTS && it.gap * 5 >= it.usual }
+        .sortedWith(compareByDescending<CategoryAboveHabits> { it.gap }.thenBy { it.name })
+        .take(MAX_LINES)
+    return HabitsComparison.Ready(day, lines)
+}
+
+/** Moyenne des deux valeurs centrales, arrondie au centime inférieur ; un mois sans dépense vaut 0. */
+private fun medianOfEven(values: List<Long>): Long {
+    val sorted = values.sorted()
+    val mid = sorted.size / 2
+    return Math.floorDiv(sorted[mid - 1] + sorted[mid], 2L)
 }
 
 /** Une case de la série de tendance : un jour en mode Mois, un mois en mode Année ; en centimes. */

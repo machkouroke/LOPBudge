@@ -152,6 +152,14 @@
     <!-- Tuiles des Analyses (LOP-233, CA-05) -->
     <string name="analytics_tiles_error">Impossible de charger les montants</string>
     <string name="analytics_balance">Solde</string>
+    <!-- Catégories au-dessus de vos habitudes (LOP-240) -->
+    <string name="analytics_habits_title">Au-dessus de vos habitudes</string>
+    <!-- %1$s : niveau habituel, par exemple « 250,00 € ». -->
+    <string name="analytics_habits_usual">habituel %1$s</string>
+    <!-- %1$d : mois d'historique manquants ; « mois » est invariable. -->
+    <string name="analytics_habits_history">Disponible après 3 mois d’historique (encore %1$d mois)</string>
+    <string name="analytics_habits_none">Aucune catégorie au-dessus de vos habitudes</string>
+    <string name="analytics_habits_error">Impossible de comparer vos dépenses</string>
 
     <string name="see_all">Voir tout</string>
     <string name="no_accounts_to_show">Aucun compte à afficher</string>

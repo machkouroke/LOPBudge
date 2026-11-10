@@ -85,6 +85,16 @@ object TestTags {
     /** Remplace les trois tuiles quand la lecture échoue (CA-05). */
     const val ANALYTICS_TILES_ERROR = "analytics.tiles.error"
     const val ANALYTICS_TILES_RETRY = "analytics.tiles.retry"
+    /** Carte de LOP-240, mode Mois seulement : absente en mode Année et pour un mois futur (CA-06). */
+    const val ANALYTICS_HABITS = "analytics.habits"
+    /** Une catégorie au-dessus de ses habitudes ; un appui ouvre son détail (CA-07). */
+    const val ANALYTICS_HABITS_ROW = "analytics.habits.row"
+    /** « Disponible après 3 mois d'historique… » (CA-05). */
+    const val ANALYTICS_HABITS_HISTORY = "analytics.habits.history"
+    /** « Aucune catégorie au-dessus de vos habitudes » (CA-05). */
+    const val ANALYTICS_HABITS_NONE = "analytics.habits.none"
+    const val ANALYTICS_HABITS_ERROR = "analytics.habits.error"
+    const val ANALYTICS_HABITS_RETRY = "analytics.habits.retry"
     const val HOME_ACCOUNT_CARD = "home.account.card"
 
     // Accounts & current balances (LOP-13)

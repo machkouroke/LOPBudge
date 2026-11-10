@@ -207,6 +207,10 @@ fun LopNavHost() {
                         AnalyticsScreen(
                             onOpenDetail = { type, start, end -> navController.navigate(Routes.monthly(type, start, end)) },
                             onOpenTransactions = { start, end -> navController.navigate(Routes.search(start, end)) },
+                            // LOP-240, CA-07 : détail Dépenses de la catégorie, du 1er au jour de comparaison.
+                            onOpenCategory = { id, start, end ->
+                                navController.navigate(Routes.monthly(TransactionType.EXPENSE, start, end, id))
+                            },
                         )
                     }
 
@@ -316,6 +320,11 @@ fun LopNavHost() {
                                 defaultValue = null
                             },
                             navArgument("end") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                            navArgument("category") {
                                 type = NavType.StringType
                                 nullable = true
                                 defaultValue = null

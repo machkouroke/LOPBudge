@@ -138,7 +138,10 @@ class MonthlyTransactionsViewModel @Inject constructor(
     private val insightMode = MutableStateFlow(InsightMode.CATEGORY)
     private val searchQuery = MutableStateFlow("")
     private val selectedAccountId = MutableStateFlow<Long?>(null)
-    private val selectedCategoryId = MutableStateFlow<Long?>(null)
+    // LOP-240, CA-07 : ouvert depuis la carte des habitudes, catégorie déjà choisie ; sinon aucune.
+    private val selectedCategoryId = MutableStateFlow(
+        savedStateHandle.get<String>("category")?.takeIf { it != "{category}" }?.toLongOrNull()
+    )
 
     /** Numéro de lecture : [retry] relance les recherches sans changer aucun critère affiché. */
     private val attempt = MutableStateFlow(0)

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +57,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.insight.AnalyticsTrend
+import com.lop.budget.domain.usecase.insight.CategoryAboveHabits
+import com.lop.budget.domain.usecase.insight.HabitsComparison
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
@@ -67,16 +70,19 @@ import com.lop.budget.ui.components.skeleton
 import com.lop.budget.ui.components.surfaceRelief
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
+import com.lop.budget.util.IconMapper
 import java.time.LocalDate
 
 /**
  * [onOpenDetail] ouvre l'analyse détaillée d'un type (LOP-233, CA-02) ; [onOpenTransactions], la
- * vue unifiée des transactions (CA-07). Premier et dernier jours de la période inclus.
+ * vue unifiée des transactions (CA-07) ; [onOpenCategory], le détail Dépenses d'une catégorie
+ * (LOP-240, CA-07). Premier et dernier jours de la période inclus.
  */
 @Composable
 fun AnalyticsScreen(
     onOpenDetail: (TransactionType, LocalDate, LocalDate) -> Unit,
     onOpenTransactions: (LocalDate, LocalDate) -> Unit,
+    onOpenCategory: (categoryId: Long, LocalDate, LocalDate) -> Unit,
     vm: AnalyticsViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -117,6 +123,15 @@ fun AnalyticsScreen(
                 // `current` : la période affichée est celle des montants des tuiles.
                 onOpen = { type -> onOpenDetail(type, period.first, period.last) },
                 onOpenAll = { onOpenTransactions(period.first, period.last) },
+                onRetry = vm::retryTrend,
+            )
+        }
+        // LOP-240 : sous les tuiles, en mode Mois, pour un mois passé ou courant (CA-06).
+        if (state.habits != null || state.habitsFailed) item {
+            HabitsCard(
+                state.habits, state.habitsFailed, state.currency,
+                // Du 1er au jour de comparaison (CA-07).
+                onOpen = { id, until -> onOpenCategory(id, until.withDayOfMonth(1), until) },
                 onRetry = vm::retryTrend,
             )
         }
@@ -239,6 +254,94 @@ private fun AnalyticsTile(
 }
 
 /** Pastille de période entre ses flèches, puis le choix Mois / Année (CA-01). Aucun mode Semaine. */
+/**
+ * LOP-240 : au plus trois catégories au-dessus de leurs habitudes (CA-01, CA-04), ou le message
+ * d'historique insuffisant, ou « Aucune catégorie… » (CA-05) ; un échec remplace le contenu (CA-06).
+ */
+@Composable
+private fun HabitsCard(
+    habits: HabitsComparison?,
+    failed: Boolean,
+    currency: String,
+    onOpen: (categoryId: Long, until: LocalDate) -> Unit,
+    onRetry: () -> Unit,
+) {
+    FloatingCard(Modifier.fillMaxWidth().testTag(TestTags.ANALYTICS_HABITS)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(R.string.analytics_habits_title), style = MaterialTheme.typography.titleMedium)
+            when {
+                failed -> Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(TestTags.ANALYTICS_HABITS_ERROR),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.analytics_habits_error), style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
+                    Button(onClick = onRetry, modifier = Modifier.testTag(TestTags.ANALYTICS_HABITS_RETRY)) {
+                        Text(stringResource(R.string.analysis_retry))
+                    }
+                }
+                habits is HabitsComparison.NotEnoughHistory -> HabitsMessage(
+                    stringResource(R.string.analytics_habits_history, habits.missing), TestTags.ANALYTICS_HABITS_HISTORY,
+                )
+                habits is HabitsComparison.Ready && habits.lines.isEmpty() -> HabitsMessage(
+                    stringResource(R.string.analytics_habits_none), TestTags.ANALYTICS_HABITS_NONE,
+                )
+                habits is HabitsComparison.Ready -> habits.lines.forEach { line ->
+                    HabitsRow(line, currency) { onOpen(line.categoryId, habits.until) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HabitsMessage(text: String, tag: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.testTag(tag),
+    )
+}
+
+/**
+ * Tuile teintée de la catégorie (`DESIGN.md` § 5.1), son icône dans une pastille comme les lignes
+ * de transaction (P-9) ; l'écart, une dépense en trop, en rouge dépense.
+ */
+@Composable
+private fun HabitsRow(line: CategoryAboveHabits, currency: String, onClick: () -> Unit) {
+    val color = Color(line.colorArgb)
+    FloatingCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(interactionSource = null, indication = null, role = Role.Button, onClick = onClick)
+            .testTag(TestTags.ANALYTICS_HABITS_ROW),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        tint = color,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CircleIcon(IconMapper.get(line.icon ?: "category"), tint = color, background = color.copy(alpha = 0.18f))
+            Column(Modifier.weight(1f)) {
+                Text(line.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    stringResource(R.string.analytics_habits_usual, Format.money(line.usual, currency)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(Format.money(line.spent, currency), style = MaterialTheme.typography.titleSmall)
+                Text(
+                    Format.signedMoney(line.gap, currency),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = LopTheme.extended.expense,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun PeriodHeader(
     period: AnalyticsPeriod,
