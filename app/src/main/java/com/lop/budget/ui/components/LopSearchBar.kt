@@ -1,5 +1,11 @@
 package com.lop.budget.ui.components
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -16,9 +22,36 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.lop.budget.ui.common.TestTags
+import com.lop.budget.ui.motion.MotionSpec
 
 /** Forme « pilule » des champs de saisie modernes de l'app. */
 val LopFieldShape = RoundedCornerShape(32.dp)
+
+/**
+ * Accueil ↔ Recherche ouverte par la barre : la barre de l'accueil et le champ de Recherche sont
+ * une même pilule qui voyage d'un écran à l'autre (DESIGN.md § 13.3). [screen] est la destination
+ * de navigation qui porte la pilule.
+ */
+@OptIn(ExperimentalSharedTransitionApi::class)
+class SearchBarTransition(val shared: SharedTransitionScope, val screen: AnimatedVisibilityScope)
+
+/** Pose la pilule partagée ; sans [transition], rien ne voyage. À chaîner avant le fond. */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun Modifier.searchBarBounds(transition: SearchBarTransition?): Modifier =
+    if (transition == null) this else with(transition.shared) {
+        sharedBounds(
+            rememberSharedContentState("search_bar"),
+            transition.screen,
+            // Courbes appariées des onglets : la pilule de départ tient puis part, celle d'arrivée se
+            // voit dès son départ. Le fond reste plein en vol, les deux libellés se croisent à peine.
+            enter = fadeIn(tween(MotionSpec.TAB_IN_MS, MotionSpec.SCREEN_MS - MotionSpec.TAB_IN_MS, MotionSpec.enterDecelerate)),
+            exit = fadeOut(tween(MotionSpec.TAB_OUT_MS, easing = MotionSpec.exitAccelerate)),
+            boundsTransform = { _, _ -> MotionSpec.screenTween() },
+            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+            clipInOverlayDuringTransition = OverlayClip(LopFieldShape),
+        )
+    }
 
 /**
  * Couleurs des champs de saisie « pilule » : bordure invisible au repos, fond tonal léger.

@@ -2,6 +2,8 @@ package com.lop.budget.ui.navigation
 
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -54,6 +56,7 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.components.AddActionSheet
 import com.lop.budget.ui.components.DeleteConfirmationDialog
 import com.lop.budget.ui.components.FloatingBottomBar
+import com.lop.budget.ui.components.SearchBarTransition
 import com.lop.budget.ui.theme.lopBackgroundBrush
 import com.lop.budget.ui.screens.goals.FinancialItemDetailScreen
 import com.lop.budget.ui.screens.goals.FinancialItemDetailViewModel
@@ -90,7 +93,7 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.flow.distinctUntilChanged
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun LopNavHost() {
     val navController = rememberNavController()
@@ -151,6 +154,8 @@ fun LopNavHost() {
                     .hazeSource(state = hazeState)
                     .then(underAddMenu)
             ) {
+                // Porte la barre de recherche qui voyage de l'accueil à la Recherche (DESIGN.md § 13.3).
+                SharedTransitionLayout(Modifier.fillMaxSize()) {
                 NavHost(
                     navController = navController,
                     startDestination = Routes.HOME,
@@ -164,12 +169,13 @@ fun LopNavHost() {
                     popExitTransition = NavAnimations.popExit,
                 ) {
                     composable(Routes.HOME) {
+                        val searchBar = SearchBarTransition(this@SharedTransitionLayout, this)
                         HomeScreen(
                             snackbarHostState = snackbarHostState,
                             onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
                             navController = navController,
-
-                            )
+                            searchBar = searchBar,
+                        )
                     }
 
                     composable(
@@ -366,12 +372,17 @@ fun LopNavHost() {
                                 defaultValue = null
                             }
                         },
-                    ) {
+                    ) { entry ->
+                        // Seule la recherche ouverte par la barre reçoit la pilule ; « Voir tout »
+                        // garde le glissement des écrans.
+                        val searchBar = SearchBarTransition(this@SharedTransitionLayout, this)
+                            .takeIf { NavAnimations.isBarSearch(entry) }
                         SearchScreen(
                             onBack = { navController.popBackStack() },
                             onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
                             hazeState = hazeState,
-                            snackbarHostState = snackbarHostState
+                            snackbarHostState = snackbarHostState,
+                            searchBar = searchBar,
                         )
                     }
 
@@ -586,6 +597,7 @@ fun LopNavHost() {
                             },
                         )
                     }
+                }
                 }
             }
 

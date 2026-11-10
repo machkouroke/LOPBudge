@@ -1,6 +1,7 @@
 package com.lop.budget.ui.screens.search
 
 import androidx.activity.ComponentActivity
+import androidx.compose.animation.EnterExitState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -44,11 +45,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -79,6 +83,8 @@ import com.lop.budget.ui.components.LopDateRangePicker
 import com.lop.budget.ui.components.LopFieldShape
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.LopSearchBar
+import com.lop.budget.ui.components.SearchBarTransition
+import com.lop.budget.ui.components.searchBarBounds
 import com.lop.budget.ui.components.StackedTransactionGroup
 import com.lop.budget.ui.components.SUMMARY_PLACEHOLDER
 import com.lop.budget.ui.components.SummaryFigure
@@ -109,12 +115,26 @@ fun SearchScreen(
     onOpenTransaction: (Long) -> Unit,
     snackbarHostState: SnackbarHostState,
     hazeState: HazeState? = null,
+    /** Ouverte par la barre de l'accueil : la pilule arrive de l'accueil, le clavier s'ouvre ensuite. */
+    searchBar: SearchBarTransition? = null,
     vm: SearchViewModel = hiltViewModel(),
     actionVm: TransactionActionViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val txVersions by actionVm.txVersions.collectAsStateWithLifecycle()
     var showFilters by remember { mutableStateOf(false) }
+
+    // Le champ prend le focus une fois la pilule posée, une seule fois : un retour depuis un détail
+    // ne rouvre pas le clavier.
+    val focusRequester = remember { FocusRequester() }
+    var focusPending by rememberSaveable { mutableStateOf(searchBar != null) }
+    val arrived = searchBar?.screen?.transition?.currentState?.let { it == EnterExitState.Visible } ?: true
+    LaunchedEffect(focusPending, arrived) {
+        if (focusPending && arrived) {
+            focusRequester.requestFocus()
+            focusPending = false
+        }
+    }
 
     // Regroupement visuel des occurrences d'une même série : la synthèse, elle, compte chaque
     // ligne (CA-04), elle ne lit pas ces piles.
@@ -162,8 +182,10 @@ fun SearchScreen(
                         onValueChange = vm::onQueryChange,
                         modifier = Modifier
                             .weight(1f)
+                            .searchBarBounds(searchBar)
                             .surfaceRelief(LopFieldShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, LopFieldShape),
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, LopFieldShape)
+                            .focusRequester(focusRequester),
                         placeholder = stringResource(R.string.search_placeholder),
                     )
                     FiltersButton(state.filters.count) { showFilters = true }

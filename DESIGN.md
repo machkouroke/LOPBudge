@@ -120,8 +120,16 @@ Il est déjà posé à trois endroits :
 | Où | Comment |
 | --- | --- |
 | `LopNavHost` | Fond de l'accueil et de la bande de la barre d'état |
-| `LopScreenScaffold` | Conteneur et barre de titre, avec `fromWindowTop` = hauteur de la barre d'état |
-| `HomeOverlay` | Voile sous l'en-tête de l'accueil (même pinceau, masque `DstIn`) |
+| `LopScreenScaffold` | Conteneur et liste, prolongés sous la barre d'état (`underStatusBar`) ; la liste est la source du flou de la barre de titre et de l'en-tête |
+| `HomeScreen` | Fond de la liste de l'accueil, prolongée sous la barre d'état, source du verre de l'en-tête |
+
+**Barre d'état transparente, barre de titre sans fond** (façon Liquid Glass) : sur tous les écrans,
+la liste défile sous la barre d'état, le titre et l'en-tête fixe. `Modifier.scrollEdge` y pose un
+**flou progressif** : plein jusque sous le titre, qui reste lisible, puis de moins en moins à travers
+l'en-tête. Un flou, pas un fondu : un fondu laissait transparaître le texte net sous le titre. Au
+repos, rien n'est dessous et le bord ne se voit pas. Il n'y a plus de trait sous la barre au
+défilement. Revers connu : un gros texte de même couleur qui passe sous l'heure ou les icônes
+système les rend moins lisibles.
 
 **Un nouvel écran passe par `LopScreenScaffold`** et hérite du ciel. Un écran racine qui peint son
 propre fond opaque casse le dégradé. Les écrans restent opaques : sans cela, les transitions glissées
@@ -193,6 +201,18 @@ transaction ou les sous-catégories teintées. Ne l'utilise pas pour la couleur 
 Cercle de 44 dp, fond `surfaceContainerHigh`, `surfaceRelief(CircleShape)`, icône **contour**
 (`Icons.Outlined.*`) de 20 dp en `onSurface`. La pilule du mois suit le même relief avec
 `RoundedCornerShape(50)`.
+
+**Exception : les contrôles fixes au-dessus d'une liste sont en verre**, façon Liquid Glass :
+en-tête de l'accueil (réglages à gauche, barre de recherche au centre, cloche à droite) et en-tête
+d'Analyses (période, flèches, choix Mois / Année). Ils laissent voir, floutées, les cartes qui
+défilent dessous (`Modifier.glass` de `Common.kt` ; la source du flou est passée par `header` de
+`LopScreenScaffold`) :
+- flou haze de 24 dp sur la liste et le ciel de l'accueil, teinte `surfaceContainerHigh` à 60 % ;
+- liseré `lopRimBrush()` en sombre, `outlineVariant` en clair (le liseré du thème y est transparent) ;
+- **pas d'ombre** : sous un fond translucide, elle ferait une tache (§ 5.3).
+
+La barre de recherche de l'accueil est un bouton, pas un champ : pilule `LopFieldShape` de 44 dp,
+loupe et retrait du champ de Recherche, qu'elle devient en voyageant (§ 13.3).
 
 ### Barre du bas — `FloatingBottomBar`
 
@@ -348,6 +368,7 @@ ressort défini localement dans un écran.
 | --- | --- | --- |
 | `screenTween()` = `SCREEN_MS` + `screenEasing` | 400 ms, `FastOutSlowInEasing` | ouverture et retour d'un écran, recul de l'écran recouvert |
 | `TAB_OUT_MS` / `TAB_IN_MS` + `exitAccelerate` / `enterDecelerate` | 200 puis 300 ms, courbes Material 3 « emphasized » | fondu enchaîné entre onglets |
+| `WAVE_STEP_MS` | 40 ms | écart entre deux tuiles de la vague Accueil → Recherche |
 | `spatialFast` | ressort 0,9 / 400 (~0,3 s) | bord avant de l'indicateur |
 | `spatialSlow` | ressort 0,9 / 150 (~0,5 s) | bord arrière de l'indicateur, qui traîne pour l'étirer |
 | `spatialBouncy` | ressort 0,6 / 800 | rebond visible, petits éléments seulement : icône de l'onglet choisi |
@@ -374,6 +395,13 @@ ressort défini localement dans un écran.
   largeur vers la gauche en s'effaçant. **Retour** : miroir exact.
 - **Entre onglets** : aucun glissement. L'ancien s'efface, puis le nouveau apparaît en passant de
   96 % à 100 %.
+- **Accueil → Recherche par la barre** : aucun glissement. La barre voyage jusqu'au champ de
+  Recherche (`SharedTransitionLayout` de `LopNavHost`, `searchBarBounds`, `screenTween`). Les tuiles
+  de l'accueil pâlissent en descendant de 16 dp, du haut vers le bas, `WAVE_STEP_MS` d'écart
+  (`TAB_OUT_MS`, `exitAccelerate`) ; l'accueil lui-même tient en place. La Recherche paraît en
+  fondu autour de la barre sur les `TAB_IN_MS` finales ; le clavier s'ouvre à l'arrivée. **Retour** :
+  la Recherche s'efface (`TAB_OUT_MS`), la barre remonte, les tuiles reviennent en vague. Seule la
+  Recherche sans période est concernée : « Voir tout » garde le glissement des écrans.
 - **Indicateur de la barre** : un seul, qui suit la pile de navigation et non le tap. Bord avant
   `spatialFast`, bord arrière `spatialSlow` : il s'étire vers l'onglet visé puis se resserre.
 - **Barre du bas** : elle sort et revient par le bas, comme si elle quittait le bord du téléphone.

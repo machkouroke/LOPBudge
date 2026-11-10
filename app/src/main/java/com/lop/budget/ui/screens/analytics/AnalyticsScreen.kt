@@ -80,7 +80,9 @@ import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.YearPickerBottomSheet
 import com.lop.budget.ui.components.rememberShowSkeleton
 import com.lop.budget.ui.components.skeleton
+import com.lop.budget.ui.components.glass
 import com.lop.budget.ui.components.surfaceRelief
+import dev.chrisbanes.haze.HazeState
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
@@ -139,13 +141,15 @@ fun AnalyticsScreen(
         onBack = null,
         modifier = Modifier.testTag(TestTags.SCREEN_ANALYTICS),
         // Fixé sous le titre, hors de la liste : visible et utilisable pendant le défilement (CA-05).
-        header = {
+        // En verre : la liste se voit défiler derrière ses contrôles.
+        header = { haze ->
             PeriodHeader(
                 period = period,
                 onPrevious = vm::previousPeriod,
                 onNext = vm::nextPeriod,
                 onPick = { showPicker = true },
                 onMode = vm::setMode,
+                haze = haze,
             )
         },
     ) {
@@ -550,6 +554,7 @@ private fun PeriodHeader(
     onNext: () -> Unit,
     onPick: () -> Unit,
     onMode: (AnalysisMode) -> Unit,
+    haze: HazeState,
 ) {
     Column(
         modifier = Modifier
@@ -564,16 +569,15 @@ private fun PeriodHeader(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // CA-03, P-5 : commandes visibles, sans geste de balayage.
-            RoundButton(Icons.Outlined.ChevronLeft, stringResource(R.string.analytics_previous_period), TestTags.ANALYTICS_PERIOD_PREVIOUS, onPrevious)
-            PeriodPill(period, onPrevious, onNext, onPick, Modifier.weight(1f))
-            RoundButton(Icons.Outlined.ChevronRight, stringResource(R.string.analytics_next_period), TestTags.ANALYTICS_PERIOD_NEXT, onNext)
+            RoundButton(Icons.Outlined.ChevronLeft, stringResource(R.string.analytics_previous_period), TestTags.ANALYTICS_PERIOD_PREVIOUS, haze, onPrevious)
+            PeriodPill(period, onPrevious, onNext, onPick, haze, Modifier.weight(1f))
+            RoundButton(Icons.Outlined.ChevronRight, stringResource(R.string.analytics_next_period), TestTags.ANALYTICS_PERIOD_NEXT, haze, onNext)
         }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .glass(haze, RoundedCornerShape(16.dp))
                 .padding(4.dp),
         ) {
             Seg(stringResource(R.string.analytics_mode_month), period.mode == AnalysisMode.MONTH, Modifier.weight(1f).testTag(TestTags.ANALYTICS_MODE_MONTH)) { onMode(AnalysisMode.MONTH) }
@@ -596,6 +600,7 @@ private fun PeriodPill(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onPick: () -> Unit,
+    haze: HazeState,
     modifier: Modifier = Modifier,
 ) {
     val previous by rememberUpdatedState(onPrevious)
@@ -604,9 +609,7 @@ private fun PeriodPill(
     Row(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .surfaceRelief(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh, shape)
-            .clip(shape)
+            .glass(haze, shape)
             .pointerInput(Unit) {
                 val threshold = 48.dp.toPx()
                 var dx = 0f
@@ -634,13 +637,11 @@ private fun PeriodPill(
 
 /** Bouton rond d'en-tête (`DESIGN.md` § 6). */
 @Composable
-private fun RoundButton(icon: ImageVector, description: String, tag: String, onClick: () -> Unit) {
+private fun RoundButton(icon: ImageVector, description: String, tag: String, haze: HazeState, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(44.dp)
-            .surfaceRelief(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
-            .clip(CircleShape)
+            .glass(haze, CircleShape)
             .clickable(role = Role.Button, onClick = onClick)
             .testTag(tag),
         contentAlignment = Alignment.Center,

@@ -48,6 +48,9 @@ object MotionSpec {
     const val TAB_OUT_MS = 200
     const val TAB_IN_MS = 300
 
+    /** Écart entre deux tuiles de l'accueil dans la vague vers la recherche (DESIGN.md § 13.3). */
+    const val WAVE_STEP_MS = 40
+
     // --- Squelette (LOP-226, CA-06, P-12) ---
     /** Attente en deçà de laquelle aucun squelette n'apparaît : le contenu arrive directement. */
     const val SKELETON_DELAY_MS = 200L

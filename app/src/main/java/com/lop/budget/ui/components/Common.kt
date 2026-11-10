@@ -59,9 +59,20 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.offset
+import androidx.compose.ui.platform.LocalDensity
+import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -226,32 +237,33 @@ fun LopScreenScaffold(
     bottomBar: @Composable () -> Unit = {},
     /**
      * Bloc fixé sous le titre, qui ne défile pas avec le contenu : les filtres d'une analyse
-     * restent visibles pendant la lecture de la liste (LOP-40, P-6). Vide par défaut.
+     * restent visibles pendant la lecture de la liste (LOP-40, P-6). Vide par défaut. Il reçoit la
+     * source du flou de l'écran : ses contrôles peuvent être en verre ([glass]) et laisser voir la
+     * liste qui défile derrière eux.
      */
-    header: @Composable ColumnScope.() -> Unit = {},
+    header: @Composable ColumnScope.(HazeState) -> Unit = {},
     content: LazyListScope.() -> Unit,
 ) {
     val listState = rememberLazyListState()
-    val showTopBarDivider by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
-        }
-    }
+    val haze = rememberHazeState()
+    val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
-    // Écran posé sous la barre d'état : le dégradé continue celui de `LopNavHost` (LOP-229, CA-01).
-    // Opaque, il garde les transitions glissées sans superposition ; la barre de titre le repeint
-    // pour masquer la liste qui défile dessous.
-    val background = lopBackgroundBrush(WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+    // Écran prolongé sous la barre d'état, transparente : le dégradé part du haut de la fenêtre et
+    // continue celui de `LopNavHost` (LOP-229, CA-01). Opaque, il garde les transitions glissées
+    // sans superposition.
+    val background = lopBackgroundBrush()
     Scaffold(
-        modifier = modifier.fillMaxSize().background(background),
+        modifier = modifier.underStatusBar(statusBar).fillMaxSize().background(background),
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onBackground,
         snackbarHost = snackbarHost,
         topBar = {
+            // Barre de titre sans fond, façon Liquid Glass : la liste défile derrière la barre
+            // d'état, le titre et l'en-tête (bord flouté posé sur la liste, plus bas).
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(background)
+                    .padding(top = statusBar)
             ) {
                 Column {
                     CenterAlignedTopAppBar(
@@ -277,18 +289,10 @@ fun LopScreenScaffold(
                         ),
                         windowInsets = WindowInsets(0.dp)
                     )
-                    header()
+                    header(haze)
                 }
-
-                if (showTopBarDivider) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                            .align(Alignment.BottomCenter)
-                    )
-                }
+                // Plus de trait sous la barre au défilement : le bord flouté fait la limite, sans
+                // coupure nette.
             }
         },
         // La barre du bas se pose au-dessus des barres système, jamais dessous : sans ça le
@@ -298,7 +302,8 @@ fun LopScreenScaffold(
         val layoutDirection = LocalLayoutDirection.current
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            // Source du flou de la barre de titre et des contrôles en verre, ciel compris.
+            modifier = Modifier.fillMaxSize().hazeSource(haze).background(background),
             // Les marges du Scaffold sont portées par le contenu, pas par la liste : celle-ci
             // occupe tout l'écran et **défile sous** les barres, qui restent donc transparentes.
             // Posées sur le `Modifier`, elles découpaient une bande opaque autour de la barre du
@@ -313,8 +318,20 @@ fun LopScreenScaffold(
         ) {
             content()
         }
+        // Bord flouté sous la barre d'état, le titre et l'en-tête : plein jusque sous le titre, qui
+        // reste lisible, puis de moins en moins à travers l'en-tête et la marge haute de la liste.
+        // Au repos, rien n'est dessous : il ne se voit pas.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(padding.calculateTopPadding() + 20.dp)
+                .scrollEdge(haze, solid = statusBar + TopBarHeight)
+        )
     }
 }
+
+/** Hauteur de `CenterAlignedTopAppBar` (Material 3). */
+private val TopBarHeight = 64.dp
 
 /**
  * Card flottante pour les sections d'écran (LOP-229, CA-04, P-6) : surface opaque avec un reflet
@@ -374,6 +391,54 @@ private val LocalInsideCard = staticCompositionLocalOf { false }
 @Composable
 fun Modifier.surfaceRelief(shape: Shape): Modifier =
     softShadow(shape).border(BorderStroke(1.dp, lopRimBrush()), shape)
+
+/**
+ * Verre des contrôles flottants, façon Liquid Glass (DESIGN.md § 6) : le contenu de [haze] se voit
+ * flouté sous une teinte légère, cerné d'un liseré. Sans ombre : sous du translucide, elle ferait
+ * une tache (§ 5.3). Le liseré du thème est transparent en clair ; le verre y prend le contour des
+ * séparateurs. Remplace `surfaceRelief` + fond, et découpe à [shape].
+ */
+@Composable
+fun Modifier.glass(haze: HazeState, shape: Shape): Modifier {
+    val colors = MaterialTheme.colorScheme
+    val rim = if (colors.background.luminance() < 0.5f) lopRimBrush() else SolidColor(colors.outlineVariant)
+    return clip(shape)
+        .hazeEffect(haze) {
+            blurRadius = 24.dp
+            noiseFactor = 0f
+            backgroundColor = colors.background
+            tints = listOf(HazeTint(colors.surfaceContainerHigh.copy(alpha = 0.6f)))
+        }
+        .border(BorderStroke(1.dp, rim), shape)
+}
+
+/**
+ * Bord de défilement façon Liquid Glass (DESIGN.md § 4) : le contenu de [haze] qui passe ici est
+ * flouté pleinement sur les [solid] du haut, puis de moins en moins jusqu'au bas, sans coupure nette.
+ * Flou progressif, et non fondu : un fondu laissait transparaître le texte net sous le titre.
+ * Sans rien dessous, le ciel flouté reste le ciel : le bord ne se voit pas.
+ */
+@Composable
+fun Modifier.scrollEdge(haze: HazeState, solid: Dp = 0.dp): Modifier {
+    val background = MaterialTheme.colorScheme.background
+    val solidPx = with(LocalDensity.current) { solid.toPx() }
+    return hazeEffect(haze) {
+        blurRadius = 24.dp
+        noiseFactor = 0f
+        backgroundColor = background
+        progressive = HazeProgressive.verticalGradient(startY = solidPx, startIntensity = 1f, endIntensity = 0f)
+    }
+}
+
+/**
+ * Prolonge l'élément vers le haut sous la barre d'état, transparente : le NavHost s'arrête sous
+ * elle. Sa place dans la mise en page ne change pas.
+ */
+fun Modifier.underStatusBar(height: Dp): Modifier = layout { measurable, constraints ->
+    val extra = height.roundToPx()
+    val placeable = measurable.measure(constraints.offset(vertical = extra))
+    layout(placeable.width, placeable.height - extra) { placeable.place(0, -extra) }
+}
 
 /**
  * Ombre diffuse des surfaces (LOP-229, CA-04, P-9) : large et légère plutôt que courte et sèche.

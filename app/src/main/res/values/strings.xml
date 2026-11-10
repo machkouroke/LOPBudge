@@ -208,6 +208,7 @@
     <string name="analysis_period_invalid">La fin doit être égale ou postérieure au début</string>
     <!-- Vue unifiée des transactions (LOP-228) -->
     <string name="search_placeholder">Titre, note, montant…</string>
+    <string name="home_search_bar">Rechercher</string>
     <string name="search_filter_tags">Étiquettes</string>
     <string name="search_all_categories">Toutes les catégories</string>
     <string name="search_all_tags">Toutes les étiquettes</string>
