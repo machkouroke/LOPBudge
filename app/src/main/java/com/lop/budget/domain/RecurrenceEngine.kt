@@ -264,7 +264,8 @@ object RecurrenceEngine {
         return slot.withDayOfMonth(minOf(day, slot.toLocalDate().lengthOfMonth()))
     }
 
-    private fun parseDaysOfWeek(raw: String?): List<Int> {
+    /** Jours ISO cochés d'une série hebdomadaire ; aussi le `k` du coût annuel de LOP-241. */
+    internal fun parseDaysOfWeek(raw: String?): List<Int> {
         if (raw.isNullOrBlank()) return emptyList()
         return raw.split(",")
             .mapNotNull { it.trim().toIntOrNull() }

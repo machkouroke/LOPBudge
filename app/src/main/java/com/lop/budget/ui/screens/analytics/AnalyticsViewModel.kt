@@ -8,6 +8,9 @@ import com.lop.budget.domain.CategoryBreakdown
 import com.lop.budget.domain.usecase.insight.AnalyticsTrend
 import com.lop.budget.domain.usecase.insight.HabitsComparison
 import com.lop.budget.domain.usecase.insight.ObserveMonthlyAnalyticsUseCase
+import com.lop.budget.domain.usecase.insight.ObserveRecurringChargesUseCase
+import com.lop.budget.domain.usecase.insight.CalendarStart
+import com.lop.budget.domain.usecase.insight.RecurringCharges
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -61,6 +64,13 @@ data class AnalyticsUiState(
     val habitsFailed: Boolean = false,
 )
 
+/** Carte de LOP-241, hors période (CA-06) : un chargement n'est jamais présenté comme 0 €. */
+sealed interface ChargesState {
+    data object Loading : ChargesState
+    data object Failed : ChargesState
+    data class Ready(val charges: RecurringCharges) : ChargesState
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
@@ -68,6 +78,7 @@ class AnalyticsViewModel @Inject constructor(
     private val observeMonthlyAnalytics: ObserveMonthlyAnalyticsUseCase,
     settings: SettingsRepository,
     private val clock: Clock,
+    private val observeRecurringCharges: ObserveRecurringChargesUseCase,
 ) : ViewModel() {
 
     /** Lu sur l'horloge injectée ; le fuseau est relu à chaque appel, comme l'accueil. */
@@ -192,4 +203,37 @@ class AnalyticsViewModel @Inject constructor(
             // collecte sur `viewModelScope`, donc `Dispatchers.Main.immediate`.
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AnalyticsUiState())
+
+    private val chargesAttempt = MutableStateFlow(0)
+
+    /** CA-06 de LOP-241 : relit la carte des charges après un échec, sans toucher au reste. */
+    fun retryCharges() = chargesAttempt.update { it + 1 }
+
+    /**
+     * LOP-241 : hors de la lecture de période, donc ni mois, ni année, ni mode ne la relisent
+     * (CA-06). Son propre `catch` : son échec ne coupe ni la tendance ni les tuiles.
+     *
+     * ponytail: jour lu à chaque (re)lecture ; si minuit passe onglet ouvert, une série terminée la
+     * veille reste comptée jusqu'à la lecture suivante. Exposer un flux minuté si cela gêne.
+     */
+    val charges: StateFlow<ChargesState> = chargesAttempt
+        .flatMapLatest {
+            val zone = ZoneId.systemDefault()
+            observeRecurringCharges(LocalDate.now(clock.withZone(zone)), zone)
+                .map<RecurringCharges, ChargesState> { ChargesState.Ready(it) }
+                .catch { emit(ChargesState.Failed) }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ChargesState.Loading)
+
+    /**
+     * P-7 et P-10 de LOP-241 : départ et jour d'ouverture du calendrier de la série [seriesId], ou
+     * `null` si elle n'a plus d'échéance. Un échec de lecture n'ouvre rien : la carte, observée,
+     * porte son propre échec.
+     */
+    suspend fun calendarStart(seriesId: Long): CalendarStart? {
+        val zone = ZoneId.systemDefault()
+        return runCatching {
+            observeRecurringCharges.calendarStart(seriesId, LocalDate.now(clock.withZone(zone)), zone)
+        }.getOrNull()
+    }
 }

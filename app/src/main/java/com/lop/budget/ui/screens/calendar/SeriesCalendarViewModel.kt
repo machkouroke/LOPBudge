@@ -82,6 +82,13 @@ class SeriesCalendarViewModel @Inject constructor(
     private val zone: ZoneId = ZoneId.systemDefault()
 
     /**
+     * Jour d'ouverture imposé par l'appelant : la prochaine échéance d'une charge d'Analyses, même
+     * quand son occurrence de départ est la première à venir (P-10 de LOP-241). Absent, la règle
+     * d'ouverture de LOP-7 s'applique.
+     */
+    private val openingDay: LocalDate? = savedStateHandle.get<String>(ARG_DAY)?.let(LocalDate::parse)
+
+    /**
      * CA-08 : le jour marqué « aujourd'hui » dans la grille, lu sur l'horloge injectée et non sur
      * celle du téléphone, comme l'accueil et la recherche (LOP-189).
      *
@@ -104,7 +111,7 @@ class SeriesCalendarViewModel @Inject constructor(
 
     private val context: StateFlow<ContextState> = retries.flatMapLatest {
         occurrences.observeContext(startId, zone)
-            .onEach { ctx -> if (ctx != null && month.value == null) show(ctx.openingDay) }
+            .onEach { ctx -> if (ctx != null && month.value == null) show(openingDay ?: ctx.openingDay) }
             .map { ctx -> if (ctx == null) ContextState.Missing else ContextState.Ready(ctx) }
             .catch { emit(ContextState.Failed) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ContextState.Loading)
@@ -202,6 +209,8 @@ class SeriesCalendarViewModel @Inject constructor(
 
     companion object {
         const val ARG_START_ID = "startId"
+        /** Facultatif, `yyyy-MM-dd` ; voir [openingDay]. */
+        const val ARG_DAY = "day"
         private const val KEY_MONTH = "calendar.month"
         private const val KEY_DAY = "calendar.day"
     }

@@ -95,6 +95,28 @@ object TestTags {
     const val ANALYTICS_HABITS_NONE = "analytics.habits.none"
     const val ANALYTICS_HABITS_ERROR = "analytics.habits.error"
     const val ANALYTICS_HABITS_RETRY = "analytics.habits.retry"
+    /** Carte de LOP-241, en dernier, indépendante de la période (CA-06). */
+    const val ANALYTICS_CHARGES = "analytics.charges"
+    /** « 12 charges » (CA-02). */
+    const val ANALYTICS_CHARGES_COUNT = "analytics.charges.count"
+    /** « 1 650,00 €/mois » (CA-03). */
+    const val ANALYTICS_CHARGES_TOTAL = "analytics.charges.total"
+    /** « 61 % de vos revenus récurrents » (CA-03). */
+    const val ANALYTICS_CHARGES_SHARE = "analytics.charges.share"
+    /** Barre de la part engagée, remplie au plus à 100 % (CA-03). */
+    const val ANALYTICS_CHARGES_SHARE_BAR = "analytics.charges.share.bar"
+    /** « Ajoutez vos revenus récurrents pour voir la part engagée » (CA-03). */
+    const val ANALYTICS_CHARGES_NO_INCOME = "analytics.charges.no.income"
+    /** Une charge, sur la carte ou dans la feuille ; un appui ouvre son calendrier (CA-05). */
+    const val ANALYTICS_CHARGES_ROW = "analytics.charges.row"
+    /** « Voir les 12 charges », absent à trois charges ou moins (CA-04). */
+    const val ANALYTICS_CHARGES_SEE_ALL = "analytics.charges.see.all"
+    /** Feuille de la liste complète (P-8). */
+    const val ANALYTICS_CHARGES_SHEET = "analytics.charges.sheet"
+    /** « Aucune charge récurrente » (CA-06). */
+    const val ANALYTICS_CHARGES_NONE = "analytics.charges.none"
+    const val ANALYTICS_CHARGES_ERROR = "analytics.charges.error"
+    const val ANALYTICS_CHARGES_RETRY = "analytics.charges.retry"
     const val HOME_ACCOUNT_CARD = "home.account.card"
 
     // Accounts & current balances (LOP-13)

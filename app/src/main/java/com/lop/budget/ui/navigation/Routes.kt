@@ -115,9 +115,13 @@ object Routes {
     const val DETAIL = "detail/{id}"
     fun detail(id: Long) = "detail/$id"
 
-    /** Calendrier de la série de l'occurrence [startId], ouvert depuis son détail (LOP-7). */
-    const val SERIES_CALENDAR = "series/calendar/{startId}"
-    fun seriesCalendar(startId: Long) = "series/calendar/$startId"
+    /**
+     * Calendrier de la série de l'occurrence [startId], ouvert depuis son détail (LOP-7). [day],
+     * facultatif, impose le jour d'ouverture : la prochaine échéance d'une charge (P-10 de LOP-241).
+     */
+    const val SERIES_CALENDAR = "series/calendar/{startId}?day={day}"
+    fun seriesCalendar(startId: Long, day: LocalDate? = null) =
+        "series/calendar/$startId" + (day?.let { "?day=$it" } ?: "")
 
     const val EDIT = "edit/{id}?scope={scope}&date={date}&proposalId={proposalId}"
     fun edit(id: Long, scope: String? = null, date: Long? = null): String {

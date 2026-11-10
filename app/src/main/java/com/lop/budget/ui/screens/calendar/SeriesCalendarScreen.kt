@@ -79,6 +79,11 @@ fun SeriesCalendarScreen(
     onBack: () -> Unit,
     onOpenOccurrence: (Long) -> Unit,
     snackbarHostState: SnackbarHostState,
+    /**
+     * L'occurrence de départ est touchée (CA-04 de LOP-7). Ouvert depuis son détail, c'est un
+     * retour ; ouvert depuis Analyses (LOP-241, P-7), aucun détail n'est dessous : l'hôte l'ouvre.
+     */
+    onReturnToStart: () -> Unit = onBack,
     vm: SeriesCalendarViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -94,7 +99,7 @@ fun SeriesCalendarScreen(
         vm.events.collect { event ->
             when (event) {
                 is CalendarEvent.OpenOccurrence -> onOpenOccurrence(event.id)
-                CalendarEvent.ReturnToStart -> onBack()
+                CalendarEvent.ReturnToStart -> onReturnToStart()
                 // CA-05 : rester sur l'écran ; les données, observées, sont déjà à jour.
                 CalendarEvent.OccurrenceUnavailable -> scope.launch { snackbarHostState.showSnackbar(unavailable) }
             }

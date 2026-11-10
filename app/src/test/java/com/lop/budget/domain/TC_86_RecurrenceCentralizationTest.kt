@@ -136,6 +136,12 @@ class RecurrenceCentralizationTest {
          * Ces chaînes ne sont pas refactorées par l'IDE : un renommage ou un déplacement de package
          * fera toujours échouer S-02 tant qu'elles n'auront pas été reprises à la main. C'est le
          * comportement voulu — le test est un déclencheur de revue, pas un miroir du dépôt.
+         *
+         * **Ajout du 10 novembre 2026, accordé par l'utilisateur (LOP-241).**
+         * - `…/insight/ObserveRecurringChargesUseCase.kt` — `nextOccurrences(série, fin du jour, 1)`
+         *   seul, pour savoir si une série a encore une occurrence après aujourd'hui (CA-02), et
+         *   `parseDaysOfWeek` pour le nombre de jours cochés. Aucune génération de grille : le coût
+         *   annuel est la formule de l'US, pas le calendrier de la série.
          */
         val ALLOWED_CALL_SITES = listOf(
             "domain/RecurrenceEngine.kt",
@@ -143,6 +149,7 @@ class RecurrenceCentralizationTest {
             "domain/usecase/transaction/ObserveTransactionDetailUseCase.kt",
             "domain/usecase/transaction/CreateTransactionUseCase.kt",
             "domain/usecase/transaction/EditTransactionWithScopeUseCase.kt",
+            "domain/usecase/insight/ObserveRecurringChargesUseCase.kt",
         )
     }
 }

@@ -17,10 +17,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
@@ -30,12 +33,16 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -43,9 +50,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -59,9 +68,13 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.insight.AnalyticsTrend
 import com.lop.budget.domain.usecase.insight.CategoryAboveHabits
 import com.lop.budget.domain.usecase.insight.HabitsComparison
+import com.lop.budget.domain.usecase.insight.RecurringCharge
+import com.lop.budget.domain.usecase.insight.CalendarStart
+import com.lop.budget.domain.usecase.insight.RecurringCharges
 import com.lop.budget.ui.common.TestTags
 import com.lop.budget.ui.components.CircleIcon
 import com.lop.budget.ui.components.FloatingCard
+import com.lop.budget.ui.components.LopBottomSheet
 import com.lop.budget.ui.components.LopScreenScaffold
 import com.lop.budget.ui.components.MonthPickerBottomSheet
 import com.lop.budget.ui.components.YearPickerBottomSheet
@@ -71,18 +84,22 @@ import com.lop.budget.ui.components.surfaceRelief
 import com.lop.budget.ui.theme.LopTheme
 import com.lop.budget.util.Format
 import com.lop.budget.util.IconMapper
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /**
  * [onOpenDetail] ouvre l'analyse détaillée d'un type (LOP-233, CA-02) ; [onOpenTransactions], la
  * vue unifiée des transactions (CA-07) ; [onOpenCategory], le détail Dépenses d'une catégorie
- * (LOP-240, CA-07). Premier et dernier jours de la période inclus.
+ * (LOP-240, CA-07) ; [onOpenSeriesCalendar], le calendrier d'une charge depuis son occurrence de
+ * départ, ouvert sur sa prochaine échéance (LOP-241, CA-05, P-7, P-10). Premier et dernier jours
+ * de la période inclus.
  */
 @Composable
 fun AnalyticsScreen(
     onOpenDetail: (TransactionType, LocalDate, LocalDate) -> Unit,
     onOpenTransactions: (LocalDate, LocalDate) -> Unit,
     onOpenCategory: (categoryId: Long, LocalDate, LocalDate) -> Unit,
+    onOpenSeriesCalendar: (CalendarStart) -> Unit,
     vm: AnalyticsViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -93,6 +110,29 @@ fun AnalyticsScreen(
     val current = isLoaded && state.mode == period.mode && state.month == period.month
     val showSkeleton = rememberShowSkeleton(loading = !current)
     var showPicker by rememberSaveable { mutableStateOf(false) }
+    val charges by vm.charges.collectAsStateWithLifecycle()
+    var showCharges by rememberSaveable { mutableStateOf(false) }
+    // P-8 de LOP-241 : la feuille est une fenêtre ; ouverte, elle resterait au-dessus du calendrier
+    // pendant la transition. Fermée au départ, elle est rouverte au retour.
+    var reopenCharges by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (reopenCharges) {
+            reopenCharges = false
+            showCharges = true
+        }
+    }
+    val scope = rememberCoroutineScope()
+    // P-7 : l'occurrence de départ est résolue au toucher ; une série sans occurrence n'ouvre rien.
+    val openCharge: (Long) -> Unit = { seriesId ->
+        scope.launch {
+            val start = vm.calendarStart(seriesId) ?: return@launch
+            if (showCharges) {
+                showCharges = false
+                reopenCharges = true
+            }
+            onOpenSeriesCalendar(start)
+        }
+    }
 
     LopScreenScaffold(
         title = stringResource(R.string.analytics_title),
@@ -135,9 +175,17 @@ fun AnalyticsScreen(
                 onRetry = vm::retryTrend,
             )
         }
+        // LOP-241 : en dernier (P-9), hors période (CA-06) ; attente courte du chargement : rien.
+        if (charges !is ChargesState.Loading) item {
+            ChargesCard(charges, state.currency, onOpen = openCharge, onSeeAll = { showCharges = true }, onRetry = vm::retryCharges)
+        }
         // Rien d'autre (CA-06 de LOP-233) : « Dépensé sur la période » (P-4), l'anneau et la
         // répartition par catégorie (P-7) venaient de l'ancienne page d'analyse ; la répartition
         // reste dans le détail ouvert par les tuiles.
+    }
+
+    (charges as? ChargesState.Ready)?.takeIf { showCharges }?.let { ready ->
+        ChargesSheet(ready.charges.charges, state.currency, onOpen = openCharge, onDismiss = { showCharges = false })
     }
 
     // CA-03 : un appui sur un mois ou une année valide ; fermer la feuille annule.
@@ -270,17 +318,10 @@ private fun HabitsCard(
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.analytics_habits_title), style = MaterialTheme.typography.titleMedium)
             when {
-                failed -> Column(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(TestTags.ANALYTICS_HABITS_ERROR),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                    Text(stringResource(R.string.analytics_habits_error), style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
-                    Button(onClick = onRetry, modifier = Modifier.testTag(TestTags.ANALYTICS_HABITS_RETRY)) {
-                        Text(stringResource(R.string.analysis_retry))
-                    }
-                }
+                failed -> CardError(
+                    stringResource(R.string.analytics_habits_error), TestTags.ANALYTICS_HABITS_ERROR,
+                    TestTags.ANALYTICS_HABITS_RETRY, onRetry,
+                )
                 habits is HabitsComparison.NotEnoughHistory -> HabitsMessage(
                     stringResource(R.string.analytics_habits_history, habits.missing), TestTags.ANALYTICS_HABITS_HISTORY,
                 )
@@ -291,6 +332,22 @@ private fun HabitsCard(
                     HabitsRow(line, currency) { onOpen(line.categoryId, habits.until) }
                 }
             }
+        }
+    }
+}
+
+/** Échec de lecture d'une carte : message et Réessayer, à la place de son contenu. */
+@Composable
+private fun CardError(text: String, tag: String, retryTag: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(tag),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+        Text(text, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
+        Button(onClick = onRetry, modifier = Modifier.testTag(retryTag)) {
+            Text(stringResource(R.string.analysis_retry))
         }
     }
 }
@@ -337,6 +394,150 @@ private fun HabitsRow(line: CategoryAboveHabits, currency: String, onClick: () -
                     style = MaterialTheme.typography.labelMedium,
                     color = LopTheme.extended.expense,
                 )
+            }
+        }
+    }
+}
+
+/**
+ * LOP-241 : total mensuel et part engagée (CA-03), les trois charges au plus fort coût annuel puis
+ * le lien vers la liste complète (CA-04) ; « Aucune charge récurrente » ou l'échec (CA-06). Les
+ * montants ne dépendent pas de la période affichée.
+ */
+@Composable
+private fun ChargesCard(
+    state: ChargesState,
+    currency: String,
+    onOpen: (seriesId: Long) -> Unit,
+    onSeeAll: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    val ready = (state as? ChargesState.Ready)?.charges
+    FloatingCard(Modifier.fillMaxWidth().testTag(TestTags.ANALYTICS_CHARGES)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.analytics_charges_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                // CA-02 : le nombre exact de charges.
+                if (ready != null && ready.charges.isNotEmpty()) Text(
+                    pluralStringResource(R.plurals.analytics_charges_count, ready.charges.size, ready.charges.size),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag(TestTags.ANALYTICS_CHARGES_COUNT),
+                )
+            }
+            when {
+                ready == null -> CardError(
+                    stringResource(R.string.analytics_charges_error), TestTags.ANALYTICS_CHARGES_ERROR,
+                    TestTags.ANALYTICS_CHARGES_RETRY, onRetry,
+                )
+                ready.charges.isEmpty() -> HabitsMessage(stringResource(R.string.analytics_charges_none), TestTags.ANALYTICS_CHARGES_NONE)
+                else -> {
+                    ChargesSummary(ready, currency)
+                    ready.charges.take(CHARGES_ON_CARD).forEach { ChargeRow(it, currency) { onOpen(it.seriesId) } }
+                    if (ready.charges.size > CHARGES_ON_CARD) {
+                        TextButton(onClick = onSeeAll, modifier = Modifier.testTag(TestTags.ANALYTICS_CHARGES_SEE_ALL)) {
+                            Text(stringResource(R.string.analytics_charges_see_all, ready.charges.size))
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private const val CHARGES_ON_CARD = 3
+
+/**
+ * CA-03 : « 1 650,00 €/mois », puis « 61 % de vos revenus récurrents » et sa barre. Au-delà de
+ * 100 %, la part telle quelle, en rouge, barre pleine ; sans revenu récurrent, l'invitation.
+ */
+@Composable
+private fun ChargesSummary(charges: RecurringCharges, currency: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            stringResource(R.string.analytics_charges_per_month, Format.money(charges.monthlyTotal, currency)),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.testTag(TestTags.ANALYTICS_CHARGES_TOTAL),
+        )
+        val share = charges.share
+        if (share == null) {
+            HabitsMessage(stringResource(R.string.analytics_charges_no_income), TestTags.ANALYTICS_CHARGES_NO_INCOME)
+            return@Column
+        }
+        val over = share > 100
+        Text(
+            stringResource(R.string.analytics_charges_share, share.toInt()),
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag(TestTags.ANALYTICS_CHARGES_SHARE),
+        )
+        LinearProgressIndicator(
+            progress = { share.coerceAtMost(100L) / 100f },
+            modifier = Modifier.fillMaxWidth().height(8.dp).testTag(TestTags.ANALYTICS_CHARGES_SHARE_BAR),
+            color = if (over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            strokeCap = StrokeCap.Round,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+        )
+    }
+}
+
+/** Tuile teintée de la catégorie de la série, comme `HabitsRow` ; coûts mensuel puis annuel (CA-04). */
+@Composable
+private fun ChargeRow(charge: RecurringCharge, currency: String, onClick: () -> Unit) {
+    val color = Color(charge.colorArgb)
+    FloatingCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(interactionSource = null, indication = null, role = Role.Button, onClick = onClick)
+            .testTag(TestTags.ANALYTICS_CHARGES_ROW),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        tint = color,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CircleIcon(IconMapper.get(charge.icon ?: "category"), tint = color, background = color.copy(alpha = 0.18f))
+            Text(charge.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(stringResource(R.string.analytics_charges_per_month, Format.money(charge.monthly, currency)), style = MaterialTheme.typography.titleSmall)
+                Text(
+                    stringResource(R.string.analytics_charges_per_year, Format.money(charge.annual, currency)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * P-8 : la liste complète, dans le même ordre que la carte (CA-04). Posées dans une carte, les
+ * lignes y sont des tuiles comme sur la carte ; liste bornée (`DESIGN.md` § 7).
+ */
+@Composable
+private fun ChargesSheet(
+    charges: List<RecurringCharge>,
+    currency: String,
+    onOpen: (seriesId: Long) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    LopBottomSheet(onDismiss = onDismiss, modifier = Modifier.testTag(TestTags.ANALYTICS_CHARGES_SHEET), maxHeightFraction = 0.9f) {
+        Text(
+            stringResource(R.string.analytics_charges_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 12.dp),
+        )
+        FloatingCard(
+            modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp).fillMaxWidth().weight(1f, fill = false),
+            contentPadding = PaddingValues(12.dp),
+        ) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(charges, key = { it.seriesId }) { charge ->
+                    ChargeRow(charge, currency) { onOpen(charge.seriesId) }
+                }
             }
         }
     }

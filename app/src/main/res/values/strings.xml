@@ -160,6 +160,18 @@
     <string name="analytics_habits_history">Disponible après 3 mois d’historique (encore %1$d mois)</string>
     <string name="analytics_habits_none">Aucune catégorie au-dessus de vos habitudes</string>
     <string name="analytics_habits_error">Impossible de comparer vos dépenses</string>
+    <!-- Charges récurrentes (LOP-241) -->
+    <string name="analytics_charges_title">Charges récurrentes</string>
+    <!-- %1$s : montant formaté, par exemple « 820,00 € ». -->
+    <string name="analytics_charges_per_month">%1$s/mois</string>
+    <string name="analytics_charges_per_year">%1$s/an</string>
+    <!-- %1$d : part engagée en entier ; espace insécable avant « % », comme Format.percent. -->
+    <string name="analytics_charges_share">%1$d&#160;%% de vos revenus récurrents</string>
+    <string name="analytics_charges_no_income">Ajoutez vos revenus récurrents pour voir la part engagée</string>
+    <!-- %1$d : nombre de charges, toujours plus de trois (le lien est absent sinon). -->
+    <string name="analytics_charges_see_all">Voir les %1$d charges</string>
+    <string name="analytics_charges_none">Aucune charge récurrente</string>
+    <string name="analytics_charges_error">Impossible de lire vos charges récurrentes</string>
 
     <string name="see_all">Voir tout</string>
     <string name="no_accounts_to_show">Aucun compte à afficher</string>
@@ -452,6 +464,11 @@
         <item quantity="one">Filtres, %d appliqué</item>
         <item quantity="many">Filtres, %d appliqués</item>
         <item quantity="other">Filtres, %d appliqués</item>
+    </plurals>
+    <plurals name="analytics_charges_count">
+        <item quantity="one">%d charge</item>
+        <item quantity="many">%d charges</item>
+        <item quantity="other">%d charges</item>
     </plurals>
     <plurals name="series_calendar_day_count">
         <item quantity="one">%d occurrence</item>

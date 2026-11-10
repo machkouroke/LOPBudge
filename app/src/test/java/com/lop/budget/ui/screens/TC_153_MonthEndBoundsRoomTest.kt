@@ -25,6 +25,7 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
 import com.lop.budget.domain.usecase.insight.ObserveHomeSummaryUseCase
 import com.lop.budget.domain.usecase.insight.ObserveMonthlyAnalyticsUseCase
+import com.lop.budget.domain.usecase.insight.ObserveRecurringChargesUseCase
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
 import com.lop.budget.ui.screens.analytics.AnalyticsUiState
 import com.lop.budget.ui.screens.analytics.AnalyticsViewModel
@@ -303,7 +304,13 @@ class MonthEndBoundsRoomTest {
     private fun analyticsVm(type: TransactionType): AnalyticsViewModel {
         val handle = SavedStateHandle(mapOf("type" to type.name, "ym" to MARCH.toString()))
         val factory = viewModelFactory {
-            initializer { AnalyticsViewModel(handle, ObserveMonthlyAnalyticsUseCase(observeTransactions), settings, CLOCK) }
+            initializer {
+                AnalyticsViewModel(
+                    handle, ObserveMonthlyAnalyticsUseCase(observeTransactions), settings, CLOCK,
+                    // LOP-241 : carte des charges récurrentes, sans effet sur les cas de ce test.
+                    ObserveRecurringChargesUseCase(transactionRepo, CategoryRepository(db.categoryDao()), observeTransactions),
+                )
+            }
         }
         return ViewModelProvider(store, factory)[AnalyticsViewModel::class.java]
     }

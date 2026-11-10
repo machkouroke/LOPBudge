@@ -211,6 +211,11 @@ fun LopNavHost() {
                             onOpenCategory = { id, start, end ->
                                 navController.navigate(Routes.monthly(TransactionType.EXPENSE, start, end, id))
                             },
+                            // LOP-241, CA-05 : calendrier de la charge, ouvert sur sa prochaine
+                            // échéance (P-10) ; Retour revient sur Analyses.
+                            onOpenSeriesCalendar = { start ->
+                                navController.navigate(Routes.seriesCalendar(start.occurrenceId, start.openingDay))
+                            },
                         )
                     }
 
@@ -555,15 +560,30 @@ fun LopNavHost() {
                     composable(
                         Routes.SERIES_CALENDAR,
                         arguments = listOf(
-                            navArgument(SeriesCalendarViewModel.ARG_START_ID) { type = NavType.LongType }
+                            navArgument(SeriesCalendarViewModel.ARG_START_ID) { type = NavType.LongType },
+                            navArgument(SeriesCalendarViewModel.ARG_DAY) {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
                         ),
-                    ) {
+                    ) { entry ->
+                        val startId = entry.arguments?.getLong(SeriesCalendarViewModel.ARG_START_ID) ?: 0L
                         SeriesCalendarScreen(
                             onBack = { navController.popBackStack() },
                             onOpenOccurrence = { id ->
                                 navController.navigate(Routes.detail(id)) { launchSingleTop = true }
                             },
                             snackbarHostState = snackbarHostState,
+                            // LOP-241, P-7 : ouvert depuis Analyses, le détail de départ n'est pas
+                            // dessous ; l'ouvrir, son retour ramène à ce calendrier (CA-06 de LOP-7).
+                            onReturnToStart = {
+                                if (navController.previousBackStackEntry?.destination?.route == Routes.DETAIL) {
+                                    navController.popBackStack()
+                                } else {
+                                    navController.navigate(Routes.detail(startId)) { launchSingleTop = true }
+                                }
+                            },
                         )
                     }
                 }
