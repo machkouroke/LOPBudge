@@ -85,7 +85,7 @@ jobs:
       - name: Preinstall emulator and system image
         run: |
           for attempt in 1 2 3; do
-            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator 'system-images;android-36;google_apis;x86_64' > /dev/null && exit 0
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator 'system-images;android-36;google_atd;x86_64' > /dev/null && exit 0
             echo "::warning::sdkmanager : tentative $attempt en echec, nouvel essai"
             rm -rf "$ANDROID_HOME/.downloadIntermediates" "$ANDROID_HOME/.temp"
             sleep 15
@@ -106,7 +106,11 @@ jobs:
           MAESTRO_CLI_NO_ANALYTICS: "true"
         with: &maestro-emulator
           api-level: 36
-          target: google_apis
+          # Image ATD (Automated Test Device) : sans écran, allégée des applications et services
+          # inutiles aux tests (Messages, Bien-être numérique, etc., vus dans le logcat du run
+          # 42936638392). Variante Google, pas AOSP : elle garde les services Google de l'image
+          # précédente (`google_apis`), et l'app utilise ML Kit.
+          target: google_atd
           arch: x86_64
           profile: pixel_6
           cores: 2
@@ -132,13 +136,17 @@ jobs:
       # Un seul nouvel essai, sur un emulateur neuf, et seulement si aucun flow n'a commence :
       # un echec de test n'est jamais rejoue.
       - name: Run Maestro Tests (nouvel essai, emulateur mort avant les flows)
+        id: retry
         if: steps.run.outcome == 'failure' && hashFiles('build/ci-tests-started') == ''
         uses: reactivecircus/android-emulator-runner@v2
         env: *maestro-env
         with: *maestro-emulator
 
+      # Seulement si le nouvel essai n'a pas eu lieu : quand il a lieu, il cree lui-meme
+      # `build/ci-tests-started`, et l'ancien test sur ce fichier marquait le job rouge meme apres un
+      # nouvel essai vert. Un nouvel essai rouge fait echouer le job par lui-meme.
       - name: Report Maestro failure
-        if: steps.run.outcome == 'failure' && hashFiles('build/ci-tests-started') != ''
+        if: steps.run.outcome == 'failure' && steps.retry.outcome == 'skipped'
         run: |
           echo "::error::Flows Maestro en echec : voir l'etape « Run Maestro Tests »."
           exit 1
@@ -210,12 +218,21 @@ jobs:
       - name: Preinstall emulator and system image
         run: |
           for attempt in 1 2 3; do
-            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator 'system-images;android-36;google_apis;x86_64' > /dev/null && exit 0
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator 'system-images;android-36;google_atd;x86_64' > /dev/null && exit 0
             echo "::warning::sdkmanager : tentative $attempt en echec, nouvel essai"
             rm -rf "$ANDROID_HOME/.downloadIntermediates" "$ANDROID_HOME/.temp"
             sleep 15
           done
           exit 1
+
+      # Compiler avant de démarrer l'émulateur. Run 42936638392 : Gradle compilait pendant que
+      # l'émulateur tournait (~190 % de CPU, 2,4 Go), charge de 6,3 sur 4 vCPU. L'étape de
+      # l'émulateur trouve ensuite les deux APK à jour et ne fait plus qu'installer et lancer. Ce
+      # n'était pas la cause des morts de `google_apis` (run 43058441373 : mort au premier test
+      # malgré la compilation préalable). Pas de compilateur Kotlin « in-process » : KSP y échoue
+      # (« Language version 1.9 is no longer supported », run 43053010454).
+      - name: Build app and test APKs
+        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon -x lint
 
       # Memoire et charge de l'hote toutes les 5 s, puis logcat de l'emulateur (scripts/ci_diag.sh) :
       # de quoi comprendre une mort silencieuse de l'emulateur.
@@ -228,7 +245,11 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with: &instrumented-emulator
           api-level: 36
-          target: google_apis
+          # Image ATD (`google_atd`), comme Maestro. Sur `google_apis`, l'émulateur meurt au premier
+          # test de chaque shard depuis `fa51597e` (runs 42936638392 et 43058441373).
+          # Sur ATD (run 43053856222), seuls TC_138 U-04b (rotation, retiré) et U-05g
+          # (`captureToImage`, exclu par scripts/ci_run_instrumented.sh) arrêtaient l'émulateur.
+          target: google_atd
           arch: x86_64
           profile: pixel_6
           cores: 2
@@ -242,20 +263,25 @@ jobs:
           disable-animations: true
           disable-spellchecker: true
           enable-hw-keyboard: true
-          # Gradle construit et installe lui-même les deux APK (application et test) : on ne
-          # réutilise donc pas l'artefact du job `build`, qui ne contient que le premier.
+          # Les deux APK (application et test) sont compilés à l'étape « Build app and test APKs » ;
+          # Gradle ne fait plus ici qu'installer et lancer. On ne réutilise pas l'artefact du job
+          # `build`, qui ne contient que le premier.
           #
           # Gboard désactivé avant les tests : runs 41701682688 et 41704416757, l'émulateur s'est
           # figé ~5 min 40 après son démarrage, les deux fois juste après que Gboard, focalisé sur
           # un champ, a programmé en boucle le téléchargement de son pack vocal fr-FR. Les tests
           # saisissent par la sémantique Compose et n'ont pas besoin de clavier logiciel.
+          #
+          # Tests lancés sous surveillance (scripts/ci_run_instrumented.sh) : un émulateur figé,
+          # logcat muet 90 s et adb sans réponse, est tué ; le shard est alors relancé comme un
+          # émulateur perdu, au lieu d'attendre la limite de 45 min.
           script: |
             adb wait-for-device
             bash scripts/ci_diag.sh logcat
             bash scripts/ci_wait_locale.sh fr-FR
             adb shell pm disable-user --user 0 com.google.android.inputmethod.latin || true
             mkdir -p build && touch build/ci-tests-started
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.numShards=3 -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard }} -Pandroid.testInstrumentationRunnerArguments.tc162ForceB2=${{ inputs.diag_u01b2 && 'true' || 'false' }}
+            bash scripts/ci_run_instrumented.sh ${{ matrix.shard }} ${{ inputs.diag_u01b2 && 'true' || 'false' }}
 
       # Emulateur mort en cours de shard (run 41701682688 : qemu disparu au 37e cas sur 72) :
       # Gradle ecrit alors « Test run failed to complete » ET « device '…' not found ». Les deux
@@ -277,12 +303,17 @@ jobs:
       # Un seul nouvel essai : emulateur mort avant le premier test (redemarrage de
       # -change-locale), ou perdu en cours de shard. Un rouge de test reste rouge.
       - name: Run Instrumented Tests (nouvel essai, emulateur mort)
+        id: retry
         if: steps.tests.outcome == 'failure' && (hashFiles('build/ci-tests-started') == '' || steps.lost.outputs.lost == 'true')
         uses: reactivecircus/android-emulator-runner@v2
         with: *instrumented-emulator
 
+      # Seulement si le nouvel essai n'a pas eu lieu. Run 42834564671 (`ef432c8d`) : emulateur
+      # disparu pendant le changement de langue, nouvel essai 99/99 vert, job rouge quand meme,
+      # parce que le nouvel essai avait cree `build/ci-tests-started`. Un nouvel essai rouge fait
+      # echouer le job par lui-meme.
       - name: Report Instrumented failure
-        if: steps.tests.outcome == 'failure' && hashFiles('build/ci-tests-started') != '' && steps.lost.outputs.lost != 'true'
+        if: steps.tests.outcome == 'failure' && steps.retry.outcome == 'skipped'
         run: |
           echo "::error::Tests instrumentes en echec : voir l'etape « Run Instrumented Tests »."
           exit 1
