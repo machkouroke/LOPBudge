@@ -268,13 +268,17 @@ jobs:
           # figé ~5 min 40 après son démarrage, les deux fois juste après que Gboard, focalisé sur
           # un champ, a programmé en boucle le téléchargement de son pack vocal fr-FR. Les tests
           # saisissent par la sémantique Compose et n'ont pas besoin de clavier logiciel.
+          #
+          # Tests lancés sous surveillance (scripts/ci_run_instrumented.sh) : un émulateur figé,
+          # logcat muet 90 s et adb sans réponse, est tué ; le shard est alors relancé comme un
+          # émulateur perdu, au lieu d'attendre la limite de 45 min.
           script: |
             adb wait-for-device
             bash scripts/ci_diag.sh logcat
             bash scripts/ci_wait_locale.sh fr-FR
             adb shell pm disable-user --user 0 com.google.android.inputmethod.latin || true
             mkdir -p build && touch build/ci-tests-started
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.numShards=3 -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard }} -Pandroid.testInstrumentationRunnerArguments.tc162ForceB2=${{ inputs.diag_u01b2 && 'true' || 'false' }}
+            bash scripts/ci_run_instrumented.sh ${{ matrix.shard }} ${{ inputs.diag_u01b2 && 'true' || 'false' }}
 
       # Emulateur mort en cours de shard (run 41701682688 : qemu disparu au 37e cas sur 72) :
       # Gradle ecrit alors « Test run failed to complete » ET « device '…' not found ». Les deux

@@ -1,7 +1,6 @@
 package com.lop.budget.ui.navigation
 
 import android.content.Intent
-import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.ParcelFileDescriptor
@@ -102,7 +101,7 @@ import kotlin.math.abs
  * U-01  CA-01, CA-02           TransactionDetailScreen (aperçu, accès calendrier), SeriesCalendarScreen
  * U-02  CA-02, CA-04, CA-05    SeriesCalendarScreen → SeriesCalendarViewModel.openOccurrence / selectDay
  * U-03  CA-03, CA-05, CA-06    LopNavHost (popUpTo du calendrier), MonthPickerBottomSheet, fermetures
- * U-04  CA-06, CA-07           LopScreenScaffold (état de liste), ActivityScenario.recreate, rotation
+ * U-04  CA-06, CA-07           LopScreenScaffold (état de liste), ActivityScenario.recreate
  * U-05  CA-08                  DayCell / OccurrenceRow / MonthHeader : annonces, actions, 48 dp, 200 % ;
  *                              « aujourd'hui » à date fixe (U-05e), au jour réel (U-05f), et visible
  *                              sur un jour sélectionné (U-05g, LOP-190)
@@ -132,6 +131,10 @@ import kotlin.math.abs
  *   complément décidé le 4 octobre 2026 ; son attendu vient de la même horloge que l'écran.
  * - `ActivityScenario.recreate()` conserve les ViewModels : U-04 ne prouve pas la reconstruction
  *   après mort du processus (réserve de l'écart 1, décision de l'utilisateur).
+ * - U-04b (rotation en paysage) est retiré le 11 novembre 2026, sur décision de l'utilisateur : la
+ *   rotation sort du périmètre, l'adaptation à la taille d'écran sera testée autrement. Elle figeait
+ *   l'émulateur de la CI (9 octobre et 11 novembre 2026). CA-06 reste couvert par la recréation
+ *   (U-04a, U-04c).
  *
  * ## Réserves non automatisées
  * Dessin P-7 (icône de catégorie, nombre dessiné), formes sélection / aujourd'hui (revue visuelle),
@@ -529,7 +532,7 @@ class SeriesCalendarJourneyTest {
     }
 
     // =============================================================================================
-    // U-04 — CA-06, CA-07 : position de liste, recréation, rotation, départ supprimé
+    // U-04 — CA-06, CA-07 : position de liste, recréation, départ supprimé
     // =============================================================================================
 
     @Test
@@ -557,23 +560,6 @@ class SeriesCalendarJourneyTest {
         awaitDaySelected("U-04a / CA-06 — recréation : mois et jour", MAR_2)
         assertMonthShown("U-04a / CA-06", "Mars 2026")
         assertNoWrite("U-04a", reference)
-    }
-
-    @Test
-    fun u04b_given_la_liste_longue_defilee_when_rotation_paysage_then_meme_ancre_et_meme_contexte() {
-        seedLongList()
-        openStartFromHome("U-04b", 2025, "Déc.", D_TITLE)
-        openCalendar("U-04b")
-        val before = scrollMarchListToR07("U-04b")
-        try {
-            scenario!!.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
-            awaitScreen("U-04b", TestTags.SCREEN_SERIES_CALENDAR)
-            awaitRowsComposed("U-04b")
-            assertEquals("U-04b / CA-06 — même première ligne visible en paysage", before.title, firstVisibleRow().title)
-            awaitDaySelected("U-04b / CA-06 — paysage : mois et jour", MAR_2)
-        } finally {
-            scenario!!.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
-        }
     }
 
     @Test
