@@ -65,4 +65,6 @@ fun buildEdition(
     linkedGoalId = null,
     linkedLoanId = null,
     tagIds = emptyList(),
+    // Une proposition détectée est ponctuelle : jamais un abonnement (P-1 de LOP-244).
+    isSubscription = false,
 )

@@ -290,6 +290,7 @@ object RecurrenceEngine {
             seriesId = series.id,
             seriesDate = date,
             isException = false,
+            isSubscription = series.isSubscription,
             note = series.note,
             linkedGoalId = series.linkedGoalId,
             linkedLoanId = series.linkedLoanId

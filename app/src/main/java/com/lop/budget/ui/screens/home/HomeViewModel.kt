@@ -11,6 +11,7 @@ import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
 import com.lop.budget.domain.usecase.insight.HomeSummary
 import com.lop.budget.domain.usecase.insight.ObserveHomeSummaryUseCase
+import com.lop.budget.domain.usecase.subscription.SubscriptionsMonth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,7 +60,7 @@ data class HomeUiState(
     val projectedBalance: Long = 0L,
     val daysUntilPayday: Int? = null,
     val upcoming: List<TransactionWithRelations> = emptyList(),
-    val subscriptions: List<TransactionWithRelations> = emptyList(),
+    val subscriptions: SubscriptionsMonth = SubscriptionsMonth(),
     val dayGroups: List<DayGroup> = emptyList(),
     val dashboardTransactions: List<TransactionWithRelations> = emptyList(),
     val accounts: List<AccountBalance> = emptyList(),

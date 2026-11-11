@@ -293,6 +293,7 @@ interface TransactionDao : TransactionOperations {
                 seriesId = seriesId,
                 seriesDate = seriesDate,
                 isException = true,
+                isSubscription = series.isSubscription,
                 note = series.note,
                 linkedGoalId = series.linkedGoalId,
                 linkedLoanId = series.linkedLoanId

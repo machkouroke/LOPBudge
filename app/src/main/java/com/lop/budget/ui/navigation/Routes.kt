@@ -24,6 +24,8 @@ object Routes {
     fun deepLinkPattern(route: String) = "$DEEP_LINK_SCHEME://$route"
 
     const val HOME = "home"
+    /** Calendrier mensuel des abonnements (LOP-244, CA-03), ouvert depuis la carte de l'accueil. */
+    const val SUBSCRIPTIONS = "subscriptions"
     const val ANALYTICS = "analytics?type={type}&ym={ym}"
     fun analytics(type: TransactionType, ym: YearMonth) = "analytics?type=${type.name}&ym=$ym"
     const val GOALS = "goals"

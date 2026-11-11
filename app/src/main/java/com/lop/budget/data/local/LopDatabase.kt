@@ -37,7 +37,7 @@ import com.lop.budget.data.local.entity.TransactionTagCrossRef
         DetectedTransactionProposalEntity::class,
         PaymentCardEntity::class,
     ],
-    version = 25,
+    version = 26,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -53,6 +53,19 @@ abstract class LopDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "lopbudge.db"
+
+        /**
+         * LOP-244 (I-3, P-1) — une série de dépense peut être marquée abonnement, et ses
+         * occurrences portent la marque. Deux colonnes ajoutées, sans clé étrangère, donc sans
+         * reconstruction : chaque ligne existante reçoit 0, aucune série ne devient un abonnement
+         * en silence.
+         */
+        val MIGRATION_25_26 = object : androidx.room.migration.Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `recurring_series` ADD COLUMN `isSubscription` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `transactions` ADD COLUMN `isSubscription` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
 
         /**
          * LOP-205 (CA-09, P-6) — le compte associé d'un objectif ou d'un prêt reçoit une clé

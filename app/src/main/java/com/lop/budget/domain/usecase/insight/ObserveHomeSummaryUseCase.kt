@@ -4,6 +4,8 @@ import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.DayGroup
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
+import com.lop.budget.domain.usecase.subscription.SubscriptionsMonth
+import com.lop.budget.domain.usecase.subscription.subscriptionsMonth
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -27,7 +29,11 @@ data class HomeSummary(
     val projectedBalance: Long = 0L,
     val daysUntilPayday: Int? = null,
     val upcoming: List<TransactionWithRelations> = emptyList(),
-    val subscriptions: List<TransactionWithRelations> = emptyList(),
+    /**
+     * Carte « Abonnements » (LOP-244, CA-02) : les seuls abonnements de la période. Remplace le
+     * filtre « planifiée d'une série », qui remontait aussi le loyer et le salaire.
+     */
+    val subscriptions: SubscriptionsMonth = SubscriptionsMonth(),
     val dayGroups: List<DayGroup> = emptyList(),
     val dashboardTransactions: List<TransactionWithRelations> = emptyList(),
 )
@@ -84,9 +90,7 @@ class ObserveHomeSummaryUseCase @Inject constructor(
                 .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.date >= now }
                 .sortedBy { it.transaction.date }
                 .take(8),
-            subscriptions = txs
-                .filter { it.transaction.status == TransactionStatus.PLANNED && it.transaction.seriesId != null }
-                .sortedBy { it.transaction.date },
+            subscriptions = subscriptionsMonth(txs, ZoneId.systemDefault()),
             dayGroups = dayGroups(txs),
             dashboardTransactions = dashboardTransactions(txs, now),
         )

@@ -13,6 +13,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,8 +37,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -59,17 +60,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.lop.budget.R
+import com.lop.budget.data.local.entity.TransactionWithRelations
 import com.lop.budget.domain.model.AccountBalance
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.ui.common.TestTags
@@ -89,7 +93,6 @@ import com.lop.budget.ui.components.TransactionsDashboardWidget
 import com.lop.budget.ui.components.clickableNoRipple
 import com.lop.budget.ui.motion.MotionSpec
 import com.lop.budget.ui.navigation.Routes
-import com.lop.budget.ui.theme.ExpenseCoral
 import com.lop.budget.ui.theme.LopTheme
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -180,6 +183,7 @@ fun HomeScreen(
             onRetryRemaining = remainingVm::retry,
             // LOP-239, CA-05 : l'ajout d'un revenu, où l'utilisateur peut le rendre récurrent.
             onAddIncome = { navController.navigate(Routes.add(TransactionType.INCOME)) },
+            onOpenSubscriptions = { navController.navigate(Routes.SUBSCRIPTIONS) },
         )
 
         (remaining as? RemainingCardState.Ready)?.takeIf { showUpcoming }?.let { ready ->
@@ -251,6 +255,7 @@ fun HomeContent(
     onOpenUpcoming: () -> Unit,
     onRetryRemaining: () -> Unit,
     onAddIncome: () -> Unit,
+    onOpenSubscriptions: () -> Unit,
     modifier: Modifier = Modifier,
     screen: AnimatedVisibilityScope? = null,
     toSearch: Boolean = false,
@@ -362,66 +367,9 @@ fun HomeContent(
             }
         }
 
-        item(contentType = "unpaid_subscriptions") {
-            AnimatedContent(
-                modifier = wave(4),
-                targetState = state.month,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
-                },
-                label = "dashboard_subscriptions"
-            ) { _ ->
-                // Idem : `remember` clefé sur la valeur mémorisée, donc sans effet.
-                val subscriptions = state.subscriptions
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        stringResource(R.string.home_unpaid_subscriptions),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    FloatingCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircleIcon(
-                                    icon = Icons.Filled.Repeat,
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    background = MaterialTheme.colorScheme.surface,
-                                    size = 40.dp
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        stringResource(R.string.home_subscriptions),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                    Text(
-                                        if (subscriptions.isEmpty()) stringResource(R.string.home_no_pending_subscriptions) else stringResource(
-                                            R.string.home_pending_subscriptions_count,
-                                            subscriptions.size
-                                        ),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            if (subscriptions.isNotEmpty()) {
-                                val totalSubs = subscriptions.sumOf { it.transaction.amount }
-                                Text(
-                                    Format.money(totalSubs, state.currency),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = ExpenseCoral
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+        // LOP-244 (P-2, P-5) : une carte unique, sans titre externe ; elle ouvre le calendrier (CA-03).
+        item(key = "subscriptions_widget", contentType = "subscriptions") {
+            Box(wave(4)) { SubscriptionsWidget(state = state, onOpen = onOpenSubscriptions) }
         }
 
         item(contentType = "recent_transactions_header") {
@@ -533,6 +481,180 @@ private fun MonthWidget(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * LOP-244, carte « Abonnements » (P-5) : en-tête et pastille d'état, reste à payer sur le total du
+ * mois, puis les trois prochaines échéances non payées en tuiles teintées (CA-02). Rien de faux pendant
+ * la lecture (« — », CA-08) ; en échec, le message de « Ce mois » (P-8).
+ */
+@Composable
+private fun SubscriptionsWidget(state: HomeUiState, onOpen: () -> Unit) {
+    val ext = LopTheme.extended
+    val subs = state.subscriptions
+    val ready = !state.isMonthLoading && !state.monthLoadFailed
+    val unpaidCount = subs.unpaid.size
+    FloatingCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickableNoRipple(onOpen)
+            .testTag(TestTags.HOME_SUBSCRIPTIONS_WIDGET),
+        cornerRadius = 24.dp,
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Subscriptions,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.home_subscriptions),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                if (ready && subs.totalCount > 0) {
+                    val allPaid = unpaidCount == 0
+                    StatusPill(
+                        text = if (allPaid) stringResource(R.string.home_subscriptions_all_paid)
+                        else pluralStringResource(R.plurals.home_subscriptions_to_pay, unpaidCount, unpaidCount),
+                        color = if (allPaid) ext.income else ext.expense,
+                        container = if (allPaid) ext.incomeContainer else ext.expenseContainer,
+                    )
+                    Spacer(Modifier.width(4.dp))
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            when {
+                state.monthLoadFailed -> Text(
+                    stringResource(R.string.home_month_error),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag(TestTags.HOME_SUBSCRIPTIONS_ERROR),
+                )
+                !ready -> Text(
+                    SUMMARY_PLACEHOLDER,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag(TestTags.HOME_SUBSCRIPTIONS_UNPAID),
+                )
+                subs.totalCount == 0 -> Text(
+                    stringResource(R.string.home_subscriptions_none),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag(TestTags.HOME_SUBSCRIPTIONS_EMPTY),
+                )
+                else -> {
+                    Row {
+                        Text(
+                            Format.money(subs.upcomingAmount, state.currency),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (subs.upcomingAmount > 0) ext.expense else MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .alignByBaseline()
+                                .testTag(TestTags.HOME_SUBSCRIPTIONS_UNPAID),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            stringResource(R.string.home_subscriptions_of_total, Format.money(subs.totalAmount, state.currency)),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .alignByBaseline()
+                                .testTag(TestTags.HOME_SUBSCRIPTIONS_TOTAL),
+                        )
+                    }
+                    subs.unpaid.take(WIDGET_TILES).forEach { SubscriptionTile(it, state.currency) }
+                    if (unpaidCount > WIDGET_TILES) {
+                        val others = unpaidCount - WIDGET_TILES
+                        Text(
+                            pluralStringResource(R.plurals.home_subscriptions_more, others, others),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag(TestTags.HOME_SUBSCRIPTIONS_MORE),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** P-5 : nombre de tuiles d'impayés de la carte « Abonnements ». */
+private const val WIDGET_TILES = 3
+
+@Composable
+private fun StatusPill(text: String, color: Color, container: Color) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelMedium,
+        color = color,
+        maxLines = 1,
+        modifier = Modifier
+            .background(container, RoundedCornerShape(50))
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .testTag(TestTags.HOME_SUBSCRIPTIONS_STATUS),
+    )
+}
+
+/** Tuile d'une échéance non payée : posée dans la carte, `FloatingCard` la rend plate et teintée. */
+@Composable
+private fun SubscriptionTile(due: TransactionWithRelations, currency: String) {
+    val tx = due.transaction
+    val color = due.category?.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
+    FloatingCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(TestTags.HOME_SUBSCRIPTIONS_TILE_PREFIX + tx.id),
+        cornerRadius = 16.dp,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+        tint = color,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircleIcon(
+                icon = IconMapper.get(due.category?.icon ?: "category"),
+                tint = color,
+                background = color.copy(alpha = 0.18f),
+                size = 34.dp,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    tx.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    Format.dayMonth(tx.date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                Format.money(tx.amount, currency),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = LopTheme.extended.expense,
+                maxLines = 1,
+            )
         }
     }
 }

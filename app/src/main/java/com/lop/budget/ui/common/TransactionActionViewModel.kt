@@ -246,7 +246,9 @@ class TransactionActionViewModel @Inject constructor(
                         ?: com.lop.budget.domain.model.MissingDayBehavior.LAST_VALID_DAY,
                     linkedGoalId = tx.transaction.linkedGoalId,
                     linkedLoanId = tx.transaction.linkedLoanId,
-                    tagIds = updatedTagIds
+                    tagIds = updatedTagIds,
+                    // LOP-244 : une action rapide ne propose pas l'interrupteur, elle reconduit la marque.
+                    isSubscription = series?.isSubscription ?: tx.transaction.isSubscription,
                 )
 
                 editTransactionWithScopeUseCase(

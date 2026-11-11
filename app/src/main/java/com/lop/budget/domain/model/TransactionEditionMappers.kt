@@ -32,6 +32,7 @@ fun TransactionEdition.toSeriesEntity(): RecurringSeriesEntity = RecurringSeries
     linkedGoalId = linkedGoalId,
     linkedLoanId = linkedLoanId,
     missingDayBehavior = missingDayBehavior,
+    isSubscription = effectiveIsSubscription,
 )
 
 /**
@@ -68,6 +69,9 @@ fun TransactionEdition.toTransactionEntity(
     seriesId = seriesId,
     seriesDate = seriesDate,
     isException = isException,
+    // Faux sur une ponctuelle ; une occurrence éditée seule (SINGLE) le reprend de sa ligne, l'appelant
+    // le recopie (CA-01 de LOP-244).
+    isSubscription = effectiveIsSubscription,
     linkedGoalId = linkedGoalId,
     linkedLoanId = linkedLoanId,
 )

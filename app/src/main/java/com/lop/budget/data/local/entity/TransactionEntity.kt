@@ -1,5 +1,6 @@
 package com.lop.budget.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -93,6 +94,9 @@ data class TransactionEntity(
     val seriesId: Long? = null,
     val seriesDate: Long? = null,
     val isException: Boolean = false,
+    /** Recopié de la série (LOP-244, P-1) ; toujours faux sur une ponctuelle. */
+    @ColumnInfo(defaultValue = "0")
+    val isSubscription: Boolean = false,
 
     // --- Liens ---
     val linkedGoalId: Long? = null,

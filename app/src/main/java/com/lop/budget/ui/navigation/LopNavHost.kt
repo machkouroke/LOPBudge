@@ -70,6 +70,7 @@ import com.lop.budget.ui.screens.ai.AiScreen
 import com.lop.budget.ui.screens.analytics.AnalyticsScreen
 import com.lop.budget.ui.screens.calendar.SeriesCalendarScreen
 import com.lop.budget.ui.screens.calendar.SeriesCalendarViewModel
+import com.lop.budget.ui.screens.subscriptions.SubscriptionsScreen
 import com.lop.budget.ui.screens.category.CategoryCreateScreen
 import com.lop.budget.ui.screens.detail.TransactionDetailScreen
 import com.lop.budget.ui.screens.detected.DetectedTransactionsScreen
@@ -175,6 +176,17 @@ fun LopNavHost() {
                             onOpenTransaction = { id -> navController.navigate(Routes.detail(id)) },
                             navController = navController,
                             searchBar = searchBar,
+                        )
+                    }
+
+                    // LOP-244, CA-03 et CA-07 : ouvert depuis la carte de l'accueil ; le détail
+                    // d'une échéance s'empile dessus et son retour ramène au même mois et au même jour.
+                    composable(Routes.SUBSCRIPTIONS) {
+                        SubscriptionsScreen(
+                            onBack = { navController.popBackStack() },
+                            onOpenOccurrence = { id ->
+                                navController.navigate(Routes.detail(id)) { launchSingleTop = true }
+                            },
                         )
                     }
 

@@ -78,6 +78,8 @@ data class TransactionForm(
     val maxOccurrences: Int? = null,
     /** LOP-88 : fixé par la feuille d'avertissement, prérempli depuis la série en FUTURE/ALL. */
     val missingDayBehavior: MissingDayBehavior = MissingDayBehavior.LAST_VALID_DAY,
+    /** LOP-244, P-1 : n'a de sens que pour une dépense récurrente, remis à faux sinon. */
+    val isSubscription: Boolean = false,
 ) {
     /** Frontière UI : [amountInput] porte des euros saisis, [amount] des centimes (I-4). */
     val amount: Long get() = Format.centsOrNull(amountInput) ?: 0L
@@ -125,6 +127,7 @@ fun TransactionForm.toEdition(defaultTitle: String): TransactionEdition = Transa
     linkedGoalId = linkedGoalId,
     linkedLoanId = linkedLoanId,
     tagIds = tagIds.toList(),
+    isSubscription = isSubscription,
 )
 
 /** LOP-227, P-7 : nombre de catégories suggérées sous le montant. */
@@ -365,6 +368,7 @@ class TransactionEditViewModel @Inject constructor(
                 endDate = series.endDate,
                 maxOccurrences = series.maxOccurrences,
                 missingDayBehavior = series.missingDayBehavior,
+                isSubscription = series.isSubscription,
             )
             // CA-08 FUTURE : valeurs de l'occurrence + règle de récurrence de la série.
             editScope == EditScope.FUTURE && series != null -> occurrenceForm.copy(
@@ -374,6 +378,7 @@ class TransactionEditViewModel @Inject constructor(
                 endDate = series.endDate,
                 maxOccurrences = series.maxOccurrences,
                 missingDayBehavior = series.missingDayBehavior,
+                isSubscription = series.isSubscription,
             )
             else -> occurrenceForm
         }
@@ -453,8 +458,20 @@ class TransactionEditViewModel @Inject constructor(
      * déjà sélectionné ne touche à rien.
      */
     fun setType(type: TransactionType) = update {
-        if (type == it.type) it else it.copy(type = type, categoryId = null)
+        // CA-01 de LOP-244 : un revenu n'est jamais un abonnement.
+        if (type == it.type) it else it.copy(type = type, categoryId = null, isSubscription = false)
     }
+
+    /**
+     * CA-01 de LOP-244 : l'interrupteur « Abonnement », offert à une dépense récurrente seulement,
+     * dans la section récurrence (création, FUTURE, ALL, ponctuelle rendue récurrente).
+     */
+    val isSubscriptionToggleVisible: Boolean
+        get() = isRecurrenceSectionVisible &&
+            _form.value.type == TransactionType.EXPENSE &&
+            _form.value.frequency != RecurrenceFrequency.NONE
+
+    fun setSubscription(enabled: Boolean) = update { it.copy(isSubscription = enabled) }
     fun setTitle(title: String) = update { it.copy(title = title) }
     fun setStatus(status: TransactionStatus) = update { it.copy(status = status) }
     fun setCategory(id: Long) {
@@ -509,7 +526,9 @@ class TransactionEditViewModel @Inject constructor(
             if (freq == RecurrenceFrequency.WEEKLY && it.daysOfWeek.isEmpty()) setOf(1)
             else it.daysOfWeek
         val status = if (freq != RecurrenceFrequency.NONE) TransactionStatus.PLANNED else it.status
-        it.copy(frequency = freq, daysOfWeek = days, status = status)
+        // CA-01 de LOP-244 : sans récurrence, plus d'abonnement.
+        val subscription = it.isSubscription && freq != RecurrenceFrequency.NONE
+        it.copy(frequency = freq, daysOfWeek = days, status = status, isSubscription = subscription)
     }
 
     fun toggleTag(id: Long) = update {

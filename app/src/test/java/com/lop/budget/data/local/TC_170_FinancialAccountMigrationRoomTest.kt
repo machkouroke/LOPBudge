@@ -118,6 +118,9 @@ class FinancialAccountMigrationRoomTest {
         val expected = before
             .withAccount("goals", G_X, null)
             .withAccount("loans", C_X, null)
+            // LOP-244, I-3 : la v26 ajoute la marque d'abonnement, à 0 sur chaque ligne existante.
+            .withColumn("transactions", "isSubscription", 0L)
+            .withColumn("recurring_series", "isSubscription", 0L)
         val after = v25.snapshot()
         assertEquals(
             "M-01, CA-09 : seuls G-X et C-X perdent leur compte ; différences :\n${diff(expected, after)}",
@@ -189,7 +192,8 @@ class FinancialAccountMigrationRoomTest {
 
     private fun openMigrated(): SupportSQLiteDatabase {
         val db = Room.databaseBuilder(context, LopDatabase::class.java, DB_NAME)
-            .addMigrations(LopDatabase.MIGRATION_24_25)
+            // LOP-244 : la base courante est en v26 ; le chemin 24 → 25 reste celui qui est vérifié.
+            .addMigrations(LopDatabase.MIGRATION_24_25, LopDatabase.MIGRATION_25_26)
             .allowMainThreadQueries()
             .build()
             .also { room = it }
@@ -291,6 +295,9 @@ class FinancialAccountMigrationRoomTest {
 
     private fun Snapshot.withAccount(table: String, id: Long, account: Long?): Snapshot =
         mapValues { (t, rows) -> if (t != table) rows else rows.map { if (it["id"] == id) it + ("accountId" to account) else it } }
+
+    private fun Snapshot.withColumn(table: String, column: String, value: Any?): Snapshot =
+        mapValues { (t, rows) -> if (t != table) rows else rows.map { it + (column to value) } }
 
     private fun Snapshot.withoutRow(table: String, id: Long): Snapshot =
         mapValues { (t, rows) -> if (t != table) rows else rows.filterNot { it["id"] == id } }

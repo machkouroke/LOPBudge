@@ -170,7 +170,9 @@ class EditTransactionWithScopeUseCase @Inject constructor(
                     seriesDate = originalSeriesDate,
                     isException = true,
                     kind = existing?.kind ?: TransactionKind.STANDARD,
-                ),
+                    // CA-01 de LOP-244 : en SINGLE le formulaire n'a pas de récurrence ; l'exception
+                    // garde la marque de sa ligne, donc de sa série.
+                ).copy(isSubscription = existing?.isSubscription ?: false),
                 edition.tagIds,
             )
         }
@@ -407,6 +409,7 @@ class EditTransactionWithScopeUseCase @Inject constructor(
         linkedLoanId = edition.linkedLoanId,
         missingDayBehavior = edition.missingDayBehavior,
         anchorDayOfMonth = existing.anchorDayOfMonth.takeIf { edition.date == existing.startDate },
+        isSubscription = edition.effectiveIsSubscription,
     )
 
     /**
@@ -429,6 +432,11 @@ class EditTransactionWithScopeUseCase @Inject constructor(
             // CA-12 : les rattachements suivent les mêmes règles de propagation que les autres champs.
             if (edition.linkedGoalId != base.linkedGoalId) add { it.copy(linkedGoalId = edition.linkedGoalId) }
             if (edition.linkedLoanId != base.linkedLoanId) add { it.copy(linkedLoanId = edition.linkedLoanId) }
+            // CA-01 de LOP-244 : la marque d'abonnement suit la série ; une série devenue revenu ou
+            // ponctuelle la retire à ses exceptions.
+            if (edition.effectiveIsSubscription != base.isSubscription) {
+                add { it.copy(isSubscription = edition.effectiveIsSubscription) }
+            }
         }
         return { tx -> patches.fold(tx) { acc, patch -> patch(acc) } }
     }

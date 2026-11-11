@@ -8,6 +8,8 @@ package com.lop.budget.domain.model
  *
  * Règles :
  * - AUCUNE valeur par défaut : ajouter un champ force le compilateur à énumérer tous les points de construction.
+ *   Seule exception, [isSubscription] (P-6 de LOP-244) : un défaut évite de réécrire les éditions des
+ *   tests existants ; chaque site de production le passe pourtant explicitement.
  * - Aucun format de persistance ici : daysOfWeek est un Set<Int> métier, la conversion CSV Room
  *   vit exclusivement dans TransactionEditionMappers.kt.
  * - Une transaction peut désigner un objectif, un prêt, ou les deux (P-1 de LOP-80) : ce sont deux
@@ -33,4 +35,10 @@ data class TransactionEdition(
     val linkedGoalId: Long?,
     val linkedLoanId: Long?,
     val tagIds: List<Long>,
-)
+    /** Choix « Abonnement » du formulaire ; il n'a d'effet que via [effectiveIsSubscription]. */
+    val isSubscription: Boolean = false,
+) {
+    /** P-1 de LOP-244 : seule une dépense récurrente peut être un abonnement (I-2). */
+    val effectiveIsSubscription: Boolean
+        get() = isSubscription && type == TransactionType.EXPENSE && frequency != RecurrenceFrequency.NONE
+}

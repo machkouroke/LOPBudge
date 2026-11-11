@@ -36,10 +36,17 @@
     <string name="home_upcoming_title">Mouvements à venir</string>
     <string name="home_upcoming_start">Solde total aujourd’hui</string>
     <string name="home_upcoming_empty">Aucun mouvement prévu d’ici la paie</string>
-    <string name="home_unpaid_subscriptions">Abonnements non payés</string>
+    <!-- LOP-244 : carte « Abonnements » de l'accueil et écran dédié. -->
     <string name="home_subscriptions">Abonnements</string>
-    <string name="home_no_pending_subscriptions">Aucun abonnement en attente</string>
-    <string name="home_pending_subscriptions_count">%1$d transaction(s) en attente</string>
+    <string name="home_subscriptions_all_paid">Tout est payé</string>
+    <string name="home_subscriptions_of_total">sur %1$s ce mois</string>
+    <string name="home_subscriptions_none">Aucun abonnement ce mois-ci</string>
+    <string name="subscriptions_total">Total</string>
+    <string name="subscriptions_upcoming">À venir</string>
+    <string name="subscriptions_empty_day">Aucun abonnement ce jour</string>
+    <string name="subscriptions_empty_month">Aucun abonnement à venir ce mois</string>
+    <string name="subscriptions_load_error">Impossible de charger les abonnements</string>
+    <string name="subscriptions_retry">Réessayer</string>
     <string name="home_recent_transactions">Transactions récentes</string>
     <string name="home_recurring_tag">Récurrent</string>
     <string name="home_no_transactions_month">Aucune transaction ce mois-ci.</string>
@@ -386,6 +393,7 @@
     <string name="financial_no_linked_transactions">Aucune transaction liée</string>
 
     <string name="tx_linked_goal_label">Objectif lié</string>
+    <string name="tx_subscription_label">Abonnement</string>
     <string name="tx_linked_debt_label">Prêt lié</string>
     <string name="tx_no_goal_linked">Aucun objectif lié</string>
     <string name="tx_no_debt_linked">Aucun prêt lié</string>
@@ -514,5 +522,20 @@
         <item quantity="one">%d occurrence</item>
         <item quantity="many">%d occurrences</item>
         <item quantity="other">%d occurrences</item>
+    </plurals>
+    <plurals name="home_subscriptions_to_pay">
+        <item quantity="one">%d à payer</item>
+        <item quantity="many">%d à payer</item>
+        <item quantity="other">%d à payer</item>
+    </plurals>
+    <plurals name="home_subscriptions_more">
+        <item quantity="one">+ %d autre ce mois</item>
+        <item quantity="many">+ %d autres ce mois</item>
+        <item quantity="other">+ %d autres ce mois</item>
+    </plurals>
+    <plurals name="subscriptions_day_count">
+        <item quantity="one">%d abonnement</item>
+        <item quantity="many">%d abonnements</item>
+        <item quantity="other">%d abonnements</item>
     </plurals>
 </resources>

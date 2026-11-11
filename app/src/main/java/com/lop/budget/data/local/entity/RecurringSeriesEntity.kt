@@ -1,5 +1,6 @@
 package com.lop.budget.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -64,4 +65,10 @@ data class RecurringSeriesEntity(
      * 28 février mais garde le 31. `null` : le jour de [startDate] fait foi.
      */
     val anchorDayOfMonth: Int? = null,
+    /**
+     * Abonnement (LOP-244, P-1) : seule une série de dépense peut l'être. La marque appartient à la
+     * série et descend sur chacune de ses occurrences, virtuelles comme matérialisées.
+     */
+    @ColumnInfo(defaultValue = "0")
+    val isSubscription: Boolean = false,
 )

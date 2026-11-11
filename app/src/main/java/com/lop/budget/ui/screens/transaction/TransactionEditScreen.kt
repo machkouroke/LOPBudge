@@ -181,6 +181,8 @@ fun TransactionEditScreen(
                 goalError = goalError,
                 loanError = loanError,
                 onSetStatus = vm::setStatus,
+                isSubscriptionToggleVisible = vm.isSubscriptionToggleVisible,
+                onSetSubscription = vm::setSubscription,
                 onOpenGoal = { activeSheet = EditSheet.Goal },
                 onOpenDebt = { activeSheet = EditSheet.Debt },
                 recurrence = if (vm.isRecurrenceSectionVisible) {

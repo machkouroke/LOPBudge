@@ -232,6 +232,36 @@ object TestTags {
     const val SERIES_CALENDAR_ERROR = "series.calendar.error"
     const val SERIES_CALENDAR_RETRY = "series.calendar.retry"
 
+    // Abonnements (LOP-244) : carte de l'accueil et écran dédié
+    const val HOME_SUBSCRIPTIONS_WIDGET = "home.subscriptions.widget"
+    /** Pastille « X à payer » ou « Tout est payé ». */
+    const val HOME_SUBSCRIPTIONS_STATUS = "home.subscriptions.status"
+    /** Montant restant à payer, « — » tant que le mois n'est pas lu. */
+    const val HOME_SUBSCRIPTIONS_UNPAID = "home.subscriptions.unpaid"
+    /** « sur Y € ce mois ». */
+    const val HOME_SUBSCRIPTIONS_TOTAL = "home.subscriptions.total"
+    /** Suivi de l'identifiant de l'occurrence : `home.subscriptions.tile.-123`. */
+    const val HOME_SUBSCRIPTIONS_TILE_PREFIX = "home.subscriptions.tile."
+    const val HOME_SUBSCRIPTIONS_MORE = "home.subscriptions.more"
+    const val HOME_SUBSCRIPTIONS_EMPTY = "home.subscriptions.empty"
+    const val HOME_SUBSCRIPTIONS_ERROR = "home.subscriptions.error"
+    const val SCREEN_SUBSCRIPTIONS = "screen.subscriptions"
+    const val SUBSCRIPTIONS_PREV_MONTH = "subscriptions.month.prev"
+    const val SUBSCRIPTIONS_NEXT_MONTH = "subscriptions.month.next"
+    const val SUBSCRIPTIONS_MONTH_PICKER = "subscriptions.month.picker"
+    /** Bouton « Aujourd'hui », affiché hors du mois courant seulement (P-7). */
+    const val SUBSCRIPTIONS_CURRENT_MONTH = "subscriptions.month.current"
+    /** Suivi de la date ISO du jour : `subscriptions.calendar.day.2026-11-14`. */
+    const val SUBSCRIPTIONS_DAY_PREFIX = "subscriptions.calendar.day."
+    const val SUBSCRIPTIONS_TOTAL = "subscriptions.summary.total"
+    const val SUBSCRIPTIONS_UPCOMING = "subscriptions.summary.upcoming"
+    const val SUBSCRIPTIONS_ROW = "subscriptions.row"
+    const val SUBSCRIPTIONS_EMPTY_DAY = "subscriptions.day.empty"
+    const val SUBSCRIPTIONS_EMPTY_MONTH = "subscriptions.month.empty"
+    const val SUBSCRIPTIONS_LOADING = "subscriptions.loading"
+    const val SUBSCRIPTIONS_ERROR = "subscriptions.error"
+    const val SUBSCRIPTIONS_RETRY = "subscriptions.retry"
+
     // Sélecteurs partagés
     const val PICKER_DATE = "picker.date"
     const val PICKER_ACCOUNT_SHEET = "picker.account.sheet"
@@ -249,6 +279,8 @@ object TestTags {
     const val TX_EDIT_FIELD_DATE = "transaction.edit.field.date"
     const val TX_EDIT_FIELD_GOAL = "transaction.edit.field.goal"
     const val TX_EDIT_FIELD_DEBT = "transaction.edit.field.debt"
+    /** Interrupteur « Abonnement » de la carte d'options (LOP-244, CA-01). */
+    const val TX_EDIT_FIELD_SUBSCRIPTION = "transaction.edit.field.subscription"
     const val TX_EDIT_FIELD_TAGS = "transaction.edit.field.tags"
     /** Champ Note de la carte « saisie » (LOP-227, P-3). */
     const val TX_EDIT_FIELD_NOTE = "transaction.edit.field.note"

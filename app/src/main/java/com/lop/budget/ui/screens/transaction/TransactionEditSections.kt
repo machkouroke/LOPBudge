@@ -445,11 +445,33 @@ fun OptionsCard(
     onOpenDebt: () -> Unit,
     /** Lignes de récurrence ([RecurrenceRows]) ; `null` quand la portée les masque (CA-08 de LOP-52). */
     recurrence: (@Composable () -> Unit)?,
+    /** CA-01 de LOP-244 : dépense récurrente seulement, hors édition d'une seule occurrence. */
+    isSubscriptionToggleVisible: Boolean = false,
+    onSetSubscription: (Boolean) -> Unit = {},
 ) {
     FloatingCard(contentPadding = RowsCardPadding) {
         Column {
             if (recurrence != null) {
                 recurrence()
+                RowDivider()
+            }
+            if (isSubscriptionToggleVisible) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 52.dp)
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.weight(1f).padding(end = 8.dp)) {
+                        RowLabel(stringResource(R.string.tx_subscription_label))
+                    }
+                    LopSwitch(
+                        checked = form.isSubscription,
+                        onCheckedChange = onSetSubscription,
+                        modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_SUBSCRIPTION),
+                    )
+                }
                 RowDivider()
             }
             if (isPaidToggleVisible) {
