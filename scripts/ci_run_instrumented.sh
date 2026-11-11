@@ -25,6 +25,12 @@ FORCE_B2="${2:-false}"
 SILENCE_S=90
 DIAG=build/ci-diag
 
+# Cas exclus de la CI seulement : ils tournent toujours sur le telephone. Separes par des virgules,
+# forme `classe#methode` de l'argument `notClass` d'AndroidJUnitRunner.
+# - TC-138 U-05g : `captureToImage()` arretait l'emulateur ATD aux deux passes (run 43053856222).
+#   Exclusion decidee par l'utilisateur le 11 novembre 2026.
+EXCLUDED=com.lop.budget.ui.navigation.SeriesCalendarJourneyTest#u05g_given_aujourd_hui_selectionne_when_calendrier_then_son_contour_reste_visible_sur_le_fond
+
 watch_emulator() {
   while sleep 15; do
     log=$(ls -t "$DIAG"/logcat-*.txt 2>/dev/null | head -1)
@@ -51,4 +57,5 @@ trap 'kill "$WATCHDOG" 2>/dev/null || true' EXIT
 ./gradlew :app:connectedDebugAndroidTest --no-daemon \
   -Pandroid.testInstrumentationRunnerArguments.numShards=3 \
   -Pandroid.testInstrumentationRunnerArguments.shardIndex="$SHARD" \
-  -Pandroid.testInstrumentationRunnerArguments.tc162ForceB2="$FORCE_B2"
+  -Pandroid.testInstrumentationRunnerArguments.tc162ForceB2="$FORCE_B2" \
+  -Pandroid.testInstrumentationRunnerArguments.notClass="$EXCLUDED"

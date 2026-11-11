@@ -135,6 +135,9 @@ import kotlin.math.abs
  *   rotation sort du périmètre, l'adaptation à la taille d'écran sera testée autrement. Elle figeait
  *   l'émulateur de la CI (9 octobre et 11 novembre 2026). CA-06 reste couvert par la recréation
  *   (U-04a, U-04c).
+ * - U-05g est exclu de la CI seulement (`scripts/ci_run_instrumented.sh`, décision de l'utilisateur
+ *   du 11 novembre 2026) : son `captureToImage()` arrêtait l'émulateur ATD aux deux passes (run
+ *   43053856222). Il reste exécuté sur le téléphone.
  *
  * ## Réserves non automatisées
  * Dessin P-7 (icône de catégorie, nombre dessiné), formes sélection / aujourd'hui (revue visuelle),

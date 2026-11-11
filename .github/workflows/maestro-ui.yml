@@ -218,7 +218,7 @@ jobs:
       - name: Preinstall emulator and system image
         run: |
           for attempt in 1 2 3; do
-            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator 'system-images;android-36;google_apis;x86_64' > /dev/null && exit 0
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator 'system-images;android-36;google_atd;x86_64' > /dev/null && exit 0
             echo "::warning::sdkmanager : tentative $attempt en echec, nouvel essai"
             rm -rf "$ANDROID_HOME/.downloadIntermediates" "$ANDROID_HOME/.temp"
             sleep 15
@@ -226,10 +226,11 @@ jobs:
           exit 1
 
       # Compiler avant de démarrer l'émulateur. Run 42936638392 : Gradle compilait pendant que
-      # l'émulateur tournait (~190 % de CPU, 2,4 Go), charge de 6,3 sur 4 vCPU, ~200 Mo de mémoire
-      # libre, émulateur figé dès le premier test. L'étape de l'émulateur trouve ensuite les deux APK
-      # à jour et ne fait plus qu'installer et lancer. Pas de compilateur Kotlin « in-process » :
-      # KSP y échoue (« Language version 1.9 is no longer supported », run 43053010454).
+      # l'émulateur tournait (~190 % de CPU, 2,4 Go), charge de 6,3 sur 4 vCPU. L'étape de
+      # l'émulateur trouve ensuite les deux APK à jour et ne fait plus qu'installer et lancer. Ce
+      # n'était pas la cause des morts de `google_apis` (run 43058441373 : mort au premier test
+      # malgré la compilation préalable). Pas de compilateur Kotlin « in-process » : KSP y échoue
+      # (« Language version 1.9 is no longer supported », run 43053010454).
       - name: Build app and test APKs
         run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon -x lint
 
@@ -244,9 +245,11 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with: &instrumented-emulator
           api-level: 36
-          # Image `google_apis`, pas ATD : sur `google_atd` (run 43053856222), TC_138 u05g
-          # (`captureToImage`) tuait l'émulateur et u04b (rotation) le figeait, aux deux passes.
-          target: google_apis
+          # Image ATD (`google_atd`), comme Maestro. Sur `google_apis`, l'émulateur meurt au premier
+          # test de chaque shard depuis `fa51597e` (runs 42936638392 et 43058441373).
+          # Sur ATD (run 43053856222), seuls TC_138 U-04b (rotation, retiré) et U-05g
+          # (`captureToImage`, exclu par scripts/ci_run_instrumented.sh) arrêtaient l'émulateur.
+          target: google_atd
           arch: x86_64
           profile: pixel_6
           cores: 2
