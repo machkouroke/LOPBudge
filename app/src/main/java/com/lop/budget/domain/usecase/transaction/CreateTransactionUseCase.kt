@@ -4,6 +4,7 @@ import com.lop.budget.data.repository.TransactionRepository
 import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.MissingDay
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.RulePreview
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
@@ -57,4 +58,8 @@ class CreateTransactionUseCase @Inject constructor(
      */
     fun firstMissingDay(edition: TransactionEdition): MissingDay? =
         RecurrenceEngine.firstMissingDay(edition.toSeriesEntity())
+
+    /** LOP-245, CA-05 : la série que [invoke] créerait, vue par la feuille « Répéter ». Lecture seule. */
+    fun preview(edition: TransactionEdition, from: Long, count: Int): RulePreview =
+        RecurrenceEngine.preview(edition.toSeriesEntity(), from, count)
 }

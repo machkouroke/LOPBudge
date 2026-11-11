@@ -8,6 +8,7 @@ import com.lop.budget.domain.RecurrenceEngine
 import com.lop.budget.domain.model.EditScope
 import com.lop.budget.domain.model.MissingDay
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.RulePreview
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
@@ -113,8 +114,34 @@ class EditTransactionWithScopeUseCase @Inject constructor(
         seriesDate: Long?,
         edition: TransactionEdition,
         scope: EditScope,
-    ): MissingDay? {
-        val target = when (scope) {
+    ): MissingDay? = targetSeries(editingId, seriesId, seriesDate, edition, scope)
+        ?.let { RecurrenceEngine.firstMissingDay(it) }
+
+    /**
+     * LOP-245, CA-05 et CA-07 : la série que [invoke] écrirait avec ces arguments, vue par la feuille
+     * « Répéter » : ancrage reporté, premier jour absent, [count] dates à partir de [from]. `null` en
+     * SINGLE sur une occurrence, qui ne touche pas la règle. Lecture seule.
+     */
+    suspend fun preview(
+        editingId: Long,
+        seriesId: Long?,
+        seriesDate: Long?,
+        edition: TransactionEdition,
+        scope: EditScope,
+        from: Long,
+        count: Int,
+    ): RulePreview? = targetSeries(editingId, seriesId, seriesDate, edition, scope)
+        ?.let { RecurrenceEngine.preview(it, from, count) }
+
+    /** Série écrite par la portée : nouvelle en FUTURE (ancrage reporté compris), mise à jour en ALL. */
+    private suspend fun targetSeries(
+        editingId: Long,
+        seriesId: Long?,
+        seriesDate: Long?,
+        edition: TransactionEdition,
+        scope: EditScope,
+    ): RecurringSeriesEntity? {
+        return when (scope) {
             EditScope.SINGLE -> edition.toSeriesEntity().takeIf { seriesId == null }
             EditScope.FUTURE -> seriesId?.let { transactionRepo.getSeriesById(it) }?.let { old ->
                 val current = transactionRepo.getById(editingId)
@@ -123,7 +150,6 @@ class EditTransactionWithScopeUseCase @Inject constructor(
             }
             EditScope.ALL -> seriesId?.let { transactionRepo.getSeriesById(it) }?.let { allSeries(it, edition) }
         }
-        return target?.let { RecurrenceEngine.firstMissingDay(it) }
     }
 
     /** Slot d'origine de l'occurrence éditée, argument de navigation d'abord (LOP-97). */

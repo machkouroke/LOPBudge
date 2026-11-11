@@ -80,6 +80,13 @@ enum class MissingDayBehavior { LAST_VALID_DAY, SKIP_PERIOD }
  */
 data class MissingDay(val anchorDay: Int, val date: Long, val canSkip: Boolean = true)
 
+/**
+ * LOP-245 (CA-03, CA-05) : la série qu'une sauvegarde écrirait, telle que la feuille « Répéter » la
+ * montre. [anchorDay] : jour d'ancrage reporté (P-4 de LOP-88), `null` quand c'est celui de la date ;
+ * [dates] : prochaines dates, dans l'ordre. Lecture seule (I-2).
+ */
+data class RulePreview(val anchorDay: Int?, val missingDay: MissingDay?, val dates: List<Long>)
+
 /** Type de compte. */
 enum class AccountType { CHECKING, CASH, SAVINGS, CARD, CRYPTO, INVESTMENT, OTHER }
 

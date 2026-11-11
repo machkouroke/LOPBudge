@@ -47,7 +47,7 @@ import com.lop.budget.ui.components.skeleton
 import com.lop.budget.util.IconMapper
 
 
-enum class EditSheet { Category, Account, Tags, Goal, Debt, Frequency, Date, EndDate }
+enum class EditSheet { Category, Account, Tags, Goal, Debt, Date }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -109,6 +109,10 @@ fun TransactionEditScreen(
     // LOP-227, P-7 : aucun sélecteur ne s'ouvre seul ; la catégorie se choisit dans la rangée de
     // suggestions, ou par « Plus ».
     var activeSheet by rememberSaveable { mutableStateOf<EditSheet?>(null) }
+    // LOP-245 : brouillon de la feuille « Répéter », tenu par le ViewModel (I-1).
+    val recurrenceDraft by vm.recurrenceDraft.collectAsStateWithLifecycle()
+    val recurrencePreview by vm.recurrencePreview.collectAsStateWithLifecycle()
+    val formAnchorDay by vm.formAnchorDay.collectAsStateWithLifecycle()
 
     LopScreenScaffold(
         title = if (vm.isEditing) stringResource(R.string.tx_edit_title) else stringResource(R.string.tx_new_title),
@@ -187,14 +191,10 @@ fun TransactionEditScreen(
                 onOpenDebt = { activeSheet = EditSheet.Debt },
                 recurrence = if (vm.isRecurrenceSectionVisible) {
                     {
-                        RecurrenceRows(
-                            form = form,
-                            onSetInterval = vm::setInterval,
-                            onToggleDow = vm::toggleDayOfWeek,
-                            onSetEndDate = vm::setEndDate,
-                            onSetMaxOccurrences = vm::setMaxOccurrences,
-                            onOpenFrequency = { activeSheet = EditSheet.Frequency },
-                            onOpenEndDate = { activeSheet = EditSheet.EndDate },
+                        RecurrenceRow(
+                            summary = recurrenceSummary(RecurrenceDraft.of(form), form.date, formAnchorDay, withEnd = false),
+                            isNone = form.frequency == RecurrenceFrequency.NONE,
+                            onOpen = vm::openRecurrence,
                         )
                     }
                 } else null,
@@ -286,27 +286,6 @@ fun TransactionEditScreen(
                 itemGroup = { if (it.summary.kind == FinancialItemKind.DEBT) debtsTitle else receivablesTitle },
             )
         }
-        EditSheet.Frequency -> {
-            PickerBottomSheet(
-                title = stringResource(R.string.tx_repeat_label),
-                items = RecurrenceFrequency.entries.toList(),
-                isSelected = { it == form.frequency },
-                onSelect = { freq ->
-                    freq?.let { vm.setFrequency(it) }
-                    activeSheet = null
-                },
-                onDismiss = { activeSheet = null },
-                itemLabel = { freq ->
-                    stringResource(when (freq) {
-                        RecurrenceFrequency.NONE -> R.string.tx_repeat_none
-                        RecurrenceFrequency.DAILY -> R.string.tx_repeat_daily
-                        RecurrenceFrequency.WEEKLY -> R.string.tx_repeat_weekly
-                        RecurrenceFrequency.MONTHLY -> R.string.tx_repeat_monthly
-                        RecurrenceFrequency.YEARLY -> R.string.tx_repeat_yearly
-                    })
-                }
-            )
-        }
         EditSheet.Date -> {
             LopDatePicker(
                 initialDateMillis = form.date,
@@ -314,17 +293,22 @@ fun TransactionEditScreen(
                 onDismiss = { activeSheet = null }
             )
         }
-        EditSheet.EndDate -> {
-            LopDatePicker(
-                initialDateMillis = form.endDate ?: form.date,
-                onDateSelected = { it?.let { vm.setEndDate(it) }; activeSheet = null },
-                onDismiss = { activeSheet = null }
-            )
-        }
         null -> {}
     }
 
-    // LOP-88 : décision demandée avant d'écrire une règle qui rencontre un jour absent.
+    recurrenceDraft?.let { draft ->
+        RecurrenceSheet(
+            draft = draft,
+            formDate = form.date,
+            preview = recurrencePreview,
+            onEdit = vm::editRecurrence,
+            onApply = vm::applyRecurrence,
+            onDismiss = vm::dismissRecurrence,
+        )
+    }
+
+    // LOP-88 : décision demandée avant d'écrire une règle qui rencontre un jour absent. Depuis
+    // LOP-245 (P-7, P-9), seulement si la date a changé depuis le dernier choix connu.
     missingDayPrompt?.let { prompt ->
         MissingDaySheet(
             prompt = prompt,

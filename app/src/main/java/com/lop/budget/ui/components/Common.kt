@@ -31,6 +31,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -121,9 +122,15 @@ fun LopDatePicker(
     initialDateMillis: Long?,
     onDateSelected: (Long?) -> Unit,
     onDismiss: () -> Unit,
+    /** Premier jour sélectionnable, heure locale ; `null` : aucun (LOP-245, CA-04). */
+    minDateMillis: Long? = null,
 ) {
+    val minDay = minDateMillis?.toPickerUtcDay()
     val dateState = rememberDatePickerState(
-        initialSelectedDateMillis = initialDateMillis?.toPickerUtcDay()
+        initialSelectedDateMillis = initialDateMillis?.toPickerUtcDay(),
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long) = minDay == null || utcTimeMillis >= minDay
+        },
     )
 
     // `semantics` avant `testTag` : le sélecteur de date est monté dans sa propre fenêtre de

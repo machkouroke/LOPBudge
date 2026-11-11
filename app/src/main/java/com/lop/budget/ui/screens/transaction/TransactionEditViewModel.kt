@@ -18,6 +18,7 @@ import com.lop.budget.domain.model.MissingDay
 import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.NO_ACCOUNT_ID
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.RulePreview
 import com.lop.budget.domain.model.TransactionEdition
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
@@ -40,6 +41,9 @@ import com.lop.budget.util.Format
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Clock
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,6 +57,8 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -133,6 +139,9 @@ fun TransactionForm.toEdition(defaultTitle: String): TransactionEdition = Transa
 /** LOP-227, P-7 : nombre de catégories suggérées sous le montant. */
 private const val SUGGESTED_CATEGORIES = 5
 
+/** LOP-245, CA-05 : nombre de prochaines échéances montrées par la feuille « Répéter ». */
+private const val PREVIEW_COUNT = 4
+
 /**
  * LOP-227, P-7 : catégories suggérées par le formulaire, [limit] au plus.
  *
@@ -174,7 +183,7 @@ class TransactionEditViewModel @Inject constructor(
     private val settings: SettingsRepository,
     savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context,
-    clock: Clock,
+    private val clock: Clock,
 ) : ViewModel() {
 
     private val _form = MutableStateFlow(TransactionForm(date = clock.millis()))
@@ -205,6 +214,56 @@ class TransactionEditViewModel @Inject constructor(
 
     /** CA-01 / CA-02 de LOP-88 : avertissement en attente de décision, `null` hors décision. */
     val missingDayPrompt: StateFlow<MissingDayPrompt?> = _missingDayPrompt.asStateFlow()
+
+    // ------------------------------------------------- LOP-245 : feuille « Répéter »
+
+    private val _recurrenceDraft = MutableStateFlow<RecurrenceDraft?>(null)
+
+    /** Brouillon de la feuille « Répéter » ; `null` : feuille fermée. Hors du formulaire (I-1). */
+    val recurrenceDraft: StateFlow<RecurrenceDraft?> = _recurrenceDraft.asStateFlow()
+
+    /** CA-03 et CA-05 : aperçu de la règle du brouillon ; `null` tant qu'il n'est pas lu. */
+    val recurrencePreview: StateFlow<RulePreview?> = _recurrenceDraft
+        .mapLatest { draft -> draft?.let { rulePreview(_form.value.applying(it)) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /**
+     * CA-01 : ancrage reporté de la règle du formulaire, pour le résumé de la ligne « Répéter »
+     * (« le 31 » sur une occurrence rabattue au 28 février). `null` : le jour de la date.
+     */
+    val formAnchorDay: StateFlow<Int?> = _form
+        .map { RecurrenceDraft.of(it) to it.date }
+        .distinctUntilChanged()
+        .mapLatest { rulePreview(_form.value)?.anchorDay }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /**
+     * P-7 et P-9 de LOP-245 : date pour laquelle le choix pour jour absent est connu — celle de la
+     * série chargée en FUTURE / ALL, puis celle de chaque « Valider ». L'avertissement de LOP-88 ne
+     * s'ouvre plus que si la date du formulaire en diffère.
+     */
+    private var missingDayChoiceDate: Long? = null
+
+    fun openRecurrence() {
+        _recurrenceDraft.value = RecurrenceDraft.of(_form.value)
+    }
+
+    fun editRecurrence(transform: (RecurrenceDraft) -> RecurrenceDraft) {
+        _recurrenceDraft.update { it?.let(transform) }
+    }
+
+    /** CA-06 : tout le brouillon d'un coup, puis la feuille se ferme. */
+    fun applyRecurrence() {
+        val draft = _recurrenceDraft.value ?: return
+        update { it.applying(draft) }
+        missingDayChoiceDate = _form.value.date
+        _recurrenceDraft.value = null
+    }
+
+    /** I-1 : fermer abandonne le brouillon, le formulaire ne bouge pas. */
+    fun dismissRecurrence() {
+        _recurrenceDraft.value = null
+    }
 
     /** Photo du formulaire après chargement — base du dirty-check (CA-06). */
     private var initialForm: TransactionForm? = null
@@ -382,6 +441,8 @@ class TransactionEditViewModel @Inject constructor(
             )
             else -> occurrenceForm
         }
+        // P-9 de LOP-245 : le choix pour jour absent de la série vaut pour la date chargée.
+        if (series != null && editScope != EditScope.SINGLE) missingDayChoiceDate = _form.value.date
         markLoaded()
     }
 
@@ -652,7 +713,8 @@ class TransactionEditViewModel @Inject constructor(
                 }
                 // CA-01 de LOP-88 : la décision précède l'écriture. Un avertissement publié
                 // arrête la tentative ici, avant toute sauvegarde.
-                val prompt = if (missingDayDecided) null else missingDayPrompt(f)
+                // P-7 et P-9 de LOP-245 : choix déjà fait pour cette date, dans la feuille ou sur la série.
+                val prompt = if (missingDayDecided || f.date == missingDayChoiceDate) null else missingDayPrompt(f)
                 if (prompt != null) {
                     _missingDayPrompt.value = prompt
                     return@launch
@@ -700,6 +762,39 @@ class TransactionEditViewModel @Inject constructor(
      * Sans récurrence au formulaire, aucune règle n'est écrite : on ne demande rien (CA-08). C'est
      * aussi le cas de SINGLE sur une occurrence, dont la section récurrence est masquée (CA-06).
      */
+    /**
+     * LOP-245, CA-05 : la série que la sauvegarde écrirait, vue par ses prochaines dates à partir de la
+     * plus tardive de la date du formulaire et d'aujourd'hui (P-8). Même use case que la sauvegarde
+     * (I-2) ; le ViewModel ne référence pas le moteur (TC-86). `null` si la lecture échoue.
+     */
+    private suspend fun rulePreview(f: TransactionForm): RulePreview? {
+        if (f.frequency == RecurrenceFrequency.NONE) return RulePreview(anchorDay = null, missingDay = null, dates = emptyList())
+        // ponytail: catégorie factice, la règle ne la lit pas ; l'aperçu doit marcher avant le choix.
+        val edition = f.copy(categoryId = f.categoryId ?: 0L).toEdition(context.getString(R.string.tx_default_title))
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now(clock.withZone(zone)).atStartOfDay(zone).toInstant().toEpochMilli()
+        val from = maxOf(f.date, today)
+        return try {
+            if (isEditing) {
+                editTransactionWithScopeUseCase.preview(
+                    editingId = editingTransactionId!!,
+                    seriesId = f.seriesId,
+                    seriesDate = seriesDate?.takeIf { it > 0L },
+                    edition = edition,
+                    scope = editScope,
+                    from = from,
+                    count = PREVIEW_COUNT,
+                )
+            } else {
+                createTransactionUseCase.preview(edition, from, PREVIEW_COUNT)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     private suspend fun missingDayPrompt(f: TransactionForm): MissingDayPrompt? {
         if (f.frequency == RecurrenceFrequency.NONE) return null
         val edition = f.toEdition(context.getString(R.string.tx_default_title))

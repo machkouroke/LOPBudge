@@ -83,19 +83,33 @@
 
     <string name="tx_repeat_label">Répéter</string>
     <string name="tx_repeat_none">Ne se répète pas</string>
-    <string name="tx_repeat_daily">Tous les jours</string>
-    <string name="tx_repeat_weekly">Toutes les semaines</string>
-    <string name="tx_repeat_monthly">Tous les mois</string>
-    <string name="tx_repeat_yearly">Tous les ans</string>
-    <string name="tx_repeat_every">Tous les </string>
-    <string name="tx_repeat_intervals"> intervalle(s)</string>
-    <string name="tx_repeat_advanced">Options avancées</string>
-    <string name="tx_repeat_days_of_week">Jours de la semaine</string>
-    <string name="tx_repeat_ends">Finit</string>
-    <string name="tx_repeat_ends_never">Jamais</string>
-    <string name="tx_repeat_ends_on">Le</string>
-    <string name="tx_repeat_ends_after">Après</string>
-    <string name="tx_repeat_occurrences_label">occurrences</string>
+    <!-- LOP-245 : feuille « Répéter ». -->
+    <string name="tx_recurrence_freq_none">Jamais</string>
+    <string name="tx_recurrence_freq_daily">Jour</string>
+    <string name="tx_recurrence_freq_weekly">Semaine</string>
+    <string name="tx_recurrence_freq_monthly">Mois</string>
+    <string name="tx_recurrence_freq_yearly">An</string>
+    <string name="tx_recurrence_interval">Intervalle</string>
+    <string name="tx_recurrence_days">Jours</string>
+    <string name="tx_recurrence_anchor_month">Le %1$d de chaque mois, d’après la date de la transaction</string>
+    <string name="tx_recurrence_anchor_year">Le %1$s de chaque année, d’après la date de la transaction</string>
+    <string name="tx_recurrence_missing_month">Les mois sans %1$d</string>
+    <string name="tx_recurrence_missing_year">Les années sans %1$s</string>
+    <string name="tx_recurrence_missing_last">Dernier jour du mois</string>
+    <string name="tx_recurrence_missing_skip">Sauter</string>
+    <string name="tx_recurrence_end">Fin</string>
+    <string name="tx_recurrence_end_never">Jamais</string>
+    <string name="tx_recurrence_end_date">À une date</string>
+    <string name="tx_recurrence_end_count">Après…</string>
+    <string name="tx_recurrence_end_until">Jusqu’au</string>
+    <string name="tx_recurrence_preview">Prochaines échéances</string>
+    <string name="tx_recurrence_apply">Valider</string>
+    <string name="tx_recurrence_decrease">Diminuer</string>
+    <string name="tx_recurrence_increase">Augmenter</string>
+    <string name="tx_repeat_summary_on_day">, le %1$d</string>
+    <string name="tx_repeat_summary_on_date">, le %1$s</string>
+    <string name="tx_repeat_summary_forever">sans fin</string>
+    <string name="tx_repeat_summary_until">jusqu’au %1$s</string>
 
     <!-- LOP-88 : avertissement de jour absent, avant enregistrement de la règle -->
     <string name="tx_missing_day_title">Ce jour n\'existe pas à chaque fois</string>
@@ -537,5 +551,50 @@
         <item quantity="one">%d abonnement</item>
         <item quantity="many">%d abonnements</item>
         <item quantity="other">%d abonnements</item>
+    </plurals>
+    <plurals name="tx_repeat_summary_daily">
+        <item quantity="one">Tous les jours</item>
+        <item quantity="many">Tous les %d jours</item>
+        <item quantity="other">Tous les %d jours</item>
+    </plurals>
+    <plurals name="tx_repeat_summary_weekly">
+        <item quantity="one">Toutes les semaines</item>
+        <item quantity="many">Toutes les %d semaines</item>
+        <item quantity="other">Toutes les %d semaines</item>
+    </plurals>
+    <plurals name="tx_repeat_summary_monthly">
+        <item quantity="one">Tous les mois</item>
+        <item quantity="many">Tous les %d mois</item>
+        <item quantity="other">Tous les %d mois</item>
+    </plurals>
+    <plurals name="tx_repeat_summary_yearly">
+        <item quantity="one">Tous les ans</item>
+        <item quantity="many">Tous les %d ans</item>
+        <item quantity="other">Tous les %d ans</item>
+    </plurals>
+    <plurals name="tx_recurrence_unit_day">
+        <item quantity="one">%d jour</item>
+        <item quantity="many">%d jours</item>
+        <item quantity="other">%d jours</item>
+    </plurals>
+    <plurals name="tx_recurrence_unit_week">
+        <item quantity="one">%d semaine</item>
+        <item quantity="many">%d semaines</item>
+        <item quantity="other">%d semaines</item>
+    </plurals>
+    <plurals name="tx_recurrence_unit_month">
+        <item quantity="one">%d mois</item>
+        <item quantity="many">%d mois</item>
+        <item quantity="other">%d mois</item>
+    </plurals>
+    <plurals name="tx_recurrence_unit_year">
+        <item quantity="one">%d an</item>
+        <item quantity="many">%d ans</item>
+        <item quantity="other">%d ans</item>
+    </plurals>
+    <plurals name="tx_recurrence_count">
+        <item quantity="one">%d échéance</item>
+        <item quantity="many">%d échéances</item>
+        <item quantity="other">%d échéances</item>
     </plurals>
 </resources>

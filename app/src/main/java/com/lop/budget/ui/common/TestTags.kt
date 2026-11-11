@@ -302,6 +302,25 @@ object TestTags {
     const val TX_EDIT_CHIP_NONE = "transaction.edit.chip.none"
     const val TX_EDIT_FIELD_INTERVAL = "transaction.edit.field.interval"
 
+    /** Feuille « Répéter » (LOP-245). Les préfixes sont suivis du choix : `…frequency.monthly`. */
+    const val TX_EDIT_RECURRENCE_SHEET = "transaction.edit.recurrence.sheet"
+    const val TX_EDIT_RECURRENCE_SUMMARY = "transaction.edit.recurrence.summary"
+    const val TX_EDIT_RECURRENCE_FREQUENCY_PREFIX = "transaction.edit.recurrence.frequency."
+    /** Suivi de `minus`, `plus` ou `value`. */
+    const val TX_EDIT_RECURRENCE_INTERVAL_PREFIX = "transaction.edit.recurrence.interval."
+    /** Suivi du jour, 1 (lundi) à 7 (dimanche). */
+    const val TX_EDIT_RECURRENCE_DAY_PREFIX = "transaction.edit.recurrence.day."
+    const val TX_EDIT_RECURRENCE_MISSING_LAST = "transaction.edit.recurrence.missing.last"
+    const val TX_EDIT_RECURRENCE_MISSING_SKIP = "transaction.edit.recurrence.missing.skip"
+    /** Suivi de `never`, `date` ou `count`. */
+    const val TX_EDIT_RECURRENCE_END_PREFIX = "transaction.edit.recurrence.end."
+    const val TX_EDIT_RECURRENCE_END_DATE = "transaction.edit.recurrence.end.date.value"
+    /** Suivi de `minus`, `plus` ou `value`. */
+    const val TX_EDIT_RECURRENCE_COUNT_PREFIX = "transaction.edit.recurrence.end.count."
+    const val TX_EDIT_RECURRENCE_PREVIEW = "transaction.edit.recurrence.preview"
+    const val TX_EDIT_RECURRENCE_CANCEL = "transaction.edit.recurrence.cancel"
+    const val TX_EDIT_RECURRENCE_APPLY = "transaction.edit.recurrence.apply"
+
     /** Avertissement de jour absent avant enregistrement de la règle (LOP-88, CA-01 à CA-03). */
     const val TX_EDIT_MISSING_DAY_SHEET = "transaction.edit.missing_day.sheet"
     const val TX_EDIT_MISSING_DAY_EXAMPLE = "transaction.edit.missing_day.example"

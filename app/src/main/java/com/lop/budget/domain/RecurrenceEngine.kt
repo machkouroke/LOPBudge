@@ -5,6 +5,7 @@ import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.domain.model.MissingDay
 import com.lop.budget.domain.model.MissingDayBehavior
 import com.lop.budget.domain.model.RecurrenceFrequency
+import com.lop.budget.domain.model.RulePreview
 import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import java.time.Instant
@@ -62,6 +63,16 @@ object RecurrenceEngine {
             .map { createVirtualTransaction(series, it) }
             .toList()
     }
+
+    /**
+     * LOP-245, CA-05 : ancrage reporté, premier jour absent et [count] premières dates à partir de
+     * [from] **inclus**. Rien de nouveau : [firstMissingDay] et [nextOccurrences], réunis.
+     */
+    fun preview(series: RecurringSeriesEntity, from: Long, count: Int): RulePreview = RulePreview(
+        anchorDay = series.anchorDayOfMonth,
+        missingDay = firstMissingDay(series),
+        dates = nextOccurrences(series, after = from - 1, count = count).map { it.date },
+    )
 
     /**
      * Slots réellement produits par la série, dans l'ordre, une fois ses propres limites appliquées.

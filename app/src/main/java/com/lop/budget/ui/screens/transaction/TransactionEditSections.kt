@@ -443,7 +443,7 @@ fun OptionsCard(
     onSetStatus: (TransactionStatus) -> Unit,
     onOpenGoal: () -> Unit,
     onOpenDebt: () -> Unit,
-    /** Lignes de récurrence ([RecurrenceRows]) ; `null` quand la portée les masque (CA-08 de LOP-52). */
+    /** Ligne Répéter ([RecurrenceRow], LOP-245) ; `null` quand la portée la masque (CA-08 de LOP-52). */
     recurrence: (@Composable () -> Unit)?,
     /** CA-01 de LOP-244 : dépense récurrente seulement, hors édition d'une seule occurrence. */
     isSubscriptionToggleVisible: Boolean = false,
@@ -677,146 +677,18 @@ private fun RowTextField(
 }
 
 /**
- * LOP-227, P-3 : la récurrence en lignes de la carte « options ». Les réglages avancés (intervalle,
- * jours, fin) se déplient sous la ligne Répéter, comme avant la recomposition.
+ * LOP-245, CA-01 : la récurrence tient en une ligne de la carte « options », avec son résumé court ;
+ * la toucher ouvre la feuille « Répéter ». Le bloc « Options avancées » de LOP-227 a disparu.
  */
 @Composable
-fun RecurrenceRows(
-    form: TransactionForm,
-    onSetInterval: (Int) -> Unit,
-    onToggleDow: (Int) -> Unit,
-    onSetEndDate: (Long?) -> Unit,
-    onSetMaxOccurrences: (Int?) -> Unit,
-    onOpenFrequency: () -> Unit,
-    onOpenEndDate: () -> Unit,
-) {
-    var showAdvanced by remember { mutableStateOf(false) }
-
+fun RecurrenceRow(summary: String, isNone: Boolean, onOpen: () -> Unit) {
     Column(Modifier.testTag(TestTags.TX_EDIT_BLOCK_RECURRENCE)) {
-        val frequencyLabel = when (form.frequency) {
-            RecurrenceFrequency.NONE -> stringResource(R.string.tx_repeat_none)
-            RecurrenceFrequency.DAILY -> stringResource(R.string.tx_repeat_daily)
-            RecurrenceFrequency.WEEKLY -> stringResource(R.string.tx_repeat_weekly)
-            RecurrenceFrequency.MONTHLY -> stringResource(R.string.tx_repeat_monthly)
-            RecurrenceFrequency.YEARLY -> stringResource(R.string.tx_repeat_yearly)
-        }
         FormRow(
             label = stringResource(R.string.tx_repeat_label),
-            onClick = onOpenFrequency,
+            onClick = onOpen,
             modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_FREQUENCY),
         ) {
-            RowValue(frequencyLabel, muted = form.frequency == RecurrenceFrequency.NONE)
-        }
-
-        if (form.frequency != RecurrenceFrequency.NONE) {
-            TextButton(
-                onClick = { showAdvanced = !showAdvanced },
-                modifier = Modifier
-                    .align(Alignment.End)
-                    .testTag(TestTags.TX_EDIT_BTN_ADVANCED),
-            ) {
-                Text(if (showAdvanced) "Moins" else stringResource(R.string.tx_repeat_advanced))
-                Icon(
-                    if (showAdvanced) Icons.Default.KeyboardArrowDown else Icons.Default.ChevronRight,
-                    null
-                )
-            }
-        }
-
-        AnimatedVisibility(visible = showAdvanced && form.frequency != RecurrenceFrequency.NONE) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.padding(bottom = 12.dp),
-            ) {
-                // Interval
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.tx_repeat_every))
-                    Spacer(Modifier.width(8.dp))
-                    NumberField(
-                        value = form.interval,
-                        onValue = { it?.takeIf { v -> v > 0 }?.let(onSetInterval) },
-                        modifier = Modifier.testTag(TestTags.TX_EDIT_FIELD_INTERVAL)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.tx_repeat_intervals))
-                }
-
-                // Days of week for weekly
-                if (form.frequency == RecurrenceFrequency.WEEKLY) {
-                    Text(
-                        stringResource(R.string.tx_repeat_days_of_week),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        val days = stringArrayResource(R.array.tx_days_short)
-                        (1..7).forEach { day ->
-                            val selected = form.daysOfWeek.contains(day)
-                            Surface(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .clickable { onToggleDow(day) },
-                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = days.getOrElse(day - 1) { "" },
-                                        color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // End condition
-                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                Text(
-                    stringResource(R.string.tx_repeat_ends),
-                    style = MaterialTheme.typography.labelLarge
-                )
-
-                RadioRow(
-                    selected = form.endDate == null && form.maxOccurrences == null,
-                    onClick = {
-                        onSetEndDate(null)
-                        onSetMaxOccurrences(null)
-                    }
-                ) {
-                    Text(stringResource(R.string.tx_repeat_ends_never))
-                }
-
-                RadioRow(
-                    selected = form.endDate != null,
-                    onClick = onOpenEndDate
-                ) {
-                    Text(stringResource(R.string.tx_repeat_ends_on))
-                    Spacer(Modifier.width(8.dp))
-                    TextButton(
-                        onClick = onOpenEndDate,
-                        modifier = Modifier.testTag("tx_edit_recurrence_end_date_btn")
-                    ) {
-                        Text(Format.fullDate(form.endDate ?: form.date))
-                    }
-                }
-
-                RadioRow(
-                    selected = form.maxOccurrences != null,
-                    onClick = { onSetMaxOccurrences(12) }
-                ) {
-                    Text(stringResource(R.string.tx_repeat_ends_after))
-                    Spacer(Modifier.width(8.dp))
-                    NumberField(
-                        value = form.maxOccurrences,
-                        onValue = onSetMaxOccurrences
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.tx_repeat_occurrences_label))
-                }
-            }
+            RowValue(summary, muted = isNone)
         }
     }
 }
@@ -855,36 +727,3 @@ private fun TypeSegment(
     }
 }
 
-@Composable
-private fun NumberField(
-    value: Int?,
-    onValue: (Int?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var text by remember(value) { mutableStateOf(value?.toString() ?: "") }
-    OutlinedTextField(
-        value = text,
-        onValueChange = { 
-            text = it
-            onValue(it.toIntOrNull())
-        },
-        modifier = modifier
-            .width(80.dp)
-            .height(50.dp),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center),
-        shape = RoundedCornerShape(8.dp)
-    )
-}
-
-@Composable
-private fun RadioRow(
-    selected: Boolean,
-    onClick: () -> Unit,
-    content: @Composable () -> Unit,
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        RadioButton(selected = selected, onClick = onClick)
-        content()
-    }
-}
