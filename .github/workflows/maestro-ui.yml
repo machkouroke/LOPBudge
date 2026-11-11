@@ -218,7 +218,7 @@ jobs:
       - name: Preinstall emulator and system image
         run: |
           for attempt in 1 2 3; do
-            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator 'system-images;android-36;google_atd;x86_64' > /dev/null && exit 0
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator 'system-images;android-36;google_apis;x86_64' > /dev/null && exit 0
             echo "::warning::sdkmanager : tentative $attempt en echec, nouvel essai"
             rm -rf "$ANDROID_HOME/.downloadIntermediates" "$ANDROID_HOME/.temp"
             sleep 15
@@ -244,11 +244,9 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with: &instrumented-emulator
           api-level: 36
-          # Image ATD (Automated Test Device) : sans écran, allégée des applications et services
-          # inutiles aux tests (Messages, Bien-être numérique, etc., vus dans le logcat du run
-          # 42936638392). Variante Google, pas AOSP : elle garde les services Google de l'image
-          # précédente (`google_apis`), et l'app utilise ML Kit.
-          target: google_atd
+          # Image `google_apis`, pas ATD : sur `google_atd` (run 43053856222), TC_138 u05g
+          # (`captureToImage`) tuait l'émulateur et u04b (rotation) le figeait, aux deux passes.
+          target: google_apis
           arch: x86_64
           profile: pixel_6
           cores: 2
