@@ -222,6 +222,10 @@ fun LopNavHost() {
                             onOpenSeriesCalendar = { start ->
                                 navController.navigate(Routes.seriesCalendar(start.occurrenceId, start.openingDay))
                             },
+                            // LOP-243, CA-06 : détail de l'objectif ; création, qui revient ici une
+                            // fois enregistrée (P-6) : `closeCreation` dépile vers Analyses.
+                            onOpenGoal = { id -> navController.navigate(Routes.financialDetail(FinancialItemKind.GOAL, id)) },
+                            onCreateGoal = { navController.navigate(Routes.GOAL_ADD) },
                         )
                     }
 

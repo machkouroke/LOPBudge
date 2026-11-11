@@ -14,6 +14,7 @@ import com.lop.budget.data.local.entity.CategoryEntity
 import com.lop.budget.data.local.entity.TransactionEntity
 import com.lop.budget.data.repository.AccountRepository
 import com.lop.budget.data.repository.CategoryRepository
+import com.lop.budget.data.repository.GoalRepository
 import com.lop.budget.data.repository.NotificationDetectionRepository
 import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.data.repository.TransactionRepository
@@ -23,6 +24,7 @@ import com.lop.budget.domain.model.TransactionKind
 import com.lop.budget.domain.model.TransactionStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.account.GetAccountBalancesUseCase
+import com.lop.budget.domain.usecase.insight.ObserveGoalPaceUseCase
 import com.lop.budget.domain.usecase.insight.ObserveHomeSummaryUseCase
 import com.lop.budget.domain.usecase.insight.ObserveMonthlyAnalyticsUseCase
 import com.lop.budget.domain.usecase.insight.ObserveRecurringChargesUseCase
@@ -309,6 +311,8 @@ class MonthEndBoundsRoomTest {
                     handle, ObserveMonthlyAnalyticsUseCase(observeTransactions), settings, CLOCK,
                     // LOP-241 : carte des charges récurrentes, sans effet sur les cas de ce test.
                     ObserveRecurringChargesUseCase(transactionRepo, CategoryRepository(db.categoryDao()), observeTransactions),
+                    // LOP-243 : carte des objectifs, sans effet sur les cas de ce test.
+                    ObserveGoalPaceUseCase(GoalRepository(db.goalDao()), transactionRepo),
                 )
             }
         }

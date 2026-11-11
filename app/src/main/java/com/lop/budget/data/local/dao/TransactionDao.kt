@@ -55,7 +55,16 @@ interface TransactionOperations {
 
     /** Date de la plus ancienne ligne non supprimée, hors ajustements ; `null` sans ligne (LOP-242). */
     fun observeFirstDate(): Flow<Long?>
+
+    /**
+     * Contributions d'objectif de LOP-79 datées de [start] inclus à [end] exclu, une ligne par
+     * objectif qui en a (LOP-243, CA-01). Mêmes critères que [getSumForGoal].
+     */
+    fun observeGoalContributions(start: Long, end: Long): Flow<List<GoalContribution>>
 }
+
+/** Somme signée des contributions d'un objectif sur une fenêtre, en centimes (LOP-243). */
+data class GoalContribution(val goalId: Long, val cents: Long)
 
 @Dao
 interface TransactionDao : TransactionOperations {
@@ -228,6 +237,19 @@ interface TransactionDao : TransactionOperations {
     """
     )
     override suspend fun getSumForLoan(loanId: Long): Long
+
+    // LOP-243, CA-01 : la contribution de LOP-79 (signe, payée, ni supprimée ni ajustement), à sa
+    // date affichée. Planifiées et occurrences virtuelles, jamais persistées payées, n'y sont pas.
+    @Query(
+        """
+        SELECT linkedGoalId AS goalId, SUM(CASE WHEN type = 'INCOME' THEN amount ELSE -amount END) AS cents
+        FROM transactions
+        WHERE linkedGoalId IS NOT NULL AND deleted = 0 AND status = 'PAID' AND kind = 'STANDARD'
+            AND date >= :start AND date < :end
+        GROUP BY linkedGoalId
+    """
+    )
+    override fun observeGoalContributions(start: Long, end: Long): Flow<List<GoalContribution>>
 
     @Query(
         """

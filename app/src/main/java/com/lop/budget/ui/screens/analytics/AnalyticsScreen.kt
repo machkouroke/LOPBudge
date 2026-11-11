@@ -64,8 +64,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lop.budget.R
+import com.lop.budget.domain.model.ItemStatus
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.insight.AnalyticsTrend
+import com.lop.budget.domain.usecase.insight.GoalPace
+import com.lop.budget.domain.usecase.insight.GoalSituation
 import com.lop.budget.domain.usecase.insight.CategoryAboveHabits
 import com.lop.budget.domain.usecase.insight.HabitsComparison
 import com.lop.budget.domain.usecase.insight.RecurringCharge
@@ -93,8 +96,9 @@ import java.time.LocalDate
  * [onOpenDetail] ouvre l'analyse détaillée d'un type (LOP-233, CA-02) ; [onOpenTransactions], la
  * vue unifiée des transactions (CA-07) ; [onOpenCategory], le détail Dépenses d'une catégorie
  * (LOP-240, CA-07) ; [onOpenSeriesCalendar], le calendrier d'une charge depuis son occurrence de
- * départ, ouvert sur sa prochaine échéance (LOP-241, CA-05, P-7, P-10). Premier et dernier jours
- * de la période inclus.
+ * départ, ouvert sur sa prochaine échéance (LOP-241, CA-05, P-7, P-10) ; [onOpenGoal], le détail
+ * d'un objectif, et [onCreateGoal], sa création (LOP-243, CA-06). Premier et dernier jours de la
+ * période inclus.
  */
 @Composable
 fun AnalyticsScreen(
@@ -102,6 +106,8 @@ fun AnalyticsScreen(
     onOpenTransactions: (LocalDate, LocalDate) -> Unit,
     onOpenCategory: (categoryId: Long, LocalDate, LocalDate) -> Unit,
     onOpenSeriesCalendar: (CalendarStart) -> Unit,
+    onOpenGoal: (goalId: Long) -> Unit,
+    onCreateGoal: () -> Unit,
     vm: AnalyticsViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -113,6 +119,7 @@ fun AnalyticsScreen(
     val showSkeleton = rememberShowSkeleton(loading = !current)
     var showPicker by rememberSaveable { mutableStateOf(false) }
     val charges by vm.charges.collectAsStateWithLifecycle()
+    val goals by vm.goals.collectAsStateWithLifecycle()
     var showCharges by rememberSaveable { mutableStateOf(false) }
     // P-8 de LOP-241 : la feuille est une fenêtre ; ouverte, elle resterait au-dessus du calendrier
     // pendant la transition. Fermée au départ, elle est rouverte au retour.
@@ -187,6 +194,11 @@ fun AnalyticsScreen(
         // l'onglet, en mode Mois (CA-06, P-7). Réessayer relit la période, comme LOP-240.
         if (state.balances != null || state.balancesFailed) item {
             BalanceHistoryCard(state.balances, state.balancesFailed, state.currency, onPick = vm::pickMonth, onRetry = vm::retryTrend)
+        }
+        // LOP-243 : juste après le solde sur 12 mois (P-1), hors période (CA-06) ; attente courte du
+        // chargement : rien, donc ni date ni situation (CA-07).
+        if (goals !is GoalsState.Loading) item {
+            GoalsPaceCard(goals, state.currency, onOpen = onOpenGoal, onCreate = onCreateGoal, onRetry = vm::retryGoals)
         }
         // Rien d'autre (CA-06 de LOP-233) : « Dépensé sur la période » (P-4), l'anneau et la
         // répartition par catégorie (P-7) venaient de l'ancienne page d'analyse ; la répartition
@@ -547,6 +559,122 @@ private fun ChargesSheet(
                 items(charges, key = { it.seriesId }) { charge ->
                     ChargeRow(charge, currency) { onOpen(charge.seriesId) }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * LOP-243 : chaque objectif non archivé, dans l'ordre du use case (CA-05) ; sans objectif, « Aucun
+ * objectif en cours » et « Créer un objectif » (CA-06) ; un échec remplace le contenu (CA-07).
+ */
+@Composable
+private fun GoalsPaceCard(
+    state: GoalsState,
+    currency: String,
+    onOpen: (goalId: Long) -> Unit,
+    onCreate: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    val goals = (state as? GoalsState.Ready)?.goals
+    FloatingCard(Modifier.fillMaxWidth().testTag(TestTags.ANALYTICS_GOALS)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(R.string.analytics_goals_title), style = MaterialTheme.typography.titleMedium)
+            when {
+                goals == null -> CardError(
+                    stringResource(R.string.analytics_goals_error), TestTags.ANALYTICS_GOALS_ERROR,
+                    TestTags.ANALYTICS_GOALS_RETRY, onRetry,
+                )
+                goals.isEmpty() -> {
+                    HabitsMessage(stringResource(R.string.analytics_goals_none), TestTags.ANALYTICS_GOALS_NONE)
+                    Button(onClick = onCreate, modifier = Modifier.testTag(TestTags.ANALYTICS_GOALS_CREATE)) {
+                        Text(stringResource(R.string.analytics_goals_create))
+                    }
+                }
+                else -> goals.forEach { goal -> GoalPaceRow(goal, currency) { onOpen(goal.id) } }
+            }
+        }
+    }
+}
+
+/**
+ * Tuile teintée de l'objectif, comme `HabitsRow`. Montants, barre et statut de LOP-79, tels quels
+ * (I-2) ; dessous, le rythme et la date d'atteinte (CA-01, CA-02), puis la situation et l'effort
+ * (CA-03, CA-04). Un Terminé se lit « Atteint », sans rythme ni date (CA-05).
+ */
+@Composable
+private fun GoalPaceRow(goal: GoalPace, currency: String, onClick: () -> Unit) {
+    val color = Color(goal.colorArgb)
+    val secondary = MaterialTheme.colorScheme.onSurfaceVariant
+    FloatingCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(interactionSource = null, indication = null, role = Role.Button, onClick = onClick)
+            .testTag(TestTags.ANALYTICS_GOALS_ROW),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        tint = color,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CircleIcon(IconMapper.get(goal.icon), tint = color, background = color.copy(alpha = 0.18f))
+                Text(goal.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(
+                    Format.reachedOfTarget(goal.progress.reachedCents, goal.targetCents, currency),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.testTag(TestTags.ANALYTICS_GOALS_AMOUNTS),
+                )
+            }
+            // Cible nulle ou négative : pourcentage non calculable, barre vide (LOP-79, CA-07, CA-09).
+            LinearProgressIndicator(
+                progress = { (goal.progress.percent ?: 0) / 100f },
+                modifier = Modifier.fillMaxWidth().height(8.dp).testTag(TestTags.ANALYTICS_GOALS_BAR),
+                color = color,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                strokeCap = StrokeCap.Round,
+                gapSize = 0.dp,
+                drawStopIndicator = {},
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val pace = goal.paceCents ?: 0L
+                Text(
+                    when {
+                        goal.status == ItemStatus.COMPLETED -> stringResource(R.string.financial_status_reached)
+                        pace <= 0 -> stringResource(R.string.analytics_goals_no_pace)
+                        else -> stringResource(R.string.analytics_goals_pace, Format.money(pace, currency))
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = secondary,
+                    modifier = Modifier.weight(1f).testTag(TestTags.ANALYTICS_GOALS_PACE),
+                )
+                goal.reachMonth?.let {
+                    Text(
+                        stringResource(R.string.analytics_goals_reach, Format.monthYearInline(it)),
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.testTag(TestTags.ANALYTICS_GOALS_REACH),
+                    )
+                }
+            }
+            goal.situation?.let { situation ->
+                Text(
+                    stringResource(
+                        when (situation) {
+                            GoalSituation.LATE -> R.string.analytics_goals_late
+                            GoalSituation.ON_TIME -> R.string.analytics_goals_on_time
+                            GoalSituation.OVERDUE -> R.string.analytics_goals_overdue
+                        },
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (situation == GoalSituation.ON_TIME) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag(TestTags.ANALYTICS_GOALS_SITUATION),
+                )
+            }
+            goal.effortCents?.let {
+                Text(
+                    stringResource(R.string.analytics_goals_effort, Format.money(it, currency)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = secondary,
+                    modifier = Modifier.testTag(TestTags.ANALYTICS_GOALS_EFFORT),
+                )
             }
         }
     }

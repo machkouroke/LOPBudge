@@ -163,6 +163,22 @@ object Format {
     fun monthYear(ym: YearMonth): String =
         ym.format(monthYear).replaceFirstChar { it.uppercase() }
 
+    /** « mars 2027 », en cours de phrase : « Atteint en mars 2027 » (LOP-243, CA-02). */
+    fun monthYearInline(ym: YearMonth): String = ym.format(monthYear)
+
+    /**
+     * « 900 / 1 500 € » (LOP-243, CA-02) : avancement sur cible, devise une seule fois, décimales
+     * seulement pour un montant qui n'est pas rond (« 900,50 / 1 500 € »).
+     */
+    fun reachedOfTarget(reachedCents: Long, targetCents: Long, currencyCode: String = "EUR"): String {
+        val digits = runCatching { Currency.getInstance(currencyCode).defaultFractionDigits }.getOrDefault(2)
+        fun plain(cents: Long) = NumberFormat.getNumberInstance(Locale.FRANCE).apply {
+            maximumFractionDigits = digits
+            minimumFractionDigits = if (cents % 100 == 0L) 0 else digits
+        }.format(BigDecimal.valueOf(cents, 2))
+        return "${plain(reachedCents)} / ${plain(targetCents)} ${currencySymbol(currencyCode)}"
+    }
+
     fun shortDate(millis: Long): String =
         Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).format(dayMonth)
 }

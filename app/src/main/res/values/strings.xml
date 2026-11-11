@@ -196,6 +196,21 @@
     <string name="analytics_balances_error">Impossible de lire le solde des derniers mois</string>
     <!-- Lecteur d'écran (CA-04) : « Octobre 2026, solde −150,00 €, revenus 2 600,00 € ». -->
     <string name="analytics_balances_bar">%1$s, solde %2$s, revenus %3$s</string>
+    <!-- Objectifs à ce rythme (LOP-243) -->
+    <string name="analytics_goals_title">Objectifs à ce rythme</string>
+    <!-- %1$s : rythme formaté, par exemple « 150,00 € ». -->
+    <string name="analytics_goals_pace">Rythme : %1$s/mois</string>
+    <string name="analytics_goals_no_pace">Pas de progression ces 3 derniers mois</string>
+    <!-- %1$s : mois en cours de phrase, par exemple « mars 2027 ». -->
+    <string name="analytics_goals_reach">Atteint en %1$s</string>
+    <string name="analytics_goals_late">En retard</string>
+    <string name="analytics_goals_on_time">Dans les temps</string>
+    <string name="analytics_goals_overdue">Échéance dépassée</string>
+    <!-- %1$s : effort formaté, par exemple « 200,00 € ». -->
+    <string name="analytics_goals_effort">Pour tenir l’échéance : %1$s/mois</string>
+    <string name="analytics_goals_none">Aucun objectif en cours</string>
+    <string name="analytics_goals_create">Créer un objectif</string>
+    <string name="analytics_goals_error">Impossible de lire vos objectifs</string>
 
     <string name="see_all">Voir tout</string>
     <string name="no_accounts_to_show">Aucun compte à afficher</string>

@@ -7,6 +7,8 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.CategoryBreakdown
 import com.lop.budget.domain.usecase.insight.AnalyticsTrend
 import com.lop.budget.domain.usecase.insight.BalanceHistory
+import com.lop.budget.domain.usecase.insight.GoalPace
+import com.lop.budget.domain.usecase.insight.ObserveGoalPaceUseCase
 import com.lop.budget.domain.usecase.insight.HabitsComparison
 import com.lop.budget.domain.usecase.insight.ObserveMonthlyAnalyticsUseCase
 import com.lop.budget.domain.usecase.insight.ObserveRecurringChargesUseCase
@@ -76,6 +78,13 @@ sealed interface ChargesState {
     data class Ready(val charges: RecurringCharges) : ChargesState
 }
 
+/** Carte de LOP-243, hors période (CA-06) : un chargement n'affiche ni date ni situation (CA-07). */
+sealed interface GoalsState {
+    data object Loading : GoalsState
+    data object Failed : GoalsState
+    data class Ready(val goals: List<GoalPace>) : GoalsState
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
@@ -84,6 +93,7 @@ class AnalyticsViewModel @Inject constructor(
     settings: SettingsRepository,
     private val clock: Clock,
     private val observeRecurringCharges: ObserveRecurringChargesUseCase,
+    private val observeGoalPace: ObserveGoalPaceUseCase,
 ) : ViewModel() {
 
     /** Lu sur l'horloge injectée ; le fuseau est relu à chaque appel, comme l'accueil. */
@@ -237,6 +247,27 @@ class AnalyticsViewModel @Inject constructor(
                 .catch { emit(ChargesState.Failed) }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ChargesState.Loading)
+
+    private val goalsAttempt = MutableStateFlow(0)
+
+    /** CA-07 de LOP-243 : relit la carte des objectifs après un échec, sans toucher au reste. */
+    fun retryGoals() = goalsAttempt.update { it + 1 }
+
+    /**
+     * LOP-243 : hors de la lecture de période, comme les charges (CA-06). Son propre `catch` : son
+     * échec ne coupe rien d'autre (CA-07).
+     *
+     * ponytail: jour lu à chaque (re)lecture, comme [charges] ; un changement de mois onglet ouvert
+     * n'est vu qu'à la lecture suivante.
+     */
+    val goals: StateFlow<GoalsState> = goalsAttempt
+        .flatMapLatest {
+            val zone = ZoneId.systemDefault()
+            observeGoalPace(LocalDate.now(clock.withZone(zone)), zone)
+                .map<List<GoalPace>, GoalsState> { GoalsState.Ready(it) }
+                .catch { emit(GoalsState.Failed) }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GoalsState.Loading)
 
     /**
      * P-7 et P-10 de LOP-241 : départ et jour d'ouverture du calendrier de la série [seriesId], ou

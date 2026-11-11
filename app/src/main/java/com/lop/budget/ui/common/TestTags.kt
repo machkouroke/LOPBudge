@@ -146,6 +146,28 @@ object TestTags {
     const val ANALYTICS_BALANCES_NONE = "analytics.balances.none"
     const val ANALYTICS_BALANCES_ERROR = "analytics.balances.error"
     const val ANALYTICS_BALANCES_RETRY = "analytics.balances.retry"
+    /** Carte de LOP-243, après le solde sur 12 mois (P-1), indépendante de la période (CA-06). */
+    const val ANALYTICS_GOALS = "analytics.goals"
+    /** Un objectif ; un appui ouvre son détail (CA-06). */
+    const val ANALYTICS_GOALS_ROW = "analytics.goals.row"
+    /** « 900 / 1 500 € » (CA-02). */
+    const val ANALYTICS_GOALS_AMOUNTS = "analytics.goals.amounts"
+    /** Barre d'avancement, au pourcentage de LOP-79 (CA-02). */
+    const val ANALYTICS_GOALS_BAR = "analytics.goals.bar"
+    /** « Rythme : 150,00 €/mois », « Pas de progression ces 3 derniers mois » ou « Atteint » (CA-01, CA-04, CA-05). */
+    const val ANALYTICS_GOALS_PACE = "analytics.goals.pace"
+    /** « Atteint en mars 2027 », absent sans date d'atteinte estimée (CA-02). */
+    const val ANALYTICS_GOALS_REACH = "analytics.goals.reach"
+    /** « En retard », « Dans les temps » ou « Échéance dépassée » (CA-03, CA-04). */
+    const val ANALYTICS_GOALS_SITUATION = "analytics.goals.situation"
+    /** « Pour tenir l’échéance : 200,00 €/mois », seulement en retard (CA-03). */
+    const val ANALYTICS_GOALS_EFFORT = "analytics.goals.effort"
+    /** « Aucun objectif en cours » (CA-06). */
+    const val ANALYTICS_GOALS_NONE = "analytics.goals.none"
+    /** « Créer un objectif », sous « Aucun objectif en cours » (CA-06). */
+    const val ANALYTICS_GOALS_CREATE = "analytics.goals.create"
+    const val ANALYTICS_GOALS_ERROR = "analytics.goals.error"
+    const val ANALYTICS_GOALS_RETRY = "analytics.goals.retry"
     const val HOME_ACCOUNT_CARD = "home.account.card"
 
     // Accounts & current balances (LOP-13)
