@@ -90,8 +90,8 @@ class ObserveRecurringChargesUseCase @Inject constructor(
 /** Calendrier d'une charge : occurrence de départ (P-7) et jour d'ouverture (P-10). */
 data class CalendarStart(val occurrenceId: Long, val openingDay: LocalDate)
 
-/** Dernière milliseconde de [day] dans [zone] (même cause que LOP-197). */
-private fun lastMilliOf(day: LocalDate, zone: ZoneId): Long =
+/** Dernière milliseconde de [day] dans [zone] (même cause que LOP-197). Partagée avec LOP-239. */
+internal fun lastMilliOf(day: LocalDate, zone: ZoneId): Long =
     day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() - 1
 
 /**

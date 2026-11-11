@@ -73,6 +73,19 @@ class ObserveTransactionsUseCase @Inject constructor(
         }.flowOn(Dispatchers.Default)
 
     /**
+     * Date de la première transaction enregistrée (LOP-242, CA-02) : la plus ancienne des lignes
+     * non supprimées et des départs de séries actives, dont les occurrences comptent sans être
+     * écrites (P-6 de LOP-242). Ajustements exclus, comme dans [invoke]. `null` : aucune transaction.
+     *
+     * ponytail: le départ d'une série vaut sa première occurrence ; si celle-ci a été supprimée, la
+     * série compte encore depuis ce départ. Résoudre la première occurrence visible si cela gêne.
+     */
+    fun observeFirstDate(): Flow<Long?> =
+        combine(transactionRepo.observeFirstDate(), transactionRepo.observeActiveSeries()) { firstRow, series ->
+            listOfNotNull(firstRow, series.minOfOrNull { it.startDate }).minOrNull()
+        }.distinctUntilChanged()
+
+    /**
      * Les [count] prochaines occurrences **visibles** d'une série, strictement après [after], ou
      * toutes celles qui restent s'il y en a moins (CA-01 de LOP-7).
      *

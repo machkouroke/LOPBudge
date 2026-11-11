@@ -108,9 +108,12 @@ fun HomeScreen(
     navController: NavController,
     /** La barre de recherche voyage vers la Recherche ; porte aussi la vague des tuiles. */
     searchBar: SearchBarTransition? = null,
-    vm: HomeViewModel = hiltViewModel()
+    vm: HomeViewModel = hiltViewModel(),
+    remainingVm: RemainingToSpendViewModel = hiltViewModel(),
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val remaining by remainingVm.state.collectAsStateWithLifecycle()
+    var showUpcoming by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
 
     // Vrai de l'appui sur la barre jusqu'au retour de la Recherche : seul ce trajet joue la vague.
@@ -172,7 +175,16 @@ fun HomeScreen(
             },
             onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
             onOpenAccountDetail = { id -> navController.navigate(Routes.accountDetail(id)) },
+            remaining = remaining,
+            onOpenUpcoming = { showUpcoming = true },
+            onRetryRemaining = remainingVm::retry,
+            // LOP-239, CA-05 : l'ajout d'un revenu, où l'utilisateur peut le rendre récurrent.
+            onAddIncome = { navController.navigate(Routes.add(TransactionType.INCOME)) },
         )
+
+        (remaining as? RemainingCardState.Ready)?.takeIf { showUpcoming }?.let { ready ->
+            UpcomingMovementsSheet(ready.data, ready.currency, onDismiss = { showUpcoming = false })
+        }
 
         // Barre d'état transparente, façon Liquid Glass : les cartes y passent, de plus en plus
         // floutées vers le haut, sans coupure nette ; l'heure reste lisible.
@@ -235,6 +247,10 @@ fun HomeContent(
     onSeeAllTransactions: (YearMonth) -> Unit,
     onOpenAccounts: () -> Unit,
     onOpenAccountDetail: (Long) -> Unit,
+    remaining: RemainingCardState,
+    onOpenUpcoming: () -> Unit,
+    onRetryRemaining: () -> Unit,
+    onAddIncome: () -> Unit,
     modifier: Modifier = Modifier,
     screen: AnimatedVisibilityScope? = null,
     toSearch: Boolean = false,
@@ -268,9 +284,21 @@ fun HomeContent(
             }
         }
 
+        // LOP-239 : sous « Ce mois ».
+        item(key = "remaining_to_spend", contentType = "remaining") {
+            Box(wave(2)) {
+                RemainingToSpendCard(
+                    state = remaining,
+                    onOpen = onOpenUpcoming,
+                    onRetry = onRetryRemaining,
+                    onAddIncome = onAddIncome,
+                )
+            }
+        }
+
         item(key = "accounts_widget", contentType = "accounts") {
             AnimatedContent(
-                modifier = wave(2),
+                modifier = wave(3),
                 targetState = state.month,
                 transitionSpec = {
                     fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
@@ -336,7 +364,7 @@ fun HomeContent(
 
         item(contentType = "unpaid_subscriptions") {
             AnimatedContent(
-                modifier = wave(3),
+                modifier = wave(4),
                 targetState = state.month,
                 transitionSpec = {
                     fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))
@@ -398,7 +426,7 @@ fun HomeContent(
 
         item(contentType = "recent_transactions_header") {
             AnimatedContent(
-                modifier = wave(4),
+                modifier = wave(5),
                 targetState = state.month,
                 transitionSpec = {
                     fadeIn(animationSpec = tween(300)).togetherWith(fadeOut(animationSpec = tween(300)))

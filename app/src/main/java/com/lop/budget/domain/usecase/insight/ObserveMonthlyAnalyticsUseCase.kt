@@ -9,6 +9,7 @@ import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.usecase.transaction.ObserveTransactionsUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -109,6 +110,56 @@ class ObserveMonthlyAnalyticsUseCase @Inject constructor(
             .map { rows -> habitsComparison(rows, month, day, zone) }
             .flowOn(Dispatchers.Default)
     }
+
+    /**
+     * Solde du mois sur la fenêtre de douze mois qui finit en [last] (LOP-242). Chaque mois suit
+     * LOP-231 par la découpe de la tendance : payées et planifiées, occurrences virtuelles, tous
+     * comptes et sans compte (CA-03). Un mois couvert n'est ni après [current], ni avant le mois de
+     * la première transaction (CA-02). Supprimées, ajustements et doublons d'occurrence sont déjà
+     * écartés (I-2) ; rien n'est écrit (I-1).
+     */
+    fun balanceHistory(last: YearMonth, current: YearMonth, zone: ZoneId): Flow<BalanceHistory> {
+        val first = last.minusMonths(BALANCE_WINDOW_MONTHS - 1)
+        val start = first.atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        // Dernière milliseconde du dernier mois incluse (même cause que LOP-197).
+        val end = last.atEndOfMonth().atTime(23, 59, 59, 999_000_000).atZone(zone).toInstant().toEpochMilli()
+        return combine(observeTransactionsUseCase(start, end), observeTransactionsUseCase.observeFirstDate()) { rows, firstDate ->
+            val points = trendPoints(rows, first.atDay(1), last.atEndOfMonth(), ChronoUnit.MONTHS, zone).points
+            balanceHistory(points, firstDate?.let { YearMonth.from(it.toLocalDate(zone)) }, current)
+        }.flowOn(Dispatchers.Default)
+    }
+}
+
+/** Revenus et solde d'un mois couvert (LOP-242), en centimes ; solde = revenus − dépenses (LOP-231). */
+data class MonthBalance(val income: Long, val balance: Long)
+
+/**
+ * Fenêtre de LOP-242. [months] : les douze mois, du plus ancien au plus récent. [covered] : les
+ * seuls mois couverts ; un mois absent est un emplacement vide, ni barre ni zéro (CA-02).
+ */
+data class BalanceHistory(val months: List<YearMonth>, val covered: Map<YearMonth, MonthBalance>) {
+    /** Solde moyen, tronqué au centime (vers zéro) ; `null` sans mois couvert (CA-05). */
+    val average: Long? get() = covered.values.takeIf { it.isNotEmpty() }?.let { m -> m.sumOf { it.balance } / m.size }
+
+    /** Taux de solde en pourcentage entier tronqué ; `null` si les revenus couverts sont nuls (CA-05). */
+    val rate: Long? get() {
+        val income = covered.values.sumOf { it.income }
+        return if (income == 0L) null else covered.values.sumOf { it.balance } * 100 / income
+    }
+}
+
+private const val BALANCE_WINDOW_MONTHS = 12L
+
+/**
+ * Mois couverts de la fenêtre [points] (une case par mois) : de [firstMonth], mois de la première
+ * transaction, à [current] inclus (CA-02, P-5 de LOP-242). [firstMonth] `null` : aucun mois couvert.
+ */
+internal fun balanceHistory(points: List<TrendPoint>, firstMonth: YearMonth?, current: YearMonth): BalanceHistory {
+    val months = points.map { YearMonth.from(it.start) }
+    val covered = points
+        .filter { p -> YearMonth.from(p.start).let { firstMonth != null && it >= firstMonth && it <= current } }
+        .associate { YearMonth.from(it.start) to MonthBalance(it.income, it.income - it.expense) }
+    return BalanceHistory(months, covered)
 }
 
 /** Résultat de la carte de LOP-240 pour un mois passé ou courant. */

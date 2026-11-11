@@ -6,6 +6,7 @@ import com.lop.budget.data.repository.SettingsRepository
 import com.lop.budget.domain.model.TransactionType
 import com.lop.budget.domain.CategoryBreakdown
 import com.lop.budget.domain.usecase.insight.AnalyticsTrend
+import com.lop.budget.domain.usecase.insight.BalanceHistory
 import com.lop.budget.domain.usecase.insight.HabitsComparison
 import com.lop.budget.domain.usecase.insight.ObserveMonthlyAnalyticsUseCase
 import com.lop.budget.domain.usecase.insight.ObserveRecurringChargesUseCase
@@ -62,6 +63,10 @@ data class AnalyticsUiState(
     val habits: HabitsComparison? = null,
     /** Lecture de la carte de LOP-240 en échec (CA-06) ; tendance et tuiles n'en dépendent pas. */
     val habitsFailed: Boolean = false,
+    /** Carte de LOP-242 : fenêtre de douze mois qui finit avec la période ; `null` en échec. */
+    val balances: BalanceHistory? = null,
+    /** Lecture de la carte de LOP-242 en échec (CA-07) ; le reste de l'onglet n'en dépend pas. */
+    val balancesFailed: Boolean = false,
 )
 
 /** Carte de LOP-241, hors période (CA-06) : un chargement n'est jamais présenté comme 0 €. */
@@ -186,15 +191,23 @@ class AnalyticsViewModel @Inject constructor(
                 } else {
                     flowOf(Result.success<HabitsComparison?>(null))
                 }
+                // LOP-242 : fenêtre qui finit au mois affiché, ou en décembre en mode Année (CA-02),
+                // mois courant lu sur l'horloge injectée. Son propre `catch` : son échec ne coupe rien.
+                val balances = observeMonthlyAnalytics
+                    .balanceHistory(YearMonth.from(p.last), YearMonth.now(clock.withZone(zone)), zone)
+                    .map { Result.success(it) }
+                    .catch { emit(Result.failure(it)) }
                 // Anneau et tendance dans le même état, sous la même période : une série n'est
                 // jamais présentée avec les montants d'une autre période (CA-05 de LOP-235).
-                combine(observeMonthlyAnalytics(start, end, t), trend, habits) { analytics, tr, h ->
+                combine(observeMonthlyAnalytics(start, end, t), trend, habits, balances) { analytics, tr, h, b ->
                     AnalyticsUiState(
                         p.month, p.mode, currency, t, analytics.total, analytics.breakdown,
                         trend = tr ?: AnalyticsTrend(),
                         trendFailed = tr == null,
                         habits = h.getOrNull(),
                         habitsFailed = h.isFailure,
+                        balances = b.getOrNull(),
+                        balancesFailed = b.isFailure,
                     )
                 }
             }

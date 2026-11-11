@@ -52,6 +52,9 @@ interface TransactionOperations {
     suspend fun detachTransactionsFromAccount(accountId: Long, noAccountId: Long): Int
 
     fun observeForMerge(start: Long, end: Long): Flow<List<TransactionWithRelations>>
+
+    /** Date de la plus ancienne ligne non supprimée, hors ajustements ; `null` sans ligne (LOP-242). */
+    fun observeFirstDate(): Flow<Long?>
 }
 
 @Dao
@@ -322,6 +325,10 @@ interface TransactionDao : TransactionOperations {
     """
     )
     override fun observeForMerge(start: Long, end: Long): Flow<List<TransactionWithRelations>>
+
+    /** Même exclusion des ajustements que [observeForMerge] (LOP-87, P-10) ; tombstones écartés. */
+    @Query("SELECT MIN(date) FROM transactions WHERE deleted = 0 AND kind = 'STANDARD'")
+    override fun observeFirstDate(): Flow<Long?>
 
     @Query(
         """

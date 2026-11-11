@@ -23,6 +23,19 @@
     <string name="home_total_balance">Solde total</string>
     <string name="home_month_balance">Solde du mois</string>
     <string name="home_month_error">Impossible de lire les montants du mois</string>
+    <!-- LOP-239 : carte « Reste à dépenser » et feuille des mouvements à venir. -->
+    <string name="home_remaining_title">Reste à dépenser</string>
+    <string name="home_remaining_per_day">soit %1$s/jour</string>
+    <string name="home_remaining_until">jusqu’au %1$s</string>
+    <string name="home_remaining_overrun">Dépassement prévu : %1$s</string>
+    <string name="home_remaining_low_point">Point bas : %1$s le %2$s</string>
+    <string name="home_remaining_no_payday">Ajoutez votre salaire en récurrent pour calculer votre reste à dépenser</string>
+    <string name="home_remaining_add_income">Ajouter un revenu</string>
+    <string name="home_remaining_error">Impossible de calculer le reste à dépenser</string>
+    <string name="home_remaining_retry">Réessayer</string>
+    <string name="home_upcoming_title">Mouvements à venir</string>
+    <string name="home_upcoming_start">Solde total aujourd’hui</string>
+    <string name="home_upcoming_empty">Aucun mouvement prévu d’ici la paie</string>
     <string name="home_unpaid_subscriptions">Abonnements non payés</string>
     <string name="home_subscriptions">Abonnements</string>
     <string name="home_no_pending_subscriptions">Aucun abonnement en attente</string>
@@ -172,6 +185,17 @@
     <string name="analytics_charges_see_all">Voir les %1$d charges</string>
     <string name="analytics_charges_none">Aucune charge récurrente</string>
     <string name="analytics_charges_error">Impossible de lire vos charges récurrentes</string>
+    <!-- Solde du mois sur 12 mois (LOP-242) -->
+    <string name="analytics_balances_title">Solde du mois sur 12 mois</string>
+    <!-- %1$s : solde moyen formaté ; %2$s : taux (« 21 % ») ou « — » sans revenu (CA-05). -->
+    <string name="analytics_balances_average">Moyenne %1$s/mois · %2$s</string>
+    <!-- %1$s : taux entier signé (« −5 ») ; espace insécable avant « % », comme analytics_charges_share. -->
+    <string name="analytics_balances_rate">%1$s&#160;%%</string>
+    <string name="analytics_balances_no_rate">—</string>
+    <string name="analytics_balances_none">Aucune transaction sur ces 12 mois</string>
+    <string name="analytics_balances_error">Impossible de lire le solde des derniers mois</string>
+    <!-- Lecteur d'écran (CA-04) : « Octobre 2026, solde −150,00 €, revenus 2 600,00 € ». -->
+    <string name="analytics_balances_bar">%1$s, solde %2$s, revenus %3$s</string>
 
     <string name="see_all">Voir tout</string>
     <string name="no_accounts_to_show">Aucun compte à afficher</string>

@@ -183,6 +183,11 @@ fun AnalyticsScreen(
         if (charges !is ChargesState.Loading) item {
             ChargesCard(charges, state.currency, onOpen = openCharge, onSeeAll = { showCharges = true }, onRetry = vm::retryCharges)
         }
+        // LOP-242 : après les charges récurrentes ; un mois touché devient la période de tout
+        // l'onglet, en mode Mois (CA-06, P-7). Réessayer relit la période, comme LOP-240.
+        if (state.balances != null || state.balancesFailed) item {
+            BalanceHistoryCard(state.balances, state.balancesFailed, state.currency, onPick = vm::pickMonth, onRetry = vm::retryTrend)
+        }
         // Rien d'autre (CA-06 de LOP-233) : « Dépensé sur la période » (P-4), l'anneau et la
         // répartition par catégorie (P-7) venaient de l'ancienne page d'analyse ; la répartition
         // reste dans le détail ouvert par les tuiles.
@@ -342,7 +347,7 @@ private fun HabitsCard(
 
 /** Échec de lecture d'une carte : message et Réessayer, à la place de son contenu. */
 @Composable
-private fun CardError(text: String, tag: String, retryTag: String, onRetry: () -> Unit) {
+internal fun CardError(text: String, tag: String, retryTag: String, onRetry: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(tag),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -357,7 +362,7 @@ private fun CardError(text: String, tag: String, retryTag: String, onRetry: () -
 }
 
 @Composable
-private fun HabitsMessage(text: String, tag: String) {
+internal fun HabitsMessage(text: String, tag: String) {
     Text(
         text,
         style = MaterialTheme.typography.bodyMedium,

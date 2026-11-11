@@ -54,7 +54,13 @@ object BalanceEngine {
         calculatedBalances: Map<Long, Long>
     ): Long {
         return accounts
-            .filter { it.includeInTotal && !it.archived }
+            .filter(::countsInTotal)
             .sumOf { calculatedBalances[it.id] ?: 0L }
     }
+
+    /**
+     * Le compte entre-t-il dans le solde total : inclus et non archivé (P-2 de LOP-231). Seule
+     * écriture de la règle, que le reste à dépenser de LOP-239 applique aussi à ses mouvements.
+     */
+    fun countsInTotal(account: AccountEntity): Boolean = account.includeInTotal && !account.archived
 }

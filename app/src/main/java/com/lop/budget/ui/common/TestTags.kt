@@ -58,6 +58,22 @@ object TestTags {
     const val HOME_MONTH_ERROR = "home.month.error"
     const val HOME_SEE_ALL_ACCOUNTS = "home.see.all.accounts"
 
+    // Home Screen — carte « Reste à dépenser » et feuille des mouvements à venir (LOP-239)
+    const val HOME_REMAINING_CARD = "home.remaining.card"
+    /** Le reste, « Dépassement prévu : … » ou « — » en chargement (CA-01, CA-04, CA-07). */
+    const val HOME_REMAINING_AMOUNT = "home.remaining.amount"
+    const val HOME_REMAINING_PER_DAY = "home.remaining.per.day"
+    const val HOME_REMAINING_UNTIL = "home.remaining.until"
+    const val HOME_REMAINING_LOW_POINT = "home.remaining.low.point"
+    const val HOME_REMAINING_ERROR = "home.remaining.error"
+    const val HOME_REMAINING_RETRY = "home.remaining.retry"
+    const val HOME_REMAINING_ADD_INCOME = "home.remaining.add.income"
+    const val HOME_UPCOMING_SHEET = "home.upcoming.sheet"
+    /** Première ligne de la feuille : le solde total d'où part la liste (CA-06). */
+    const val HOME_UPCOMING_START = "home.upcoming.start"
+    /** Suivi de l'identifiant de la transaction ; négatif pour une occurrence virtuelle. */
+    const val HOME_UPCOMING_ROW_PREFIX = "home.upcoming.row."
+
     // Analyses — période mensuelle ou annuelle (LOP-234)
     const val ANALYTICS_PERIOD_PILL = "analytics.period.pill"
     const val ANALYTICS_PERIOD_PREVIOUS = "analytics.period.previous"
@@ -117,6 +133,19 @@ object TestTags {
     const val ANALYTICS_CHARGES_NONE = "analytics.charges.none"
     const val ANALYTICS_CHARGES_ERROR = "analytics.charges.error"
     const val ANALYTICS_CHARGES_RETRY = "analytics.charges.retry"
+    /** Carte de LOP-242, après les charges récurrentes, sous la période affichée. */
+    const val ANALYTICS_BALANCES = "analytics.balances"
+    /** « Moyenne 574,66 €/mois · 21 % » (CA-01, CA-05). */
+    const val ANALYTICS_BALANCES_AVERAGE = "analytics.balances.average"
+    /**
+     * Préfixe d'un emplacement de mois, suivi du mois : `analytics.balances.bar.2026-10`. Un
+     * emplacement vide est présent, sans description ni clic (CA-02, CA-06).
+     */
+    const val ANALYTICS_BALANCES_BAR = "analytics.balances.bar"
+    /** « Aucune transaction sur ces 12 mois » (CA-05). */
+    const val ANALYTICS_BALANCES_NONE = "analytics.balances.none"
+    const val ANALYTICS_BALANCES_ERROR = "analytics.balances.error"
+    const val ANALYTICS_BALANCES_RETRY = "analytics.balances.retry"
     const val HOME_ACCOUNT_CARD = "home.account.card"
 
     // Accounts & current balances (LOP-13)
