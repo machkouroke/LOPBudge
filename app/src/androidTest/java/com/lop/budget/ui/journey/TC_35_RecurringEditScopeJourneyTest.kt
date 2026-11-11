@@ -1,6 +1,7 @@
 package com.lop.budget.ui.journey
 
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.performTextReplacement
@@ -37,7 +38,7 @@ import javax.inject.Inject
  * ```
  * U-01  TC-35-1  CA-01, CA-02  ponctuelle : formulaire direct, prérempli, sans section récurrence
  * U-02  TC-35-2  CA-02         SINGLE : prérempli, sans section récurrence ; seul janvier change
- * U-03  TC-35-3  CA-08         FUTURE : section préremplie (Tous les mois, 1) ; janvier et février, pas décembre
+ * U-03  TC-35-3  CA-08         FUTURE : règle préremplie (Tous les mois, le 1er ; 1 mois) ; janvier et février, pas décembre
  * U-04  TC-35-4  CA-08         ALL : prérempli depuis la série ; décembre, janvier et février
  * ```
  * Les listes sont relues entières, triées : le libellé attendu y est une fois, l'ancien nulle part
@@ -200,13 +201,23 @@ class RecurringEditScopeJourneyTest {
         reveal(TestTags.SCREEN_EDIT, hasTestTag(TestTags.TX_EDIT_FIELD_TITLE))
     }
 
-    /** CA-08 : en FUTURE et ALL, la section récurrence est visible et préremplie depuis la série. */
+    /**
+     * CA-08 : en FUTURE et ALL, la règle de la série est préremplie. Depuis LOP-245, elle se lit au
+     * résumé de la ligne « Répéter » (CA-01), puis dans la feuille, refermée sans rien changer (I-1).
+     */
     private fun Journey.assertRecurrencePrefilled() {
         reveal(TestTags.SCREEN_EDIT, hasTestTag(TestTags.TX_EDIT_FIELD_FREQUENCY))
-        expect("CA-08 — fréquence de la série", "Tous les mois", texts(TestTags.TX_EDIT_FIELD_FREQUENCY).lastOrNull())
-        click(node(TestTags.TX_EDIT_BTN_ADVANCED))
-        await("options avancées ouvertes") { count(TestTags.TX_EDIT_FIELD_INTERVAL) == 1 }
-        expect("CA-08 — intervalle de la série", "1", fieldText(TestTags.TX_EDIT_FIELD_INTERVAL))
+        expect("CA-08, LOP-245 CA-01 — règle de la série", "Tous les mois, le 1er", texts(TestTags.TX_EDIT_FIELD_FREQUENCY).lastOrNull())
+        click(node(TestTags.TX_EDIT_FIELD_FREQUENCY))
+        await("feuille « Répéter » ouverte") { count(TestTags.TX_EDIT_RECURRENCE_SHEET) == 1 }
+        expect(
+            "CA-08 — fréquence de la série : « Mois » seul sélectionné",
+            1,
+            count(hasTestTag(TestTags.TX_EDIT_RECURRENCE_FREQUENCY_PREFIX + "monthly") and isSelected()),
+        )
+        expect("CA-08 — intervalle de la série", listOf("1 mois"), texts(TestTags.TX_EDIT_RECURRENCE_INTERVAL_PREFIX + "value", merged = false))
+        click(node(TestTags.TX_EDIT_RECURRENCE_CANCEL))
+        await("feuille « Répéter » refermée") { count(TestTags.TX_EDIT_RECURRENCE_SHEET) == 0 }
         reveal(TestTags.SCREEN_EDIT, hasTestTag(TestTags.TX_EDIT_FIELD_TITLE))
     }
 

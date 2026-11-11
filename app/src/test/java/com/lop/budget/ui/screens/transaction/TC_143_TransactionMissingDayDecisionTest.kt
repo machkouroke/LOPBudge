@@ -77,6 +77,12 @@ import java.util.TimeZone
  * US : https://app.notion.com/p/6233b396328445f4924475e394af6e79 — CA-01, CA-02, CA-03, CA-06,
  * CA-08, CA-10 ; P-2, P-5. Code lu au commit d7d7c49.
  *
+ * ## Adaptation à LOP-245 (11 novembre 2026)
+ * P-9 de LOP-245 : en FUTURE / ALL, le choix de la série vaut pour la date chargée ; l'avertissement
+ * ne s'ouvre plus que si la date du formulaire a changé. V-03 édition, V-04 FUTURE / ALL et V-08
+ * reculent donc la date d'un jour avant d'enregistrer (au lieu de ne modifier que la note ou
+ * l'intervalle). Les oracles de décision sont inchangés ; l'édition attendue porte la nouvelle date.
+ *
  * ## Niveau
  * ViewModel réel, dépendances doublées par des mocks MockK **stricts** (aucun `relaxed`, aucun
  * `spyk`). Ce niveau prouve l'état exposé et les arguments transmis ; il ne prouve aucune ligne
@@ -297,8 +303,10 @@ class TransactionMissingDayDecisionTest {
         runTest {
             val vm = editing(EditScope.FUTURE)
             vm.setNote("note modifiée")
+            // P-9 de LOP-245 : seule une date changée rouvre l'avertissement en édition.
+            vm.setDate(dayBefore(FEB28))
             val f = vm.form.value
-            val submitted = editionLoaded(EditScope.FUTURE, note = "note modifiée", behavior = SKIP_PERIOD)
+            val submitted = editionLoaded(EditScope.FUTURE, note = "note modifiée", behavior = SKIP_PERIOD).copy(date = dayBefore(FEB28))
             coEvery { edit.firstMissingDay(EDITING_ID, SERIES_ID, FEB28, submitted, EditScope.FUTURE) } returns P_FUTURE
             vm.save(onDone)
             advanceUntilIdle()
@@ -326,11 +334,11 @@ class TransactionMissingDayDecisionTest {
     // =============================================================================================
 
     @Test
-    fun `V-04 FUTURE - given serie SKIP_PERIOD, when note modifiee puis save et confirmation dernier jour, then prelecture Edit exacte, choix actuel SKIP, une ecriture Edit`() =
+    fun `V-04 FUTURE - given serie SKIP_PERIOD, when note modifiee et date reculee puis save et confirmation dernier jour, then prelecture Edit exacte, choix actuel SKIP, une ecriture Edit`() =
         runTest { assertSeriesEdition("V-04 FUTURE", EditScope.FUTURE, P_FUTURE) }
 
     @Test
-    fun `V-04 ALL - given serie SKIP_PERIOD, when note modifiee puis save et confirmation dernier jour, then prelecture Edit exacte, choix actuel SKIP, une ecriture Edit`() =
+    fun `V-04 ALL - given serie SKIP_PERIOD, when note modifiee et date reculee puis save et confirmation dernier jour, then prelecture Edit exacte, choix actuel SKIP, une ecriture Edit`() =
         runTest { assertSeriesEdition("V-04 ALL", EditScope.ALL, P_ALL) }
 
     private fun TestScope.assertSeriesEdition(label: String, scope: EditScope, prompt: MissingDay) {
@@ -338,8 +346,11 @@ class TransactionMissingDayDecisionTest {
         assertEquals("$label / CA-06 — formulaire prérempli, choix de la série compris", loadedForm(scope), vm.form.value)
 
         vm.setNote("note modifiée")
+        // P-9 de LOP-245 : seule une date changée rouvre l'avertissement en édition.
+        val moved = dayBefore(loadedForm(scope).date)
+        vm.setDate(moved)
         val f = vm.form.value
-        val submitted = editionLoaded(scope, note = "note modifiée", behavior = SKIP_PERIOD)
+        val submitted = editionLoaded(scope, note = "note modifiée", behavior = SKIP_PERIOD).copy(date = moved)
         coEvery { edit.firstMissingDay(EDITING_ID, SERIES_ID, FEB28, submitted, scope) } returns prompt
         vm.save(onDone)
         advanceUntilIdle()
@@ -539,12 +550,15 @@ class TransactionMissingDayDecisionTest {
     // =============================================================================================
 
     @Test
-    fun `V-08 - given FUTURE intervalle 12 et sauter impossible, when confirmation sauter puis dernier jour, then sauter ignore et une ecriture dernier jour`() =
+    fun `V-08 - given FUTURE intervalle 12, date reculee et sauter impossible, when confirmation sauter puis dernier jour, then sauter ignore et une ecriture dernier jour`() =
         runTest {
             val vm = editing(EditScope.FUTURE)
             vm.setInterval(12)
+            // P-9 de LOP-245 : seule une date changée rouvre l'avertissement en édition.
+            vm.setDate(dayBefore(FEB28))
             val f = vm.form.value
-            val submitted = editionLoaded(EditScope.FUTURE, note = "note occurrence", behavior = SKIP_PERIOD).copy(interval = 12)
+            val submitted = editionLoaded(EditScope.FUTURE, note = "note occurrence", behavior = SKIP_PERIOD)
+                .copy(interval = 12, date = dayBefore(FEB28))
             coEvery { edit.firstMissingDay(EDITING_ID, SERIES_ID, FEB28, submitted, EditScope.FUTURE) } returns P_NO_SKIP
             vm.save(onDone)
             advanceUntilIdle()
@@ -632,6 +646,10 @@ class TransactionMissingDayDecisionTest {
     }
 
     /** Formulaire attendu après chargement : FUTURE et SINGLE prennent l'occurrence, ALL la série. */
+    /** La veille de [millis], même heure, dans le fuseau du test. */
+    private fun dayBefore(millis: Long): Long =
+        Instant.ofEpochMilli(millis).atZone(PARIS).minusDays(1).toInstant().toEpochMilli()
+
     private fun loadedForm(scope: EditScope): TransactionForm {
         val occurrence = TransactionForm(
             type = TransactionType.EXPENSE,

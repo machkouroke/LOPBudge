@@ -1,7 +1,7 @@
 package com.lop.budget.ui.navigation
 
-import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.performTextInput
@@ -48,11 +48,14 @@ import javax.inject.Inject
  *                I-6           MainSection : bascule « payé » retirée par la récurrence
  *                CA-07, I-4    CreateTransactionUseCase (série) ; listes de janvier puis de février 2027 :
  *                              la série une fois, l'occurrence de février étant virtuelle
- * U-03  le 29    LOP-88 CA-02  TransactionEditViewModel.missingDayPrompt → MissingDaySheet
+ * U-03  le 29    LOP-245 CA-03, CA-05, CA-06  RecurrenceSheet : « Les mois sans 29 », « Dernier jour du mois »
+ *                              présélectionné (P-5), aperçu ; aucun avertissement à l'enregistrement (P-7)
  * U-04  TC-81-3  CA-09, I-3    retour arrière du formulaire (onDone(0L)) : rien n'apparaît dans le mois
  * ```
- * U-03 n'a pas de CA dans LOP-2 : la feuille relève de LOP-88 (CA-02), que TC-141 couvre à l'échelle
- * de l'écran. Le cas montre ce qui arrive au flow Maestro les 29, 30 et 31.
+ * U-03 n'a pas de CA dans LOP-2 : le choix du jour absent relève de LOP-245 (feuille « Répéter »), qui
+ * remplace pour le formulaire l'avertissement à l'enregistrement de LOP-88. Le cas montre ce qui
+ * arrive au flow Maestro les 29, 30 et 31. Adapté le 11 novembre 2026 : il attendait la feuille de
+ * LOP-88 à l'enregistrement.
  *
  * ## Oracle corrigé par rapport au flow
  * TC-81-1 vérifiait l'absence de « Revenus » dans le sélecteur d'une dépense. Le catalogue n'a pas de
@@ -186,7 +189,7 @@ class TransactionCreationJourneyTest {
     fun u02_given_serie_mensuelle_ancree_le_15_janvier_2027_when_enregistree_then_une_fois_en_janvier_puis_une_occurrence_virtuelle_en_fevrier() = with(journey) {
         case = "U-02 (TC-81-2)"
         startOn(LocalDate.of(2027, 1, 15))
-        fillMonthlySeries("Vendredi 15 janvier 2027")
+        fillMonthlySeries("Vendredi 15 janvier 2027", day = "15")
 
         save()
 
@@ -204,22 +207,31 @@ class TransactionCreationJourneyTest {
     // =============================================================================================
 
     @Test
-    fun u03_given_serie_mensuelle_ancree_le_29_janvier_2027_when_enregistrer_then_feuille_jour_absent_et_formulaire_conserve() = with(journey) {
+    fun u03_given_serie_mensuelle_ancree_le_29_janvier_2027_when_mois_choisi_dans_la_feuille_then_dernier_jour_precoche_et_aucun_avertissement() = with(journey) {
         case = "U-03 (le 29)"
         startOn(LocalDate.of(2027, 1, 29))
-        fillMonthlySeries("Vendredi 29 janvier 2027")
+        fillMonthlySeries("Vendredi 29 janvier 2027", day = "29") {
+            await("LOP-245 CA-03 — ligne « Les mois sans 29 »") { count(hasText("Les mois sans 29") and inside(TestTags.TX_EDIT_RECURRENCE_SHEET)) == 1 }
+            expect(
+                "LOP-245 CA-03, P-5 — « Dernier jour du mois » présélectionné",
+                1,
+                count(hasTestTag(TestTags.TX_EDIT_RECURRENCE_MISSING_LAST) and isSelected()),
+            )
+            expect("LOP-245 CA-03 — « Sauter » proposé, non sélectionné", 1, count(hasTestTag(TestTags.TX_EDIT_RECURRENCE_MISSING_SKIP) and !isSelected()))
+            listOf("29 janv.", "28 févr.", "29 mars", "29 avr.").forEach { date ->
+                expect("LOP-245 CA-05 — prochaine échéance $date", 1, count(hasText(date) and inside(TestTags.TX_EDIT_RECURRENCE_PREVIEW)))
+            }
+        }
 
         save()
 
-        await("LOP-88 CA-02 — feuille du jour absent ouverte") { count(TestTags.TX_EDIT_MISSING_DAY_SHEET) == 1 }
-        expect("LOP-88 CA-02 — titre de la feuille", 1, count(hasText("Ce jour n'existe pas à chaque fois") and inside(TestTags.TX_EDIT_MISSING_DAY_SHEET)))
-        // Le texte de l'exemple est fusionné dans la feuille : il ne se lit que dans l'arbre non fusionné.
-        expect(
-            "LOP-88 CA-02 — explication",
-            listOf("Le 29 n'existe pas en février 2027. Que faire des périodes sans ce jour ?"),
-            texts(TestTags.TX_EDIT_MISSING_DAY_EXAMPLE, merged = false),
-        )
-        expect("LOP-88 CA-02 — rien n'est enregistré avant la décision : le formulaire reste affiché", TestTags.SCREEN_EDIT, activeScreen())
+        // P-7 : le choix est fait dans la feuille pour cette date ; aucune feuille ne s'interpose et
+        // l'id virtuel ramène à l'accueil.
+        awaitScreen(TestTags.SCREEN_HOME)
+        expect("LOP-245 CA-06 — aucun avertissement de jour absent", 0, count(TestTags.TX_EDIT_MISSING_DAY_SHEET))
+        openMonthFromHome("Janvier 2027")
+        switchMonth(2027, "Févr.", "Février 2027")
+        expectTitles("LOP-88 CA-04 — « dernier jour » : la série a son occurrence de février", listOf("Loyer", "Salaire", RECURRENT))
     }
 
     // =============================================================================================
@@ -263,8 +275,12 @@ class TransactionCreationJourneyTest {
         act("saisie du montant 12.34") { field(TestTags.TX_EDIT_FIELD_AMOUNT).performTextInput("12.34") }
     }
 
-    /** Dépense « Pharmacie » mensuelle, ancrée sur la date du formulaire ; I-6 vérifié en passant. */
-    private fun Journey.fillMonthlySeries(today: String) {
+    /**
+     * Dépense « Pharmacie » mensuelle, ancrée sur la date du formulaire ; I-6 vérifié en passant. La
+     * fréquence se choisit dans la feuille « Répéter » (LOP-245) ; [inSheet] lit la feuille avant
+     * « Valider ».
+     */
+    private fun Journey.fillMonthlySeries(today: String, day: String, inSheet: Journey.() -> Unit = {}) {
         openExpenseForm()
         pickCategory("Pharmacie")
         typeTitleAndAmount(RECURRENT)
@@ -273,10 +289,12 @@ class TransactionCreationJourneyTest {
 
         reveal(TestTags.SCREEN_EDIT, hasTestTag(TestTags.TX_EDIT_FIELD_FREQUENCY))
         click(node(TestTags.TX_EDIT_FIELD_FREQUENCY))
-        val monthly = hasText("Tous les mois") and hasClickAction()
-        await("option « Tous les mois »") { count(monthly, merged = true) == 1 }
-        click(composeRule.onNode(monthly))
-        await("fréquence « Tous les mois » retenue") { texts(TestTags.TX_EDIT_FIELD_FREQUENCY).lastOrNull() == "Tous les mois" }
+        await("feuille « Répéter » ouverte") { count(TestTags.TX_EDIT_RECURRENCE_SHEET) == 1 }
+        click(node(TestTags.TX_EDIT_RECURRENCE_FREQUENCY_PREFIX + "monthly"))
+        await("« Mois » choisi") { count(hasTestTag(TestTags.TX_EDIT_RECURRENCE_FREQUENCY_PREFIX + "monthly") and isSelected()) == 1 }
+        inSheet()
+        click(node(TestTags.TX_EDIT_RECURRENCE_APPLY))
+        await("fréquence mensuelle retenue") { texts(TestTags.TX_EDIT_FIELD_FREQUENCY).lastOrNull() == "Tous les mois, le $day" }
 
         // CA-01 / CA-07 : la date du formulaire est « aujourd'hui », et c'est elle qui ancre la série.
         reveal(TestTags.SCREEN_EDIT, hasTestTag(TestTags.TX_EDIT_FIELD_DATE))

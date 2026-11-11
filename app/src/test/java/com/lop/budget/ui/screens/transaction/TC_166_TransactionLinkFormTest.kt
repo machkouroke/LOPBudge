@@ -468,10 +468,6 @@ class TransactionLinkFormTest {
         coEvery { transactionRepo.getSeriesById(S_ID) } returns series()
         val sent = slot<TransactionEdition>()
         coEvery { editUseCase(X3_ID, S_ID, APR15, capture(sent), scope) } returns EditOutcome.Applied(X3_ID)
-        // Lecture de décision LOP-88, jamais une écriture : seules FUTURE et ALL portent une règle.
-        if (scope != EditScope.SINGLE) {
-            coEvery { editUseCase.firstMissingDay(X3_ID, S_ID, APR15, match { it.sameAs(expected) }, scope) } returns null
-        }
 
         val vm = open("id" to X3_ID, "scope" to scope.name, "date" to APR15)
         assertLinks("$label / CA-06 — liens préremplis de la portée $scope", prefilledGoal, D1_ID, vm.form.value)
@@ -483,9 +479,9 @@ class TransactionLinkFormTest {
         assertAccepted(label, vm, listOf(X3_ID))
         assertEdition("$label / CA-06 — D2 et l'objectif prérempli de la portée", expected, sent)
         coVerify(exactly = 1) { editUseCase(X3_ID, S_ID, APR15, match { it.sameAs(expected) }, scope) }
-        if (scope != EditScope.SINGLE) {
-            coVerify(exactly = 1) { editUseCase.firstMissingDay(X3_ID, S_ID, APR15, match { it.sameAs(expected) }, scope) }
-        }
+        // P-9 de LOP-245 (adapté le 11 novembre 2026) : en FUTURE et ALL, le choix pour jour absent de
+        // la série vaut pour la date chargée ; la date n'a pas changé, aucune lecture de décision.
+        coVerify(exactly = 0) { editUseCase.firstMissingDay(any(), any(), any(), any(), any()) }
         confirmWrites(label)
     }
 

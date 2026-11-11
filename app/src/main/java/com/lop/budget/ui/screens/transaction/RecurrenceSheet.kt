@@ -227,7 +227,7 @@ fun recurrenceSummary(draft: RecurrenceDraft, date: Long, anchorDay: Int?, withE
                 DayOfWeek.of(it).getDisplayName(TextStyle.SHORT, Locale.FRANCE)
             }
         RecurrenceFrequency.MONTHLY -> pluralStringResource(R.plurals.tx_repeat_summary_monthly, n, n) +
-            stringResource(R.string.tx_repeat_summary_on_day, anchorDay ?: local.dayOfMonth)
+            stringResource(R.string.tx_repeat_summary_on_day, dayLabel(anchorDay ?: local.dayOfMonth))
         RecurrenceFrequency.YEARLY -> pluralStringResource(R.plurals.tx_repeat_summary_yearly, n, n) +
             stringResource(R.string.tx_repeat_summary_on_date, Format.dayMonth(local))
     }
@@ -252,7 +252,7 @@ private fun AnchorAndMissingDay(
     val anchor = preview?.anchorDay ?: date.dayOfMonth
     Text(
         if (yearly) stringResource(R.string.tx_recurrence_anchor_year, date.format(DAY_MONTH_LONG))
-        else stringResource(R.string.tx_recurrence_anchor_month, anchor),
+        else stringResource(R.string.tx_recurrence_anchor_month, dayLabel(anchor)),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -477,6 +477,9 @@ private fun intervalUnit(f: RecurrenceFrequency) = when (f) {
     RecurrenceFrequency.YEARLY -> R.plurals.tx_recurrence_unit_year
     else -> R.plurals.tx_recurrence_unit_day
 }
+
+/** « 1er », puis « 2 », « 31 » : le premier du mois s'écrit en ordinal. */
+private fun dayLabel(day: Int): String = if (day == 1) "1er" else day.toString()
 
 private fun localDate(millis: Long): LocalDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
 

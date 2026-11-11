@@ -100,12 +100,22 @@ import javax.inject.Inject
  *
  * ## Correspondance cas → CA → fonction de production
  * ```
- * U-01  CA-02, CA-10  RecurrenceSection (options avancées) sans zone de choix ; MissingDaySheet : 2 options + Annuler
+ * U-01  CA-02, CA-10  ligne « Répéter » sans zone de choix ; MissingDaySheet : 2 options + Annuler
  * U-02  CA-02         MissingDaySheet : textes de l'exemple et des options, date saisie inchangée
  * U-03  CA-10         MissingDayOption.isCurrent : « Choix actuel » sous l'option enregistrée seule
  * U-04  CA-03         MissingDaySheet onDismiss (Annuler, retour système, toucher hors feuille)
- * U-05  P-6, LOP-193  MissingDaySheet : « sauter » désactivé et expliqué, « dernier jour » enregistre
+ * U-05  P-6, LOP-193  RecurrenceSheet (LOP-245 CA-03) : « sauter » désactivé et expliqué, « dernier jour » enregistre
  * ```
+ *
+ * ## Adaptation à LOP-245 (11 novembre 2026)
+ * LOP-245 remplace, pour le formulaire, P-2 et CA-10 de LOP-88 : le choix pour jour absent se fait
+ * dans la feuille « Répéter », et l'avertissement à l'enregistrement ne s'ouvre plus que si la date du
+ * formulaire a changé depuis le dernier choix connu (P-7, P-9). Les cas de création posent la règle
+ * par les setters, sans la feuille : l'avertissement s'y ouvre toujours, ils sont inchangés. U-01 ne
+ * cherche plus les « options avancées », disparues : il vérifie la carte du formulaire, témoin la
+ * ligne « Répéter ». U-03 recule la date d'un jour au lieu de modifier la note, seul geste qui rouvre
+ * l'avertissement en édition (P-9). U-05 passe par la feuille « Répéter » : une occurrence rabattue
+ * dont la date ne change pas n'a plus d'avertissement, la règle P-6 s'y applique dans la feuille.
  *
  * ## Chemin d'action, déduit de la structure de l'écran (jamais un oracle)
  * - En création, `TransactionEditScreen` ouvre **seul** le sélecteur de catégorie : on choisit la
@@ -242,11 +252,11 @@ class TransactionMissingDayUiTest {
     // =============================================================================================
 
     @Test
-    fun u01_M_given_creation_mensuelle_au_31_when_options_avancees_puis_enregistrer_then_aucun_champ_puis_une_feuille_a_deux_options() =
+    fun u01_M_given_creation_mensuelle_au_31_when_ligne_repeter_puis_enregistrer_then_aucun_champ_puis_une_feuille_a_deux_options() =
         assertNoFieldThenTwoOptions("U-01 M", start = at(2026, 1, 31), frequency = RecurrenceFrequency.MONTHLY)
 
     @Test
-    fun u01_Y_given_creation_annuelle_au_29_fevrier_when_options_avancees_puis_enregistrer_then_aucun_champ_puis_une_feuille_a_deux_options() =
+    fun u01_Y_given_creation_annuelle_au_29_fevrier_when_ligne_repeter_puis_enregistrer_then_aucun_champ_puis_une_feuille_a_deux_options() =
         assertNoFieldThenTwoOptions("U-01 Y", start = at(2024, 2, 29), frequency = RecurrenceFrequency.YEARLY)
 
     private fun assertNoFieldThenTwoOptions(label: String, start: Long, frequency: RecurrenceFrequency) {
@@ -315,11 +325,11 @@ class TransactionMissingDayUiTest {
     // =============================================================================================
 
     @Test
-    fun u03_FUTURE_given_serie_sauter_when_note_modifiee_puis_enregistrer_then_choix_actuel_sous_sauter_seulement() =
+    fun u03_FUTURE_given_serie_sauter_when_date_reculee_d_un_jour_puis_enregistrer_then_choix_actuel_sous_sauter_seulement() =
         assertCurrentChoice("U-03 FUTURE", EditScope.FUTURE)
 
     @Test
-    fun u03_ALL_given_serie_sauter_when_note_modifiee_puis_enregistrer_then_choix_actuel_sous_sauter_seulement() =
+    fun u03_ALL_given_serie_sauter_when_date_reculee_d_un_jour_puis_enregistrer_then_choix_actuel_sous_sauter_seulement() =
         assertCurrentChoice("U-03 ALL", EditScope.ALL)
 
     private fun assertCurrentChoice(label: String, scope: EditScope) {
@@ -340,7 +350,9 @@ class TransactionMissingDayUiTest {
         }
         launch(label, mapOf("id" to occurrenceId, "scope" to scope.name, "date" to march31))
         await(label, "formulaire chargé") { composeRule.runOnIdle { vm.isLoaded } && count(hasTestTag(TestTags.SCREEN_EDIT)) > 0 }
-        composeRule.runOnIdle { vm.setNote("note U-03") }
+        // P-9 de LOP-245 : en édition, l'avertissement ne s'ouvre que si la date a changé depuis le
+        // choix enregistré. Un jour plus tôt, le 30 manque encore en février : la règle le rencontre.
+        composeRule.runOnIdle { vm.setDate(dayBefore(vm.form.value.date)) }
         assertNoDedicatedField("$label / CA-10")
 
         submit(label)
@@ -401,7 +413,7 @@ class TransactionMissingDayUiTest {
     // =============================================================================================
 
     @Test
-    fun u05_given_FUTURE_sur_le_28_fevrier_intervalle_12_when_enregistrer_then_sauter_desactive_et_explique_dernier_jour_possible() {
+    fun u05_given_FUTURE_sur_le_28_fevrier_intervalle_12_dans_la_feuille_repeter_then_sauter_desactive_et_explique_dernier_jour_enregistre() {
         val label = "U-05"
         val seriesId = runBlocking {
             db.recurringSeriesDao().upsertSeries(
@@ -420,31 +432,34 @@ class TransactionMissingDayUiTest {
         }
         launch(label, mapOf("id" to occurrenceId, "scope" to EditScope.FUTURE.name, "date" to february28))
         await(label, "formulaire chargé") { composeRule.runOnIdle { vm.isLoaded } && count(hasTestTag(TestTags.SCREEN_EDIT)) > 0 }
-        composeRule.runOnIdle { vm.setInterval(12) }
-        val before = composeRule.runOnIdle { vm.form.value }
+        // Feuille « Répéter » ouverte, intervalle porté à 12 : uniquement des fins de février.
+        composeRule.runOnIdle {
+            vm.openRecurrence()
+            vm.editRecurrence { it.withInterval(12) }
+        }
+        await(label, "ligne « Les mois sans 31 » dans la feuille") {
+            count(hasText("Les mois sans 31") and under(TestTags.TX_EDIT_RECURRENCE_SHEET)) == 1 &&
+                count(hasTestTag(TestTags.TX_EDIT_RECURRENCE_MISSING_SKIP)) == 1
+        }
 
-        submit(label)
-
-        assertEquals(
-            "$label / P-6 — explication de la règle ; arbre : ${dump(label)}",
-            1,
-            count(hasText("Le 31 n'existe pas en février 2027. Que faire des périodes sans ce jour ?") and hasTestTag(TestTags.TX_EDIT_MISSING_DAY_EXAMPLE)),
-        )
-        assertEquals("$label / P-6 — « sauter » présent mais désactivé ; arbre : ${dump(label)}", 1, count(hasTestTag(TestTags.TX_EDIT_MISSING_DAY_SKIP) and isNotEnabled()))
-        assertEquals("$label / P-6 — la raison est dite à l'utilisateur", 1, count(hasText(UNAVAILABLE_SKIP) and under(TestTags.TX_EDIT_MISSING_DAY_SKIP)))
-        assertEquals("$label / P-6 — pas d'exemple « sauter » trompeur", 0, count(hasText("Aucune occurrence en février 2027.")))
-        assertEquals("$label / P-6 — « dernier jour » reste proposé", 1, count(hasTestTag(TestTags.TX_EDIT_MISSING_DAY_LAST) and isEnabled()))
+        assertEquals("$label / P-6 — « sauter » présent mais désactivé ; arbre : ${dump(label)}", 1, count(hasTestTag(TestTags.TX_EDIT_RECURRENCE_MISSING_SKIP) and isNotEnabled()))
+        assertEquals("$label / P-6 — la raison est dite à l'utilisateur", 1, count(hasText(UNAVAILABLE_SKIP) and under(TestTags.TX_EDIT_RECURRENCE_SHEET)))
+        assertEquals("$label / P-6 — « dernier jour » reste proposé", 1, count(hasTestTag(TestTags.TX_EDIT_RECURRENCE_MISSING_LAST) and isEnabled()))
 
         // Vrai toucher sur l'option désactivée : rien ne doit se passer.
-        composeRule.onNode(hasTestTag(TestTags.TX_EDIT_MISSING_DAY_SKIP), useUnmergedTree = true).performClick()
+        val draft = composeRule.runOnIdle { vm.recurrenceDraft.value }
+        composeRule.onNode(hasTestTag(TestTags.TX_EDIT_RECURRENCE_MISSING_SKIP), useUnmergedTree = true).performClick()
         composeRule.waitForIdle()
-        assertEquals("$label / P-6 — toucher « sauter » ne ferme pas la feuille", 1, count(hasTestTag(TestTags.TX_EDIT_MISSING_DAY_SHEET)))
+        assertEquals("$label / P-6 — toucher « sauter » ne change pas le choix", draft, composeRule.runOnIdle { vm.recurrenceDraft.value })
         assertEquals("$label / P-6 — aucune sortie de l'écran", emptyList<Long>(), doneIds)
-        assertEquals("$label / P-6 — formulaire inchangé", before, composeRule.runOnIdle { vm.form.value })
 
-        composeRule.onNode(hasTestTag(TestTags.TX_EDIT_MISSING_DAY_LAST), useUnmergedTree = true)
+        composeRule.onNode(hasTestTag(TestTags.TX_EDIT_RECURRENCE_APPLY), useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.OnClick)
+        await(label, "feuille « Répéter » refermée") { count(hasTestTag(TestTags.TX_EDIT_RECURRENCE_SHEET)) == 0 }
+        composeRule.onNode(hasTestTag(TestTags.BTN_SAVE), useUnmergedTree = true)
             .performSemanticsAction(SemanticsActions.OnClick)
         await(label, "enregistrement avec « dernier jour »") { doneIds.size == 1 }
+        assertEquals("$label / LOP-245 P-9 — aucun avertissement : le choix est fait dans la feuille", 0, count(hasTestTag(TestTags.TX_EDIT_MISSING_DAY_SHEET)))
         assertEquals(
             "$label / P-6 — le choix enregistré est « dernier jour »",
             MissingDayBehavior.LAST_VALID_DAY,
@@ -523,19 +538,16 @@ class TransactionMissingDayUiTest {
     }
 
     /**
-     * Aucune zone de choix hors feuille (CA-10). Vérifié en haut du formulaire, puis sur la section
-     * récurrence avec ses options avancées ouvertes. Témoins positifs : la section et le champ
-     * d'intervalle des options avancées, sans quoi un écran vide passerait.
+     * Aucune zone de choix dans la carte du formulaire (CA-10 ; depuis LOP-245, le choix vit dans la
+     * feuille « Répéter » et dans l'avertissement). Vérifié en haut du formulaire, puis sur la ligne
+     * « Répéter ». Témoin positif : la ligne, sans quoi un écran vide passerait.
      */
     private fun assertNoDedicatedField(label: String) {
         assertChoiceAbsent("$label (haut du formulaire)")
         composeRule.onNode(hasScrollToNodeAction(), useUnmergedTree = true)
             .performScrollToNode(hasTestTag(TestTags.TX_EDIT_BLOCK_RECURRENCE))
-        await(label, "section récurrence présente") { count(hasTestTag(TestTags.TX_EDIT_BLOCK_RECURRENCE)) == 1 }
-        composeRule.onNode(hasTestTag(TestTags.TX_EDIT_BTN_ADVANCED), useUnmergedTree = true)
-            .performSemanticsAction(SemanticsActions.OnClick)
-        await(label, "options avancées ouvertes") { count(hasTestTag(TestTags.TX_EDIT_FIELD_INTERVAL)) == 1 }
-        assertChoiceAbsent("$label (section récurrence, options avancées ouvertes)")
+        await(label, "ligne « Répéter » présente") { count(hasTestTag(TestTags.TX_EDIT_FIELD_FREQUENCY)) == 1 }
+        assertChoiceAbsent("$label (ligne « Répéter »)")
     }
 
     private fun assertChoiceAbsent(label: String) {
@@ -598,6 +610,9 @@ class TransactionMissingDayUiTest {
     private fun artifacts() = File(appContext.getExternalFilesDir(null), "tc141").apply { mkdirs() }
 
     private fun fileName(label: String) = label.replace(Regex("[^A-Za-z0-9-]"), "_").take(80)
+
+    private fun dayBefore(millis: Long): Long =
+        Instant.ofEpochMilli(millis).atZone(PARIS).minusDays(1).toInstant().toEpochMilli()
 
     private fun text(millis: Long): String =
         Instant.ofEpochMilli(millis).atZone(PARIS).toLocalDateTime().toString()

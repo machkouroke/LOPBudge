@@ -91,7 +91,7 @@
     <string name="tx_recurrence_freq_yearly">An</string>
     <string name="tx_recurrence_interval">Intervalle</string>
     <string name="tx_recurrence_days">Jours</string>
-    <string name="tx_recurrence_anchor_month">Le %1$d de chaque mois, d’après la date de la transaction</string>
+    <string name="tx_recurrence_anchor_month">Le %1$s de chaque mois, d’après la date de la transaction</string>
     <string name="tx_recurrence_anchor_year">Le %1$s de chaque année, d’après la date de la transaction</string>
     <string name="tx_recurrence_missing_month">Les mois sans %1$d</string>
     <string name="tx_recurrence_missing_year">Les années sans %1$s</string>
@@ -106,7 +106,7 @@
     <string name="tx_recurrence_apply">Valider</string>
     <string name="tx_recurrence_decrease">Diminuer</string>
     <string name="tx_recurrence_increase">Augmenter</string>
-    <string name="tx_repeat_summary_on_day">, le %1$d</string>
+    <string name="tx_repeat_summary_on_day">, le %1$s</string>
     <string name="tx_repeat_summary_on_date">, le %1$s</string>
     <string name="tx_repeat_summary_forever">sans fin</string>
     <string name="tx_repeat_summary_until">jusqu’au %1$s</string>
