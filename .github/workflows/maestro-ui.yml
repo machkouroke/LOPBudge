@@ -228,12 +228,10 @@ jobs:
       # Compiler avant de démarrer l'émulateur. Run 42936638392 : Gradle compilait pendant que
       # l'émulateur tournait (~190 % de CPU, 2,4 Go), charge de 6,3 sur 4 vCPU, ~200 Mo de mémoire
       # libre, émulateur figé dès le premier test. L'étape de l'émulateur trouve ensuite les deux APK
-      # à jour et ne fait plus qu'installer et lancer. Compilateur Kotlin dans le processus Gradle :
-      # pas de démon Kotlin qui garderait sa mémoire pendant les tests.
+      # à jour et ne fait plus qu'installer et lancer. Pas de compilateur Kotlin « in-process » :
+      # KSP y échoue (« Language version 1.9 is no longer supported », run 43053010454).
       - name: Build app and test APKs
-        run: >
-          ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon -x lint
-          -Pkotlin.compiler.execution.strategy=in-process
+        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon -x lint
 
       # Memoire et charge de l'hote toutes les 5 s, puis logcat de l'emulateur (scripts/ci_diag.sh) :
       # de quoi comprendre une mort silencieuse de l'emulateur.
