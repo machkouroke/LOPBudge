@@ -155,7 +155,16 @@ import org.junit.runner.RunWith
  * la structure de la liste avant que la trame de test ne recompose l'écran ; on voit alors un état
  * mixte (statut encore « Tous », capsules non recomposées) qu'un utilisateur ne voit jamais, puisque
  * recomposition et mesure partagent la même trame hors test. U-07c contrôle donc l'absence d'anciens
- * chiffres après cette trame (t0 + 16 ms), puis à t0 + 199 ms.
+ * chiffres dès cette trame (t0), puis à t0 + 199 ms.
+ *
+ * **Verre (11 novembre 2026).** Depuis `b111f92c`, `LopScreenScaffold` porte un `hazeSource`. Haze
+ * 1.7.2 attend une trame de l'horloge de la composition à chaque dessin (`HazeSourceNode.draw` →
+ * `launchPreDraw` → `withFrameNanos`). Le Recomposer reste alors suspendu sur la trame de test, et ne
+ * transmet plus un changement d'état aux éléments de la liste avant elle. Après un changement de
+ * statut, la mesure réelle ne compose donc plus la carte d'attente : U-07c–e expiraient dans
+ * `awaitWaitingCard`, ancien total affiché (vert à `c3be7db4`, rouge à `b111f92c`, vert sans la seule
+ * `hazeSource`). `switchStatusPaused` rend désormais la trame de recomposition avant d'attendre la
+ * carte. t0 est l'heure de cette trame, celle où démarre le délai du squelette (`rememberShowSkeleton`).
  *
  * ## Hypothèses et limites
  * - Les deux lectures du ViewModel (liste et choix) passent par le même `observeForMerge` avec les
@@ -218,6 +227,14 @@ import org.junit.runner.RunWith
  * trouvée, trois clics sur « mois suivant » : arbre de Firebase (MediumPhone.arm, API 36, fr_FR, code
  * `37f5aa2e`) ouvert sur juin 2026. Le libellé est désormais construit comme Material. Revalidé :
  * 8 verts sur le même appareil Firebase en fr_FR. Aucun oracle modifié.
+ *
+ * **11 novembre 2026** : U-07c–e rouges de montage depuis `b111f92c` (verre, voir § Montage
+ * temporel). `switchStatusPaused` rend la trame de recomposition ; U-07c contrôle l'absence d'anciens
+ * chiffres dès cette trame. 7 verts (U-07a–g) sur le SM-S938B (SDK 37), production de `fa51597e`.
+ * Sensibilité, un APK par mutation, production restaurée ensuite : capsules chiffrées pendant
+ * l'attente (`figuresOf` sans `isRefreshing`) → U-07c (à t0), U-07d, U-07e ; carte sans état
+ * d'attente (`cardMode` sans `REFRESHING`) → U-07a–e. Les autres cas restent verts. Aucun oracle
+ * modifié.
  *
  * ## Hors périmètre
  * Calcul métier et sélection SQL (TC-149, TC-151), I-1 (TC-151), grilles de récurrence, CRUD,
@@ -772,11 +789,9 @@ class MonthlyAnalysisUiTest {
         val holds = arm(GateMode.Hold(), GateMode.Hold())
         switchStatusPaused(case, vm, STATUS_PAID, PaidFilter.PAID)
         val t0 = composeRule.mainClock.currentTime
-        // Trame de recomposition : hors test, elle a lieu dans la même trame que la mesure ; c'est
-        // l'état qu'un utilisateur peut voir. Avant elle, l'horloge arrêtée laisse un état mixte
-        // (structure de liste à jour, capsules pas encore recomposées) que l'app ne dessine jamais.
-        composeRule.mainClock.advanceTimeByFrame()
-        assertNothingDisplayed(case, "trame du changement (t0 + 16 ms)")
+        // t0 est la trame de recomposition, rendue par switchStatusPaused : hors test, elle a lieu
+        // dans la même trame que la mesure ; c'est le premier état qu'un utilisateur peut voir.
+        assertNothingDisplayed(case, "trame du changement (t0)")
         advance(199 - (composeRule.mainClock.currentTime - t0))
         check(case, "CA-10", "aucun indicateur à t0 + 199 ms", count(TestTags.ANALYSIS_REFRESHING) == 0)
         assertNothingDisplayed(case, "t0 + 199 ms")
@@ -962,9 +977,8 @@ class MonthlyAnalysisUiTest {
     }
 
     /**
-     * Horloge arrêtée, attend que la carte d'attente soit composée. La liste paresseuse compose ses
-     * éléments pendant la mesure réelle d'Android, sans trame de l'horloge de test : l'effet de
-     * 200 ms démarre donc à l'heure arrêtée, qui devient t0 (prévol du 9 octobre 2026).
+     * Horloge arrêtée, attend que la carte d'attente soit composée : la mesure réelle d'Android
+     * achève la trame rendue par l'appelant (montage ou [switchStatusPaused]).
      */
     private fun awaitWaitingCard(case: String, what: String) =
         awaitCondition(case, "CA-10/I-3", "lectures retenues : carte en attente, sans total, état vide ni erreur ($what)") {
@@ -979,10 +993,15 @@ class MonthlyAnalysisUiTest {
         advance(500)
     }
 
-    /** Touche un statut horloge arrêtée ; l'heure à laquelle la carte d'attente est composée est t0. */
+    /**
+     * Touche un statut horloge arrêtée, puis rend la trame qui recompose l'écran ; son heure est t0.
+     * Sous le verre (`hazeSource` de `LopScreenScaffold`), la carte d'attente n'apparaît qu'à cette
+     * trame (§ Montage temporel, « Verre »).
+     */
     private fun switchStatusPaused(case: String, vm: MonthlyTransactionsViewModel, tag: String, filter: PaidFilter) {
         node(tag).performSemanticsAction(SemanticsActions.OnClick)
         awaitVm(case, vm, "statut $filter en attente") { it.filter == filter && it.isRefreshing }
+        composeRule.mainClock.advanceTimeByFrame()
         awaitWaitingCard(case, "statut $filter")
     }
 
